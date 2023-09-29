@@ -1,1 +1,1 @@
-colorscheme nightfox
+colorscheme carbonfox

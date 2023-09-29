@@ -21,7 +21,6 @@ let mapleader = " " " map leader to Space
 nnoremap H gT
 nnoremap L gt
 nnoremap <leader>ff <cmd>Telescope find_files<cr>
-nnoremap <leader>fg <cmd>Telescope live_grep<cr>
 nnoremap <leader>fb <cmd>Telescope buffers<cr>
 nnoremap <leader>fm <cmd>Telescope marks<cr>
 nnoremap <leader>fr <cmd>Telescope lsp_references<cr>
@@ -29,8 +28,11 @@ nnoremap <leader>fs <cmd>Telescope lsp_document_symbols<cr>
 nnoremap <leader>fc <cmd>Telescope lsp_incoming_calls<cr>
 nnoremap <leader>fo <cmd>Telescope lsp_outgoing_calls<cr>
 nnoremap <leader>fi <cmd>Telescope lsp_implementations<cr>
+nnoremap <leader>b <cmd>NvimTreeToggle<cr> 
+nnoremap <leader>bf <cmd>NvimTreeFindFile<cr>
 
 call plug#begin(has('nvim') ? stdpath('data') . '/plugged' : '~/.vim/plugged')
+
 
 Plug 'williamboman/mason.nvim'
 Plug 'williamboman/mason-lspconfig.nvim'
@@ -46,15 +48,16 @@ Plug 'L3MON4D3/LuaSnip'
 Plug 'lukas-reineke/indent-blankline.nvim'
 Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
+Plug 'nvim-telescope/telescope-live-grep-args.nvim'
 Plug 'mfussenegger/nvim-jdtls'
 Plug 'nvim-treesitter/nvim-treesitter'
 Plug 'SmiteshP/nvim-navic'
 Plug 'airblade/vim-gitgutter'
 Plug 'junegunn/fzf.vim'
 Plug 'nvim-telescope/telescope-fzf-native.nvim', { 'do': 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build' }
-Plug 'nvim-telescope/telescope-file-browser.nvim'
 Plug 'kevinhwang91/nvim-ufo'
 Plug 'kevinhwang91/promise-async'
+Plug 'nvim-tree/nvim-tree.lua'
 
 call plug#end()
 
