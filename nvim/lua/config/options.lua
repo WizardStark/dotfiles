@@ -1,0 +1,27 @@
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
+local opt = vim.opt
+--local navic = require('nvim-navic')
+
+opt.foldcolumn = '1'
+opt.foldlevel = 99
+opt.foldlevelstart = 99
+opt.foldenable = true
+opt.termguicolors = true
+opt.showmatch = true
+opt.hlsearch = true
+opt.incsearch = true
+opt.tabstop = 4
+opt.expandtab = true
+opt.shiftwidth = 4
+opt.autoindent = true
+opt.number = true
+opt.relativenumber = true
+opt.wildmode = 'longest,list'
+opt.cursorline = true
+opt.ttyfast = true
+opt.clipboard = "unnamedplus"
+opt.laststatus = 2
+opt.statusline = ([[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]])
+--opt.statusline = ([[]])
