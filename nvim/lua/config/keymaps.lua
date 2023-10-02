@@ -22,3 +22,8 @@ vim.keymap.set('n', '<leader>fi', require 'telescope.builtin'.lsp_implementation
 
 --nvim-tree
 vim.keymap.set('n', '<leader>b', require 'nvim-tree.api'.tree.toggle)
+
+--sessions
+vim.api.nvim_set_keymap("n", "<leader>qs", [[<cmd>lua require("persistence").load()<cr>]], {})
+vim.api.nvim_set_keymap("n", "<leader>ql", [[<cmd>lua require("persistence").load({ last = true })<cr>]], {})
+vim.api.nvim_set_keymap("n", "<leader>qd", [[<cmd>lua require("persistence").stop()<cr>]], {})

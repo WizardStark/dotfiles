@@ -86,12 +86,31 @@ return {
             local lspconfig = require('lspconfig')
             local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
             local navic = require("nvim-navic")
+            local opts = { noremap = true, silent = true }
+
+            local function lsp_keymap(bufnr)
+                local bufopts = { noremap = true, silent = true, buffer = bufnr }
+                vim.keymap.set('n', 'K', vim.lsp.buf.hover, bufopts)
+                vim.keymap.set('n', 'gd', vim.lsp.buf.definition, bufopts)
+                vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, bufopts)
+                vim.keymap.set('n', 'gr', vim.lsp.buf.references, bufopts)
+                vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, bufopts)
+                vim.keymap.set('n', '<space>K', vim.lsp.buf.signature_help, bufopts)
+                vim.keymap.set('n', 'gt', vim.lsp.buf.type_definition, bufopts)
+                vim.keymap.set('n', '<F2>', vim.lsp.buf.rename, bufopts)
+                vim.keymap.set('n', '<space>rn', vim.lsp.buf.rename, bufopts)
+                vim.keymap.set('n', '<space>ca', vim.lsp.buf.code_action, bufopts)
+                vim.keymap.set('n', '<space>f', vim.lsp.buf.formatting, bufopts)
+                vim.keymap.set('n', '<space>e', vim.diagnostic.open_float, opts)
+                vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, opts)
+                vim.keymap.set('n', ']d', vim.diagnostic.goto_next, opts)
+            end
 
             local lsp_attach = function(client, bufnr)
                 if client.server_capabilities.documentSymbolProvider then
                     navic.attach(client, bufnr)
                 end
-                -- Create your keybindings here...
+                lsp_keymap(bufnr)
             end
 
             require('mason-lspconfig').setup_handlers({
@@ -115,6 +134,17 @@ return {
                             capabilities = lsp_capabilities,
                         })
                     end
+                end,
+                ["jdtls"] = function()
+                    local LOMBOK_PATH = vim.fn.expand "$MASON/packages/jdtls/lombok.jar"
+                    lspconfig.jdtls.setup {
+                        cmd = {
+                            "jdtls",
+                            --"--jvm-arg=" .. string.format("-javaagent:%s -Xbootclasspath/a:%s", LOMBOK_PATH, LOMBOK_PATH)
+                            "--jvm-arg=" .. string.format("-javaagent:%s", LOMBOK_PATH)
+                        },
+                        capabilities = lsp_capabilities,
+                    }
                 end,
             })
         end,
