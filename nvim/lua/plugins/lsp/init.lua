@@ -73,7 +73,6 @@ return {
                     'tsserver',
                     'pyright',
                     'gopls',
-                    'solargraph',
                     'jdtls',
                     'bashls',
                     'jsonls',

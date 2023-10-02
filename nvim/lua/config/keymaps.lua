@@ -19,4 +19,6 @@ vim.keymap.set('n', '<leader>fs', require 'telescope.builtin'.lsp_document_symbo
 vim.keymap.set('n', '<leader>fc', require 'telescope.builtin'.lsp_incoming_calls)
 vim.keymap.set('n', '<leader>fo', require 'telescope.builtin'.lsp_outgoing_calls)
 vim.keymap.set('n', '<leader>fi', require 'telescope.builtin'.lsp_implementations)
+
+--nvim-tree
 vim.keymap.set('n', '<leader>b', require 'nvim-tree.api'.tree.toggle)

@@ -1,4 +1,5 @@
 return {
+    --telescope
     {
         'nvim-telescope/telescope.nvim',
         tag = '0.1.3',
@@ -32,6 +33,7 @@ return {
             require("telescope").load_extension("live_grep_args")
         end
     },
+    --whichkey
     {
         "folke/which-key.nvim",
         event = "VeryLazy",
@@ -45,6 +47,7 @@ return {
             -- refer to the configuration section below
         }
     },
+    --nvim-tree
     {
         'nvim-tree/nvim-tree.lua',
         config = function()
@@ -62,6 +65,7 @@ return {
             })
         end
     },
+    --ufo
     {
         'kevinhwang91/nvim-ufo',
         dependencies = {
@@ -118,7 +122,7 @@ return {
                         jumpBot = ']'
                     }
                 },
-                provider_selector = function(bufnr, filetype)
+                provider_selector = function(filetype)
                     -- if you prefer treesitter provider rather than lsp,
                     -- return ftMap[filetype] or {'treesitter', 'indent'}
                     return ftMap[filetype]
@@ -128,5 +132,5 @@ return {
                 fold_virt_text_handler = handler
             })
         end
-    }
+    },
 }
