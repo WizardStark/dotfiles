@@ -4,7 +4,9 @@ return {
     'tpope/vim-rhubarb',
     'airblade/vim-gitgutter',
     --treesitter
-    'nvim-treesitter/nvim-treesitter',
+    {
+        'nvim-treesitter/nvim-treesitter',
+    },
     --auto close brackets
     'cohama/lexima.vim',
     --auto indent to current level

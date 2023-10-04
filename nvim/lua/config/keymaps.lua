@@ -1,29 +1,29 @@
 --general
-vim.keymap.set('n', 'H', 'gT')
-vim.keymap.set('n', 'L', 'gt')
+vim.keymap.set('n', 'H', 'gT', { desc = 'Previous Tab' })
+vim.keymap.set('n', 'L', 'gt', { desc = 'Next Tab' })
 
 --ufo
-vim.keymap.set('n', 'zR', require('ufo').openAllFolds)
-vim.keymap.set('n', 'zM', require('ufo').closeAllFolds)
-vim.keymap.set('n', 'zr', require('ufo').openFoldsExceptKinds)
-vim.keymap.set('n', 'zm', require('ufo').closeFoldsWith) -- closeAllFolds == closeFoldsWith(0)
-vim.keymap.set('n', 'K', require('ufo').peekFoldedLinesUnderCursor)
+vim.keymap.set('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
+vim.keymap.set('n', 'zM', require('ufo').closeAllFolds, { desc = 'Close all folds' })
+vim.keymap.set('n', 'zr', require('ufo').openFoldsExceptKinds, { desc = 'Open all non-excluded folds' })
+vim.keymap.set('n', 'zm', require('ufo').closeFoldsWith, { desc = 'Close folds with' }) -- closeAllFolds == closeFoldsWith(0)
+vim.keymap.set('n', 'K', require('ufo').peekFoldedLinesUnderCursor, { desc = 'Peek folded lines' })
 
 --Telescope
-vim.keymap.set("n", "<leader>fg", require('telescope').extensions.live_grep_args.live_grep_args)
-vim.keymap.set('n', '<leader>ff', require 'telescope.builtin'.find_files)
-vim.keymap.set('n', '<leader>fb', require 'telescope.builtin'.buffers)
-vim.keymap.set('n', '<leader>fm', require 'telescope.builtin'.marks)
-vim.keymap.set('n', '<leader>fr', require 'telescope.builtin'.lsp_references)
-vim.keymap.set('n', '<leader>fs', require 'telescope.builtin'.lsp_document_symbols)
-vim.keymap.set('n', '<leader>fc', require 'telescope.builtin'.lsp_incoming_calls)
-vim.keymap.set('n', '<leader>fo', require 'telescope.builtin'.lsp_outgoing_calls)
-vim.keymap.set('n', '<leader>fi', require 'telescope.builtin'.lsp_implementations)
+vim.keymap.set("n", "<leader>fg", require('telescope').extensions.live_grep_args.live_grep_args, { desc = 'Live Grep' })
+vim.keymap.set('n', '<leader>ff', require 'telescope.builtin'.find_files, { desc = 'Find files' })
+vim.keymap.set('n', '<leader>b', require 'telescope.builtin'.buffers, { desc = 'Show buffers' })
+vim.keymap.set('n', '<leader>fm', require 'telescope.builtin'.marks, { desc = 'Show marks' })
+vim.keymap.set('n', '<leader>fr', require 'telescope.builtin'.lsp_references, { desc = 'Find symbol references' })
+vim.keymap.set('n', '<leader>fs', require 'telescope.builtin'.lsp_document_symbols, { desc = 'Document symbols' })
+vim.keymap.set('n', '<leader>fc', require 'telescope.builtin'.lsp_incoming_calls, { desc = 'Find incoming calls' })
+vim.keymap.set('n', '<leader>fo', require 'telescope.builtin'.lsp_outgoing_calls, { desc = 'Find outgoing calls' })
+vim.keymap.set('n', '<leader>fi', require 'telescope.builtin'.lsp_implementations,
+    { desc = 'Find symbol implementations' })
 
 --nvim-tree
-vim.keymap.set('n', '<leader>b', require 'nvim-tree.api'.tree.toggle)
+vim.keymap.set('n', '<leader>e', require 'nvim-tree.api'.tree.toggle, { desc = 'Toggle file tree' })
 
 --sessions
-vim.api.nvim_set_keymap("n", "<leader>qs", [[<cmd>lua require("persistence").load()<cr>]], {})
-vim.api.nvim_set_keymap("n", "<leader>ql", [[<cmd>lua require("persistence").load({ last = true })<cr>]], {})
-vim.api.nvim_set_keymap("n", "<leader>qd", [[<cmd>lua require("persistence").stop()<cr>]], {})
+vim.keymap.set("n", "<leader>ql", require("persistence").load, { desc = 'Load session' })
+vim.keymap.set("n", "<leader>qd", require("persistence").stop, { desc = 'Stop session persistence' })
