@@ -137,17 +137,6 @@ return {
                     end
                 end,
                 ["jdtls"] = function()
-                    --[[
-                    local lombok = vim.fn.expand "$MASON/share/jdtls/lombok.jar"
-                        lspconfig.jdtls.setup {
-                            cmd = {
-                                "jdtls",
-                                --"--jvm-arg=" .. string.format("-javaagent:%s -Xbootclasspath/a:%s", lombok, lombok)
-                                "--jvm-arg=" .. string.format("-javaagent:%s", lombok)
-                            },
-                            capabilities = lsp_capabilities,
-                        }
-                    ]]
                 end,
             })
         end,

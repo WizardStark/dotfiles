@@ -22,7 +22,10 @@ vim.keymap.set('n', '<leader>fi', require 'telescope.builtin'.lsp_implementation
     { desc = 'Find symbol implementations' })
 
 --nvim-tree
-vim.keymap.set('n', '<leader>e', require 'nvim-tree.api'.tree.toggle, { desc = 'Toggle file tree' })
+vim.keymap.set('n', '<leader>e', function()
+        require 'nvim-tree.api'.tree.toggle({ find_file = true, focus = true, path = "<arg>", update_root = '<bang>' })
+    end,
+    { desc = 'Toggle file tree' })
 
 --sessions
 vim.keymap.set("n", "<leader>ql", require("persistence").load, { desc = 'Load session' })
