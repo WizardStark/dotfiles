@@ -25,11 +25,12 @@ return {
             "hrsh7th/cmp-nvim-lsp",
             'L3MON4D3/LuaSnip',
             'hrsh7th/cmp-cmdline',
-            'hrsh7th/cmp-buffer'
+            'hrsh7th/cmp-buffer',
+            'onsails/lspkind.nvim',
         },
         opts = function()
             local luasnip = require 'luasnip'
-
+            local lspkind = require 'lspkind'
             local cmp = require 'cmp'
 
             cmp.setup {
@@ -40,7 +41,7 @@ return {
                 },
                 mapping = cmp.mapping.preset.insert({
                     ['<C-u>'] = cmp.mapping.scroll_docs(-4), -- Up
-                    ['<C-d>'] = cmp.mapping.scroll_docs(4),  -- Down
+                    ['<C-d>'] = cmp.mapping.scroll_docs(4), -- Down
                     -- C-b (back) C-f (forward) for snippet placeholder navigation.
                     ['<C-Space>'] = cmp.mapping.complete(),
                     ['<CR>'] = cmp.mapping.confirm {
@@ -71,6 +72,19 @@ return {
                     { name = 'luasnip' },
                     { name = 'buffer' },
                 },
+                formatting = {
+                    format = lspkind.cmp_format({
+                        mode = 'symbol', -- show only symbol annotations
+                        maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
+                        ellipsis_char = '...', -- when popup menu exceed maxwidth, the truncated part would show ellipsis_char instead (must define maxwidth first)
+
+                        -- The function below will be called before any actual modifications from lspkind
+                        -- so that you can provide more controls on popup customization. (See [#30](https://github.com/onsails/lspkind-nvim/pull/30))
+                        before = function(entry, vim_item)
+                            return vim_item
+                        end
+                    })
+                }
             }
             -- `/` cmdline setup.
             cmp.setup.cmdline('/', {
@@ -147,14 +161,17 @@ return {
 
             vim.keymap.set('n', '<leader>df', function() trigger_dap(require('jdtls').test_class()) end,
                 { desc = "Debug test class" })
-            vim.keymap.set('n', '<leader>dn', function() trigger_dap(require('jdtls').test_nearest_method()) end,
+            vim.keymap.set('n', '<leader>dn',
+                function() trigger_dap(require('jdtls').test_nearest_method()) end,
                 { desc = "Debug neartest test method" })
             vim.keymap.set('n', '<leader>dt', function() trigger_dap(jdtls.test_nearest_method) end,
                 { desc = 'Debug nearest test' });
-            vim.keymap.set('n', '<leader>dT', function() trigger_dap(jdtls.test_class) end, { desc = 'Debug test class' });
+            vim.keymap.set('n', '<leader>dT', function() trigger_dap(jdtls.test_class) end,
+                { desc = 'Debug test class' });
             vim.keymap.set('n', '<leader>dp', function() trigger_dap(jdtls.pick_test) end,
                 { desc = 'Choose nearest test' });
-            vim.keymap.set('n', '<leader>dl', function() trigger_dap(dap.run_last) end, { desc = 'Choose nearest test' });
+            vim.keymap.set('n', '<leader>dl', function() trigger_dap(dap.run_last) end,
+                { desc = 'Choose nearest test' });
             vim.keymap.set('n', '<leader>do', function() dap.step_over() end, { desc = 'Step over' });
             vim.keymap.set('n', '<leader>di', function() dap.step_into() end, { desc = 'Step into' });
             vim.keymap.set('n', '<leader>du', function() dap.step_out() end, { desc = 'Step out' });
@@ -186,5 +203,10 @@ return {
                 },
             }
         end,
-    }
+    },
+    --lsp diagnostics
+    { 'onsails/diaglist.nvim' },
+    {
+        'dccsillag/magma-nvim',
+    },
 }

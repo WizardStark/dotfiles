@@ -52,7 +52,7 @@ local function get_jdtls_paths()
         :get_install_path()
 
     local java_test_bundle = vim.split(
-        vim.fn.glob(java_test_path .. '/extension/server/*.jar'),
+        vim.fn.glob(java_test_path .. '/server/*.jar'),
         '\n'
     )
 
@@ -68,7 +68,7 @@ local function get_jdtls_paths()
         :get_install_path()
 
     local java_debug_bundle = vim.split(
-        vim.fn.glob(java_debug_path .. '/extension/server/com.microsoft.java.debug.plugin-*.jar'),
+        vim.fn.glob(java_debug_path .. '/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar'),
         '\n'
     )
 

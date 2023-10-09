@@ -133,4 +133,11 @@ return {
             })
         end
     },
+    --notify
+    {
+        'rcarriga/nvim-notify',
+        opts = function()
+
+        end
+    },
 }

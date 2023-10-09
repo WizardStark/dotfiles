@@ -23,3 +23,5 @@ opt.ttyfast = true
 opt.clipboard = "unnamedplus"
 opt.laststatus = 2
 opt.statusline = ([[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]])
+
+vim.notify = require("notify")
