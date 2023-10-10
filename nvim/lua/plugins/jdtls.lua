@@ -138,6 +138,7 @@ local function jdtls_on_attach(client, bufnr)
     vim.keymap.set('n', '<leader>lec', "<cmd>lua require('jdtls').extract_constant()<cr>", opts)
     vim.keymap.set('x', '<leader>lec', "<esc><cmd>lua require('jdtls').extract_constant(true)<cr>", opts)
     vim.keymap.set('x', '<leader>lem', "<esc><Cmd>lua require('jdtls').extract_method(true)<cr>", opts)
+    vim.keymap.set('n', '<leader>K', vim.lsp.buf.signature_help, opts)
 end
 
 local function jdtls_setup(event)

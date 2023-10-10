@@ -41,7 +41,7 @@ return {
                 },
                 mapping = cmp.mapping.preset.insert({
                     ['<C-u>'] = cmp.mapping.scroll_docs(-4), -- Up
-                    ['<C-d>'] = cmp.mapping.scroll_docs(4), -- Down
+                    ['<C-d>'] = cmp.mapping.scroll_docs(4),  -- Down
                     -- C-b (back) C-f (forward) for snippet placeholder navigation.
                     ['<C-Space>'] = cmp.mapping.complete(),
                     ['<CR>'] = cmp.mapping.confirm {
@@ -74,8 +74,8 @@ return {
                 },
                 formatting = {
                     format = lspkind.cmp_format({
-                        mode = 'symbol', -- show only symbol annotations
-                        maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
+                        mode = 'symbol',       -- show only symbol annotations
+                        maxwidth = 50,         -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
                         ellipsis_char = '...', -- when popup menu exceed maxwidth, the truncated part would show ellipsis_char instead (must define maxwidth first)
 
                         -- The function below will be called before any actual modifications from lspkind
@@ -206,6 +206,7 @@ return {
     },
     --lsp diagnostics
     { 'onsails/diaglist.nvim' },
+    --jupyter notebooks integration
     {
         'dccsillag/magma-nvim',
     },
