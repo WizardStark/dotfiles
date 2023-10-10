@@ -72,8 +72,8 @@ return {
                     -- Replace these with whatever servers you want to install
                     'rust_analyzer',
                     'tsserver',
-                    'pyright',
                     'gopls',
+                    'pyright',
                     'jdtls',
                     'bashls',
                     'jsonls',
