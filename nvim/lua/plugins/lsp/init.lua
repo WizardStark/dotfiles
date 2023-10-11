@@ -70,14 +70,10 @@ return {
             require('mason-lspconfig').setup({
                 ensure_installed = {
                     -- Replace these with whatever servers you want to install
-                    'rust_analyzer',
-                    'tsserver',
                     'gopls',
                     'pyright',
                     'jdtls',
-                    'bashls',
                     'jsonls',
-                    'kotlin_language_server',
                     'jqls',
                     'vimls',
                     'lua_ls'
