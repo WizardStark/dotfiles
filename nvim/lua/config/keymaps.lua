@@ -46,3 +46,6 @@ vim.keymap.set("n", "<leader>db", require("diaglist").open_buffer_diagnostics,
 
 --jupyter notebooks (magma)
 vim.keymap.set('n', '<leader>r', "<cmd>:MagmaEvaluateOperator<cr>")
+
+--lazygit
+vim.keymap.set('n', '<leader>gg', "<cmd>:LazyGit<cr>")

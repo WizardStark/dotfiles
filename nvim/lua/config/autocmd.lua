@@ -10,6 +10,9 @@ vim.api.nvim_create_autocmd('VimEnter', {
 --autoformat on save
 vim.api.nvim_create_autocmd('BufWritePre', {
     callback = function()
+        if vim.bo.filetype == 'json' then
+            return
+        end
         vim.lsp.buf.format()
     end,
 })
