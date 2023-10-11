@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 configpath="${HOME}/.config"
 nvimpath="${configpath}/nvim"
 tmuxpath="${configpath}/tmux"
@@ -7,7 +7,7 @@ if [ -z "$1" ]; then
     echo "Please specify either nvim or tmux"
 fi
 
-if [ "$1" == 'nvim' ]; then
+if [ "$1" = 'nvim' ]; then
     repo_nvimpath="${PWD}/nvim"
     echo "Deleting ${nvimpath}"
     rm -rf "${nvimpath}"
@@ -15,7 +15,7 @@ if [ "$1" == 'nvim' ]; then
     cp -r "${repo_nvimpath}" "$configpath" 
 fi
 
-if [ "$1" == tmux ]; then
+if [ "$1" = tmux ]; then
     repo_tmuxpath="${PWD}/tmux"
     echo "Deleting ${tmuxpath}/tmux.conf"
     rm "${tmuxpath}/tmux.conf"
