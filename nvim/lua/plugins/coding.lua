@@ -9,7 +9,7 @@ return {
         opts = function()
             local treesitter = require('nvim-treesitter.configs')
             treesitter.setup {
-                ensure_installed = { 'python', 'vim', 'lua', 'java', 'ruby', 'go' }
+                ensure_installed = { 'python', 'vim', 'lua', 'java', 'go' }
             }
         end
     },
