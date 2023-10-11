@@ -1,14 +1,24 @@
 #!/usr/bin/bash
-if $1 == 'nvim'; then
-    rm -rf ~/.config/nvim
-    cp -r nvim ~/.config/nvim   
-fi
+configpath="${HOME}/.config"
+nvimpath="${configpath}/nvim"
+tmuxpath="${configpath}/tmux"
 
-if $1 == 'tmux'; then
-    rm ~/.config/tmux/tmux.conf
-    cp tmux/tmux.conf ~/.config/tmux/tmux.conf  
-fi
-
-if $1 == NULL; then
+if [ -z "$1" ]; then
     echo "Please specify either nvim or tmux"
+fi
+
+if [ "$1" == 'nvim' ]; then
+    repo_nvimpath="${PWD}/nvim"
+    echo "Deleting ${nvimpath}"
+    rm -rf "${nvimpath}"
+    echo "Copying from ${repo_nvimpath} to ${configpath}"
+    cp -r "${repo_nvimpath}" "$configpath" 
+fi
+
+if [ "$1" == tmux ]; then
+    repo_tmuxpath="${PWD}/tmux"
+    echo "Deleting ${tmuxpath}/tmux.conf"
+    rm "${tmuxpath}/tmux.conf"
+    echo "Copying from ${repo_tmuxpath}/tmux.conf to ${tmuxpath}"
+    cp "${tmuxpath}/tmux.conf" "${tmuxpath}"
 fi
