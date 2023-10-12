@@ -49,3 +49,11 @@ vim.keymap.set('n', '<leader>r', "<cmd>:MagmaEvaluateOperator<cr>")
 
 --lazygit
 vim.keymap.set('n', '<leader>gg', "<cmd>:LazyGit<cr>")
+
+-- URL handling
+-- source: https://sbulav.github.io/vim/neovim-opening-urls/
+if vim.fn.has("mac") == 1 then
+    vim.keymap.set("", "gx", '<Cmd>call jobstart(["open", expand("<cfile>")], {"detach": v:true})<CR>', {})
+elseif vim.fn.has("unix") == 1 then
+    vim.keymap.set("", "gx", '<Cmd>call jobstart(["xdg-open", expand("<cfile>")], {"detach": v:true})<CR>', {})
+end

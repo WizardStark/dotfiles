@@ -3,7 +3,7 @@ vim.g.loaded_netrwPlugin = 1
 
 local opt = vim.opt
 
-opt.foldcolumn = '1'
+opt.foldcolumn = '0'
 opt.foldlevel = 99
 opt.foldlevelstart = 99
 opt.foldenable = true
@@ -23,5 +23,7 @@ opt.ttyfast = true
 opt.clipboard = "unnamedplus"
 opt.laststatus = 2
 opt.statusline = ([[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]])
+opt.signcolumn = 'yes'
+opt.updatetime = 100
 
 vim.notify = require("notify")
