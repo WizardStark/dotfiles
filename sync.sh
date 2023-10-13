@@ -46,3 +46,4 @@ if [ "$2" = 'r' ]; then
         echo "Copying from ${repo_tmuxpath}/tmux.conf to ${tmuxpath}"
         cp "${tmuxpath}/tmux.conf" "${tmuxpath}"
     fi 
+fi
