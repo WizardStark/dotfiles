@@ -1,49 +1,45 @@
 #!/bin/bash
 configpath="${HOME}/.config"
-nvimpath="${configpath}/nvim"
-tmuxpath="${configpath}/tmux"
 
-
-if [ -z "$2" ] || [ "$2" = 'l' ]; then
-    if [ -z "$1" ]; then
-        echo "Please specify either nvim or tmux"
-    fi
-
-    if [ "$1" = 'nvim' ]; then
-        repo_nvimpath="${PWD}/nvim"
-        echo "Deleting ${repo_nvimpath}"
-        rm -rf "${repo_nvimpath}"
-        echo "Copying from ${nvimpath} to ${PWD}"
-        cp -r "${nvimpath}" "${PWD}" 
-    fi
-
-    if [ "$1" = tmux ]; then
-        repo_tmuxpath="${PWD}/tmux"
-        echo "Deleting ${tmuxpath}/tmux.conf"
-        rm "${tmuxpath}/tmux.conf"
-        echo "Copying from ${tmuxpath}/tmux.conf to ${repo_tmuxpath}"
-        cp "${tmuxpath}/tmux.conf" "${repo_tmuxpath}"
-    fi
+if [ -z $1 ]; then
+   echo "Error: Please specify either nvim or tmux" 
+   exit 1
 fi
 
-if [ "$2" = 'r' ]; then
-    if [ -z "$1" ]; then
-        echo "Please specify either nvim or tmux"
-    fi
+target="$1"
 
-    if [ "$1" = 'nvim' ]; then
-        repo_nvimpath="${PWD}/nvim"
-        echo "Deleting ${nvimpath}"
-        rm -rf "${nvimpath}"
-        echo "Copying from ${repo_nvimpath} to ${configpath}"
-        cp -r "${repo_nvimpath}" "$configpath" 
-    fi
+if [ $1 = 'tmux' ]; then
+   target='tmux/tmux.conf' 
+fi
 
-    if [ "$1" = tmux ]; then
-        repo_tmuxpath="${PWD}/tmux"
-        echo "Deleting ${tmuxpath}/tmux.conf"
-        rm "${tmuxpath}/tmux.conf"
-        echo "Copying from ${repo_tmuxpath}/tmux.conf to ${tmuxpath}"
-        cp "${tmuxpath}/tmux.conf" "${tmuxpath}"
-    fi 
+copy() {
+    echo "Syncing $1 to $2"
+
+    if [ -f "$1" ]; then
+        cp "$1" "$2"
+    elif [ -d "$1" ]; then
+        cp -r "$1" "$2"
+    else
+        echo "Error: $1 is not a valid file or directory" >&2
+        exit 1
+    fi
+}
+
+get_before_slash() {
+    local string=$1
+    if [[ $string =~ / ]]; then
+        echo "${string%%/*}"
+    else
+        echo ""
+    fi
+}
+
+if [ -z "$2" ] || [ "$2" = 'l' ]; then
+    destination="${PWD}/$(get_before_slash ${target})"
+    copy "${configpath}/${target}" "${destination}"
+    exit 0
+elif [ "$2" = 'r' ]; then
+    destination="${configpath}/$(get_before_slash ${target})"
+    copy "${PWD}/${target}" "${destination}"
+    exit 0
 fi
