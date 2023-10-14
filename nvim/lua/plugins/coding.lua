@@ -4,7 +4,10 @@ return {
         'tpope/vim-rhubarb',
         event = 'VeryLazy'
     },
-
+    {
+        'tpope/vim-fugitive',
+        event = 'VeryLazy'
+    },
     {
         'airblade/vim-gitgutter',
         event = 'VeryLazy'
