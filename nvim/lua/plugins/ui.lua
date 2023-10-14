@@ -50,20 +50,19 @@ return {
     --nvim-tree
     {
         'nvim-tree/nvim-tree.lua',
-        config = function()
-            require("nvim-tree").setup({
-                sort_by = "case_sensitive",
-                view = {
-                    width = 40,
-                },
-                renderer = {
-                    group_empty = true,
-                },
-                filters = {
-                    dotfiles = true,
-                },
-            })
-        end
+        event = 'VeryLazy',
+        opts = {
+            sort_by = "case_sensitive",
+            view = {
+                width = 40,
+            },
+            renderer = {
+                group_empty = true,
+            },
+            filters = {
+                dotfiles = true,
+            },
+        }
     },
     --ufo
     {
@@ -71,6 +70,7 @@ return {
         dependencies = {
             'kevinhwang91/promise-async'
         },
+        event = 'VeryLazy',
         config = function()
             local ftMap = {
                 vim = 'indent',
@@ -141,34 +141,33 @@ return {
             "MunifTanjim/nui.nvim",
             "rcarriga/nvim-notify",
         },
-        opts = function()
-            require("noice").setup({
-                lsp = {
-                    -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
-                    override = {
-                        ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
-                        ["vim.lsp.util.stylize_markdown"] = true,
-                        ["cmp.entry.get_documentation"] = true,
-                    },
+        opts = {
+            lsp = {
+                -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
+                override = {
+                    ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+                    ["vim.lsp.util.stylize_markdown"] = true,
+                    ["cmp.entry.get_documentation"] = true,
                 },
-                popupmenu = {
-                    -- cmp-cmdline has more sources and can be extended
-                    backend = "cmp", -- backend to use to show regular cmdline completions
-                },
-                -- you can enable a preset for easier configuration
-                presets = {
-                    bottom_search = true,         -- use a classic bottom cmdline for search
-                    command_palette = true,       -- position the cmdline and popupmenu together
-                    long_message_to_split = true, -- long messages will be sent to a split
-                    inc_rename = false,           -- enables an input dialog for inc-rename.nvim
-                    lsp_doc_border = false,       -- add a border to hover docs and signature help
-                },
-            })
-        end
+            },
+            popupmenu = {
+                -- cmp-cmdline has more sources and can be extended
+                backend = "cmp", -- backend to use to show regular cmdline completions
+            },
+            -- you can enable a preset for easier configuration
+            presets = {
+                bottom_search = true,         -- use a classic bottom cmdline for search
+                command_palette = true,       -- position the cmdline and popupmenu together
+                long_message_to_split = true, -- long messages will be sent to a split
+                inc_rename = false,           -- enables an input dialog for inc-rename.nvim
+                lsp_doc_border = false,       -- add a border to hover docs and signature help
+            },
+        }
     },
     --lazygit
     {
         "kdheepak/lazygit.nvim",
+        event = 'VeryLazy',
         -- optional for floating window border decoration
         dependencies = {
             "nvim-lua/plenary.nvim",

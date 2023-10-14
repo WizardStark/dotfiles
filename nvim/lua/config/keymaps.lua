@@ -1,7 +1,6 @@
 --general
 vim.keymap.set('n', 'H', 'gT', { desc = 'Previous Tab' })
 vim.keymap.set('n', 'L', 'gt', { desc = 'Next Tab' })
-vim.keymap.set('i', 'fj', '<esc>', { desc = 'Exit insert mode' })
 vim.keymap.set('i', 'jf', '<esc>', { desc = 'Exit insert mode' })
 
 --ufo

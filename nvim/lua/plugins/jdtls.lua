@@ -295,6 +295,7 @@ vim.api.nvim_create_autocmd('FileType', {
 
 return {
     "mfussenegger/nvim-jdtls",
+    event = { 'BufWritePost', 'BufNewFile' },
     dependencies = {
         "rcarriga/nvim-dap-ui",
         "mfussenegger/nvim-dap"
