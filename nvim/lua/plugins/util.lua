@@ -42,5 +42,11 @@ return {
                 "Toggle Flash Search"
             },
         },
-    }
+    },
+    {
+        'echasnovski/mini.move',
+        event = 'VeryLazy',
+        version = false,
+        opts = {}
+    },
 }
