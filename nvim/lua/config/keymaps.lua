@@ -2,6 +2,7 @@
 vim.keymap.set('n', 'H', 'gT', { desc = 'Previous Tab' })
 vim.keymap.set('n', 'L', 'gt', { desc = 'Next Tab' })
 vim.keymap.set('i', 'jf', '<esc>', { desc = 'Exit insert mode' })
+vim.keymap.set('i', 'jk', '<right>', { desc = 'Move right one space' })
 
 --ufo
 vim.keymap.set('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
