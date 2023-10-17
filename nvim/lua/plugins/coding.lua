@@ -246,6 +246,7 @@ return {
             -- add any options here
         },
     },
+    --function overview
     {
         'stevearc/aerial.nvim',
         -- Optional dependencies
@@ -255,5 +256,11 @@ return {
         },
         event = "VeryLazy",
         opts = {},
+    },
+    --git blame
+    {
+        'APZelos/blamer.nvim',
+        event = "VeryLazy",
+        opts = {}
     }
 }

@@ -1,5 +1,7 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
+vim.g.blamer_enabled = true
+vim.g.blamer_delay = 500
 
 local opt = vim.opt
 
