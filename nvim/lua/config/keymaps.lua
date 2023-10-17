@@ -34,15 +34,20 @@ vim.keymap.set('n', '<leader>e', function()
     end,
     { desc = 'Toggle file tree' })
 
+--aerial
+vim.keymap.set("n", "<leader>a", "<cmd>AerialToggle!<CR>")
+
 --sessions
 vim.keymap.set("n", "<leader>ql", require("persistence").load, { desc = 'Load session' })
 vim.keymap.set("n", "<leader>qd", require("persistence").stop, { desc = 'Stop session persistence' })
 
 --diagnostics quicklist
-vim.keymap.set("n", "<leader>da", require("diaglist").open_all_diagnostics,
-    { desc = 'Open diagnostics for all open buffers' })
-vim.keymap.set("n", "<leader>db", require("diaglist").open_buffer_diagnostics,
-    { desc = 'Open diagnostics for current buffer' })
+vim.keymap.set("n", "<leader>xx", function() require("trouble").toggle() end)
+vim.keymap.set("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end)
+vim.keymap.set("n", "<leader>xd", function() require("trouble").toggle("document_diagnostics") end)
+vim.keymap.set("n", "<leader>xq", function() require("trouble").toggle("quickfix") end)
+vim.keymap.set("n", "<leader>xl", function() require("trouble").toggle("loclist") end)
+vim.keymap.set("n", "gR", function() require("trouble").toggle("lsp_references") end)
 
 --jupyter notebooks (magma)
 vim.keymap.set('n', '<leader>r', "<cmd>:MagmaEvaluateOperator<cr>")

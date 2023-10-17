@@ -24,7 +24,7 @@ return {
         end
     },
     --auto close brackets
-    'cohama/lexima.vim',
+    { 'cohama/lexima.vim' },
     --auto indent to current level
     {
         "lukas-reineke/indent-blankline.nvim",
@@ -128,6 +128,7 @@ return {
             })
         end
     },
+    --debugging
     {
         "mfussenegger/nvim-dap",
         event = "BufReadPre",
@@ -225,18 +226,34 @@ return {
     },
     --lsp diagnostics
     {
-        'onsails/diaglist.nvim',
-        event = 'VeryLazy'
+        "folke/trouble.nvim",
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        opts = {
+            -- your configuration comes here
+            -- or leave it empty to use the default settings
+            -- refer to the configuration section below
+        },
     },
     --jupyter notebooks integration
     {
         'dccsillag/magma-nvim',
     },
+    --better commenting
     {
         'numToStr/Comment.nvim',
         event = 'VeryLazy',
         opts = {
             -- add any options here
         },
+    },
+    {
+        'stevearc/aerial.nvim',
+        -- Optional dependencies
+        dependencies = {
+            "nvim-treesitter/nvim-treesitter",
+            "nvim-tree/nvim-web-devicons"
+        },
+        event = "VeryLazy",
+        opts = {},
     }
 }

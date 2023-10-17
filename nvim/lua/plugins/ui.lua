@@ -16,6 +16,9 @@ return {
                 -- For major updates, this must be adjusted manually.
                 version = "^1.0.0",
             },
+            {
+                "nvim-tree/nvim-web-devicons"
+            }
         },
         config = function()
             require('telescope').setup {
@@ -51,6 +54,9 @@ return {
     {
         'nvim-tree/nvim-tree.lua',
         event = 'VeryLazy',
+        dependencies = {
+            "nvim-tree/nvim-web-devicons"
+        },
         opts = {
             sort_by = "case_sensitive",
             view = {
