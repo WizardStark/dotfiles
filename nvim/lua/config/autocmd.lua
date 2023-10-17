@@ -16,3 +16,6 @@ vim.api.nvim_create_autocmd('BufWritePre', {
         vim.lsp.buf.format()
     end,
 })
+
+--git blame line
+vim.cmd [[autocmd BufEnter * EnableBlameLine]]
