@@ -259,6 +259,13 @@ return {
     },
     --git blame
     {
-        'tveskag/nvim-blame-line'
+        'f-person/git-blame.nvim',
+        event = 'VeryLazy',
+        opts = {
+            message_template = '<author> • <summary> • <date> • <sha>',
+            date_format = '%r',
+            delay = 200,
+            virtual_text_column = 80
+        }
     }
 }
