@@ -265,7 +265,10 @@ return {
             message_template = '<author> • <summary> • <date> • <sha>',
             date_format = '%r',
             delay = 200,
-            virtual_text_column = 80
+            virtual_text_column = 80,
+            set_extmark_options = {
+                hl_mode = 'combine'
+            }
         }
     }
 }
