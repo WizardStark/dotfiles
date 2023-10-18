@@ -25,13 +25,6 @@ return {
             {
                 'nvim-tree/nvim-web-devicons'
             },
-            {
-                'ThePrimeagen/harpoon',
-                event = "VeryLazy",
-                opts = {
-                    mark_branch = true
-                }
-            }
         },
         config = function()
             require('telescope').setup {
@@ -193,4 +186,14 @@ return {
             'nvim-lua/plenary.nvim',
         },
     },
+    {
+        'ThePrimeagen/harpoon',
+        event = "VeryLazy",
+        opts = {
+            global_settings = {
+                mark_branch = true
+            }
+        }
+    }
+
 }
