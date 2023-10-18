@@ -45,25 +45,29 @@ map('n', '<leader>e', function()
     { desc = 'Toggle file tree' })
 
 --aerial
-map("n", "<leader>a", "<cmd>AerialToggle!<CR>")
+map("n", "<leader>a", "<cmd>AerialToggle!<CR>", { desc = 'Open function minimap' })
 
 --sessions
 map("n", "<leader>ql", require("persistence").load, { desc = 'Load session' })
 map("n", "<leader>qd", require("persistence").stop, { desc = 'Stop session persistence' })
 
 --diagnostics quicklist
-map("n", "<leader>xx", function() require("trouble").toggle() end)
-map("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end)
-map("n", "<leader>xd", function() require("trouble").toggle("document_diagnostics") end)
-map("n", "<leader>xq", function() require("trouble").toggle("quickfix") end)
-map("n", "<leader>xl", function() require("trouble").toggle("loclist") end)
+map("n", "<leader>xx", function() require("trouble").toggle() end, { desc = 'Toggle diagnostics window' })
+map("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end,
+    { desc = 'Toggle diagnostics window for entire workspace' })
+map("n", "<leader>xd", function() require("trouble").toggle("document_diagnostics") end,
+    { desc = 'Toggle diagnostics for current document' })
+map("n", "<leader>xq", function() require("trouble").toggle("quickfix") end,
+    { desc = 'Toggle diagnostics window with quickfix list' })
+map("n", "<leader>xl", function() require("trouble").toggle("loclist") end,
+    { desc = 'Toggle diagnostics window for loclist' })
 map("n", "gR", function() require("trouble").toggle("lsp_references") end)
 
 --jupyter notebooks (magma)
 map('n', '<leader>r', "<cmd>:MagmaEvaluateOperator<cr>")
 
 --lazygit
-map('n', '<leader>gg', "<cmd>:LazyGit<cr>")
+map('n', '<leader>gg', "<cmd>:LazyGit<cr>", { desc = 'Open LazyGit' })
 
 -- URL handling
 -- source: https://sbulav.github.io/vim/neovim-opening-urls/

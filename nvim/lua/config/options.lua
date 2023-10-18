@@ -20,10 +20,13 @@ opt.relativenumber = true
 opt.wildmode = 'longest,list'
 opt.cursorline = true
 opt.ttyfast = true
-opt.clipboard = "unnamedplus"
 opt.laststatus = 2
 opt.statusline = ([[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]])
 opt.signcolumn = 'yes'
 opt.updatetime = 100
+opt.scrolloff = 8
+vim.keymap.set({ "n", "v" }, "<leader>y", [["+y]])
+vim.keymap.set("n", "<leader>Y", [["+Y]])
+vim.keymap.set({ "n", "v" }, "<leader>d", [["_d]])
 
 vim.notify = require("notify")
