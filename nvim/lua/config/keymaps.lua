@@ -26,8 +26,8 @@ map('n', '<leader>fi', require 'telescope.builtin'.lsp_implementations,
     { desc = 'Find symbol implementations' })
 
 --harpoon
-map("n", "<leader>ha", require('harpoon.mark').add_file, { desc = 'Add file to harpoon' })
-map('n', '<leader>ht', require('harpoon.ui').toggle_quick_menu, { desc = 'Toggle harpoon ui' })
+map("n", "<leader>a", require('harpoon.mark').add_file, { desc = 'Add file to harpoon' })
+map('n', '<leader>t', require('harpoon.ui').toggle_quick_menu, { desc = 'Toggle harpoon ui' })
 map('n', '<leader>hm', [[:Telescope harpoon marks<CR>]], { desc = 'Show harpoon marks in telescope' })
 map("n", "<leader>hn", require('harpoon.ui').nav_next, { desc = 'Go to next harpoon file' })
 map("n", "<leader>hp", require('harpoon.ui').nav_prev, { desc = 'Go to previous harpoon file' })
@@ -45,14 +45,14 @@ map('n', '<leader>e', function()
     { desc = 'Toggle file tree' })
 
 --aerial
-map("n", "<leader>a", "<cmd>AerialToggle!<CR>", { desc = 'Open function minimap' })
+map("n", "<leader>mm", "<cmd>AerialToggle!<CR>", { desc = 'Open function minimap' })
 
 --sessions
 map("n", "<leader>ql", require("persistence").load, { desc = 'Load session' })
 map("n", "<leader>qd", require("persistence").stop, { desc = 'Stop session persistence' })
 
 --diagnostics quicklist
-map("n", "<leader>xx", function() require("trouble").toggle() end, { desc = 'Toggle diagnostics window' })
+map("n", "<leader>xx", require("trouble").toggle, { desc = 'Toggle diagnostics window' })
 map("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end,
     { desc = 'Toggle diagnostics window for entire workspace' })
 map("n", "<leader>xd", function() require("trouble").toggle("document_diagnostics") end,
