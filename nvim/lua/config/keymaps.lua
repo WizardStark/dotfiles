@@ -5,6 +5,10 @@ map('n', 'H', 'gT', { desc = 'Previous Tab' })
 map('n', 'L', 'gt', { desc = 'Next Tab' })
 map('i', 'jf', '<esc>', { desc = 'Exit insert mode' })
 map('i', 'jk', '<right>', { desc = 'Move right one space' })
+map({ "n", "v" }, "<leader>y", [["+y]], { desc = 'Yank to system clipboard' })
+map("n", "<leader>Y", [["+Y]], { desc = 'Probably also yank to system clipboard' })
+map({ "n", "v" }, "<leader>d", [["_d]], { desc = 'Delete without adding to register' })
+map({ "n", "v" }, "<leader>P", [["_dP]], { desc = 'Paste without overriding register' })
 
 --ufo
 map('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
@@ -31,7 +35,6 @@ map('n', '<leader>t', require('harpoon.ui').toggle_quick_menu, { desc = 'Toggle 
 map('n', '<leader>hm', [[:Telescope harpoon marks<CR>]], { desc = 'Show harpoon marks in telescope' })
 map("n", "<leader>hn", require('harpoon.ui').nav_next, { desc = 'Go to next harpoon file' })
 map("n", "<leader>hp", require('harpoon.ui').nav_prev, { desc = 'Go to previous harpoon file' })
-
 
 --nvim-tree
 map('n', '<leader>e', function()
