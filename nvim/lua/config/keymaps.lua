@@ -7,7 +7,7 @@ map('i', 'jf', '<esc>', { desc = 'Exit insert mode' })
 map('i', 'jk', '<right>', { desc = 'Move right one space' })
 map({ "n", "v" }, "<leader>y", [["+y]], { desc = 'Yank to system clipboard' })
 map("n", "<leader>Y", [["+Y]], { desc = 'Probably also yank to system clipboard' })
-map({ "n", "v" }, "<leader>d", [["_d]], { desc = 'Delete without adding to register' })
+map({ "n", "v" }, "<leader>D", [["_d]], { desc = 'Delete without adding to register' })
 map({ "n", "v" }, "<leader>P", [["_dP]], { desc = 'Paste without overriding register' })
 
 --ufo
@@ -93,3 +93,53 @@ vim.keymap.set('x', '<leader>\\', function()
     vim.api.nvim_feedkeys(esc, 'nx', false)
     require('Comment.api').toggle.blockwise(vim.fn.visualmode())
 end, { desc = 'Comment selection blockwise' })
+
+--debugging
+local function trigger_dap(dapStart)
+    require("dapui").open({ reset = true })
+    dapStart()
+end
+
+local function continue()
+    if (require("dap").session()) then
+        require("dap").continue()
+    else
+        require("dapui").open({ reset = true })
+        require("dap").continue()
+    end
+end
+
+
+vim.keymap.set('n', '<Leader>dd', function() require('dap').toggle_breakpoint() end,
+    { desc = "Toggle breakpoint" })
+vim.keymap.set('n', '<Leader>dD', function()
+        vim.ui.input({ prompt = "Condition: " }, function(input)
+            require('dap').set_breakpoint(input)
+        end)
+    end,
+    { desc = "Toggle breakpoint" })
+vim.keymap.set('n', '<leader>df', function() trigger_dap(require('jdtls').test_class()) end,
+    { desc = "Debug test class" })
+vim.keymap.set('n', '<leader>dn',
+    function() trigger_dap(require('jdtls').test_nearest_method()) end,
+    { desc = "Debug neartest test method" })
+vim.keymap.set('n', '<leader>dt', function() trigger_dap(require('jdtls').test_nearest_method) end,
+    { desc = 'Debug nearest test' });
+vim.keymap.set('n', '<leader>dT', function() trigger_dap(require('jdtls').test_class) end,
+    { desc = 'Debug test class' });
+vim.keymap.set('n', '<leader>dp', function() trigger_dap(require('jdtls').pick_test) end,
+    { desc = 'Choose nearest test' });
+vim.keymap.set('n', '<leader>dl', function() trigger_dap(require('dap').run_last) end,
+    { desc = 'Choose nearest test' });
+vim.keymap.set('n', '<leader>do', function() require('dap').step_over() end, { desc = 'Step over' });
+vim.keymap.set('n', '<leader>di', function() require('dap').step_into() end, { desc = 'Step into' });
+vim.keymap.set('n', '<leader>du', function() require('dap').step_out() end, { desc = 'Step out' });
+vim.keymap.set('n', '<leader>db', function() require('dap').step_back() end, { desc = 'Step back' });
+vim.keymap.set('n', '<leader>dh', function() require('dap').run_to_cursor() end, { desc = 'Run to cursor' });
+vim.keymap.set('n', '<leader>dc', continue, { desc = 'Start debug session, or continue session' });
+vim.keymap.set('n', '<leader>de', function()
+    require('dap').terminate()
+    require('dapui').close()
+end, { desc = 'Terminate debug session' });
+vim.keymap.set('n', '<leader>du', function() require('dapui').toggle({ reset = true }) end,
+    { desc = 'Reset and toggle ui' });
