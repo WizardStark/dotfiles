@@ -79,3 +79,17 @@ if vim.fn.has("mac") == 1 then
 elseif vim.fn.has("unix") == 1 then
     map("", "gx", '<Cmd>call jobstart(["xdg-open", expand("<cfile>")], {"detach": v:true})<CR>', {})
 end
+
+--comment keybinds
+vim.keymap.set('n', '<leader>/', require('Comment.api').toggle.linewise.current, { desc = "Comment current line" })
+local esc = vim.api.nvim_replace_termcodes('<ESC>', true, false, true)
+
+vim.keymap.set('x', '<leader>/', function()
+    vim.api.nvim_feedkeys(esc, 'nx', false)
+    require('Comment.api').toggle.linewise(vim.fn.visualmode())
+end, { desc = 'Comment selection linewise' })
+
+vim.keymap.set('x', '<leader>\\', function()
+    vim.api.nvim_feedkeys(esc, 'nx', false)
+    require('Comment.api').toggle.blockwise(vim.fn.visualmode())
+end)
