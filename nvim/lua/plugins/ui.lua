@@ -1,7 +1,12 @@
-local signs = { Error = "󰅚 ", Warn = "󰀪 ", Hint = "󰌶 ", Info = " ", Breakpoint = "" }
+local signs = {
+    DiagnosticSignError = "󰅚 ",
+    DiagnosticSignWarn = "󰀪 ",
+    DiagnosticSignHint = "󰌶 ",
+    DiagnosticSignInfo = " ",
+    DapBreakpoint = ""
+}
 for type, icon in pairs(signs) do
-    local hl = "DiagnosticSign" .. type
-    vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+    vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
 end
 
 return {
@@ -79,7 +84,7 @@ return {
                 group_empty = true,
             },
             filters = {
-                dotfiles = true,
+                dotfiles = false,
             },
         }
     },

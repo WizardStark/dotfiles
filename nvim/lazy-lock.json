@@ -15,6 +15,7 @@
   "lexima.vim": { "branch": "master", "commit": "b1e1b1bde07c1efc97288c98c5912eaa644ee6e1" },
   "lspkind.nvim": { "branch": "master", "commit": "57610d5ab560c073c465d6faf0c19f200cb67e6e" },
   "mason-lspconfig.nvim": { "branch": "main", "commit": "09be3766669bfbabbe2863c624749d8da392c916" },
+  "mason-nvim-dap.nvim": { "branch": "main", "commit": "f0cd12f7a8a310c58cecebddb6b219ffad1cfd0f" },
   "mason.nvim": { "branch": "main", "commit": "cd7835b15f5a4204fc37e0aa739347472121a54c" },
   "mini.move": { "branch": "main", "commit": "b3bca8e493f8d1da343ff1be06c21a47e2fde1c0" },
   "nightfox.nvim": { "branch": "main", "commit": "6a6076bd678f825ffbe16ec97807793c3167f1a7" },

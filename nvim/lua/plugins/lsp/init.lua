@@ -83,7 +83,6 @@ return {
             local lspconfig = require('lspconfig')
             local lsp_capabilities = require('cmp_nvim_lsp').default_capabilities()
             local navic = require("nvim-navic")
-            local opts = { noremap = true, silent = true }
 
             local function lsp_keymap(bufnr)
                 local bufopts = { noremap = true, silent = true, buffer = bufnr }
