@@ -12,9 +12,14 @@ vim.api.nvim_create_autocmd('BufWritePre', {
     callback = function()
         if vim.bo.filetype == 'json' then
             return
+        elseif vim.bo.filetype == 'python' then
+            return
         end
         vim.lsp.buf.format()
     end,
 })
 
---git blame line
+vim.api.nvim_create_autocmd('BufWritePost', {
+    pattern = { "*.py" },
+    command = [[ !ufmt format % ]]
+})
