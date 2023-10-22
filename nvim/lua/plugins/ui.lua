@@ -3,7 +3,11 @@ local signs = {
     DiagnosticSignWarn = "󰀪 ",
     DiagnosticSignHint = "󰌶 ",
     DiagnosticSignInfo = " ",
-    DapBreakpoint = ""
+    DapBreakpoint = "",
+    DapBreakpointCondition = "",
+    DapBreakpointRejected = "",
+    DapLogPoint = ".>",
+    DapStopped = "󰁕",
 }
 for type, icon in pairs(signs) do
     vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
