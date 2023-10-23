@@ -70,12 +70,6 @@ return {
             require('mason-lspconfig').setup({
                 ensure_installed = {
                     -- Replace these with whatever servers you want to install
-                    'gopls',
-                    'pyright',
-                    'jdtls',
-                    'jsonls',
-                    'jqls',
-                    'vimls',
                     'lua_ls'
                 }
             })
