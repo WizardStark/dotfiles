@@ -1,0 +1,32 @@
+sudo apt update && sudo apt upgrade -y
+sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux
+
+sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)" -- \
+    -t "jonathan" \
+    -p git \
+    -p fzf \
+    -p sudo \
+    -p https://github.com/zsh-users/zsh-autosuggestions \
+    -p https://github.com/zsh-users/zsh-syntax-highlighting
+
+git clone git@github.com:neovim/neovim.git
+cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
+sudo make install
+cd ../
+rm -rf neovim
+
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+
+git clone https://github.com/WizardStark/dotfiles
+cd dotfiles
+sh sync.sh nvim r
+sh sync.sh tmux r
+cp .zshrc ~/.zshrc
+source ~/.zshrc
+
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
+tmux new-session -d -s setup_session 'tmux source ~/.config/tmux/tmux.conf'
+
+echo "Attach to a new tmux session and type Ctrl+A Shift+I to install plugins"
