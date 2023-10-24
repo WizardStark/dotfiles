@@ -15,7 +15,7 @@ map('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
 map('n', 'zM', require('ufo').closeAllFolds, { desc = 'Close all folds' })
 map('n', 'zr', require('ufo').openFoldsExceptKinds, { desc = 'Open all non-excluded folds' })
 map('n', 'zm', require('ufo').closeFoldsWith, { desc = 'Close folds with' }) -- closeAllFolds == closeFoldsWith(0)
-map('n', 'K', require('ufo').peekFoldedLinesUnderCursor, { desc = 'Peek folded lines' })
+map('n', 'zP', require('ufo').peekFoldedLinesUnderCursor, { desc = 'Peek folded lines' })
 
 --Telescope
 map("n", "<leader>fg", require('telescope').extensions.live_grep_args.live_grep_args, { desc = 'Live Grep' })

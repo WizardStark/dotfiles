@@ -24,6 +24,7 @@ opt.laststatus = 2
 opt.statusline = ([[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]])
 opt.signcolumn = 'yes'
 opt.updatetime = 100
+vim.opt.fillchars = { eob = " " }
 opt.scrolloff = 8
 
 vim.notify = require("notify")
