@@ -16,8 +16,10 @@ copy() {
     echo "Syncing $1 to $2"
 
     if [ -f "$1" ]; then
+        rm "$2"
         cp "$1" "$2"
     elif [ -d "$1" ]; then
+        rm -rf "$2"
         cp -r "$1" "$2"
     else
         echo "Error: $1 is not a valid file or directory" >&2
@@ -25,21 +27,10 @@ copy() {
     fi
 }
 
-get_before_slash() {
-    local string=$1
-    if [[ $string =~ / ]]; then
-        echo "${string%%/*}"
-    else
-        echo ""
-    fi
-}
-
 if [ -z "$2" ] || [ "$2" = 'l' ]; then
-    destination="${PWD}/$(get_before_slash ${target})"
-    copy "${configpath}/${target}" "${destination}"
+    copy "${configpath}/${target}" "${PWD}/${target}"
     exit 0
 elif [ "$2" = 'r' ]; then
-    destination="${configpath}/$(get_before_slash ${target})"
-    copy "${PWD}/${target}" "${destination}"
+    copy "${PWD}/${target}" "${configpath}/${target}"
     exit 0
 fi
