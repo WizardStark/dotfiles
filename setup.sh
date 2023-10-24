@@ -30,7 +30,7 @@ sh sync.sh tmux r
 cp .zshrc ~/.zshrc
 source ~/.zshrc
 
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
 tmux new-session -d -s setup_session 'tmux source ~/.config/tmux/tmux.conf'
 chmod +x ~/.config/tmux/plugins/tpm/scripts/install_plugins.sh
