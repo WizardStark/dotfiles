@@ -8,10 +8,6 @@ fi
 
 target="$1"
 
-if [ $1 = 'tmux' ]; then
-   target='tmux/tmux.conf' 
-fi
-
 copy() {
     echo "Syncing $1 to $2"
 
@@ -26,6 +22,25 @@ copy() {
         exit 1
     fi
 }
+
+if [ $1 = 'tmux' ]; then
+    target='tmux/tmux.conf' 
+
+    if [ -z "$2" ] || [ "$2" = 'l' ]; then
+        copy "${configpath}/${target}" "${PWD}/${target}"
+    elif [ "$2" = 'r' ]; then
+        copy "${PWD}/${target}" "${configpath}/${target}"
+    fi
+
+    target='tmux/plugins/tmux-powerline/themes/default.sh'
+    if [ -z "$2" ] || [ "$2" = 'l' ]; then
+        copy "${configpath}/${target}" "${PWD}/${target}"
+        exit 0
+    elif [ "$2" = 'r' ]; then
+        copy "${PWD}/${target}" "${configpath}/${target}"
+        exit 0
+    fi
+fi
 
 if [ -z "$2" ] || [ "$2" = 'l' ]; then
     copy "${configpath}/${target}" "${PWD}/${target}"
