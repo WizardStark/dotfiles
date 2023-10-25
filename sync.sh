@@ -15,11 +15,13 @@ copy() {
         if [ -e "$2" ]; then
             rm "$2"
         fi
+        mkdir -p "$(dirname $2)"  # Create parent directories if they don't exist
         cp "$1" "$2"
     elif [ -d "$1" ]; then
         if [ -e "$2" ]; then
             rm -rf "$2"
         fi
+        mkdir -p "$2"  # Create the destination directory if it doesn't exist
         cp -r "$1" "$2"
     else
         echo "Error: $1 is not a valid file or directory" >&2
