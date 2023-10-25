@@ -33,7 +33,7 @@ sh sync.sh tmux r
 rm ~/.zshrc
 cp .zshrc ~/.zshrc
 chsh -s $(which zsh)
-source ~/.zshrc
+exec ${SHELL}
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
