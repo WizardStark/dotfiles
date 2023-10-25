@@ -10,7 +10,7 @@ sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1
     -p https://github.com/zsh-users/zsh-autosuggestions \
     -p https://github.com/zsh-users/zsh-syntax-highlighting
 
-git clone git@github.com:neovim/neovim.git
+git clone https://github.com/neovim/neovim 
 cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
 sudo make install
 cd ../
@@ -29,6 +29,7 @@ cd dotfiles
 sh sync.sh nvim r
 sh sync.sh tmux r
 cp .zshrc ~/.zshrc
+chsh -s $(which zsh)
 source ~/.zshrc
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
