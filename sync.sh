@@ -22,6 +22,7 @@ copy() {
             rm -rf "$2"
         fi
         mkdir -p "$2"  # Create the destination directory if it doesn't exist
+        rm -rf "$2"
         cp -r "$1" "$2"
     else
         echo "Error: $1 is not a valid file or directory" >&2

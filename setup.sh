@@ -1,3 +1,4 @@
+cd
 sudo apt update && sudo apt upgrade -y
 sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep
 
@@ -23,8 +24,7 @@ curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/lates
 tar xf lazygit.tar.gz lazygit
 sudo install lazygit /usr/local/bin
 
-git clone https://github.com/WizardStark/dotfiles
-mkdit ~/.config
+mkdir ~/.config
 cd dotfiles
 sh sync.sh nvim r
 sh sync.sh tmux r
