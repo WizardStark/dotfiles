@@ -12,10 +12,14 @@ copy() {
     echo "Syncing $1 to $2"
 
     if [ -f "$1" ]; then
-        rm "$2"
+        if [ -e "$2" ]; then
+            rm "$2"
+        fi
         cp "$1" "$2"
     elif [ -d "$1" ]; then
-        rm -rf "$2"
+        if [ -e "$2" ]; then
+            rm -rf "$2"
+        fi
         cp -r "$1" "$2"
     else
         echo "Error: $1 is not a valid file or directory" >&2

@@ -24,6 +24,7 @@ tar xf lazygit.tar.gz lazygit
 sudo install lazygit /usr/local/bin
 
 git clone https://github.com/WizardStark/dotfiles
+mkdit ~/.config
 cd dotfiles
 sh sync.sh nvim r
 sh sync.sh tmux r
