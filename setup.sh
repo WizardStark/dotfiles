@@ -36,8 +36,6 @@ chsh -s $(which zsh)
 exec ${SHELL}
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
-
-tmux new-session -d -s setup_session 'tmux source ~/.config/tmux/tmux.conf'
 chmod +x ~/.config/tmux/plugins/tpm/scripts/install_plugins.sh
-cd ~/.config/tmux/plugins/tpm/scripts
-sh install_plugins.sh
+
+tmux new-session -d -s setup_session 'tmux source ~/.config/tmux/tmux.conf && cd ~/.config/tmux/plugins/tpm/scripts && sh install_plugins.sh'
