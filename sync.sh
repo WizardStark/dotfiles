@@ -44,7 +44,7 @@ if [ $1 = 'tmux' ]; then
     fi
 fi
 
-if [ $1 = 'tmux-theme' ]; then
+if [ $1 = 'tmuxtheme' ]; then
     target='tmux/plugins/tmux-powerline/themes/default.sh'
     if [ -z "$2" ] || [ "$2" = 'l' ]; then
         copy "${configpath}/${target}" "${PWD}/${target}"

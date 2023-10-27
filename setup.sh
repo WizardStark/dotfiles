@@ -38,4 +38,4 @@ cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
 tmux
-sh sync.sh tmux-theme r
+sh sync.sh tmuxtheme r
