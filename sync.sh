@@ -10,18 +10,23 @@ target="$1"
 
 copy() {
     echo "Syncing $1 to $2"
+    parent=$(basename "$(dirname $2)")
 
     if [ -f "$1" ]; then
         if [ -e "$2" ]; then
+            echo "Deleting $2"
             rm "$2"
         fi
-        mkdir -p "$(basename "$(dirname $2)")" # Create parent directories if they don't exist
+        echo "Creating $parent"
+        mkdir -p "$parent" # Create parent directories if they don't exist
         cp "$1" "$2"
     elif [ -d "$1" ]; then
         if [ -e "$2" ]; then
+            echo "Deleting $2"
             rm -rf "$2"
         fi
-        mkdir -p "$(basename "$(dirname $2)")" # Create the destination directory if it doesn't exist
+        echo "Creating $parent"
+        mkdir -p "$parent" # Create the destination directory if it doesn't exist
         cp -r "$1" "$2"
     else
         echo "Error: $1 is not a valid file or directory" >&2
