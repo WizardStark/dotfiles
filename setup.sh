@@ -1,4 +1,4 @@
-directory=${pwd}
+directory=$( pwd )
 cd
 sudo apt update && sudo apt upgrade -y
 sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep
@@ -11,7 +11,15 @@ sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1
     -p https://github.com/zsh-users/zsh-autosuggestions \
     -p https://github.com/zsh-users/zsh-syntax-highlighting
 
-git clone https://github.com/neovim/neovim 
+mkdir ~/.config
+cd "$directory"
+rm ~/.zshrc
+cp .zshrc ~/.zshrc
+chsh -s $(which zsh)
+exec ${SHELL}
+
+cd
+git clone -b release-0.9 https://github.com/neovim/neovim 
 cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
 sudo make install
 cd ../
@@ -26,14 +34,9 @@ tar xf lazygit.tar.gz lazygit
 sudo install lazygit /usr/local/bin
 rm lazygit*
 
-mkdir ~/.config
-cd directory
+cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
-rm ~/.zshrc
-cp .zshrc ~/.zshrc
-chsh -s $(which zsh)
-exec ${SHELL}
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 chmod +x ~/.config/tmux/plugins/tpm/scripts/install_plugins.sh
