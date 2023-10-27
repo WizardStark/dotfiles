@@ -16,10 +16,11 @@ cd "$directory"
 rm ~/.zshrc
 cp .zshrc ~/.zshrc
 chsh -s $(which zsh)
-exec ${SHELL}
+exec $( SHELL )
+zsh
 
 cd
-git clone -b release-0.9 https://github.com/neovim/neovim 
+git clone -b v0.9.4 https://github.com/neovim/neovim 
 cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
 sudo make install
 cd ../
@@ -38,4 +39,5 @@ cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
 tmux
+~/.config/tmux/plugins/tpm/bin/install_scripts
 sh sync.sh tmuxtheme r
