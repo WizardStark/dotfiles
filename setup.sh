@@ -26,7 +26,7 @@ cd ../
 rm -rf neovim
 
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install
+~/.fzf/install --key-bindings --completion --update-rc
 
 LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
 curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
@@ -34,9 +34,10 @@ tar xf lazygit.tar.gz lazygit
 sudo install lazygit /usr/local/bin
 rm lazygit*
 
+git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
+
 cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
-tmux
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 sh sync.sh tmuxtheme r
