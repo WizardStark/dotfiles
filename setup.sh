@@ -17,7 +17,6 @@ rm ~/.zshrc
 cp .zshrc ~/.zshrc
 chsh -s $(which zsh)
 exec $( SHELL )
-zsh
 
 cd
 git clone -b v0.9.4 https://github.com/neovim/neovim 
