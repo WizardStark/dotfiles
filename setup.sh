@@ -37,8 +37,5 @@ rm lazygit*
 cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
-
-git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
-chmod +x ~/.config/tmux/plugins/tpm/scripts/install_plugins.sh
-
-tmux new-session -d -s setup_session 'tmux source ~/.config/tmux/tmux.conf && cd ~/.config/tmux/plugins/tpm/scripts && sh install_plugins.sh'
+tmux
+sh sync.sh tmux-theme r
