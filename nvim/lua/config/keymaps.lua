@@ -9,6 +9,11 @@ map({ "n", "v" }, "<leader>y", [["+y]], { desc = 'Yank to system clipboard' })
 map("n", "<leader>Y", [["+Y]], { desc = 'Probably also yank to system clipboard' })
 map({ "n", "v" }, "<leader>D", [["_d]], { desc = 'Delete without adding to register' })
 map({ "n", "v" }, "<leader>P", [["_dP]], { desc = 'Paste without overriding register' })
+map("n", "J", "mzJ`z")
+map("n", "<C-d>", "<C-d>zz")
+map("n", "<C-u>", "<C-u>zz")
+map("n", "n", "nzzzv")
+map("n", "N", "Nzzzv")
 
 --ufo
 map('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
