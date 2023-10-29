@@ -11,6 +11,7 @@ vim.api.nvim_create_autocmd('VimEnter', {
 vim.api.nvim_create_autocmd('BufWritePre', {
     callback = function()
         if vim.bo.filetype == 'json' then
+            vim.cmd [[%!jq .]]
             return
         elseif vim.bo.filetype == 'python' then
             return

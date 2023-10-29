@@ -4,6 +4,8 @@ export PATH=$HOME/local/bin:$PATH
 export PATH=$HOME/.local/bin:$PATH
 export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
 export MANPATH=$HOME/local/share/man:$MANPATH
+export LC_ALL=en_IN.UTF-8
+export LANG=en_ING.UTF-8
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 ZSH_THEME="jonathan"
 
