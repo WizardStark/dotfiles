@@ -38,8 +38,10 @@ if [ $1 = 'tmux' ]; then
 
     if [ -z "$2" ] || [ "$2" = 'l' ]; then
         copy "${configpath}/${target}" "${PWD}/${target}"
+        exit 0
     elif [ "$2" = 'r' ]; then
         copy "${PWD}/${target}" "${configpath}/${target}"
+        exit 0
     fi
 fi
 
