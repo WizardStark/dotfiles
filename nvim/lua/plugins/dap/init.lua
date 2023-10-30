@@ -14,11 +14,11 @@ return {
             --js dependencies
             --lazy spec to build "microsoft/vscode-js-debug" from source
             "mxsdev/nvim-dap-vscode-js",
-            {
-                "microsoft/vscode-js-debug",
-                version = "1.x",
-                build = "npm i && npm run compile vsDebugServerBundle && mv dist out"
-            },
+            -- {
+            --     "microsoft/vscode-js-debug",
+            --     version = "1.x",
+            --     build = "npm i && npm run compile vsDebugServerBundle && mv dist out"
+            -- },
         },
         config = function()
             local dap = require("dap")
