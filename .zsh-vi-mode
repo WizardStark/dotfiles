@@ -1,0 +1,11 @@
+function zvm_config() {
+  ZVM_LINE_INIT_MODE=$ZVM_MODE_INSERT
+  ZVM_VI_INSERT_ESCAPE_BINDKEY=jf
+}
+
+function my_init() {
+  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+}
+zvm_after_init_commands+=(my_init)
+
+source /Users/barnardu/.oh-my-zsh/custom/plugins/zsh-vi-mode/zsh-vi-mode.zsh
