@@ -172,7 +172,7 @@ return {
 				-- Customize or remove this keymap to your liking
 				"<leader>cf",
 				function()
-					require("conform").format({ async = true, lsp_fallback = true })
+					require("conform").format({ async = true, lsp_fallback = false })
 				end,
 				mode = "",
 				desc = "Format buffer",
@@ -185,6 +185,7 @@ return {
 				lua = { "stylua" },
 				python = { "usort", "black" },
 				javascript = { { "prettierd", "prettier" } },
+                json = { 'jq' },
 				bash = { "shfmt" },
 				sh = { "shfmt" },
 				zsh = { "shfmt" },
