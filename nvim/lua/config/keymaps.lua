@@ -14,6 +14,7 @@ map("n", "<C-d>", "<C-d>zz")
 map("n", "<C-u>", "<C-u>zz")
 map("n", "n", "nzzzv")
 map("n", "N", "Nzzzv")
+map('v', "<leader>k", [[:s/\(.*\)/]], {desc = 'Kirby'})
 
 --ufo
 map('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
