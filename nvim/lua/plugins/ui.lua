@@ -215,12 +215,6 @@ return {
 		config = true,
 		opts = {
 			open_mapping = [[<c-\>]],
-			winbar = {
-				enabled = true,
-				name_formatter = function(term) --  term: Terminal
-					return term.name
-				end,
-			},
 		},
 	},
 }
