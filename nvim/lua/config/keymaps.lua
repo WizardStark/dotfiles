@@ -33,6 +33,11 @@ map("n", "<leader>fs", require("telescope.builtin").lsp_document_symbols, { desc
 map("n", "<leader>fc", require("telescope.builtin").lsp_incoming_calls, { desc = "Find incoming calls" })
 map("n", "<leader>fo", require("telescope.builtin").lsp_outgoing_calls, { desc = "Find outgoing calls" })
 map("n", "<leader>fi", require("telescope.builtin").lsp_implementations, { desc = "Find symbol implementations" })
+map("n", "<leader>fp", require("telescope.builtin").resume, { desc = "Resume last telescope search" })
+map("n", "<leader>gs", require("telescope.builtin").git_status, { desc = "Git status" })
+map("n", "<leader>gc", require("telescope.builtin").git_commits, { desc = "Git commits" })
+map("n", "<leader>gc", require("telescope.builtin").git_bcommits, { desc = "Git commits for current buffer" })
+map("i", "<C-r>", require("telescope.builtin").registers, { desc = "Show registers" })
 
 --harpoon
 map("n", "<leader>a", require("harpoon.mark").add_file, { desc = "Add file to harpoon" })
