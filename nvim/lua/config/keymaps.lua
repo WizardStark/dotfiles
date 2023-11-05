@@ -33,11 +33,12 @@ map("n", "<leader>fs", require("telescope.builtin").lsp_document_symbols, { desc
 map("n", "<leader>fc", require("telescope.builtin").lsp_incoming_calls, { desc = "Find incoming calls" })
 map("n", "<leader>fo", require("telescope.builtin").lsp_outgoing_calls, { desc = "Find outgoing calls" })
 map("n", "<leader>fi", require("telescope.builtin").lsp_implementations, { desc = "Find symbol implementations" })
-map("n", "<leader>fp", require("telescope.builtin").resume, { desc = "Resume last telescope search" })
+map("n", "<leader>fh", require("telescope.builtin").resume, { desc = "Resume last telescope search" })
 map("n", "<leader>gs", require("telescope.builtin").git_status, { desc = "Git status" })
 map("n", "<leader>gc", require("telescope.builtin").git_commits, { desc = "Git commits" })
 map("n", "<leader>gc", require("telescope.builtin").git_bcommits, { desc = "Git commits for current buffer" })
 map("i", "<C-r>", require("telescope.builtin").registers, { desc = "Show registers" })
+map("n", "<leader>fp", [[:Telescope neovim-project history<CR>]], { desc = "Show projects history" })
 
 --harpoon
 map("n", "<leader>a", require("harpoon.mark").add_file, { desc = "Add file to harpoon" })
@@ -59,10 +60,6 @@ end, { desc = "Toggle file tree" })
 --aerial
 map("n", "<leader>mm", "<cmd>AerialToggle!<CR>", { desc = "Open function minimap" })
 
---sessions
-map("n", "<leader>ql", require("persistence").load, { desc = "Load session" })
-map("n", "<leader>qd", require("persistence").stop, { desc = "Stop session persistence" })
-
 --diagnostics quicklist
 map("n", "<leader>xx", require("trouble").toggle, { desc = "Toggle diagnostics window" })
 map("n", "<leader>xw", function()
@@ -80,9 +77,6 @@ end, { desc = "Toggle diagnostics window for loclist" })
 map("n", "gR", function()
 	require("trouble").toggle("lsp_references")
 end)
-
---jupyter notebooks (magma)
-map("n", "<leader>r", "<cmd>:MagmaEvaluateOperator<cr>")
 
 --lazygit
 map("n", "<leader>gg", "<cmd>:LazyGit<cr>", { desc = "Open LazyGit" })

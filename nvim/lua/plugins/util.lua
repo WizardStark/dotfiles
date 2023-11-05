@@ -1,12 +1,37 @@
 return {
 	--sessions
 	{
-		"folke/persistence.nvim",
-		event = "BufReadPre", -- this will only start session saving when an actual file was opened
+		"coffebar/neovim-project",
 		opts = {
-			-- add any custom options here
+			projects = { -- define project roots
+				"~/projects/*",
+				"~/.config/*",
+				"~/workplace/*",
+				"~/code/*",
+				"~/dotfiles/",
+			},
+			session_manager_opts = {
+				autosave_ignore_filetypes = {
+					"ccc-ui",
+					"gitcommit",
+					"gitrebase",
+					"qf",
+				},
+			},
 		},
+		init = function()
+			-- enable saving the state of plugins in the session
+			vim.opt.sessionoptions:append("globals") -- save global variables that start with an uppercase letter and contain at least one lowercase letter.
+		end,
+		dependencies = {
+			{ "nvim-lua/plenary.nvim" },
+			{ "nvim-telescope/telescope.nvim", tag = "0.1.4" },
+			{ "Shatur/neovim-session-manager" },
+		},
+		lazy = false,
+		priority = 100,
 	},
+	-- Quick navigation
 	{
 		"folke/flash.nvim",
 		event = "VeryLazy",

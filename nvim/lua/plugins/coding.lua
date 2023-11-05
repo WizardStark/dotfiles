@@ -28,7 +28,13 @@ return {
 		end,
 	},
 	--auto close brackets
-	{ "cohama/lexima.vim" },
+	{
+		"altermo/ultimate-autopair.nvim",
+		event = { "InsertEnter", "CmdlineEnter" },
+		branch = "v0.6",
+		opts = {
+		},
+	},
 	--auto indent to current level
 	{
 		"lukas-reineke/indent-blankline.nvim",
@@ -185,7 +191,7 @@ return {
 				lua = { "stylua" },
 				python = { "usort", "black" },
 				javascript = { { "prettierd", "prettier" } },
-                json = { 'jq' },
+				json = { "jq" },
 				bash = { "shfmt" },
 				sh = { "shfmt" },
 				zsh = { "shfmt" },
