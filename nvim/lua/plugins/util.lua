@@ -6,7 +6,7 @@ return {
 			projects = { -- define project roots
 				"~/projects/*",
 				"~/.config/*",
-				-- "~/workplace/*",
+				"~/workplace/*/src/*",
 				"~/code/*",
 				"~/dotfiles/",
 			},
