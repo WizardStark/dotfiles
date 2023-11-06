@@ -86,12 +86,14 @@ return {
 			},
 		},
 	},
+	-- moving code blocks
 	{
 		"echasnovski/mini.move",
 		event = "VeryLazy",
 		version = false,
 		opts = {},
 	},
+	-- surround
 	{
 		"kylechui/nvim-surround",
 		version = "*", -- Use for stability; omit to use `main` branch for the latest features

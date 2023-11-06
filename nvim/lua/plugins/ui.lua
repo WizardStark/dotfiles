@@ -200,6 +200,7 @@ return {
 			"nvim-lua/plenary.nvim",
 		},
 	},
+	--harpoon
 	{
 		"ThePrimeagen/harpoon",
 		event = "VeryLazy",
@@ -209,6 +210,7 @@ return {
 			},
 		},
 	},
+	--toggleterm
 	{
 		"akinsho/toggleterm.nvim",
 		version = "*",

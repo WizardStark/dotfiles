@@ -32,8 +32,7 @@ return {
 		"altermo/ultimate-autopair.nvim",
 		event = { "InsertEnter", "CmdlineEnter" },
 		branch = "v0.6",
-		opts = {
-		},
+		opts = {},
 	},
 	--auto indent to current level
 	{
@@ -138,17 +137,7 @@ return {
 			})
 		end,
 	},
-	--lsp diagnostics
-	{
-		"folke/trouble.nvim",
-		event = "VeryLazy",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		opts = {
-			-- your configuration comes here
-			-- or leave it empty to use the default settings
-			-- refer to the configuration section below
-		},
-	},
+
 	--better commenting
 	{
 		"numToStr/Comment.nvim",
