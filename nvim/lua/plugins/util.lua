@@ -6,7 +6,7 @@ return {
 			projects = { -- define project roots
 				"~/projects/*",
 				"~/.config/*",
-				"~/workplace/*",
+				-- "~/workplace/*",
 				"~/code/*",
 				"~/dotfiles/",
 			},
@@ -18,6 +18,7 @@ return {
 					"qf",
 				},
 			},
+			last_session_on_startup = false,
 		},
 		init = function()
 			-- enable saving the state of plugins in the session
