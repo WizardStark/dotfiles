@@ -13,8 +13,7 @@ plugins=(git
   zsh-syntax-highlighting
   zsh-autosuggestions
   sudo
-  fzf
-  zsh-vi-mode)
+  fzf)
 
 source ~/.zsh-vi-mode
 source $ZSH/oh-my-zsh.sh
