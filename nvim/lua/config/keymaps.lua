@@ -78,8 +78,9 @@ map("n", "gR", function()
 	require("trouble").toggle("lsp_references")
 end)
 
---lazygit
-map("n", "<leader>gg", "<cmd>:LazyGit<cr>", { desc = "Open LazyGit" })
+--git
+map("n", "<leader>gg", "[[:LazyGit<CR>]]", { desc = "Open LazyGit" })
+map("n", "<leader>gd", "[[:Gitsigns diffthis ~1<CR>]]", { desc = "Open LazyGit" })
 
 -- URL handling
 -- source: https://sbulav.github.io/vim/neovim-opening-urls/

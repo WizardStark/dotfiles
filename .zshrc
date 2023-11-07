@@ -38,6 +38,7 @@ alias vim="nvim"
 alias cl="printf '\33c\e[3J'"
 alias src='source ~/.zshrc'
 alias erc='vim ~/.zshrc'
+alias pls='sudo $(fc -ln -1)'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-[ -f ~/.amazon.zsh ] && source ~/.amazon.zsh
+[ -f ~/.lcl.zsh ] && source ~/.lcl.zsh
