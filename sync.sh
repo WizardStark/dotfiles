@@ -2,7 +2,7 @@
 configpath="${HOME}/.config"
 
 if [ -z $1 ]; then
-   echo "Error: Please specify either nvim or tmux" 
+   echo "Error: Please specify nvim, tmux, tmuxtheme or rc" 
    exit 1
 fi
 
@@ -52,6 +52,18 @@ if [ $1 = 'tmuxtheme' ]; then
         exit 0
     elif [ "$2" = 'r' ]; then
         copy "${PWD}/${target}" "${configpath}/${target}"
+        exit 0
+    fi
+fi
+
+if [ $1 = 'rc' ]; then
+    target='.zshrc' 
+
+    if [ -z "$2" ] || [ "$2" = 'l' ]; then
+        copy "${HOME}/${target}" "${PWD}/${target}"
+        exit 0
+    elif [ "$2" = 'r' ]; then
+        copy "${PWD}/${target}" "${HOME}/${target}"
         exit 0
     fi
 fi

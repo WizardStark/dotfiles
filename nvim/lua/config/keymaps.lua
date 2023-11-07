@@ -80,7 +80,7 @@ end)
 
 --git
 map("n", "<leader>gg", "[[:LazyGit<CR>]]", { desc = "Open LazyGit" })
-map("n", "<leader>gd", "[[:Gitsigns diffthis ~1<CR>]]", { desc = "Open LazyGit" })
+map("n", "<leader>gd", "[[:Gitsigns diffthis ~1<CR>]]", { desc = "Git diff with previous" })
 
 -- URL handling
 -- source: https://sbulav.github.io/vim/neovim-opening-urls/
