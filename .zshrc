@@ -21,6 +21,7 @@ source $ZSH/oh-my-zsh.sh
 export EDITOR='nvim'
 alias vim='nvim'
 alias cl="printf '\33c\e[3J'"
+alias s='source ~/.zshrc'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
