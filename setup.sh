@@ -6,6 +6,7 @@ sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmu
 sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)" -- \
   -t "jonathan" \
   -p git \
+  -p vi-mode \
   -p fzf \
   -p sudo \
   -p https://github.com/zsh-users/zsh-autosuggestions \
