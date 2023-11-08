@@ -219,4 +219,8 @@ return {
 			open_mapping = [[<c-\>]],
 		},
 	},
+	{
+		"stevearc/dressing.nvim",
+		opts = {},
+	},
 }
