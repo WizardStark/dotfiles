@@ -183,3 +183,6 @@ end
 
 -- if you only want these mappings for toggle term use term://*toggleterm#* instead
 vim.cmd("autocmd! TermOpen term://* lua set_terminal_keymaps()")
+
+-- undotree
+vim.keymap.set("n", "<leader><F5>", vim.cmd.UndotreeToggle, { desc = "Open the undotree" })

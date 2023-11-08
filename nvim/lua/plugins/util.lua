@@ -104,4 +104,9 @@ return {
 			})
 		end,
 	},
+	-- undotree
+	{
+		"mbbill/undotree",
+		event = { "VeryLazy" },
+	},
 }
