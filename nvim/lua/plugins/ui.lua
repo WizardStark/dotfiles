@@ -176,18 +176,19 @@ return {
 					["vim.lsp.util.stylize_markdown"] = true,
 					["cmp.entry.get_documentation"] = true,
 				},
+				signature = {
+					enabled = false,
+				},
 			},
 			popupmenu = {
 				-- cmp-cmdline has more sources and can be extended
 				backend = "cmp", -- backend to use to show regular cmdline completions
 			},
-			-- you can enable a preset for easier configuration
 			presets = {
 				bottom_search = true, -- use a classic bottom cmdline for search
 				command_palette = true, -- position the cmdline and popupmenu together
 				long_message_to_split = true, -- long messages will be sent to a split
 				inc_rename = false, -- enables an input dialog for inc-rename.nvim
-				lsp_doc_border = false, -- add a border to hover docs and signature help
 			},
 		},
 	},
@@ -219,8 +220,26 @@ return {
 			open_mapping = [[<c-\>]],
 		},
 	},
+	--dressing.nvim
 	{
 		"stevearc/dressing.nvim",
 		opts = {},
+	},
+	--lualine
+	{
+		"nvim-lualine/lualine.nvim",
+		opts = {
+			options = {
+				theme = "moonfly",
+			},
+			sections = {
+				lualine_a = { "mode" },
+				lualine_b = { "branch", "diff", "diagnostics" },
+				lualine_c = { "[[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]]" },
+				lualine_x = { "filesize", "filetype", "progress" },
+				lualine_y = { "selectioncount" },
+				lualine_z = { "location" },
+			},
+		},
 	},
 }

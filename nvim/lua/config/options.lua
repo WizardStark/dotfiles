@@ -21,7 +21,7 @@ opt.wildmode = "longest,list"
 opt.cursorline = true
 opt.ttyfast = true
 opt.laststatus = 2
-opt.statusline = [[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]]
+opt.pumheight = 20
 opt.signcolumn = "yes"
 opt.updatetime = 100
 vim.opt.fillchars = { eob = " " }
