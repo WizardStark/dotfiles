@@ -50,6 +50,14 @@ local clients_lsp = function()
 	return " " .. language_servers
 end
 
+local navic = function()
+	return require("nvim-navic").get_location({ highlight = true })
+end
+
+local is_toggleterm = function()
+	return vim.bo.filetype ~= "toggleterm"
+end
+
 return {
 	--telescope
 	{
@@ -268,14 +276,27 @@ return {
 		opts = {
 			options = {
 				theme = "moonfly",
+				globalstatus = true,
 			},
 			sections = {
 				lualine_a = { "mode" },
 				lualine_b = { "branch", "diff", "diagnostics" },
-				lualine_c = { "[[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]]" },
+				lualine_c = { "windows" },
 				lualine_x = { "filesize", "filetype" },
 				lualine_y = { "progress", "location" },
 				lualine_z = { clients_lsp },
+			},
+			winbar = {
+				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
+				lualine_c = { navic },
+			},
+			extensions = {
+				"nvim-tree",
+				"nvim-dap-ui",
+				"mason",
+				"aerial",
+				"lazy",
+				"toggleterm",
 			},
 		},
 	},
