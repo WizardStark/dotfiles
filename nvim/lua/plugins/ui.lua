@@ -14,7 +14,7 @@ for type, icon in pairs(signs) do
 end
 
 -- LSP clients attached to buffer
-local clients_lsp = function()
+local function clients_lsp()
 	local bufnr = vim.api.nvim_get_current_buf()
 
 	local clients = vim.lsp.buf_get_clients(bufnr)
@@ -50,12 +50,44 @@ local clients_lsp = function()
 	return " " .. language_servers
 end
 
-local navic = function()
+local function navic()
 	return require("nvim-navic").get_location({ highlight = true })
 end
 
-local is_toggleterm = function()
+local function is_toggleterm()
 	return vim.bo.filetype ~= "toggleterm"
+end
+
+local function diff_source()
+	local gitsigns = vim.b.gitsigns_status_dict
+	if gitsigns then
+		return {
+			added = gitsigns.added,
+			modified = gitsigns.changed,
+			removed = gitsigns.removed,
+		}
+	end
+end
+
+local function getWords()
+	local wc = vim.fn.wordcount()
+	if wc["visual_words"] then -- text is selected in visual mode
+		return wc["visual_words"] .. " Words/" .. wc["visual_chars"] .. " Chars (Vis)"
+	else -- all of the document
+		return wc["words"] .. " Words"
+	end
+end
+
+local function is_text_file()
+	local ft = vim.opt_local.filetype:get()
+	local count = {
+		latex = true,
+		tex = true,
+		text = true,
+		markdown = true,
+		vimwiki = true,
+	}
+	return count[ft] ~= nil
 end
 
 return {
@@ -273,20 +305,33 @@ return {
 	--lualine
 	{
 		"nvim-lualine/lualine.nvim",
+		event = { "VeryLazy" },
 		opts = {
 			options = {
 				theme = "moonfly",
-				globalstatus = true,
+				-- globalstatus = true,
 			},
 			sections = {
 				lualine_a = { "mode" },
-				lualine_b = { "branch", "diff", "diagnostics" },
-				lualine_c = { "windows" },
+				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
+				lualine_c = { "windows", { getWords, cond = is_text_file } },
+				lualine_x = { "filesize", "filetype" },
+				lualine_y = { "progress", "location" },
+				lualine_z = { clients_lsp },
+			},
+			inactive_sections = {
+				lualine_a = { "mode" },
+				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
+				lualine_c = { "windows", { getWords, cond = is_text_file } },
 				lualine_x = { "filesize", "filetype" },
 				lualine_y = { "progress", "location" },
 				lualine_z = { clients_lsp },
 			},
 			winbar = {
+				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
+				lualine_c = { navic },
+			},
+			inactive_winbar = {
 				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
 				lualine_c = { navic },
 			},
@@ -297,6 +342,7 @@ return {
 				"aerial",
 				"lazy",
 				"toggleterm",
+				"trouble",
 			},
 		},
 	},
