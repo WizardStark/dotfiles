@@ -13,6 +13,43 @@ for type, icon in pairs(signs) do
 	vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
 end
 
+-- LSP clients attached to buffer
+local clients_lsp = function()
+	local bufnr = vim.api.nvim_get_current_buf()
+
+	local clients = vim.lsp.buf_get_clients(bufnr)
+	if next(clients) == nil then
+		return " No serveris"
+	end
+
+	local buf_client_names = {}
+	for _, client in pairs(clients) do
+		table.insert(buf_client_names, client.name)
+	end
+
+	local ok, conform = pcall(require, "conform")
+	local formatters = table.concat(conform.formatters_by_ft[vim.bo.filetype], " ")
+	if ok then
+		for formatter in formatters:gmatch("%w+") do
+			if formatter then
+				table.insert(buf_client_names, formatter)
+			end
+		end
+	end
+
+	local hash = {}
+	local unique_client_names = {}
+
+	for _, v in ipairs(buf_client_names) do
+		if not hash[v] then
+			unique_client_names[#unique_client_names + 1] = v
+			hash[v] = true
+		end
+	end
+	local language_servers = table.concat(unique_client_names, " ∣ ")
+	return " " .. language_servers
+end
+
 return {
 	--telescope
 	{
@@ -236,9 +273,9 @@ return {
 				lualine_a = { "mode" },
 				lualine_b = { "branch", "diff", "diagnostics" },
 				lualine_c = { "[[%{expand('%:p:h:t')}/%t/%{%v:lua.require'nvim-navic'.get_location()%}]]" },
-				lualine_x = { "filesize", "filetype", "progress" },
-				lualine_y = { "selectioncount" },
-				lualine_z = { "location" },
+				lualine_x = { "filesize", "filetype" },
+				lualine_y = { "progress", "location" },
+				lualine_z = { clients_lsp },
 			},
 		},
 	},
