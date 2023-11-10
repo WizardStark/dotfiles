@@ -19,7 +19,7 @@ local function clients_lsp()
 
 	local clients = vim.lsp.buf_get_clients(bufnr)
 	if next(clients) == nil then
-		return " No serveris"
+		return " No servers"
 	end
 
 	local buf_client_names = {}
