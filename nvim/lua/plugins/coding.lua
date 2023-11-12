@@ -162,7 +162,6 @@ return {
 		event = "VeryLazy",
 		opts = {
 			backends = { "lsp", "treesitter", "markdown", "man" },
-			manage_folds = true,
 			filter_kind = {
 				"Array",
 				"Boolean",

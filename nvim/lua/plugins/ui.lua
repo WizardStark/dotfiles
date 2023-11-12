@@ -50,10 +50,6 @@ local function clients_lsp()
 	return " " .. language_servers
 end
 
-local function navic()
-	return require("nvim-navic").get_location({ highlight = true })
-end
-
 local function is_toggleterm()
 	return vim.bo.filetype ~= "toggleterm"
 end
@@ -329,11 +325,11 @@ return {
 			},
 			winbar = {
 				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
-				lualine_c = { navic },
+				lualine_c = { "aerial" },
 			},
 			inactive_winbar = {
 				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
-				lualine_c = { navic },
+				lualine_c = { "aerial" },
 			},
 			extensions = {
 				"nvim-tree",
