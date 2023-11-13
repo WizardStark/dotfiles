@@ -91,7 +91,21 @@ return {
 		"echasnovski/mini.move",
 		event = "VeryLazy",
 		version = false,
-		opts = {},
+		opts = {
+			mappings = {
+				-- Move visual selection in Visual mode. Defaults are Alt (Meta) + hjkl.
+				left = "<M-h>",
+				right = "<M-l>",
+				down = "<M-j>",
+				up = "<M-k>",
+
+				-- Move current line in Normal mode
+				line_left = "",
+				line_right = "",
+				line_down = "",
+				line_up = "",
+			},
+		},
 	},
 	-- surround
 	{
@@ -108,5 +122,11 @@ return {
 	{
 		"mbbill/undotree",
 		event = { "VeryLazy" },
+	},
+	--smart splits
+	{
+		"mrjones2014/smart-splits.nvim",
+		event = "VeryLazy",
+		opts = {},
 	},
 }
