@@ -183,21 +183,21 @@ end
 vim.cmd("autocmd! TermOpen term://* lua set_terminal_keymaps()")
 
 --undotree
-vim.keymap.set("n", "<leader><F5>", vim.cmd.UndotreeToggle, { desc = "Open the undotree" })
+map("n", "<leader><F5>", vim.cmd.UndotreeToggle, { desc = "Open the undotree" })
 
 --smart splits
 -- for example `10<A-h>` will `resize_left` by `(10 * config.default_amount)`
-vim.keymap.set("n", "<A-h>", require("smart-splits").resize_left, { desc = "Resize left" })
-vim.keymap.set("n", "<A-j>", require("smart-splits").resize_down, { desc = "Resize down" })
-vim.keymap.set("n", "<A-k>", require("smart-splits").resize_up, { desc = "Resize up" })
-vim.keymap.set("n", "<A-l>", require("smart-splits").resize_right, { desc = "Resize right" })
+map("n", "<A-h>", require("smart-splits").resize_left, { desc = "Resize left" })
+map("n", "<A-j>", require("smart-splits").resize_down, { desc = "Resize down" })
+map("n", "<A-k>", require("smart-splits").resize_up, { desc = "Resize up" })
+map("n", "<A-l>", require("smart-splits").resize_right, { desc = "Resize right" })
 -- moving between splits
-vim.keymap.set("n", "<C-h>", require("smart-splits").move_cursor_left, { desc = "Move cursor left" })
-vim.keymap.set("n", "<C-j>", require("smart-splits").move_cursor_down, { desc = "Move cursor left" })
-vim.keymap.set("n", "<C-k>", require("smart-splits").move_cursor_up, { desc = "Move cursor left" })
-vim.keymap.set("n", "<C-l>", require("smart-splits").move_cursor_right, { desc = "Move cursor left" })
+map("n", "<C-h>", require("smart-splits").move_cursor_left, { desc = "Move cursor left" })
+map("n", "<C-j>", require("smart-splits").move_cursor_down, { desc = "Move cursor left" })
+map("n", "<C-k>", require("smart-splits").move_cursor_up, { desc = "Move cursor left" })
+map("n", "<C-l>", require("smart-splits").move_cursor_right, { desc = "Move cursor left" })
 -- swapping buffers between windows
-vim.keymap.set("n", "<leader><leader>h", require("smart-splits").swap_buf_left, { desc = "Swap buffer left" })
-vim.keymap.set("n", "<leader><leader>j", require("smart-splits").swap_buf_down, { desc = "Swap buffer left" })
-vim.keymap.set("n", "<leader><leader>k", require("smart-splits").swap_buf_up, { desc = "Swap buffer left" })
-vim.keymap.set("n", "<leader><leader>l", require("smart-splits").swap_buf_right, { desc = "Swap buffer left" })
+map("n", "<leader><leader>h", require("smart-splits").swap_buf_left, { desc = "Swap buffer left" })
+map("n", "<leader><leader>j", require("smart-splits").swap_buf_down, { desc = "Swap buffer left" })
+map("n", "<leader><leader>k", require("smart-splits").swap_buf_up, { desc = "Swap buffer left" })
+map("n", "<leader><leader>l", require("smart-splits").swap_buf_right, { desc = "Swap buffer left" })
