@@ -1,0 +1,31 @@
+font:
+  normal:
+    family: NotoSansM Nerd Font Mono
+    style: Regular
+    size: 18.0
+
+colors:
+  # Default colors
+  primary:
+    background: '#080808'
+    foreground: '0xf2f4f8'
+  # Normal colors
+  normal:
+    black:   '#080808'
+    red:     '#ff5454'
+    green:   '#8cc85f'
+    yellow:  '#e3c78a'
+    blue:    '#80a0ff'
+    magenta: '#cf87e8'
+    cyan:    '#79dac8'
+    white:   '#c6c6c6'
+  # Bright colors
+  bright:
+    black:   '#3c3c3c'
+    red:     '#ff7c7c' 
+    green:   '#a6d785'
+    yellow:  '#f2e0b1'
+    blue:    '#9db9ff'
+    magenta: '#e8b0f4'
+    cyan:    '#94e8e1'
+    white:   '#ffffff'
