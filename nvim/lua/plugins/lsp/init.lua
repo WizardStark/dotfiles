@@ -51,11 +51,30 @@ return {
 
 			require("mason-lspconfig").setup_handlers({
 				function(server_name)
+					local border = {
+						{ "╭", "FloatBorder" },
+						{ "─", "FloatBorder" },
+						{ "╮", "FloatBorder" },
+						{ "│", "FloatBorder" },
+						{ "╯", "FloatBorder" },
+						{ "─", "FloatBorder" },
+						{ "╰", "FloatBorder" },
+						{ "│", "FloatBorder" },
+					}
+
+					local handlers = {
+						["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
+						["textDocument/signatureHelp"] = vim.lsp.with(
+							vim.lsp.handlers.signature_help,
+							{ border = border }
+						),
+					}
+
 					if server_name == "lua_ls" then
 						lspconfig[server_name].setup({
 							on_attach = lsp_attach,
 							capabilities = lsp_capabilities,
-
+							handlers = handlers,
 							settings = {
 								Lua = {
 									diagnostics = {
@@ -68,6 +87,7 @@ return {
 						lspconfig[server_name].setup({
 							on_attach = lsp_attach,
 							capabilities = lsp_capabilities,
+							handlers = handlers,
 						})
 					end
 				end,
