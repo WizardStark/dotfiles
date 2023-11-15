@@ -28,10 +28,12 @@ colors:
   # Bright colors
   bright:
     black:   '#3c3c3c'
-    red:     '#ff7c7c' 
+    red:     '#ff7c7c'
     green:   '#a6d785'
     yellow:  '#f2e0b1'
     blue:    '#9db9ff'
     magenta: '#e8b0f4'
     cyan:    '#94e8e1'
     white:   '#ffffff'
+window:
+  option_as_alt: Both
