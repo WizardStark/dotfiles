@@ -41,4 +41,3 @@ cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
 ~/.config/tmux/plugins/tpm/bin/install_plugins
-sh sync.sh tmuxtheme r

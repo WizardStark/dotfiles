@@ -45,17 +45,6 @@ if [ $1 = 'tmux' ]; then
     fi
 fi
 
-if [ $1 = 'tmuxtheme' ]; then
-    target='tmux/plugins/tmux-powerline/themes/default.sh'
-    if [ -z "$2" ] || [ "$2" = 'l' ]; then
-        copy "${configpath}/${target}" "${PWD}/${target}"
-        exit 0
-    elif [ "$2" = 'r' ]; then
-        copy "${PWD}/${target}" "${configpath}/${target}"
-        exit 0
-    fi
-fi
-
 if [ $1 = 'rc' ]; then
     target='.zshrc' 
 
