@@ -2,6 +2,12 @@ font:
   normal:
     family: NotoSansM Nerd Font Mono
     style: Regular
+  bold:
+    family: NotoSansM Nerd Font Mono
+    style: Bold
+  italic:
+    family: NotoSansM Nerd Font Mono
+    style: Italic
   size: 12.0
 
 colors:
