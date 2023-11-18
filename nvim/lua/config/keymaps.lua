@@ -201,3 +201,11 @@ map("n", "<leader><leader>h", require("smart-splits").swap_buf_left, { desc = "S
 map("n", "<leader><leader>j", require("smart-splits").swap_buf_down, { desc = "Swap buffer down" })
 map("n", "<leader><leader>k", require("smart-splits").swap_buf_up, { desc = "Swap buffer up" })
 map("n", "<leader><leader>l", require("smart-splits").swap_buf_right, { desc = "Swap buffer right" })
+
+--toggle booleans
+map("n", "<leader>bt", require("alternate-toggler").toggleAlternate, { desc = "Toggle booleans" })
+
+--multiple cursor,]]<Cmd>MultipleCursorsAddDown<CR>s
+map({ "n", "i" }, "<C-M-j>", [[<Cmd>MultipleCursorsAddDown<CR>]], { desc = "Add cursor downwards" })
+map({ "n", "i" }, "<C-M-k>", [[<Cmd>MultipleCursorsAddUp<CR>]], { desc = "Add cursor upwards" })
+map({ "n", "i" }, "<C-LeftMouse>", [[<Cmd>MultipleCursorsMouseAddDelete<CR>]], { desc = "Add cursor upwards" })

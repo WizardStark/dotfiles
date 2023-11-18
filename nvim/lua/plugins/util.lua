@@ -129,4 +129,16 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	--toggle booleans
+	{
+		"rmagatti/alternate-toggler",
+		event = "VeryLazy",
+		opts = {},
+	},
+	--mutli-cursor
+	{
+		"brenton-leighton/multiple-cursors.nvim",
+		event = "VeryLazy",
+		opts = {},
+	},
 }
