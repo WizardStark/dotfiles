@@ -2,7 +2,7 @@ font:
   normal:
     family: NotoSansM Nerd Font Mono
     style: Regular
-    size: 18.0
+  size: 12.0
 
 colors:
   # Default colors
