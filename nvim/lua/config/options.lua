@@ -28,3 +28,7 @@ vim.opt.fillchars = { eob = " " }
 opt.scrolloff = 8
 
 vim.notify = require("notify")
+
+--blank lines
+opt.list = true
+vim.opt.listchars = { leadmultispace = "│   ", multispace = "│ ", tab = "│ ", }

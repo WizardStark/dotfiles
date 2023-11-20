@@ -34,13 +34,6 @@ return {
 		branch = "v0.6",
 		opts = {},
 	},
-	--auto indent to current level
-	{
-		"lukas-reineke/indent-blankline.nvim",
-		event = "VeryLazy",
-		main = "ibl",
-		opts = {},
-	},
 	--cmp
 	{
 		"hrsh7th/nvim-cmp",

@@ -48,7 +48,7 @@ map("n", "<leader>hn", require("harpoon.ui").nav_next, { desc = "Go to next harp
 map("n", "<leader>hp", require("harpoon.ui").nav_prev, { desc = "Go to previous harpoon file" })
 
 --nvim-tree
-map("n", "<leader>e", function()
+map("n", "<leader>et", function()
 	require("nvim-tree.api").tree.toggle({
 		find_file = true,
 		focus = true,
@@ -56,6 +56,11 @@ map("n", "<leader>e", function()
 		update_root = "<bang>",
 	})
 end, { desc = "Toggle file tree" })
+--mini.files
+map('n', "<leader>e", function ()
+    local MiniFiles = require('mini.files')
+    if not MiniFiles.close() then MiniFiles.open() end
+end, {desc = 'Open mini.files'})
 
 --aerial
 map("n", "<leader>mm", "<cmd>AerialToggle!<CR>", { desc = "Open function minimap" })
