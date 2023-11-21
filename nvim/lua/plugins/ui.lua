@@ -164,8 +164,8 @@ return {
 			},
 		},
 	},
-    --mini.files
-    { 'echasnovski/mini.files', version = false },
+	--mini.files
+	{ "echasnovski/mini.files", version = false },
 	--ufo
 	{
 		"kevinhwang91/nvim-ufo",
