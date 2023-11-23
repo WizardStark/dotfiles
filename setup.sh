@@ -40,4 +40,5 @@ git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
+cp tmux/tmux_sessions.sh ~/.config/tmux/
 ~/.config/tmux/plugins/tpm/bin/install_plugins
