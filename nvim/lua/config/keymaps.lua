@@ -15,6 +15,7 @@ map("n", "<C-u>", "<C-u>zz", { desc = "Up half page and centre" })
 map("n", "n", "nzzzv", { desc = "Next occurrence and centre" })
 map("n", "N", "Nzzzv", { desc = "Previous occurrence and centre" })
 map("v", "<leader>k", [[:s/\(.*\)/]], { desc = "Kirby" })
+map("n", "<leader>q", "<C-^>", { desc = "Alternate file" })
 
 --ufo
 map("n", "zR", require("ufo").openAllFolds, { desc = "Open all folds" })
@@ -57,10 +58,12 @@ map("n", "<leader>et", function()
 	})
 end, { desc = "Toggle file tree" })
 --mini.files
-map('n', "<leader>e", function ()
-    local MiniFiles = require('mini.files')
-    if not MiniFiles.close() then MiniFiles.open() end
-end, {desc = 'Open mini.files'})
+map("n", "<leader>e", function()
+	local MiniFiles = require("mini.files")
+	if not MiniFiles.close() then
+		MiniFiles.open()
+	end
+end, { desc = "Open mini.files" })
 
 --aerial
 map("n", "<leader>mm", "<cmd>AerialToggle!<CR>", { desc = "Open function minimap" })
