@@ -19,7 +19,11 @@ return {
 			{ "mfussenegger/nvim-jdtls" },
 		},
 		config = function()
-			require("mason").setup()
+			require("mason").setup({
+				ui = {
+					border = "rounded",
+				},
+			})
 			require("mason-lspconfig").setup({
 				ensure_installed = {
 					-- Replace these with whatever servers you want to install
