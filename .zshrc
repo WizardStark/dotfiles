@@ -1,23 +1,18 @@
 export ZSH="$HOME/.oh-my-zsh"
 
-append_path()
-{
-  if ! eval test -z "\"\${$1##*:$2:*}\"" -o -z "\"\${$1%%*:$2}\"" -o -z "\"\${$1##$2:*}\"" -o -z "\"\${$1##$2}\"" ; then
-    eval "$1=\$$1:$2"
+pathmunge() {
+  if ! echo $PATH | /usr/bin/env egrep -q "(^|:)$1($|:)"; then
+    if [ "$2" = "after" ]; then
+      PATH=$PATH:$1
+    else
+      PATH=$1:$PATH
+    fi
   fi
 }
 
-prepend_path()
-{
-  if ! eval test -z "\"\${$1##*:$2:*}\"" -o -z "\"\${$1%%*:$2}\"" -o -z "\"\${$1##$2:*}\"" -o -z "\"\${$1##$2}\"" ; then
-    eval "$1=$2:\$$1"
-  fi
-}
-
-prepend_path $HOME/local/bin $PATH
-prepend_path $HOME/.local/bin $PATH
-prepend_path $HOME/local/lib $LD_LIBRARY_PATH
-prepend_path $HOME/local/share/man $MANPATH
+pathmunge $HOME/local/bin
+pathmunge $HOME/.local/bin
+pathmunge $HOME/local/lib
 ZSH_THEME="jonathan"
 CASE_SENSITIVE="true"
 HIST_STAMPS="mm/dd/yyyy"
@@ -42,3 +37,5 @@ alias pls='sudo $(fc -ln -1)'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f ~/.lcl.zsh ] && source ~/.lcl.zsh
+
+export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$0]=1; printf(((NR==1) ?"" : ":") $0) }}')"
