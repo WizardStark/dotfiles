@@ -100,6 +100,7 @@ return {
 				sources = cmp.config.sources({
 					{ name = "nvim_lsp" },
 					{ name = "luasnip" },
+					{ name = "codeium" },
 					{ name = "calc" },
 					{ name = "nvim_lsp_signature_help" },
 				}, {
@@ -108,7 +109,11 @@ return {
 				formatting = {
 					fields = { "kind", "abbr", "menu" },
 					format = function(entry, vim_item)
-						local kind = lspkind.cmp_format({ mode = "symbol_text", maxwidth = 50 })(entry, vim_item)
+						local kind = lspkind.cmp_format({
+							mode = "symbol_text",
+							maxwidth = 50,
+							symbol_map = { Codeium = "" },
+						})(entry, vim_item)
 						local strings = vim.split(kind.kind, "%s", { trimempty = true })
 						kind.kind = " " .. (strings[1] or "") .. " "
 						kind.menu = "    (" .. (strings[2] or "") .. ")"
