@@ -17,6 +17,7 @@ map("n", "N", "Nzzzv", { desc = "Previous occurrence and centre" })
 map("v", "<leader>k", [[:s/\(.*\)/]], { desc = "Kirby" })
 map("n", "<leader>q", "<C-^>", { desc = "Alternate file" })
 map({ "n", "v", "i" }, "<C-s>", [[:w <CR>]], { desc = "Save file" })
+map({ "n", "v" }, "<leader>Q", [[:qa! <CR>]], { desc = "Quit everything" })
 
 --ufo
 map("n", "zR", require("ufo").openAllFolds, { desc = "Open all folds" })
