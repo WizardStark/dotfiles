@@ -32,6 +32,16 @@ return {
 		lazy = false,
 		priority = 100,
 	},
+	--indent blankline
+	{
+		"lukas-reineke/indent-blankline.nvim",
+		main = "ibl",
+		opts = {
+			indent = {
+				char = "│",
+			},
+		},
+	},
 	-- Quick navigation
 	{
 		"folke/flash.nvim",
