@@ -141,9 +141,18 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	--more text objects
 	{
 		"chrisgrieser/nvim-various-textobjs",
 		event = "VeryLazy",
 		opts = { useDefaultKeymaps = true },
+	},
+	--overseer
+	{
+		"stevearc/overseer.nvim",
+		opts = {
+			strategy = "toggleterm",
+			templates = { "builtin", "user.py_run" },
+		},
 	},
 }

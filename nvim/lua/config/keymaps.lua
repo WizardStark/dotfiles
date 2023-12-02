@@ -16,6 +16,7 @@ map("n", "n", "nzzzv", { desc = "Next occurrence and centre" })
 map("n", "N", "Nzzzv", { desc = "Previous occurrence and centre" })
 map("v", "<leader>k", [[:s/\(.*\)/]], { desc = "Kirby" })
 map("n", "<leader>q", "<C-^>", { desc = "Alternate file" })
+map({ "n", "v", "i" }, "<C-s>", [[:w <CR>]], { desc = "Save file" })
 
 --ufo
 map("n", "zR", require("ufo").openAllFolds, { desc = "Open all folds" })
@@ -213,7 +214,10 @@ map("n", "<leader><leader>l", require("smart-splits").swap_buf_right, { desc = "
 --toggle booleans
 map("n", "<leader>bt", require("alternate-toggler").toggleAlternate, { desc = "Toggle booleans" })
 
---multiple cursor,]]<Cmd>MultipleCursorsAddDown<CR>s
+--multiple cursors
 map({ "n", "i" }, "<C-M-j>", [[<Cmd>MultipleCursorsAddDown<CR>]], { desc = "Add cursor downwards" })
 map({ "n", "i" }, "<C-M-k>", [[<Cmd>MultipleCursorsAddUp<CR>]], { desc = "Add cursor upwards" })
 map({ "n", "i" }, "<C-LeftMouse>", [[<Cmd>MultipleCursorsMouseAddDelete<CR>]], { desc = "Add cursor upwards" })
+
+--overseer
+map("n", "<leader>r", [[:w <CR> :OverseerRun <CR>]])
