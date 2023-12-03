@@ -28,6 +28,7 @@ return {
 			end
 
 			require("legendary").setup({
+				select_prompt = " Command palette",
 				extensions = {
 					lazy_nvim = {
 						auto_register = true,
@@ -66,7 +67,12 @@ return {
 					{ mode = "n", "zm", require("ufo").closeFoldsWith, description = "Close folds with" },
 					{ mode = "n", "zP", require("ufo").peekFoldedLinesUnderCursor, description = "Peek folded lines" },
 					--Legendary
-					{ mode = { "n", "v" }, "<leader><leader>", require("legendary").find, description = "Find" },
+					{
+						mode = { "n", "v" },
+						"<leader><leader>",
+						require("legendary").find,
+						description = "Command palette",
+					},
 					--Telescope
 					{
 						mode = "n",
