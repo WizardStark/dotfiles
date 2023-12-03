@@ -35,6 +35,7 @@ return {
 	--indent blankline
 	{
 		"lukas-reineke/indent-blankline.nvim",
+		event = "VeryLazy",
 		main = "ibl",
 		opts = {
 			indent = {
@@ -156,6 +157,7 @@ return {
 	--overseer
 	{
 		"stevearc/overseer.nvim",
+		event = "VeryLazy",
 		opts = {
 			strategy = "toggleterm",
 			templates = { "builtin", "user.py_run" },
@@ -164,6 +166,7 @@ return {
 	--codium
 	{
 		"Exafunction/codeium.nvim",
+		event = "VeryLazy",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"hrsh7th/nvim-cmp",
