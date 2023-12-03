@@ -93,27 +93,6 @@ return {
 			},
 		},
 	},
-	-- moving code blocks
-	{
-		"echasnovski/mini.move",
-		event = "VeryLazy",
-		version = false,
-		opts = {
-			mappings = {
-				-- Move visual selection in Visual mode. Defaults are Alt (Meta) + hjkl.
-				left = "<M-h>",
-				right = "<M-l>",
-				down = "<M-j>",
-				up = "<M-k>",
-
-				-- Move current line in Normal mode
-				line_left = "",
-				line_right = "",
-				line_down = "",
-				line_up = "",
-			},
-		},
-	},
 	-- surround
 	{
 		"kylechui/nvim-surround",
@@ -128,7 +107,7 @@ return {
 	-- undotree
 	{
 		"mbbill/undotree",
-		event = { "VeryLazy" },
+		event = "VeryLazy",
 	},
 	--smart splits
 	{

@@ -130,20 +130,6 @@ return {
 			require("telescope").load_extension("harpoon")
 		end,
 	},
-	--whichkey
-	{
-		"folke/which-key.nvim",
-		event = "VeryLazy",
-		init = function()
-			vim.o.timeout = true
-			vim.o.timeoutlen = 300
-		end,
-		opts = {
-			-- your configuration comes here
-			-- or leave it empty to use the default settings
-			-- refer to the configuration section below
-		},
-	},
 	--nvim-tree
 	{
 		"nvim-tree/nvim-tree.lua",
@@ -165,7 +151,16 @@ return {
 		},
 	},
 	--mini.files
-	{ "echasnovski/mini.files", version = false },
+	{
+		"echasnovski/mini.files",
+		event = "VeryLazy",
+		version = false,
+		opts = {
+			windows = {
+				preview = true,
+			},
+		},
+	},
 	--ufo
 	{
 		"kevinhwang91/nvim-ufo",
