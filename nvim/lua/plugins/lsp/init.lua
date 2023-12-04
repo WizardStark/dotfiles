@@ -36,16 +36,17 @@ return {
 
 			local function lsp_keymap(bufnr)
 				local bufopts = { noremap = true, silent = true, buffer = bufnr }
-				vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts)
-				vim.keymap.set("n", "gd", vim.lsp.buf.definition, bufopts)
-				vim.keymap.set("n", "gi", vim.lsp.buf.implementation, bufopts)
-				vim.keymap.set("n", "gr", vim.lsp.buf.references, bufopts)
-				vim.keymap.set("n", "gD", vim.lsp.buf.declaration, bufopts)
-				vim.keymap.set("n", "<leader>K", vim.lsp.buf.signature_help, bufopts)
-				vim.keymap.set("n", "gt", vim.lsp.buf.type_definition, bufopts)
-				vim.keymap.set("n", "<F2>", vim.lsp.buf.rename, bufopts)
-				vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, bufopts)
-				vim.keymap.set("n", "<leader>lf", vim.lsp.buf.formatting, bufopts)
+				require("legendary").keymaps({
+					{ mode = "n", "K", vim.lsp.buf.hover, description = "Show documentation", bufopts },
+					{ mode = "n", "gd", vim.lsp.buf.definition, description = "Go to definition", bufopts },
+					{ mode = "n", "gi", vim.lsp.buf.implementation, description = "Show implementations", bufopts },
+					{ mode = "n", "gr", vim.lsp.buf.references, description = "Show references", bufopts },
+					{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration", bufopts },
+					{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help", bufopts },
+					{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition", bufopts },
+					{ mode = "n", "<F2>", vim.lsp.buf.rename, description = "Rename", bufopts },
+					{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action", bufopts },
+				})
 			end
 
 			local lsp_attach = function(client, bufnr)

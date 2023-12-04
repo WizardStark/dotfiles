@@ -124,22 +124,59 @@ local function jdtls_on_attach(client, bufnr)
 
 	local opts = { buffer = bufnr }
 
-	vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-	vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-	vim.keymap.set("n", "gi", vim.lsp.buf.implementation, opts)
-	vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-	vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
-	vim.keymap.set("n", "<leader>K", vim.lsp.buf.signature_help, opts)
-	vim.keymap.set("n", "gt", vim.lsp.buf.type_definition, opts)
-	vim.keymap.set("n", "<F2>", vim.lsp.buf.rename, opts)
-	vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-	vim.keymap.set("n", "<leader>lf", vim.lsp.buf.formatting, opts)
-	vim.keymap.set("n", "<leader>lo", "<cmd>lua require('jdtls').organize_imports()<cr>", opts)
-	vim.keymap.set("n", "<leader>lev", "<cmd>lua require('jdtls').extract_variable()<cr>", opts)
-	vim.keymap.set("x", "<leader>lev", "<esc><cmd>lua require('jdtls').extract_variable(true)<cr>", opts)
-	vim.keymap.set("n", "<leader>lec", "<cmd>lua require('jdtls').extract_constant()<cr>", opts)
-	vim.keymap.set("x", "<leader>lec", "<esc><cmd>lua require('jdtls').extract_constant(true)<cr>", opts)
-	vim.keymap.set("x", "<leader>lem", "<esc><Cmd>lua require('jdtls').extract_method(true)<cr>", opts)
+	require("legendary").keymaps({
+		{ mode = "n", "K", vim.lsp.buf.hover, description = "Show documentation", opts },
+		{ mode = "n", "gd", vim.lsp.buf.definition, description = "Go to definition", opts },
+		{ mode = "n", "gi", vim.lsp.buf.implementation, description = "Show implementations", opts },
+		{ mode = "n", "gr", vim.lsp.buf.references, description = "Show references", opts },
+		{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration", opts },
+		{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help", opts },
+		{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition", opts },
+		{ mode = "n", "<F2>", vim.lsp.buf.rename, description = "Rename", opts },
+		{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action", opts },
+		{
+			mode = "n",
+			"<leader>lo",
+			"<cmd>lua require('jdtls').organize_imports()<cr>",
+			description = "Organize Imports",
+			opts,
+		},
+		{
+			mode = "n",
+			"<leader>lev",
+			"<cmd>lua require('jdtls').extract_variable()<cr>",
+			description = "Extract variable",
+			opts,
+		},
+		{
+			mode = "x",
+			"<leader>lev",
+			"<esc><cmd>lua require('jdtls').extract_variable(true)<cr>",
+			description = "Extract variable",
+			opts,
+		},
+		{
+			mode = "n",
+			"<leader>lec",
+			"<cmd>lua require('jdtls').extract_constant()<cr>",
+			description = "Extract constant",
+			opts,
+		},
+		{
+			mode = "x",
+			"<leader>lec",
+			"<esc><cmd>lua require('jdtls').extract_constant(true)<cr>",
+			description = "Extract constant",
+			opts,
+		},
+		{
+			mode = "x",
+			"<leader>lem",
+			"<esc><Cmd>lua require('jdtls').extract_method(true)<cr>",
+			description = "Extract method",
+			opts,
+		},
+	})
 end
 
 local function jdtls_setup(event)
