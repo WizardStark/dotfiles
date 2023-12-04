@@ -154,12 +154,6 @@ return {
 						end,
 						description = "Toggle harpoon ui",
 					},
-					{
-						mode = "n",
-						"<leader>hm",
-						[[:Telescope harpoon marks<CR>]],
-						description = "Show harpoon marks in telescope",
-					},
 					--smart splits
 					{ mode = "n", "<A-h>", require("smart-splits").resize_left, description = "Resize left" },
 					{ mode = "n", "<A-j>", require("smart-splits").resize_down, description = "Resize down" },
