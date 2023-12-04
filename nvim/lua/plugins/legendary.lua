@@ -31,9 +31,19 @@ return {
 
 			require("legendary").setup({
 				select_prompt = " Command palette",
-				extensions = {
-					lazy_nvim = {
-						auto_register = true,
+				commands = {
+					{ ":Lazy", description = "Open Lazy plugin manager" },
+					{ ":Mason", description = "Open Mason LSP manager" },
+					{ ":LspInfo", description = "Show LSP information for current buffer" },
+					{ ":LspLog", description = "Open LSP log in a new buffer" },
+					{ ":LspStop", description = "Stop currently attached LSP" },
+					{ ":LspStart", description = "Start LSP for current buffer" },
+					{ ":LspRestart", description = "Restart currently attached LSP" },
+					{ ":Telescope neovim-project discover", description = "Discover projects" },
+					{
+						":Gitsigns diffthis {diff_target}",
+						unfinished = true,
+						description = "Git diff, requires diff target, e.g. ~1 for previous commit",
 					},
 				},
 				keymaps = {
