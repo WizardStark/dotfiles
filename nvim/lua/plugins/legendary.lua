@@ -27,6 +27,9 @@ return {
 				end
 			end
 
+			local harpoon = require("harpoon")
+			harpoon:setup()
+
 			require("legendary").setup({
 				select_prompt = " Command palette",
 				extensions = {
@@ -135,11 +138,20 @@ return {
 						description = "Show projects history",
 					},
 					--harpoon
-					{ mode = "n", "<leader>a", require("harpoon.mark").add_file, description = "Add file to harpoon" },
+					{
+						mode = "n",
+						"<leader>a",
+						function()
+							harpoon:list():append()
+						end,
+						description = "Add file to harpoon",
+					},
 					{
 						mode = "n",
 						"<leader>t",
-						require("harpoon.ui").toggle_quick_menu,
+						function()
+							harpoon.ui:toggle_quick_menu(harpoon:list())
+						end,
 						description = "Toggle harpoon ui",
 					},
 					{
@@ -147,18 +159,6 @@ return {
 						"<leader>hm",
 						[[:Telescope harpoon marks<CR>]],
 						description = "Show harpoon marks in telescope",
-					},
-					{
-						mode = "n",
-						"<leader>hn",
-						require("harpoon.ui").nav_next,
-						description = "Go to next harpoon file",
-					},
-					{
-						mode = "n",
-						"<leader>hp",
-						require("harpoon.ui").nav_prev,
-						description = "Go to previous harpoon file",
 					},
 					--smart splits
 					{ mode = "n", "<A-h>", require("smart-splits").resize_left, description = "Resize left" },
