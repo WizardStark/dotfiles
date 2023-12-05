@@ -157,6 +157,7 @@ return {
 		opts = {
 			windows = {
 				preview = true,
+				width_preview = 75,
 			},
 		},
 	},
