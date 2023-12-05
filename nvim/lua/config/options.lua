@@ -24,7 +24,8 @@ opt.laststatus = 2
 opt.pumheight = 20
 opt.signcolumn = "yes"
 opt.updatetime = 100
-vim.opt.fillchars = { eob = " " }
+opt.fillchars = { eob = " " }
 opt.scrolloff = 8
+opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 
 vim.notify = require("notify")

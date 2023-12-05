@@ -39,7 +39,6 @@ return {
 					{ ":LspStop", description = "Stop currently attached LSP" },
 					{ ":LspStart", description = "Start LSP for current buffer" },
 					{ ":LspRestart", description = "Restart currently attached LSP" },
-					{ ":Telescope neovim-project discover", description = "Discover projects" },
 					{
 						":Gitsigns diffthis {diff_target}",
 						unfinished = true,
