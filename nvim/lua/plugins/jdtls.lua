@@ -136,6 +136,13 @@ local function jdtls_on_attach(client, bufnr)
 		{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action", opts },
 		{
 			mode = "n",
+			"<leader>ds",
+			vim.diagnostic.open_float,
+			description = "Open LSP diagnostics in a popup",
+			opts,
+		},
+		{
+			mode = "n",
 			"<leader>lo",
 			"<cmd>lua require('jdtls').organize_imports()<cr>",
 			description = "Organize Imports",
@@ -176,6 +183,9 @@ local function jdtls_on_attach(client, bufnr)
 			description = "Extract method",
 			opts,
 		},
+	})
+	vim.diagnostic.config({
+		float = { border = "rounded" },
 	})
 end
 

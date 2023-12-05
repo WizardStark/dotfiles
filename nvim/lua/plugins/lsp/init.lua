@@ -46,6 +46,12 @@ return {
 					{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition", bufopts },
 					{ mode = "n", "<F2>", vim.lsp.buf.rename, description = "Rename", bufopts },
 					{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action", bufopts },
+					{
+						mode = "n",
+						"<leader>ds",
+						vim.diagnostic.open_float,
+						description = "Open LSP diagnostics in a popup",
+					},
 				})
 			end
 
@@ -67,6 +73,9 @@ return {
 					}
 
 					local handlers = {
+						vim.diagnostic.config({
+							float = { border = "rounded" },
+						}),
 						["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
 						["textDocument/signatureHelp"] = vim.lsp.with(
 							vim.lsp.handlers.signature_help,

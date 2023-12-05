@@ -27,8 +27,6 @@ return {
 				end
 			end
 
-			local harpoon = require("harpoon")
-
 			require("legendary").setup({
 				select_prompt = " Command palette",
 				commands = {
