@@ -149,17 +149,13 @@ return {
 					{
 						mode = "n",
 						"<leader>a",
-						function()
-							harpoon:list():append()
-						end,
+						require("harpoon.mark").add_file,
 						description = "Add file to harpoon",
 					},
 					{
 						mode = "n",
 						"<leader>t",
-						function()
-							harpoon.ui:toggle_quick_menu(harpoon:list())
-						end,
+						require("harpoon.ui").toggle_quick_menu,
 						description = "Toggle harpoon ui",
 					},
 					--smart splits
