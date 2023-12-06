@@ -16,6 +16,7 @@ return {
 		event = "VeryLazy",
 		init = function()
 			vim.cmd([[ let g:git_messenger_floating_win_opts = { "border":"rounded" } ]])
+			vim.cmd([[ let g:git_messenger_always_into_popup = v:true ]])
 		end,
 	},
 	--treesitter
