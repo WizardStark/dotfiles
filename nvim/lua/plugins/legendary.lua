@@ -42,6 +42,10 @@ return {
 						unfinished = true,
 						description = "Git diff, requires diff target, e.g. ~1 for previous commit",
 					},
+					{
+						":GitMessenger",
+						description = "Show commit message for current line",
+					},
 				},
 				keymaps = {
 					--general

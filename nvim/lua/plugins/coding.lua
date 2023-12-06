@@ -11,6 +11,13 @@ return {
 			},
 		},
 	},
+	{
+		"rhysd/git-messenger.vim",
+		event = "VeryLazy",
+		init = function()
+			vim.cmd([[ let g:git_messenger_floating_win_opts = { "border":"rounded" } ]])
+		end,
+	},
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",
