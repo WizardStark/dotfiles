@@ -197,7 +197,7 @@ return {
 					--nvim-tree
 					{
 						mode = "n",
-						"<leader>et",
+						"<leader>n",
 						function()
 							require("nvim-tree.api").tree.toggle({
 								find_file = true,
