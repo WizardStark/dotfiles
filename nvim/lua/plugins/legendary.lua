@@ -49,6 +49,7 @@ return {
 				},
 				keymaps = {
 					--general
+					{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
 					{ mode = "i", "jf", "<esc>", description = "Exit insert mode" },
 					{ mode = "i", "jk", "<right>", description = "Move right one space" },
 					{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
@@ -63,7 +64,6 @@ return {
 					{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" },
 					{ mode = "n", "<leader>q", "<C-^>", description = "Alternate file" },
 					{ mode = { "n", "v", "i" }, "<C-s>", [[<CMD>w <CR>]], description = "Save file" },
-					{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "Quit everything" },
 					{ mode = "v", "<M-j>", ":m '>+1<CR>gv=gv", description = "Move line down" },
 					{ mode = "v", "<M-k>", ":m '<-2<CR>gv=gv", description = "Move line up" },
 					{ mode = "v", "<M-h>", "<gv", description = "Move line left" },

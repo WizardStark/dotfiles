@@ -130,6 +130,8 @@ return {
 	{
 		"tomasky/bookmarks.nvim",
 		event = "VeryLazy",
-		opts = {},
+		opts = {
+			sign_priority = 1000,
+		},
 	},
 }
