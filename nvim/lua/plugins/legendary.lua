@@ -86,6 +86,43 @@ return {
 						require("legendary").find,
 						description = "Command palette",
 					},
+					--Bookmarks
+					{
+						mode = "n",
+						"ma",
+						require("bookmarks").bookmark_toggle,
+						description = "Toggle bookmark on current line",
+					},
+					{
+						mode = "n",
+						"mi",
+						require("bookmarks").bookmark_ann,
+						description = "Add or edit bookmark annotation",
+					},
+					{
+						mode = "n",
+						"mc",
+						require("bookmarks").bookmark_clean,
+						description = "Delete current buffer bookmarks",
+					},
+					{
+						mode = "n",
+						"mn",
+						require("bookmarks").bookmark_next,
+						description = "Go to next bookmark in buffer",
+					},
+					{
+						mode = "n",
+						"mp",
+						require("bookmarks").bookmark_prev,
+						description = "Go to previous bookmark in buffer",
+					},
+					{
+						mode = "n",
+						"ml",
+						require("bookmarks").bookmark_list,
+						description = "List files that have bookmarks",
+					},
 					--Telescope
 					{
 						mode = "n",
@@ -95,7 +132,12 @@ return {
 					},
 					{ mode = "n", "<leader>ff", require("telescope.builtin").find_files, description = "Find files" },
 					{ mode = "n", "<leader>b", require("telescope.builtin").buffers, description = "Show buffers" },
-					{ mode = "n", "<leader>fm", require("telescope.builtin").marks, description = "Show marks" },
+					{
+						mode = "n",
+						"<leader>fm",
+						[[<Cmd>Telescope bookmarks list<CR>]],
+						description = "List all bookmarks in telescope",
+					},
 					{
 						mode = "n",
 						"<leader>fr",
