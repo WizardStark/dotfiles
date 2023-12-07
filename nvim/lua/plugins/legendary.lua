@@ -140,6 +140,12 @@ return {
 					},
 					{
 						mode = "n",
+						"<leader>fu",
+						require("telescope").extensions.undo.undo,
+						description = "Show undotree",
+					},
+					{
+						mode = "n",
 						"<leader>fr",
 						require("telescope.builtin").lsp_references,
 						description = "Find symbol references",
@@ -183,12 +189,6 @@ return {
 						description = "Git commits for current buffer",
 					},
 					{ mode = "i", "<C-r>", require("telescope.builtin").registers, description = "Show registers" },
-					{
-						mode = "n",
-						"<leader>fp",
-						[[:Telescope neovim-project history<CR>]],
-						description = "Show projects history",
-					},
 					--harpoon
 					{
 						mode = "n",
@@ -465,8 +465,6 @@ return {
 						end,
 						description = "Reset and toggle ui",
 					},
-					--undotree
-					{ mode = "n", "<leader><F5>", vim.cmd.UndotreeToggle, description = "Open the undotree" },
 					--toggle booleans
 					{
 						mode = "n",

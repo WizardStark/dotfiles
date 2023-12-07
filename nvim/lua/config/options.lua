@@ -26,6 +26,8 @@ opt.signcolumn = "yes"
 opt.updatetime = 100
 opt.fillchars = { eob = " " }
 opt.scrolloff = 8
+opt.undofile = true
+opt.undodir = vim.fn.expand("~/.undo")
 opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 
 vim.notify = require("notify")

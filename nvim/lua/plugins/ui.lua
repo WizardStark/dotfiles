@@ -112,6 +112,9 @@ return {
 			{
 				"nvim-tree/nvim-web-devicons",
 			},
+			{
+				"debugloop/telescope-undo.nvim",
+			},
 		},
 		config = function()
 			require("telescope").setup({
@@ -122,12 +125,15 @@ return {
 						override_file_sorter = true,
 						case_mode = "smart_case",
 					},
+					undo = {},
+					bookmarks = {},
 				},
 			})
 
 			require("telescope").load_extension("fzf")
 			require("telescope").load_extension("live_grep_args")
 			require("telescope").load_extension("bookmarks")
+			require("telescope").load_extension("undo")
 		end,
 	},
 	--nvim-tree
