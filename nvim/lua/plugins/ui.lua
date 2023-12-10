@@ -30,7 +30,7 @@ local function clients_lsp()
 	local ok, conform = pcall(require, "conform")
 	local formatters = table.concat(conform.formatters_by_ft[vim.bo.filetype], " ")
 	if ok then
-		for formatter in formatters:gmatch("%w+") do
+		for formatter in formatters:gmatch("%W+") do
 			if formatter then
 				table.insert(buf_client_names, formatter)
 			end

@@ -315,6 +315,30 @@ return {
 						"[[:Gitsigns diffthis<CR>]]",
 						description = "Git diff of uncommitted changes",
 					},
+					{
+						mode = "n",
+						"<leader>gsh",
+						"[[:Gitsigns stage_hunk<CR>]]",
+						description = "Git stage visual selection",
+					},
+					{
+						mode = "n",
+						"<leader>gsb",
+						"[[:Gitsigns stage_buffer<CR>]]",
+						description = "Git stage buffer",
+					},
+					{
+						mode = "n",
+						"<leader>grh",
+						"[[:Gitsigns reset_hunk<CR>]]",
+						description = "Git reset visual selection",
+					},
+					{
+						mode = "n",
+						"<leader>grh",
+						"[[:Gitsigns reset_buffer<CR>]]",
+						description = "Git reset buffer",
+					},
 					--comment keybinds
 					{
 						mode = "n",
@@ -492,7 +516,7 @@ return {
 						description = "Add cursor upwards",
 					},
 					--overseer
-					{ mode = "n", "<leader>r", [[:w <CR> :OverseerRun <CR>]], description = "Run task" },
+					{ mode = "n", "<leader>r", [[:OverseerRun <CR>]], description = "Run task" },
 					-- URL handling
 					-- source: https://sbulav.github.io/vim/neovim-opening-urls/
 					{ mode = "", "gx", open_url, description = "Open URL under cursor" },
