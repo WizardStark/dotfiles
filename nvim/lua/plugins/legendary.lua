@@ -520,6 +520,8 @@ return {
 					-- URL handling
 					-- source: https://sbulav.github.io/vim/neovim-opening-urls/
 					{ mode = "", "gx", open_url, description = "Open URL under cursor" },
+					--conform
+					{ mode = "n", "<leader>bf", require("conform").format, description = "Format current buffer" },
 				},
 			})
 		end,
