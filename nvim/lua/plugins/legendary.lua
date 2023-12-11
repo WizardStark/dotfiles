@@ -46,6 +46,22 @@ return {
 						":GitMessenger",
 						description = "Show commit message for current line",
 					},
+					{
+						":Gitsigns stage_hunk<CR>",
+						description = "Git stage visual selection",
+					},
+					{
+						":Gitsigns stage_buffer<CR>",
+						description = "Git stage buffer",
+					},
+					{
+						":Gitsigns reset_hunk<CR>",
+						description = "Git reset visual selection",
+					},
+					{
+						":Gitsigns reset_buffer<CR>",
+						description = "Git reset buffer",
+					},
 				},
 				keymaps = {
 					--general
@@ -314,30 +330,6 @@ return {
 						"<leader>gd",
 						"[[:Gitsigns diffthis<CR>]]",
 						description = "Git diff of uncommitted changes",
-					},
-					{
-						mode = "n",
-						"<leader>gsh",
-						"[[:Gitsigns stage_hunk<CR>]]",
-						description = "Git stage visual selection",
-					},
-					{
-						mode = "n",
-						"<leader>gsb",
-						"[[:Gitsigns stage_buffer<CR>]]",
-						description = "Git stage buffer",
-					},
-					{
-						mode = "n",
-						"<leader>grh",
-						"[[:Gitsigns reset_hunk<CR>]]",
-						description = "Git reset visual selection",
-					},
-					{
-						mode = "n",
-						"<leader>grh",
-						"[[:Gitsigns reset_buffer<CR>]]",
-						description = "Git reset buffer",
 					},
 					--comment keybinds
 					{
