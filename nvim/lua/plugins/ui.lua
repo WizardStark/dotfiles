@@ -87,7 +87,7 @@ local function is_text_file()
 end
 
 return {
-	--telescope
+	--Telescope
 	{
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.3",
@@ -118,6 +118,13 @@ return {
 		},
 		config = function()
 			require("telescope").setup({
+				defaults = {
+					layout_strategy = "horizontal",
+					layout_config = {
+						horizontal = { width = 0.85, preview_width = 0.6 },
+					},
+					dynamic_preview_title = true,
+				},
 				extensions = {
 					fzf = {
 						fuzzy = true,
