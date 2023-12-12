@@ -227,6 +227,7 @@ return {
 				typescript = { { "prettierd", "prettier" } },
 				typescriptreact = { { "prettierd", "prettier" } },
 				json = { "jq" },
+				go = { "gofumpt" },
 				bash = { "shfmt" },
 				sh = { "shfmt" },
 				zsh = { "shfmt" },
