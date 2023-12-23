@@ -248,4 +248,13 @@ return {
 			vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 		end,
 	},
+    --latex
+    {
+        "lervag/vimtex",
+        ft={"markdown","tex"},
+        init = function ()
+            vim.g.vimtex_syntax_enabled = 1
+            vim.g.vimtex_compiler_latexmk = {}
+        end
+    }
 }
