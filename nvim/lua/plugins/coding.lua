@@ -254,7 +254,12 @@ return {
         ft={"markdown","tex"},
         init = function ()
             vim.g.vimtex_syntax_enabled = 1
-            vim.g.vimtex_compiler_latexmk = {}
+            vim.g.vimtex_compiler_latexmk = {
+                options = {
+                    '-xelatex',
+                },
+            }
+            vim.g.vimtex_view_method = 'zathura'
         end
     }
 }

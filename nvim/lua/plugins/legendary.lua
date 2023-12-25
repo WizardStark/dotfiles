@@ -62,6 +62,14 @@ return {
 						":Gitsigns reset_buffer<CR>",
 						description = "Git reset buffer",
 					},
+                    {
+                        ":VimtexStop<CR>",
+                        description = "Stop Latex compilation",
+                    },
+                    {
+                        ":VimtexStopAll<CR>",
+                        description = "Stop  all Latex compilation",
+                    },
 				},
 				keymaps = {
 					--general
@@ -514,6 +522,11 @@ return {
 					{ mode = "", "gx", open_url, description = "Open URL under cursor" },
 					--conform
 					{ mode = "n", "<leader>bf", require("conform").format, description = "Format current buffer" },
+                    --latex
+					{ mode = "n", "<leader>lc", [[:VimtexCompile <CR>]], description = "Latex compile document" },
+					{ mode = "n", "<leader>lx", [[:VimtexClean <CR>]], description = "Latex clean aux files" },
+					{ mode = "n", "<leader>lt", [[:VimtexTocOpen <CR>]], description = "Latex open table of contents" },
+					{ mode = "n", "<leader>ln", [[:VimtexTocToggle <CR>]], description = "Latex toggle table of contents" },
 				},
 			})
 		end,
