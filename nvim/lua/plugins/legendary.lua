@@ -77,7 +77,6 @@ return {
 					{ mode = "i", "jf", "<esc>", description = "Exit insert mode" },
 					{ mode = "i", "jk", "<right>", description = "Move right one space" },
 					{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
-					{ mode = "n", "<leader>Y", [["+Y]], description = "Probably also yank to system clipboard" },
 					{ mode = { "n", "v" }, "<leader>D", [["_d]], description = "Delete without adding to register" },
 					{ mode = { "n", "v" }, "<leader>P", [["_dP]], description = "Paste without overriding register" },
 					{ mode = "n", "J", "mzJ`z", description = "Join lines while maintaining cursor position" },
