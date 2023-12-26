@@ -85,6 +85,7 @@ return {
 					{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" },
 					{ mode = "n", "N", "Nzzzv", description = "Previous occurrence and centre" },
 					{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" },
+                    { mode = "v", "<leader>uo", [[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]], description = "Format one line per sentence" },
 					{ mode = "n", "<leader>q", "<C-^>", description = "Alternate file" },
 					{ mode = { "n", "v", "i" }, "<C-s>", [[<CMD>w <CR>]], description = "Save file" },
 					{ mode = "v", "<M-j>", ":m '>+1<CR>gv=gv", description = "Move line down" },
@@ -522,9 +523,9 @@ return {
 					--conform
 					{ mode = "n", "<leader>bf", require("conform").format, description = "Format current buffer" },
                     --latex
-					{ mode = "n", "<leader>lc", [[:VimtexCompile <CR>]], description = "Latex compile document" },
-					{ mode = "n", "<leader>lx", [[:VimtexClean <CR>]], description = "Latex clean aux files" },
-					{ mode = "n", "<leader>lt", [[:VimtexTocOpen <CR>]], description = "Latex open table of contents" },
+					{ mode = "n", "<leader>lb", [[:VimtexCompile <CR>]], description = "Latex build/compile document" },
+					{ mode = "n", "<leader>lc", [[:VimtexClean <CR>]], description = "Latex clean aux files" },
+					{ mode = "n", "<leader>le", [[:VimtexTocOpen <CR>]], description = "Latex open table of contents" },
 					{ mode = "n", "<leader>ln", [[:VimtexTocToggle <CR>]], description = "Latex toggle table of contents" },
 				},
 			})
