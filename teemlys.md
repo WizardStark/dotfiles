@@ -5,3 +5,4 @@
  - Die stage hunk werk nie so ayoba nie, dit werk fine as jy een hunk perfek select, ek wil multiple/partial hunks kan select
  - Autosave
  - Toggleterm keybinds is nie in legendary nie
+ - Kort 'n manier om te save sonder om te format
