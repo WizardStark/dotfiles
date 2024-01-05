@@ -6,3 +6,4 @@
  - Autosave
  - Toggleterm keybinds is nie in legendary nie
  - Kort 'n manier om te save sonder om te format
+ - Vim crash/maak net toe as jy te vinning scroll
