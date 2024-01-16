@@ -27,8 +27,8 @@ return {
 				end
 			end
 
-            local format_diff = function()
-              local lines = vim.fn.system('git diff --unified=0'):gmatch('[^\n\r]+')
+            local format_diff = function(bufnr)
+                local lines = vim.fn.system("git diff --unified=0 " .. vim.fn.bufname(bufnr)):gmatch("[^\n\r]+")
               local ranges = {}
               for line in lines do
                 if line:find('^@@') then
