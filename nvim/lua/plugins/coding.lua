@@ -234,8 +234,6 @@ return {
 				yml = { "yamlfmt" },
 				yaml = { "yamlfmt" },
 			},
-			-- Set up format-on-save
-			format_on_save = { timeout_ms = 500, lsp_fallback = false },
 			-- Customize formatters
 			formatters = {
 				shfmt = {
@@ -248,29 +246,31 @@ return {
 			vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 		end,
 	},
-    --latex
-    {
-        "lervag/vimtex",
-        ft = {"markdown", "tex"},
-        init = function()
-            vim.g.vimtex_syntax_enabled = 1
-            vim.g.vimtex_compiler_latexmk = {
-                build_dir = function() return vim.fn['vimtex#util#find_root']() end,
-                callback = 1,
-                continuous = 1,
-                executable = 'latexmk',
-                hooks = {},
-                options = {
-                    '-xelatex',
-                    '-shell-escape',
-                    '-verbose',
-                    '-file-line-error',
-                    '-synctex=1',
-                    '-interaction=nonstopmode',
-                },
-            }
-            vim.g.vimtex_view_method = 'zathura'
-            vim.g.vimtex_quickfix_enabled = 0
-        end
-    }
+	--latex
+	{
+		"lervag/vimtex",
+		ft = { "markdown", "tex" },
+		init = function()
+			vim.g.vimtex_syntax_enabled = 1
+			vim.g.vimtex_compiler_latexmk = {
+				build_dir = function()
+					return vim.fn["vimtex#util#find_root"]()
+				end,
+				callback = 1,
+				continuous = 1,
+				executable = "latexmk",
+				hooks = {},
+				options = {
+					"-xelatex",
+					"-shell-escape",
+					"-verbose",
+					"-file-line-error",
+					"-synctex=1",
+					"-interaction=nonstopmode",
+				},
+			}
+			vim.g.vimtex_view_method = "zathura"
+			vim.g.vimtex_quickfix_enabled = 0
+		end,
+	},
 }
