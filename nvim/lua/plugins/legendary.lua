@@ -537,6 +537,22 @@ return {
 						[[:VimtexTocToggle <CR>]],
 						description = "Latex toggle table of contents",
 					},
+					--LSP
+					{ mode = "n", "K", vim.lsp.buf.hover, description = "Show documentation" },
+					{ mode = "n", "gd", vim.lsp.buf.definition, description = "Go to definition" },
+					{ mode = "n", "gi", vim.lsp.buf.implementation, description = "Show implementations" },
+					{ mode = "n", "gr", vim.lsp.buf.references, description = "Show references" },
+					{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration" },
+					{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help" },
+					{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition" },
+					{ mode = "n", "<F2>", vim.lsp.buf.rename, description = "Rename" },
+					{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action" },
+					{
+						mode = "n",
+						"<leader>ds",
+						vim.diagnostic.open_float,
+						description = "Open LSP diagnostics in a popup",
+					},
 				},
 			})
 		end,

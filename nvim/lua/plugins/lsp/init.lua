@@ -16,92 +16,64 @@ return {
 		keys = { { "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" } },
 		build = ":MasonUpdate",
 		config = function()
+			local lspconfig = require("lspconfig")
+			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
+			local mason_lspconfig = require("mason-lspconfig")
+			local border = {
+				{ "╭", "FloatBorder" },
+				{ "─", "FloatBorder" },
+				{ "╮", "FloatBorder" },
+				{ "│", "FloatBorder" },
+				{ "╯", "FloatBorder" },
+				{ "─", "FloatBorder" },
+				{ "╰", "FloatBorder" },
+				{ "│", "FloatBorder" },
+			}
+			local handlers = {
+				vim.diagnostic.config({
+					float = { border = "rounded" },
+				}),
+				["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
+				["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
+			}
+
 			require("mason").setup({
-				ui = {
-					border = "rounded",
+				ui = { border = "rounded" },
+				registries = {
+					"github:nvim-java/mason-registry",
+					"github:mason-org/mason-registry",
 				},
 			})
-			require("mason-lspconfig").setup({
+			mason_lspconfig.setup({
 				ensure_installed = {
 					"lua_ls",
 				},
 			})
 
-			local lspconfig = require("lspconfig")
-			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
-
-			local function lsp_keymap(bufnr)
-				local bufopts = { noremap = true, silent = true, buffer = bufnr }
-				require("legendary").keymaps({
-					{ mode = "n", "K", vim.lsp.buf.hover, description = "Show documentation", bufopts },
-					{ mode = "n", "gd", vim.lsp.buf.definition, description = "Go to definition", bufopts },
-					{ mode = "n", "gi", vim.lsp.buf.implementation, description = "Show implementations", bufopts },
-					{ mode = "n", "gr", vim.lsp.buf.references, description = "Show references", bufopts },
-					{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration", bufopts },
-					{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help", bufopts },
-					{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition", bufopts },
-					{ mode = "n", "<F2>", vim.lsp.buf.rename, description = "Rename", bufopts },
-					{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action", bufopts },
-					{
-						mode = "n",
-						"<leader>ds",
-						vim.diagnostic.open_float,
-						description = "Open LSP diagnostics in a popup",
-					},
-				})
-			end
-
-			local lsp_attach = function(client, bufnr)
-				lsp_keymap(bufnr)
-			end
-
-			require("mason-lspconfig").setup_handlers({
+			mason_lspconfig.setup_handlers({
 				function(server_name)
-					local border = {
-						{ "╭", "FloatBorder" },
-						{ "─", "FloatBorder" },
-						{ "╮", "FloatBorder" },
-						{ "│", "FloatBorder" },
-						{ "╯", "FloatBorder" },
-						{ "─", "FloatBorder" },
-						{ "╰", "FloatBorder" },
-						{ "│", "FloatBorder" },
-					}
-
-					local handlers = {
-						vim.diagnostic.config({
-							float = { border = "rounded" },
-						}),
-						["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
-						["textDocument/signatureHelp"] = vim.lsp.with(
-							vim.lsp.handlers.signature_help,
-							{ border = border }
-						),
-						["jdtls"] = function()
-							require("java").setup()
-						end,
-					}
-
-					if server_name == "lua_ls" then
-						lspconfig[server_name].setup({
-							on_attach = lsp_attach,
-							capabilities = lsp_capabilities,
-							handlers = handlers,
-							settings = {
-								Lua = {
-									diagnostics = {
-										globals = { "vim" },
-									},
+					lspconfig[server_name].setup({
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+					})
+				end,
+				["jdtls"] = function()
+					require("java").setup()
+					lspconfig.jdtls.setup({
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+					})
+				end,
+				["lua_ls"] = function()
+					lspconfig.lua_ls.setup({
+						settings = {
+							Lua = {
+								diagnostics = {
+									globals = { "vim" },
 								},
 							},
-						})
-					else
-						lspconfig[server_name].setup({
-							on_attach = lsp_attach,
-							capabilities = lsp_capabilities,
-							handlers = handlers,
-						})
-					end
+						},
+					})
 				end,
 			})
 		end,
