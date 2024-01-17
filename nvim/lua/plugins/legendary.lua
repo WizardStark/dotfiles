@@ -27,35 +27,6 @@ return {
 				end
 			end
 
-            local format_diff = function(bufnr)
-                local lines = vim.fn.system("git diff --unified=0 " .. vim.fn.bufname(bufnr)):gmatch("[^\n\r]+")
-              local ranges = {}
-              for line in lines do
-                if line:find('^@@') then
-                  local line_nums = line:match('%+.- ')
-                  if line_nums:find(',') then
-                    local _, _, first, second = line_nums:find('(%d+),(%d+)')
-                    table.insert(ranges, {
-                      start = { tonumber(first), 0 },
-                      ['end'] = { tonumber(first) + tonumber(second), 0 },
-                    })
-                  else
-                    local first = tonumber(line_nums:match('%d+'))
-                    table.insert(ranges, {
-                      start = { first, 0 },
-                      ['end'] = { first + 1, 0 },
-                    })
-                  end
-                end
-              end
-              local format = require('conform').format
-              for _, range in pairs(ranges) do
-                format {
-                  range = range,
-                }
-              end
-            end
-
 			require("legendary").setup({
 				select_prompt = " Command palette",
 				commands = {
@@ -91,14 +62,14 @@ return {
 						":Gitsigns reset_buffer<CR>",
 						description = "Git reset buffer",
 					},
-                    {
-                        ":VimtexStop<CR>",
-                        description = "Stop Latex compilation",
-                    },
-                    {
-                        ":VimtexStopAll<CR>",
-                        description = "Stop  all Latex compilation",
-                    },
+					{
+						":VimtexStop<CR>",
+						description = "Stop Latex compilation",
+					},
+					{
+						":VimtexStopAll<CR>",
+						description = "Stop  all Latex compilation",
+					},
 				},
 				keymaps = {
 					--general
@@ -114,7 +85,12 @@ return {
 					{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" },
 					{ mode = "n", "N", "Nzzzv", description = "Previous occurrence and centre" },
 					{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" },
-                    { mode = "v", "<leader>uo", [[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]], description = "Format one line per sentence" },
+					{
+						mode = "v",
+						"<leader>uo",
+						[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]],
+						description = "Format one line per sentence",
+					},
 					{ mode = "n", "<leader>q", "<C-^>", description = "Alternate file" },
 					{ mode = { "n", "v", "i" }, "<C-s>", [[<CMD>w <CR>]], description = "Save file" },
 					{ mode = "v", "<M-j>", ":m '>+1<CR>gv=gv", description = "Move line down" },
@@ -551,15 +527,17 @@ return {
 					{ mode = "", "gx", open_url, description = "Open URL under cursor" },
 					--conform
 					{ mode = "n", "<leader>bf", require("conform").format, description = "Format current buffer" },
-                    --latex
+					--latex
 					{ mode = "n", "<leader>lb", [[:VimtexCompile <CR>]], description = "Latex build/compile document" },
 					{ mode = "n", "<leader>lc", [[:VimtexClean <CR>]], description = "Latex clean aux files" },
 					{ mode = "n", "<leader>le", [[:VimtexTocOpen <CR>]], description = "Latex open table of contents" },
-					{ mode = "n", "<leader>ln", [[:VimtexTocToggle <CR>]], description = "Latex toggle table of contents" },
+					{
+						mode = "n",
+						"<leader>ln",
+						[[:VimtexTocToggle <CR>]],
+						description = "Latex toggle table of contents",
+					},
 				},
-                autocmds = {
-                    { 'BufWritePre', format_diff, description = 'Format on save' },
-                }
 			})
 		end,
 	},

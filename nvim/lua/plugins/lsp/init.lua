@@ -15,9 +15,6 @@ return {
 		cmd = "Mason",
 		keys = { { "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" } },
 		build = ":MasonUpdate",
-		dependencies = {
-			{ "mfussenegger/nvim-jdtls" },
-		},
 		config = function()
 			require("mason").setup({
 				ui = {
@@ -26,7 +23,6 @@ return {
 			})
 			require("mason-lspconfig").setup({
 				ensure_installed = {
-					-- Replace these with whatever servers you want to install
 					"lua_ls",
 				},
 			})
@@ -81,6 +77,9 @@ return {
 							vim.lsp.handlers.signature_help,
 							{ border = border }
 						),
+						["jdtls"] = function()
+							require("java").setup()
+						end,
 					}
 
 					if server_name == "lua_ls" then
@@ -104,7 +103,6 @@ return {
 						})
 					end
 				end,
-				["jdtls"] = function() end,
 			})
 		end,
 	},
