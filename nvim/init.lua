@@ -19,3 +19,10 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup("plugins", { ui = { border = "rounded" } })
 require("config.autocmd")
 require("config.options")
+local ok, lcl = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lcl.lua"))
+
+if ok then
+	LCL = lcl
+else
+	vim.notify("No local config found")
+end
