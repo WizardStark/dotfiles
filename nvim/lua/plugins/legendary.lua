@@ -290,7 +290,13 @@ return {
 						function()
 							local MiniFiles = require("mini.files")
 							if not MiniFiles.close() then
-								MiniFiles.open(vim.fn.expand("%:p"))
+								local function open_current_file()
+									MiniFiles.open(vim.fn.expand("%:p"))
+								end
+
+								if not pcall(open_current_file) then
+									MiniFiles.open()
+								end
 							end
 						end,
 						description = "Open mini.files",
@@ -387,46 +393,6 @@ return {
 							end)
 						end,
 						description = "Toggle breakpoint",
-					},
-					{
-						mode = "n",
-						"<leader>df",
-						function()
-							trigger_dap(require("jdtls").test_class())
-						end,
-						description = "Debug test class",
-					},
-					{
-						mode = "n",
-						"<leader>dn",
-						function()
-							trigger_dap(require("jdtls").test_nearest_method())
-						end,
-						description = "Debug neartest test method",
-					},
-					{
-						mode = "n",
-						"<leader>dt",
-						function()
-							trigger_dap(require("jdtls").test_nearest_method)
-						end,
-						description = "Debug nearest test",
-					},
-					{
-						mode = "n",
-						"<leader>dT",
-						function()
-							trigger_dap(require("jdtls").test_class)
-						end,
-						description = "Debug test class",
-					},
-					{
-						mode = "n",
-						"<leader>dp",
-						function()
-							trigger_dap(require("jdtls").pick_test)
-						end,
-						description = "Choose nearest test",
 					},
 					{
 						mode = "n",
@@ -552,6 +518,25 @@ return {
 						"<leader>ds",
 						vim.diagnostic.open_float,
 						description = "Open LSP diagnostics in a popup",
+					},
+					--session management
+					{
+						mode = "n",
+						"<leader>sd",
+						[[:SessionManager delete_current_dir_session<CR>]],
+						description = "Delete session for current directory",
+					},
+					{
+						mode = "n",
+						"<leader>ssd",
+						[[:SessionManager delete_session<CR>]],
+						description = "Delete session for selected directory",
+					},
+					{
+						mode = "n",
+						"<leader>sl",
+						[[:SessionManager load_session<CR>]],
+						description = "Load session for selected directory",
 					},
 				},
 			})
