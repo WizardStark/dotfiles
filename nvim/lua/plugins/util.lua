@@ -141,4 +141,9 @@ return {
 			sign_priority = 8,
 		},
 	},
+	{
+		"kawre/neotab.nvim",
+		event = "InsertEnter",
+		opts = {},
+	},
 }
