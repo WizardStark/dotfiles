@@ -360,6 +360,27 @@ return {
 						"[[:Gitsigns diffthis<CR>]]",
 						description = "Git diff of uncommitted changes",
 					},
+					{
+						mode = { "n", "i" },
+						"<C-J>",
+						function()
+                            local gitsigns = require("gitsigns")
+                            gitsigns.preview_hunk_inline()
+                            gitsigns.next_hunk()
+                        end,
+						description = "Go to next git change/hunk",
+					},
+
+					{
+						mode = { "n", "i" },
+						"<C-K>",
+						function()
+                            local gitsigns = require("gitsigns")
+                            gitsigns.preview_hunk_inline()
+                            gitsigns.prev_hunk()
+                        end,
+						description = "Go to previous git change/hunk",
+					},
 					--comment keybinds
 					{
 						mode = "n",
