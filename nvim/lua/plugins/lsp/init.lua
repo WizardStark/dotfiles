@@ -1,4 +1,9 @@
 return {
+	{
+		"folke/neodev.nvim",
+		priority = 10,
+		opts = {},
+	},
 	-- lspconfig
 	{
 		"neovim/nvim-lspconfig",

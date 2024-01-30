@@ -78,6 +78,12 @@ return {
 				keymaps = {
 					--general
 					{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
+					{
+						mode = { "n", "v" },
+						"<leader>X",
+						[[<CMD>xa! <CR>]],
+						description = "How to quit vim and keep things",
+					},
 					{ mode = "i", "jf", "<esc>", description = "Exit insert mode" },
 					{ mode = "i", "jk", "<right>", description = "Move right one space" },
 					{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
