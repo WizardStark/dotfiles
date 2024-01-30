@@ -78,11 +78,7 @@ return {
 		"kylechui/nvim-surround",
 		version = "*", -- Use for stability; omit to use `main` branch for the latest features
 		event = "VeryLazy",
-		config = function()
-			require("nvim-surround").setup({
-				-- Configuration here, or leave empty to use defaults
-			})
-		end,
+		opts = {},
 	},
 	-- undotree
 	{
@@ -150,5 +146,15 @@ return {
 		"chrisgrieser/nvim-scissors",
 		dependencies = "nvim-telescope/telescope.nvim", -- optional
 		opts = {},
+	},
+	{
+
+		"chrishrb/gx.nvim",
+		cmd = { "Browse" },
+		dependencies = { "nvim-lua/plenary.nvim" },
+		config = true,
+		init = function()
+			vim.g.netrw_nogx = 1
+		end,
 	},
 }

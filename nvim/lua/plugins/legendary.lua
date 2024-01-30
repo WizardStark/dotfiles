@@ -19,14 +19,6 @@ return {
 				end
 			end
 
-			local open_url = function()
-				if vim.fn.has("unix") == 1 then
-					return '<Cmd>call jobstart(["xdg-open", expand("<cfile>")], {"detach": v:true})<CR>'
-				elseif vim.fn.has("mac") == 1 then
-					return '<Cmd>call jobstart(["open", expand("<cfile>")], {"detach": v:true})<CR>'
-				end
-			end
-
 			require("legendary").setup({
 				select_prompt = " Command palette",
 				commands = {
@@ -520,8 +512,7 @@ return {
 					--overseer
 					{ mode = "n", "<leader>r", [[:OverseerRun <CR>]], description = "Run task" },
 					-- URL handling
-					-- source: https://sbulav.github.io/vim/neovim-opening-urls/
-					{ mode = "", "gx", open_url, description = "Open URL under cursor" },
+					{ mode = { "n", "v" }, "gx", "<cmd>Browse<cr>", description = "Open URL under cursor" },
 					--conform
 					{ mode = "n", "<leader>bf", require("conform").format, description = "Format current buffer" },
 					--latex

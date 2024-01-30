@@ -1,8 +1,6 @@
 return {
 	{
 		"folke/neodev.nvim",
-		priority = 10,
-		opts = {},
 	},
 	-- lspconfig
 	{
@@ -70,6 +68,7 @@ return {
 					})
 				end,
 				["lua_ls"] = function()
+					require("neodev").setup({})
 					lspconfig.lua_ls.setup({
 						settings = {
 							Lua = {
