@@ -19,6 +19,11 @@ return {
 				end
 			end
 
+			local function save_and_exit()
+				vim.api.nvim_command(":wa")
+				vim.api.nvim_command(":qa!")
+			end
+
 			require("legendary").setup({
 				select_prompt = " Command palette",
 				commands = {
@@ -70,12 +75,7 @@ return {
 				keymaps = {
 					--general
 					{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
-					{
-						mode = { "n", "v" },
-						"<leader>X",
-						[[<CMD>xa! <CR>]],
-						description = "How to quit vim and keep things",
-					},
+					{ mode = { "n", "v" }, "<leader>X", save_and_exit, description = "How to save and quit vim" },
 					{ mode = "i", "jf", "<esc>", description = "Exit insert mode" },
 					{ mode = "i", "jk", "<right>", description = "Move right one space" },
 					{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
@@ -356,10 +356,10 @@ return {
 						mode = { "n", "i" },
 						"<C-J>",
 						function()
-                            local gitsigns = require("gitsigns")
-                            gitsigns.preview_hunk_inline()
-                            gitsigns.next_hunk()
-                        end,
+							local gitsigns = require("gitsigns")
+							gitsigns.preview_hunk_inline()
+							gitsigns.next_hunk()
+						end,
 						description = "Go to next git change/hunk",
 					},
 
@@ -367,10 +367,10 @@ return {
 						mode = { "n", "i" },
 						"<C-K>",
 						function()
-                            local gitsigns = require("gitsigns")
-                            gitsigns.preview_hunk_inline()
-                            gitsigns.prev_hunk()
-                        end,
+							local gitsigns = require("gitsigns")
+							gitsigns.preview_hunk_inline()
+							gitsigns.prev_hunk()
+						end,
 						description = "Go to previous git change/hunk",
 					},
 					--comment keybinds
