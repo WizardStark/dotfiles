@@ -41,4 +41,5 @@ cd "$directory"
 sh sync.sh nvim r
 sh sync.sh tmux r
 cp tmux/tmux_sessions.sh ~/.config/tmux/
+cp tmux/tmux_windows.sh ~/.config/tmux/
 ~/.config/tmux/plugins/tpm/bin/install_plugins
