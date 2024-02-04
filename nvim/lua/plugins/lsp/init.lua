@@ -50,6 +50,8 @@ return {
 			mason_lspconfig.setup({
 				ensure_installed = {
 					"lua_ls",
+					"pyright",
+					"jdtls",
 				},
 			})
 
@@ -99,6 +101,21 @@ return {
 		event = "BufEnter",
 		opts = {
 			-- your options here
+		},
+	},
+	{
+		"WhoIsSethDaniel/mason-tool-installer.nvim",
+		opts = {
+			ensure_installed = {
+				"black",
+				"usort",
+				"prettier",
+				"prettierd",
+				"shfmt",
+				"checkstyle",
+				"jq",
+				"yamlfmt",
+			},
 		},
 	},
 }
