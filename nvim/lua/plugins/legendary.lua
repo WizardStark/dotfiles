@@ -79,13 +79,33 @@ return {
 					{ mode = "i", "jf", "<esc>", description = "Exit insert mode" },
 					{ mode = "i", "jk", "<right>", description = "Move right one space" },
 					{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
-					{ mode = { "n", "v" }, "<leader>D", [["_d]], description = "Delete without adding to register" },
-					{ mode = { "n", "v" }, "<leader>P", [["_dP]], description = "Paste without overriding register" },
-					{ mode = "n", "J", "mzJ`z", description = "Join lines while maintaining cursor position" },
+					{
+						mode = { "n", "v" },
+						"<leader>D",
+						[["_d]],
+						description = "Delete without adding to register",
+					},
+					{
+						mode = { "n", "v" },
+						"<leader>P",
+						[["_dP]],
+						description = "Paste without overriding register",
+					},
+					{
+						mode = "n",
+						"J",
+						"mzJ`z",
+						description = "Join lines while maintaining cursor position",
+					},
 					{ mode = "n", "<C-d>", "<C-d>zz", description = "Down half page and centre" },
 					{ mode = "n", "<C-u>", "<C-u>zz", description = "Up half page and centre" },
 					{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" },
-					{ mode = "n", "N", "Nzzzv", description = "Previous occurrence and centre" },
+					{
+						mode = "n",
+						"N",
+						"Nzzzv",
+						description = "Previous occurrence and centre",
+					},
 					{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" },
 					{
 						mode = "v",
@@ -93,15 +113,50 @@ return {
 						[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]],
 						description = "Format one line per sentence",
 					},
-					{ mode = "n", "<leader>q", "<C-^>", description = "Alternate file" },
+					{
+						mode = "n",
+						"<leader>q",
+						"<C-^>",
+						description = "Alternate file",
+					},
 					{ mode = { "n", "v", "i" }, "<C-s>", [[<CMD>w <CR>]], description = "Save file" },
-					{ mode = "v", "<M-j>", ":m '>+1<CR>gv=gv", description = "Move line down" },
-					{ mode = "v", "<M-k>", ":m '<-2<CR>gv=gv", description = "Move line up" },
-					{ mode = "v", "<M-h>", "<gv", description = "Move line left" },
-					{ mode = "v", "<M-l>", ">gv", description = "Move line right" },
+					{
+						mode = "v",
+						"<M-j>",
+						":m '>+1<CR>gv=gv",
+						description = "Move line down",
+					},
+					{
+						mode = "v",
+						"<M-k>",
+						":m '<-2<CR>gv=gv",
+						description = "Move line up",
+					},
+					{
+						mode = "v",
+						"<M-h>",
+						"<gv",
+						description = "Move line left",
+					},
+					{
+						mode = "v",
+						"<M-l>",
+						">gv",
+						description = "Move line right",
+					},
 					--ufo
-					{ mode = "n", "zR", require("ufo").openAllFolds, description = "Open all folds" },
-					{ mode = "n", "zM", require("ufo").closeAllFolds, description = "Close all folds" },
+					{
+						mode = "n",
+						"zR",
+						require("ufo").openAllFolds,
+						description = "Open all folds",
+					},
+					{
+						mode = "n",
+						"zM",
+						require("ufo").closeAllFolds,
+						description = "Close all folds",
+					},
 					{
 						mode = "n",
 						"zr",
@@ -354,7 +409,7 @@ return {
 					},
 					{
 						mode = { "n", "i" },
-						"<C-J>",
+						"<C-n>",
 						function()
 							local gitsigns = require("gitsigns")
 							gitsigns.preview_hunk_inline()
@@ -365,7 +420,7 @@ return {
 
 					{
 						mode = { "n", "i" },
-						"<C-K>",
+						"<C-p>",
 						function()
 							local gitsigns = require("gitsigns")
 							gitsigns.preview_hunk_inline()
@@ -465,7 +520,12 @@ return {
 						end,
 						description = "Run to cursor",
 					},
-					{ mode = "n", "<leader>dc", continue, description = "Start debug session, or continue session" },
+					{
+						mode = "n",
+						"<leader>dc",
+						continue,
+						description = "Start debug session, or continue session",
+					},
 					{
 						mode = "n",
 						"<leader>de",
@@ -512,13 +572,38 @@ return {
 					--overseer
 					{ mode = "n", "<leader>r", [[:OverseerRun <CR>]], description = "Run task" },
 					-- URL handling
-					{ mode = { "n", "v" }, "gx", "<cmd>Browse<cr>", description = "Open URL under cursor" },
+					{
+						mode = { "n", "v" },
+						"gx",
+						"<cmd>Browse<cr>",
+						description = "Open URL under cursor",
+					},
 					--conform
-					{ mode = "n", "<leader>bf", require("conform").format, description = "Format current buffer" },
+					{
+						mode = "n",
+						"<leader>bf",
+						require("conform").format,
+						description = "Format current buffer",
+					},
 					--latex
-					{ mode = "n", "<leader>lb", [[:VimtexCompile <CR>]], description = "Latex build/compile document" },
-					{ mode = "n", "<leader>lc", [[:VimtexClean <CR>]], description = "Latex clean aux files" },
-					{ mode = "n", "<leader>le", [[:VimtexTocOpen <CR>]], description = "Latex open table of contents" },
+					{
+						mode = "n",
+						"<leader>lb",
+						[[:VimtexCompile <CR>]],
+						description = "Latex build/compile document",
+					},
+					{
+						mode = "n",
+						"<leader>lc",
+						[[:VimtexClean <CR>]],
+						description = "Latex clean aux files",
+					},
+					{
+						mode = "n",
+						"<leader>le",
+						[[:VimtexTocOpen <CR>]],
+						description = "Latex open table of contents",
+					},
 					{
 						mode = "n",
 						"<leader>ln",
