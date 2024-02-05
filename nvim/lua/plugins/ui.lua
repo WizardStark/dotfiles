@@ -89,6 +89,7 @@ return {
 	{
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.3",
+		event = "VeryLazy",
 		dependencies = {
 			{
 				"nvim-lua/plenary.nvim",
@@ -305,6 +306,7 @@ return {
 	--toggleterm
 	{
 		"akinsho/toggleterm.nvim",
+		event = "VeryLazy",
 		version = "*",
 		config = true,
 		opts = {
@@ -314,12 +316,13 @@ return {
 	--dressing.nvim
 	{
 		"stevearc/dressing.nvim",
+		event = "VeryLazy",
 		opts = {},
 	},
 	--lualine
 	{
 		"nvim-lualine/lualine.nvim",
-		event = { "VeryLazy" },
+		event = "VeryLazy",
 		opts = {
 			options = {
 				theme = "moonfly",

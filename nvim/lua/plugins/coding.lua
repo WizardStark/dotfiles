@@ -68,6 +68,7 @@ return {
 	{
 		"hrsh7th/nvim-cmp",
 		version = false, -- last release is way too old
+		event = "VeryLazy",
 		dependencies = {
 			"hrsh7th/cmp-nvim-lsp",
 			"L3MON4D3/LuaSnip",
@@ -186,6 +187,7 @@ return {
 	},
 	{
 		"L3MON4D3/LuaSnip",
+		event = "VeryLazy",
 		dependencies = {
 			"rafamadriz/friendly-snippets",
 			"nvim-treesitter/nvim-treesitter",
@@ -213,7 +215,6 @@ return {
 	--function overview
 	{
 		"stevearc/aerial.nvim",
-		-- Optional dependencies
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
