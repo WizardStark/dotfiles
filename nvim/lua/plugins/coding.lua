@@ -29,13 +29,22 @@ return {
 			configs.setup({
 				ensure_installed = { "lua", "python", "java", "javascript", "html" },
 				auto_install = true,
+				modules = {},
+				ignore_install = {},
 				sync_install = false,
 				highlight = {
 					enable = true,
 					disable = function(lang, buf)
 						local max_filesize = 500 * 1024 -- 500 KB
-						local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
-						if ok and stats and stats.size > max_filesize then
+						local filename = vim.api.nvim_buf_get_name(buf)
+						local ok, stats = pcall(vim.loop.fs_stat, filename)
+						local big = false
+						if ok and stats then
+							big = big or (stats.size > max_filesize)
+							local long = vim.fn.line("$") < 2 and stats.size > max_filesize / 10
+							big = big or long
+						end
+						if big then
 							return true
 						end
 					end,
