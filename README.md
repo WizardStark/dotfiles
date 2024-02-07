@@ -11,6 +11,7 @@ Note that this script requires sudo permissions
 ```
 git clone https://github.com/WizardStark/dotfiles.git
 cd dotfiles
+chmod +x setup.sh
 ./setup.sh
 ```
 
