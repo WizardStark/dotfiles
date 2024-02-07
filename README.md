@@ -15,6 +15,15 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
+If on an Apple Silicon device, after running `nvim` once, also
+run the following to recompile the broken plugin:
+```
+cd ~/.local/share/nvim/lazy/telescope-fzf-native.nvim &&
+cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release &&
+cmake --build build --config Release &&
+cmake --install build --prefix build &&
+cd -
+```
 ## Notes for tweaking
 
 The most extensive configuration is for NeoVim. The config layout:
