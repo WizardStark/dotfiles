@@ -1,3 +1,4 @@
+#!/bin/bash
 directory=$(pwd)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo apt update && sudo apt upgrade -y
@@ -24,7 +25,7 @@ cd "$directory"
 rm ~/.zshrc
 cp .zshrc ~/.zshrc
 chsh -s $(which zsh)
-exec $(SHELL)
+exec $SHELL
 
 cd
 git clone -b v0.9.5 https://github.com/neovim/neovim
