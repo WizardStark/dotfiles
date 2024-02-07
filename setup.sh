@@ -1,7 +1,14 @@
 directory=$(pwd)
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo apt update && sudo apt upgrade -y
+    sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew update
+    brew -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq
+fi
+
 cd
-sudo apt update && sudo apt upgrade -y
-sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq
 
 sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)" -- \
   -t "jonathan" \
@@ -20,7 +27,7 @@ chsh -s $(which zsh)
 exec $(SHELL)
 
 cd
-git clone -b v0.9.4 https://github.com/neovim/neovim
+git clone -b v0.9.5 https://github.com/neovim/neovim
 cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
 sudo make install
 cd ../
