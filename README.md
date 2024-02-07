@@ -24,24 +24,24 @@ nvim
 ├── lazy-lock.json
 └── lua
     ├── config
-    │   ├── autocmd.lua //events that should happen automatically
-    │   ├── options.lua //core editor functionality
+    │   ├── autocmd.lua         //events that should happen automatically
+    │   ├── options.lua         //core editor functionality
     ├── overseer
     │   └── template
-    │       └── user //place your definitions for build tasks here
+    │       └── user            //place your definitions for build tasks here
     │           └── py_run.lua
     └── plugins
-        ├── coding.lua //git, autocompletion and formatting plugins
+        ├── coding.lua          //git, autocompletion and formatting plugins
         ├── colourschemes.lua
         ├── dap
-        │   └── init.lua //plugins for project debugging
+        │   └── init.lua        //plugins for project debugging
         ├── java
-        │   └── init.lua //the dark place
-        ├── legendary.lua //keybinds and commands are defined here
-        ├── lsp //language server protocol for intellisense and powering autocompletion
+        │   └── init.lua        //the dark place
+        ├── legendary.lua       //keybinds and commands are defined here
+        ├── lsp                 //intellisense
         │   └── init.lua
         ├── ui.lua
-        └── util.lua //plugins that help with navigation/movement
+        └── util.lua            //plugins that help with navigation/movement
 ```
 
 The best sources to consult for understanding the above:
