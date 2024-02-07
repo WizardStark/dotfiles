@@ -19,12 +19,10 @@ sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1
   -p https://github.com/zsh-users/zsh-autosuggestions \
   -p https://github.com/zsh-users/zsh-syntax-highlighting
 
-mkdir ~/.config
+mkdir -p ~/.config
 cd "$directory"
 rm ~/.zshrc
 cp .zshrc ~/.zshrc
-chsh -s $(which zsh)
-exec $SHELL
 
 cd
 git clone -b v0.9.5 https://github.com/neovim/neovim
@@ -47,3 +45,6 @@ git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 cd "$directory"
 stow --adopt -t $HOME .
 ~/.config/tmux/plugins/tpm/bin/install_plugins
+
+chsh -s $(which zsh)
+exec $SHELL
