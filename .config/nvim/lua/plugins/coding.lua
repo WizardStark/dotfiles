@@ -29,8 +29,26 @@ return {
 			configs.setup({
 				ensure_installed = { "lua", "python", "java", "javascript", "html" },
 				auto_install = true,
+				modules = {},
+				ignore_install = {},
 				sync_install = false,
-				highlight = { enable = true },
+				highlight = {
+					enable = true,
+					disable = function(lang, buf)
+						local max_filesize = 500 * 1024 -- 500 KB
+						local filename = vim.api.nvim_buf_get_name(buf)
+						local ok, stats = pcall(vim.loop.fs_stat, filename)
+						local big = false
+						if ok and stats then
+							big = big or (stats.size > max_filesize)
+							local long = vim.fn.line("$") < 2 and stats.size > max_filesize / 10
+							big = big or long
+						end
+						if big then
+							return true
+						end
+					end,
+				},
 				indent = { enable = true },
 			})
 		end,
@@ -50,6 +68,7 @@ return {
 	{
 		"hrsh7th/nvim-cmp",
 		version = false, -- last release is way too old
+		event = "VeryLazy",
 		dependencies = {
 			"hrsh7th/cmp-nvim-lsp",
 			"L3MON4D3/LuaSnip",
@@ -168,6 +187,7 @@ return {
 	},
 	{
 		"L3MON4D3/LuaSnip",
+		event = "VeryLazy",
 		dependencies = {
 			"rafamadriz/friendly-snippets",
 			"nvim-treesitter/nvim-treesitter",
@@ -195,7 +215,6 @@ return {
 	--function overview
 	{
 		"stevearc/aerial.nvim",
-		-- Optional dependencies
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
