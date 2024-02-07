@@ -46,5 +46,5 @@ rm lazygit*
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
 cd "$directory"
-stow --adopt .
+stow --adopt -t $HOME .
 ~/.config/tmux/plugins/tpm/bin/install_plugins
