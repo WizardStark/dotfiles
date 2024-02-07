@@ -21,7 +21,6 @@ VI_MODE_SET_CURSOR=true
 bindkey -M viins 'jf' vi-cmd-mode
 
 plugins=(git
-  vi-mode
   zsh-syntax-highlighting
   zsh-autosuggestions
   sudo
