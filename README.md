@@ -18,6 +18,7 @@ cd dotfiles
 
 The most extensive configuration is for NeoVim. The config layout:
 
+```
 nvim
 ├── init.lua
 ├── lazy-lock.json
@@ -41,6 +42,7 @@ nvim
         │   └── init.lua
         ├── ui.lua
         └── util.lua //plugins that help with navigation/movement
+```
 
 The best sources to consult for understanding the above:
 * [Lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
