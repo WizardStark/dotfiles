@@ -1,6 +1,7 @@
 # Comments and blank lines are allowed.
 
 keyboard
+setup.sh
 
 RCS
 .+,v
