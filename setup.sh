@@ -14,7 +14,6 @@ cd
 sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)" -- \
   -t "jonathan" \
   -p git \
-  -p vi-mode \
   -p fzf \
   -p sudo \
   -p https://github.com/zsh-users/zsh-autosuggestions \
