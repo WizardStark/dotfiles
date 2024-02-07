@@ -50,7 +50,7 @@ The best sources to consult for understanding the above:
 
 ## Usage
 
-The most important keybinds are `<space-space>` in NeoVim for the command palette,
+The most important keybinds are `<space><space>` in NeoVim for the command palette,
 wherein you can fuzzy find your way through most available commands, and `<C-a>?` for
 a list of tmux binds - this is much less nice to use as I have not found a way to add
 descriptions, but the commands are pretty self explanatory.
