@@ -1,11 +1,11 @@
 directory=$(pwd)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo apt update && sudo apt upgrade -y
-    sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq
+    sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     brew update
-    brew -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq
+    brew -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
 fi
 
 cd
@@ -45,8 +45,5 @@ rm lazygit*
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
 cd "$directory"
-sh sync.sh nvim r
-sh sync.sh tmux r
-cp tmux/tmux_sessions.sh ~/.config/tmux/
-cp tmux/tmux_windows.sh ~/.config/tmux/
+stow --adopt .
 ~/.config/tmux/plugins/tpm/bin/install_plugins
