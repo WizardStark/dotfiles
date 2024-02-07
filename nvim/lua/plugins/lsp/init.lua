@@ -105,7 +105,6 @@ return {
 	},
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
-		event = "VeryLazy",
 		opts = {
 			ensure_installed = {
 				"black",

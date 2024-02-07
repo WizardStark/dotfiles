@@ -89,11 +89,8 @@ return {
 	{
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.3",
-		event = "VeryLazy",
 		dependencies = {
-			{
-				"nvim-lua/plenary.nvim",
-			},
+			{ "nvim-lua/plenary.nvim" },
 			{
 				"junegunn/fzf.vim",
 				event = "VeryLazy",
@@ -103,17 +100,17 @@ return {
 				build = "gmake",
 			},
 			{
+				"agoodshort/telescope-git-submodules.nvim",
+				dependencies = "akinsho/toggleterm.nvim",
+			},
+			{
 				"nvim-telescope/telescope-live-grep-args.nvim",
 				-- This will not install any breaking changes.
 				-- For major updates, this must be adjusted manually.
 				version = "^1.0.0",
 			},
-			{
-				"nvim-tree/nvim-web-devicons",
-			},
-			{
-				"debugloop/telescope-undo.nvim",
-			},
+			{ "nvim-tree/nvim-web-devicons" },
+			{ "debugloop/telescope-undo.nvim" },
 		},
 		config = function()
 			require("telescope").setup({
@@ -140,6 +137,7 @@ return {
 			require("telescope").load_extension("live_grep_args")
 			require("telescope").load_extension("bookmarks")
 			require("telescope").load_extension("undo")
+			require("telescope").load_extension("git_submodules")
 		end,
 	},
 	--nvim-tree
@@ -306,7 +304,6 @@ return {
 	--toggleterm
 	{
 		"akinsho/toggleterm.nvim",
-		event = "VeryLazy",
 		version = "*",
 		config = true,
 		opts = {
@@ -316,13 +313,12 @@ return {
 	--dressing.nvim
 	{
 		"stevearc/dressing.nvim",
-		event = "VeryLazy",
 		opts = {},
 	},
 	--lualine
 	{
 		"nvim-lualine/lualine.nvim",
-		event = "VeryLazy",
+		event = { "VeryLazy" },
 		opts = {
 			options = {
 				theme = "moonfly",

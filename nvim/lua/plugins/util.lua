@@ -133,7 +133,6 @@ return {
 	--bookmarks
 	{
 		"tomasky/bookmarks.nvim",
-		event = "VeryLazy",
 		opts = {
 			sign_priority = 8,
 		},
@@ -145,14 +144,12 @@ return {
 	},
 	{
 		"chrisgrieser/nvim-scissors",
-		event = "VeryLazy",
 		dependencies = "nvim-telescope/telescope.nvim", -- optional
 		opts = {},
 	},
 	{
 
 		"chrishrb/gx.nvim",
-		event = "VeryLazy",
 		cmd = { "Browse" },
 		dependencies = { "nvim-lua/plenary.nvim" },
 		config = true,
