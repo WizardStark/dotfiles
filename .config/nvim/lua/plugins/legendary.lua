@@ -645,6 +645,38 @@ return {
 						[[:SessionManager load_session<CR>]],
 						description = "Load session for selected directory",
 					},
+					{
+						mode = { "n", "x", "o" },
+						"s",
+						function()
+							require("flash").jump()
+						end,
+						description = "Flash",
+					},
+					{
+						mode = "o",
+						"r",
+						function()
+							require("flash").remote()
+						end,
+						description = "Remote Flash",
+					},
+					{
+						mode = { "o", "x" },
+						"R",
+						function()
+							require("flash").treesitter_search()
+						end,
+						description = "Treesitter Search",
+					},
+					{
+						mode = { "c" },
+						"<c-s>",
+						function()
+							require("flash").toggle()
+						end,
+						description = "Toggle Flash Search",
+					},
 				},
 			})
 		end,
