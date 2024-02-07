@@ -23,3 +23,10 @@ vim.api.nvim_create_autocmd("TermOpen", {
 		set_terminal_keymaps()
 	end,
 })
+
+vim.api.nvim_create_autocmd("BufWritePost", {
+	pattern = ".bib",
+	callback = function(opts)
+		vim.cmd([[!bibtex main]])
+	end,
+})
