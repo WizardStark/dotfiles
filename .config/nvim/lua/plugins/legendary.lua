@@ -645,6 +645,7 @@ return {
 						[[:SessionManager load_session<CR>]],
 						description = "Load session for selected directory",
 					},
+					--flash
 					{
 						mode = { "n", "x", "o" },
 						"s",
@@ -677,6 +678,8 @@ return {
 						end,
 						description = "Toggle Flash Search",
 					},
+					--Mason
+					{ mode = "n", "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" },
 				},
 			})
 		end,
