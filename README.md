@@ -5,9 +5,17 @@ during software development: NeoVim, Tmux, Alacritty and my GMMK Pro.
 
 Very WIP, always as I am constantly tinkering.
 
+## Dotfile management
+
+This project uses [GNU Stow](https://www.gnu.org/software/stow/) to create symlinks
+from this repository to your $HOME directory.
+
 ## Setup
 
-Note that this script requires sudo permissions
+NOTE:
+* This script requires sudo permissions
+* This script will create symlinks to ~/.zshrc, ~/.config/nvim and ~/.config/tmux,
+    see [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html#Conflicts) for how conflicts will be handled 
 ```
 git clone https://github.com/WizardStark/dotfiles.git
 cd dotfiles
@@ -64,8 +72,3 @@ The most important keybinds are `<space><space>` in NeoVim for the command palet
 wherein you can fuzzy find your way through most available commands, and `<C-a>?` for
 a list of tmux binds - this is much less nice to use as I have not found a way to add
 descriptions, but the commands are pretty self explanatory.
-
-## Dotfile management
-
-This package uses [GNU Stow](https://www.gnu.org/software/stow/) to create symlinks
-from this repository to your $HOME directory.
