@@ -216,6 +216,18 @@ return {
 						require("telescope").extensions.live_grep_args.live_grep_args,
 						description = "Live Grep",
 					},
+					{
+						mode = "n",
+						"<leader>fw",
+						require("telescope-live-grep-args.shortcuts").grep_word_under_cursor,
+						description = "Find word",
+					},
+					{
+						mode = "v",
+						"<leader>fv",
+						require("telescope-live-grep-args.shortcuts").grep_visual_selection,
+						desription = "Find visual selection",
+					},
 					{ mode = "n", "<leader>ff", require("telescope.builtin").find_files, description = "Find files" },
 					{ mode = "n", "<leader>b", require("telescope.builtin").buffers, description = "Show buffers" },
 					{
