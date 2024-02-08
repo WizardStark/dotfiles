@@ -123,6 +123,16 @@ return {
 						horizontal = { width = 0.85, preview_width = 0.6 },
 					},
 					dynamic_preview_title = true,
+					vimgrep_arguments = {
+						"rg",
+						"--color=never",
+						"--no-heading",
+						"--with-filename",
+						"--line-number",
+						"--column",
+						"--smart-case",
+						"--hidden",
+					},
 				},
 				extensions = {
 					fzf = {
@@ -133,6 +143,11 @@ return {
 					},
 					undo = {},
 					bookmarks = {},
+				},
+				pickers = {
+					find_files = {
+						follow = true,
+					},
 				},
 			})
 
