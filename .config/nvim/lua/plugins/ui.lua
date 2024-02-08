@@ -114,6 +114,10 @@ return {
 			{
 				"debugloop/telescope-undo.nvim",
 			},
+			{
+				"agoodshort/telescope-git-submodules.nvim",
+				dependencies = "akinsho/toggleterm.nvim",
+			},
 		},
 		config = function()
 			require("telescope").setup({
@@ -155,6 +159,7 @@ return {
 			require("telescope").load_extension("live_grep_args")
 			require("telescope").load_extension("bookmarks")
 			require("telescope").load_extension("undo")
+			require("telescope").load_extension("git_submodules")
 		end,
 	},
 	--nvim-tree
@@ -377,5 +382,10 @@ return {
 				"trouble",
 			},
 		},
+	},
+	{
+		"lukas-reineke/headlines.nvim",
+		dependencies = "nvim-treesitter/nvim-treesitter",
+		opts = {},
 	},
 }
