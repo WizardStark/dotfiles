@@ -69,7 +69,9 @@ return {
 					})
 				end,
 				["lua_ls"] = function()
-					require("neodev").setup({})
+					require("neodev").setup({
+						library = { plugins = { "neotest" }, types = true },
+					})
 					lspconfig.lua_ls.setup({
 						settings = {
 							Lua = {
