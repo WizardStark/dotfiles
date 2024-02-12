@@ -692,6 +692,10 @@ return {
 					},
 					--Mason
 					{ mode = "n", "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" },
+					--Notes
+					{ mode = "n", "<leader>nn", "<cmd>NotesNew<cr>", desc = "New note" },
+					{ mode = "n", "<leader>nf", "<cmd>NotesFind<cr>", desc = "Find note" },
+					{ mode = "n", "<leader>ng", "<cmd>NotesGrep<cr>", desc = "Grep notes" },
 				},
 			})
 		end,

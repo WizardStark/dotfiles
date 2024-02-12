@@ -103,16 +103,20 @@ return {
 			sign_priority = 8,
 		},
 	},
+	--tabout
 	{
 		"kawre/neotab.nvim",
 		event = "InsertEnter",
 		opts = {},
 	},
+	--snippet creation
 	{
 		"chrisgrieser/nvim-scissors",
+		event = "VeryLazy",
 		dependencies = "nvim-telescope/telescope.nvim", -- optional
 		opts = {},
 	},
+	--open links
 	{
 
 		"chrishrb/gx.nvim",
@@ -122,5 +126,14 @@ return {
 		init = function()
 			vim.g.netrw_nogx = 1
 		end,
+	},
+	{
+
+		"dhananjaylatkar/notes.nvim",
+		event = "VeryLazy",
+		dependencies = { "nvim-telescope/telescope.nvim" },
+		opts = {
+			root = vim.fn.expand("$HOME/notes/"),
+		},
 	},
 }
