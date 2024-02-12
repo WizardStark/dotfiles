@@ -127,6 +127,7 @@ return {
 			vim.g.netrw_nogx = 1
 		end,
 	},
+	--notes
 	{
 
 		"dhananjaylatkar/notes.nvim",
@@ -135,5 +136,39 @@ return {
 		opts = {
 			root = vim.fn.expand("$HOME/notes/"),
 		},
+	},
+	--other
+	{
+		"rgroli/other.nvim",
+		event = "VeryLazy",
+		config = function()
+			require("other-nvim").setup({
+				mappings = {
+					{
+						pattern = ".*/src/(.*)/(.*)",
+						target = {
+							{ target = ".*/tst/**/%1/%2" },
+							{ target = ".*/tst/**/%1/Test_%2" },
+						},
+					},
+					{
+						pattern = ".*/tst/.*/(.*)/(.*)",
+						target = ".*/src/%1/%2",
+					},
+					{
+						pattern = ".*/tst/.*/(.*)/Test_(.*)",
+						target = ".*/src/%1/%2",
+					},
+				},
+
+				style = {
+					border = "rounded",
+					seperator = "|",
+					newFileIndicator = "(* new *)",
+					width = 0.7,
+					minHeight = 2,
+				},
+			})
+		end,
 	},
 }
