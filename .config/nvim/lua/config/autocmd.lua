@@ -47,3 +47,12 @@ vim.api.nvim_create_autocmd({ "VimEnter" }, {
 		end
 	end,
 })
+
+vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+	group = user_session_manager_group,
+	callback = function()
+		if string.find(vim.fn.expand("%:p"), vim.fn.getcwd()) then
+			session_manager.save_current_session()
+		end
+	end,
+})
