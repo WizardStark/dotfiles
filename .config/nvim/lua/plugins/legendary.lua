@@ -144,6 +144,16 @@ return {
 						">gv",
 						description = "Move line right",
 					},
+					{
+						mode = { "n", "v" },
+						"<leader>cp",
+						function()
+							local path = vim.fn.expand("%:p")
+							vim.fn.setreg("+", path)
+							vim.notify("Copied " .. path .. " to clipboard")
+						end,
+						description = "Copy file path to clipboard",
+					},
 					--ufo
 					{
 						mode = "n",

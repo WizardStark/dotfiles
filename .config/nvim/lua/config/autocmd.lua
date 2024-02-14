@@ -30,3 +30,20 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 		vim.cmd([[!bibtex main]])
 	end,
 })
+
+local user_session_manager_group = vim.api.nvim_create_augroup("UserSessionManager", {})
+local session_manager = require("session_manager")
+
+vim.api.nvim_create_autocmd({ "VimEnter" }, {
+	group = user_session_manager_group,
+	nested = true,
+	callback = function()
+		if vim.fn.argc() == 0 and not vim.g.started_with_stdin then
+			local ok, _ = pcall(session_manager.load_current_dir_session, true)
+			if not ok then
+				vim.notify("Session corrupted, deleting")
+				vim.cmd([[:SessionManager delete_current_dir_session<CR>]])
+			end
+		end
+	end,
+})
