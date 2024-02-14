@@ -39,6 +39,12 @@ require("legendary").autocmds({
 			"VimLeavePre",
 			function()
 				if string.find(vim.fn.expand("%:p"), vim.fn.getcwd()) then
+					local buflist = vim.api.nvim_list_bufs()
+					for _, bufnr in ipairs(buflist) do
+						if vim.bo[bufnr].bt == "terminal" then
+							vim.cmd("bd! " .. tostring(bufnr))
+						end
+					end
 					require("session_manager").save_current_session()
 				end
 			end,

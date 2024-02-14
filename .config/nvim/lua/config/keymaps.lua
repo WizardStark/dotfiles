@@ -14,10 +14,15 @@ local function continue()
 end
 
 local function save_and_exit()
-	vim.api.nvim_command(":wa")
-	vim.api.nvim_command(":qa!")
-end
+	local buflist = vim.api.nvim_list_bufs()
+	for _, bufnr in ipairs(buflist) do
+		if vim.bo[bufnr].bt == "terminal" then
+			vim.cmd("bd! " .. tostring(bufnr))
+		end
+	end
 
+	vim.cmd.xa()
+end
 require("legendary").keymaps({
 	--general
 	{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
