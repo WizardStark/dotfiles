@@ -33,6 +33,7 @@ alias cl="printf '\33c\e[3J'"
 alias src='source ~/.zshrc'
 alias erc='vim ~/.zshrc'
 alias pls='sudo $(fc -ln -1)'
+alias tmux='tmux -2'
 alias ta='tmux a || tmux'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
