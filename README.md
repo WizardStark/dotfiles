@@ -37,29 +37,30 @@ cd -
 The most extensive configuration is for NeoVim. The config layout:
 
 ```
-nvim
 ├── init.lua
 ├── lazy-lock.json
 └── lua
     ├── config
-    │   ├── autocmd.lua         //events that should happen automatically
-    │   ├── options.lua         //core editor functionality
+    │   ├── autocmd.lua         //events that should happen automatically 
+    │   ├── commands.lua
+    │   ├── keymaps.lua
+    │   └── options.lua         //core editor functionality 
     ├── overseer
     │   └── template
     │       └── user            //place your definitions for build tasks here
     │           └── py_run.lua
     └── plugins
-        ├── coding.lua          //git, autocompletion and formatting plugins
+        ├── coding.lua          //git, autocompletion and formatting plugins 
         ├── colourschemes.lua
-        ├── dap
-        │   └── init.lua        //plugins for project debugging
-        ├── java
-        │   └── init.lua        //the dark place
-        ├── legendary.lua       //keybinds and commands are defined here
-        ├── lsp                 //intellisense
-        │   └── init.lua
-        ├── ui.lua
-        └── util.lua            //plugins that help with navigation/movement
+        ├── dap.lua             //debugging plugins
+        ├── files.lua           //file traversal/manipulation plugins
+        ├── java.lua            //the dark place
+        ├── lsp.lua             //intellisense
+        ├── lualine.lua         //nvim statusline configuration
+        ├── motion.lua          //plugins for in-buffer movement
+        ├── neotest.lua         //plugins for test-running
+        ├── ui.lua              
+        └── util.lua
 ```
 
 The best sources to consult for understanding the above:

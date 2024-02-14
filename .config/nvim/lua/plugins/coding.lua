@@ -176,7 +176,6 @@ return {
 			})
 		end,
 	},
-
 	--snippets
 	{
 		"mireq/luasnip-snippets",

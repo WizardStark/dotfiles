@@ -28,18 +28,6 @@ return {
 			},
 		},
 	},
-	-- Quick navigation
-	{
-		"folke/flash.nvim",
-		event = "VeryLazy",
-		opts = {
-			modes = {
-				search = {
-					enabled = false,
-				},
-			},
-		},
-	},
 	-- surround
 	{
 		"kylechui/nvim-surround",
@@ -52,29 +40,11 @@ return {
 		"mbbill/undotree",
 		event = "VeryLazy",
 	},
-	--smart splits
-	{
-		"mrjones2014/smart-splits.nvim",
-		event = "VeryLazy",
-		opts = {},
-	},
 	--toggle booleans
 	{
 		"rmagatti/alternate-toggler",
 		event = "VeryLazy",
 		opts = {},
-	},
-	--mutli-cursor
-	{
-		"brenton-leighton/multiple-cursors.nvim",
-		event = "VeryLazy",
-		opts = {},
-	},
-	--more text objects
-	{
-		"chrisgrieser/nvim-various-textobjs",
-		event = "VeryLazy",
-		opts = { useDefaultKeymaps = true },
 	},
 	--overseer
 	{
@@ -96,19 +66,6 @@ return {
 		config = function()
 			require("codeium").setup({})
 		end,
-	},
-	--bookmarks
-	{
-		"tomasky/bookmarks.nvim",
-		opts = {
-			sign_priority = 8,
-		},
-	},
-	--tabout
-	{
-		"kawre/neotab.nvim",
-		event = "InsertEnter",
-		opts = {},
 	},
 	--snippet creation
 	{
@@ -138,37 +95,14 @@ return {
 			root = vim.fn.expand("$HOME/notes/"),
 		},
 	},
-	--other
+	--legendary
 	{
-		"rgroli/other.nvim",
-		event = "VeryLazy",
+		"mrjones2014/legendary.nvim",
+		priority = 10000,
+		lazy = false,
 		config = function()
-			require("other-nvim").setup({
-				mappings = {
-					{
-						pattern = ".*/src/(.*)/(.*)",
-						target = {
-							{ target = ".*/tst/**/%1/%2" },
-							{ target = ".*/tst/**/%1/Test_%2" },
-						},
-					},
-					{
-						pattern = ".*/tst/.*/(.*)/(.*)",
-						target = ".*/src/%1/%2",
-					},
-					{
-						pattern = ".*/tst/.*/(.*)/Test_(.*)",
-						target = ".*/src/%1/%2",
-					},
-				},
-
-				style = {
-					border = "rounded",
-					seperator = "|",
-					newFileIndicator = "(* new *)",
-					width = 0.7,
-					minHeight = 2,
-				},
+			require("legendary").setup({
+				select_prompt = " Command palette",
 			})
 		end,
 	},

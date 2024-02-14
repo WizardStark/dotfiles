@@ -19,6 +19,8 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup("plugins", { ui = { border = "rounded" } })
 require("config.autocmd")
 require("config.options")
+require("config.keymaps")
+require("config.commands")
 
 local function loadLCL()
 	local ok, lcl = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lcl.lua"))
