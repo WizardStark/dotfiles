@@ -16,11 +16,11 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-require("lazy").setup("plugins", { ui = { border = "rounded" } })
-require("config.autocmd")
-require("config.options")
-require("config.keymaps")
-require("config.commands")
+require("lazy").setup({
+	{ import = "plugins" },
+	{ import = "config" },
+	ui = { border = "rounded" },
+})
 
 local function loadLCL()
 	local ok, lcl = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lcl.lua"))
