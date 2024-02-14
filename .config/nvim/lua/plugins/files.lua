@@ -5,28 +5,18 @@ return {
 		tag = "0.1.3",
 		event = "VeryLazy",
 		dependencies = {
-			{
-				"nvim-lua/plenary.nvim",
-			},
-			{
-				"junegunn/fzf.vim",
-				event = "VeryLazy",
-			},
+			"nvim-lua/plenary.nvim",
+			"junegunn/fzf.vim",
+			"nvim-tree/nvim-web-devicons",
+			"debugloop/telescope-undo.nvim",
+			"rcarriga/nvim-notify",
 			{
 				"nvim-telescope/telescope-fzf-native.nvim",
 				build = "gmake",
 			},
 			{
 				"nvim-telescope/telescope-live-grep-args.nvim",
-				-- This will not install any breaking changes.
-				-- For major updates, this must be adjusted manually.
 				version = "^1.0.0",
-			},
-			{
-				"nvim-tree/nvim-web-devicons",
-			},
-			{
-				"debugloop/telescope-undo.nvim",
 			},
 			{
 				"agoodshort/telescope-git-submodules.nvim",
@@ -73,6 +63,7 @@ return {
 			require("telescope").load_extension("live_grep_args")
 			require("telescope").load_extension("bookmarks")
 			require("telescope").load_extension("undo")
+			require("telescope").load_extension("notify")
 			require("telescope").load_extension("git_submodules")
 		end,
 	},

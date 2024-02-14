@@ -68,18 +68,20 @@ return {
 			})
 		end,
 	},
+	--notify
+	{
+		"rcarriga/nvim-notify",
+		opts = {
+			stages = "static",
+		},
+	},
 	--cleaner UI
 	{
 		"folke/noice.nvim",
 		event = "VeryLazy",
 		dependencies = {
 			"MunifTanjim/nui.nvim",
-			{
-				"rcarriga/nvim-notify",
-				opts = {
-					stages = "static",
-				},
-			},
+			"rcarriga/nvim-notify",
 		},
 		opts = {
 			lsp = {
@@ -113,7 +115,6 @@ return {
 	{
 		"kdheepak/lazygit.nvim",
 		event = "VeryLazy",
-		-- optional for floating window border decoration
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 		},
