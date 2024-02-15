@@ -51,7 +51,7 @@ return {
 		"stevearc/overseer.nvim",
 		event = "VeryLazy",
 		opts = {
-			strategy = "toggleterm",
+			strategy = { "toggleterm" },
 			templates = { "builtin", "user.py_run" },
 		},
 	},

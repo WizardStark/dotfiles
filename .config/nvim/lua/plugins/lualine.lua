@@ -48,8 +48,12 @@ local function clients_lsp()
 	return " " .. language_servers
 end
 
-local function is_toggleterm()
+local function is_not_toggleterm()
 	return vim.bo.filetype ~= "toggleterm"
+end
+
+local function is_toggleterm()
+	return vim.bo.filetype == "toggleterm"
 end
 
 local function diff_source()
@@ -84,6 +88,20 @@ local function is_text_file()
 	return count[ft] ~= nil
 end
 
+function get_term_name()
+	local terms = require("toggleterm.terminal").get_all()
+	for _, term in ipairs(terms) do
+		if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
+			local name = term.display_name
+			if name then
+				return "TERM: " .. name
+			end
+			name = term.id
+			return "TERM: " .. name
+		end
+	end
+end
+
 return {
 	--lualine
 	{
@@ -93,30 +111,33 @@ return {
 		opts = {
 			options = {
 				theme = "moonfly",
-				-- globalstatus = true,
+				disabled_filetypes = {
+					-- statusline = { "toggleterm" },
+					-- winbar = { "toggleterm" },
+				},
 			},
 			sections = {
-				lualine_a = { "mode" },
+				lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
-				lualine_c = { "windows", { getWords, cond = is_text_file } },
-				lualine_x = { "filesize", "filetype" },
-				lualine_y = { "progress", "location" },
-				lualine_z = { clients_lsp },
+				lualine_c = { { "windows", cond = is_not_toggleterm }, { getWords, cond = is_text_file } },
+				lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
+				lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
+				lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 			},
 			inactive_sections = {
-				lualine_a = { "mode" },
+				lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
-				lualine_c = { "windows", { getWords, cond = is_text_file } },
-				lualine_x = { "filesize", "filetype" },
-				lualine_y = { "progress", "location" },
-				lualine_z = { clients_lsp },
+				lualine_c = { { "windows", cond = is_not_toggleterm }, { getWords, cond = is_text_file } },
+				lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
+				lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
+				lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 			},
 			winbar = {
-				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
+				lualine_a = { { "filename", path = 1, cond = is_not_toggleterm } },
 				lualine_c = { "aerial" },
 			},
 			inactive_winbar = {
-				lualine_a = { { "filename", path = 1, cond = is_toggleterm } },
+				lualine_a = { { "filename", path = 1, cond = is_not_toggleterm } },
 				lualine_c = { "aerial" },
 			},
 			extensions = {
@@ -125,7 +146,6 @@ return {
 				"mason",
 				"aerial",
 				"lazy",
-				"toggleterm",
 				"trouble",
 			},
 		},

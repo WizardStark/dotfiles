@@ -125,9 +125,7 @@ return {
 		event = "VeryLazy",
 		version = "*",
 		config = true,
-		opts = {
-			open_mapping = [[<c-\>]],
-		},
+		opts = { open_mapping = [[<c-\>]] },
 	},
 	--dressing.nvim
 	{
