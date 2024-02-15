@@ -133,6 +133,7 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	--markdown "rendering"
 	{
 		"lukas-reineke/headlines.nvim",
 		dependencies = "nvim-treesitter/nvim-treesitter",
