@@ -88,7 +88,7 @@ local function is_text_file()
 	return count[ft] ~= nil
 end
 
-function get_term_name()
+local function get_term_name()
 	local terms = require("toggleterm.terminal").get_all()
 	for _, term in ipairs(terms) do
 		if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
