@@ -121,8 +121,6 @@ return {
 							vim.api.nvim_set_current_win(winnr)
 						end
 
-						-- If the file is a git commit, create one-shot autocmd to delete its buffer on write
-						-- If you just want the toggleable terminal integration, ignore this bit
 						if ft == "gitcommit" or ft == "gitrebase" then
 							vim.api.nvim_create_autocmd("BufWritePost", {
 								buffer = bufnr,
@@ -134,7 +132,6 @@ return {
 						end
 					end,
 					block_end = function()
-						-- After blocking ends (for a git commit, etc), reopen the terminal
 						vim.schedule(function()
 							if saved_terminal then
 								saved_terminal:open()
