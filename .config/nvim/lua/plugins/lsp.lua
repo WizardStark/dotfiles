@@ -54,6 +54,7 @@ return {
 					"jdtls",
 				},
 			})
+			--test
 
 			mason_lspconfig.setup_handlers({
 				function(server_name)
