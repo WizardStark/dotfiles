@@ -98,7 +98,7 @@ return {
 		"zeioth/garbage-day.nvim",
 		event = "BufEnter",
 		opts = {
-			-- your options here
+			notifications = true,
 		},
 	},
 	{

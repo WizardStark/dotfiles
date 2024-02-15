@@ -242,12 +242,12 @@ return {
 			description = "Resume last telescope search",
 		},
 		{ mode = "n", "<leader>gs", require("telescope.builtin").git_status, description = "Git status" },
-		{ mode = "n", "<leader>gc", require("telescope.builtin").git_commits, description = "Git commits" },
+		{ mode = "n", "<leader>gh", require("telescope.builtin").git_commits, description = "Git commit history" },
 		{
 			mode = "n",
 			"<leader>gc",
 			require("telescope.builtin").git_bcommits,
-			description = "Git commits for current buffer",
+			description = "Git commit history for current buffer",
 		},
 		{ mode = "i", "<C-r>", require("telescope.builtin").registers, description = "Show registers" },
 		--harpoon

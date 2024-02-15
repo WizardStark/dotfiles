@@ -89,6 +89,7 @@ return {
 	{
 		"nvim-lualine/lualine.nvim",
 		event = "VeryLazy",
+		dependencies = { "stevearc/aerial.nvim" },
 		opts = {
 			options = {
 				theme = "moonfly",

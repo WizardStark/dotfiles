@@ -2,7 +2,7 @@ return {
 	--other
 	{
 		"rgroli/other.nvim",
-		event = "VeryLazy",
+		cmd = { "Other", "OtherClear", "OtherTabNew", "OtherSplit", "OtherVSplit" },
 		config = function()
 			require("other-nvim").setup({
 				mappings = {

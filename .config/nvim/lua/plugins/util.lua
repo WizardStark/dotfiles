@@ -58,7 +58,7 @@ return {
 	--snippet creation
 	{
 		"chrisgrieser/nvim-scissors",
-		event = "VeryLazy",
+		cmd = { "ScissorsEditSnippet", "ScissorsAddNewSnippet" },
 		dependencies = "nvim-telescope/telescope.nvim", -- optional
 		opts = {},
 	},
@@ -77,7 +77,7 @@ return {
 	{
 
 		"dhananjaylatkar/notes.nvim",
-		event = "VeryLazy",
+		cmd = { "NotesNew", "NotesFind", "NotesGrep" },
 		dependencies = { "nvim-telescope/telescope.nvim" },
 		opts = {
 			root = vim.fn.expand("$HOME/notes/"),
@@ -93,5 +93,16 @@ return {
 				select_prompt = " Command palette",
 			})
 		end,
+	},
+	--flatten.nvim
+	{
+		"willothy/flatten.nvim",
+		lazy = false,
+		priority = 1001,
+		opts = {
+			window = {
+				open = "alternate",
+			},
+		},
 	},
 }
