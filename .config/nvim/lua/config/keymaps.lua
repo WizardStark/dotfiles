@@ -696,5 +696,13 @@ return {
 			{ buffer = 0 },
 			description = "Move right from terminal",
 		},
+		{
+			mode = "n",
+			"<C-]>",
+			function()
+				vim.cmd(":ToggleTerm direction=vertical size=120")
+			end,
+			description = "Open terminal in vertical split",
+		},
 	}),
 }
