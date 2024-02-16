@@ -712,7 +712,7 @@ return {
 				vim.cmd("wincmd H")
 				vim.cmd("vert res 120")
 			end,
-			description = "Open terminal in vertical split",
+			description = "Open terminal in left vertical split",
 		},
 	}),
 }
