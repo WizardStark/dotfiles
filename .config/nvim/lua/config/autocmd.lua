@@ -19,6 +19,14 @@ return {
 			end,
 		},
 		{
+			"BufWinEnter",
+			function()
+				if vim.bo.ft == "help" then
+					vim.cmd("wincmd L")
+				end
+			end,
+		},
+		{
 			name = "UserSessionManager",
 			clear = true,
 			{

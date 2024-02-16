@@ -704,5 +704,15 @@ return {
 			end,
 			description = "Open terminal in vertical split",
 		},
+		{
+			mode = "n",
+			"<C-[>",
+			function()
+				vim.cmd(":ToggleTerm direction=vertical size=120")
+				vim.cmd("wincmd H")
+				vim.cmd("vert res 120")
+			end,
+			description = "Open terminal in vertical split",
+		},
 	}),
 }
