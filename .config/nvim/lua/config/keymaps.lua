@@ -315,21 +315,33 @@ return {
 			end,
 			description = "Toggle file tree",
 		},
-		--mini.files
+		-- mini.files
 		{
 			mode = "n",
 			"<leader>e",
 			function()
 				local MiniFiles = require("mini.files")
+				local function open_and_center(path)
+					MiniFiles.open(path)
+					MiniFiles.go_out()
+					MiniFiles.go_in()
+				end
 				if not MiniFiles.close() then
-					local function open_current_file()
-						MiniFiles.open(vim.fn.expand("%:p"))
-					end
-
-					if not pcall(open_current_file) then
-						MiniFiles.open()
+					if not pcall(open_and_center, vim.fn.expand("%:p")) then
+						open_and_center()
 					end
 				end
+			end,
+			description = "Open mini.files",
+		},
+		{
+			mode = "n",
+			"H",
+			function()
+				local MiniFiles = require("mini.files")
+				MiniFiles.go_out_plus()
+				MiniFiles.go_out_plus()
+				MiniFiles.go_in()
 			end,
 			description = "Open mini.files",
 		},
@@ -706,7 +718,7 @@ return {
 		},
 		{
 			mode = "n",
-			"<C-[>",
+			"<leader>[",
 			function()
 				vim.cmd(":ToggleTerm direction=vertical size=120")
 				vim.cmd("wincmd H")

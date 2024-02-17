@@ -59,5 +59,33 @@ return {
 				end,
 			},
 		},
+		{
+			name = "UserMiniFiles",
+			{
+				"User",
+				opts = {
+					pattern = "MiniFilesWindowOpen",
+				},
+				function(args)
+					local win_id = args.data.win_id
+					vim.api.nvim_win_set_config(win_id, { border = "rounded" })
+				end,
+			},
+			{
+				"User",
+				opts = {
+					pattern = "MiniFilesBufferCreate",
+				},
+				function(args)
+					local MiniFiles = require("mini.files")
+					local buf_id = args.data.buf_id
+					vim.keymap.set("n", "h", function()
+						MiniFiles.go_out()
+						MiniFiles.go_out()
+						MiniFiles.go_in()
+					end, { buffer = buf_id })
+				end,
+			},
+		},
 	}),
 }

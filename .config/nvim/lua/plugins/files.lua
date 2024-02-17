@@ -93,9 +93,17 @@ return {
 		event = "VeryLazy",
 		version = false,
 		opts = {
+			mappings = {
+				go_out = "H",
+				go_out_plus = "",
+				synchronize = "s",
+			},
 			windows = {
+				max_number = 3,
 				preview = true,
-				width_preview = 75,
+				width_focus = 60,
+				width_nofocus = 60,
+				width_preview = 60,
 			},
 		},
 	},
