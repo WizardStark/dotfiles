@@ -39,12 +39,6 @@ return {
 			description = "Delete without adding to register",
 		},
 		{
-			mode = { "n", "v" },
-			"<leader>P",
-			[["_dP]],
-			description = "Paste without overriding register",
-		},
-		{
 			mode = "n",
 			"J",
 			"mzJ`z",
