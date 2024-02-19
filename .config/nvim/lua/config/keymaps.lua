@@ -126,7 +126,9 @@ return {
 		{
 			mode = { "n", "v" },
 			"<leader><leader>",
-			require("legendary").find,
+			function()
+				require("legendary").find({})
+			end,
 			description = "Command palette",
 		},
 		--Bookmarks
@@ -265,12 +267,7 @@ return {
 		{ mode = "n", "<C-h>", require("smart-splits").move_cursor_left, description = "Move cursor left" },
 		{ mode = "n", "<C-j>", require("smart-splits").move_cursor_down, description = "Move cursor down" },
 		{ mode = "n", "<C-k>", require("smart-splits").move_cursor_up, description = "Move cursor up" },
-		{
-			mode = "n",
-			"<C-l>",
-			require("smart-splits").move_cursor_right,
-			description = "Move cursor right",
-		},
+		{ mode = "n", "<C-l>", require("smart-splits").move_cursor_right, description = "Move cursor right" },
 		{
 			mode = "n",
 			"<leader><C-h>",

@@ -131,7 +131,22 @@ return {
 	{
 		"stevearc/dressing.nvim",
 		event = "VeryLazy",
-		opts = {},
+		opts = {
+			select = {
+				get_config = function(opts)
+					if opts.kind == "legendary.nvim" then
+						return {
+							-- backend = "builtin",
+							-- builtin = {
+							-- 	width = 0.5,
+							-- },
+							backend = "telescope",
+							telescope = require("telescope.themes").get_ivy({}),
+						}
+					end
+				end,
+			},
+		},
 	},
 	--markdown "rendering"
 	{
