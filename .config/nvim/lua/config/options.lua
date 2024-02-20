@@ -28,6 +28,7 @@ opt.fillchars = { eob = " " }
 opt.scrolloff = 8
 opt.undofile = true
 opt.undodir = vim.fn.expand("~/.undo")
+opt.swapfile = false
 opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 
 return {}

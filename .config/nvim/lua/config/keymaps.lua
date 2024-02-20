@@ -717,5 +717,301 @@ return {
 			end,
 			description = "Open terminal in left vertical split",
 		},
+		{
+			mode = { "o", "x" },
+			"ii",
+			function()
+				require("various-textobjs").indentation("inner", "inner")
+			end,
+			description = "Text object: in inner indentation",
+		},
+		{
+			mode = { "o", "x" },
+			"ai",
+			function()
+				require("various-textobjs").indentation("outer", "inner")
+			end,
+			description = "Text object: around inner indentation",
+		},
+		{
+			mode = { "o", "x" },
+			"iI",
+			function()
+				require("various-textobjs").indentation("inner", "outer")
+			end,
+			description = "Text object: in outer indentation",
+		},
+		{
+			mode = { "o", "x" },
+			"aI",
+			function()
+				require("various-textobjs").indentation("outer", "outer")
+			end,
+			description = "Text object: around outer indentation",
+		},
+		{
+			mode = { "o", "x" },
+			"R",
+			function()
+				require("various-textobjs").restOfIndentation()
+			end,
+			description = "Text object: rest of indentation",
+		},
+		{
+			mode = { "o", "x" },
+			"ig",
+			function()
+				require("various-textobjs").greedyOuterIndentation("inner")
+			end,
+			description = "Text object: in greedyOuterIndentation",
+		},
+		{
+			mode = { "o", "x" },
+			"ag",
+			function()
+				require("various-textobjs").greedyOuterIndentation("outer")
+			end,
+			description = "Text object: around greedyOuterIndentation",
+		},
+		{
+			mode = { "o", "x" },
+			"iS",
+			function()
+				require("various-textobjs").subword("inner")
+			end,
+			description = "Text object: in subword",
+		},
+		{
+			mode = { "o", "x" },
+			"aS",
+			function()
+				require("various-textobjs").subword("outer")
+			end,
+			description = "Text object: around subword",
+		},
+		{
+			mode = { "o", "x" },
+			"C",
+			function()
+				require("various-textobjs").toNextClosingBracket()
+			end,
+			description = "Text object: to next closing bracket",
+		},
+		{
+			mode = { "o", "x" },
+			"Q",
+			function()
+				require("various-textobjs").toNextQuotationMark()
+			end,
+			description = "Text object: to next quotation mark",
+		},
+		{
+			mode = { "o", "x" },
+			"io",
+			function()
+				require("various-textobjs").anyBracket("inner")
+			end,
+			description = "Text object: in any bracket",
+		},
+		{
+			mode = { "o", "x" },
+			"ao",
+			function()
+				require("various-textobjs").anyBracket("outer")
+			end,
+			description = "Text object: around any bracket",
+		},
+		{
+			mode = { "o", "x" },
+			"r",
+			function()
+				require("various-textobjs").restOfParagraph()
+			end,
+			description = "Text object: rest of paragraph",
+		},
+		{
+			mode = { "o", "x" },
+			"gG",
+			function()
+				require("various-textobjs").entireBuffer()
+			end,
+			description = "Text object: entire buffer",
+		},
+		{
+			mode = { "o", "x" },
+			"n",
+			function()
+				require("various-textobjs").nearEoL()
+			end,
+			description = "Text object: 1 char befor EoL",
+		},
+		{
+			mode = { "o", "x" },
+			"g;",
+			function()
+				require("various-textobjs").lastChange()
+			end,
+			description = "Text object: last change",
+		},
+		{
+			mode = { "o", "x" },
+			"i_",
+			function()
+				require("various-textobjs").lineCharacterwise("inner")
+			end,
+			description = "Text object: in line characterwise",
+		},
+		{
+			mode = { "o", "x" },
+			"a_",
+			function()
+				require("various-textobjs").lineCharacterwise("outer")
+			end,
+			description = "Text object: around line characterwise",
+		},
+		{
+			mode = { "o", "x" },
+			"|",
+			function()
+				require("various-textobjs").column()
+			end,
+			description = "Text object: column",
+		},
+		{
+			mode = { "o", "x" },
+			"gc",
+			function()
+				require("various-textobjs").multiCommentedLines()
+			end,
+			description = "Text object: multi commented lines",
+		},
+		{
+			mode = { "o", "x" },
+			"iN",
+			function()
+				require("various-textobjs").notebookCell("inner")
+			end,
+			description = "Text object: in notebook cell",
+		},
+		{
+			mode = { "o", "x" },
+			"aN",
+			function()
+				require("various-textobjs").notebookCell("outer")
+			end,
+			description = "Text object: around notebook cell",
+		},
+		{
+			mode = { "o", "x" },
+			"iv",
+			function()
+				require("various-textobjs").value("inner")
+			end,
+			description = "Text object: in value",
+		},
+		{
+			mode = { "o", "x" },
+			"av",
+			function()
+				require("various-textobjs").value("outer")
+			end,
+			description = "Text object: around value",
+		},
+		{
+			mode = { "o", "x" },
+			"ik",
+			function()
+				require("various-textobjs").key("inner")
+			end,
+			description = "Text object: in key",
+		},
+		{
+			mode = { "o", "x" },
+			"ak",
+			function()
+				require("various-textobjs").key("outer")
+			end,
+			description = "Text object: around key",
+		},
+		{
+			mode = { "o", "x" },
+			"L",
+			function()
+				require("various-textobjs").url()
+			end,
+			description = "Text object: url",
+		},
+		{
+			mode = { "o", "x" },
+			"in",
+			function()
+				require("various-textobjs").number("inner")
+			end,
+			description = "Text object: in number",
+		},
+		{
+			mode = { "o", "x" },
+			"an",
+			function()
+				require("various-textobjs").number("outer")
+			end,
+			description = "Text object: around number",
+		},
+		{
+			mode = { "o", "x" },
+			"!",
+			function()
+				require("various-textobjs").diagnostic()
+			end,
+			description = "Text object: lsp diagnostic",
+		},
+		{
+			mode = { "o", "x" },
+			"iz",
+			function()
+				require("various-textobjs").closedFold("inner")
+			end,
+			description = "Text object: in fold",
+		},
+		{
+			mode = { "o", "x" },
+			"az",
+			function()
+				require("various-textobjs").closedFold("outer")
+			end,
+			description = "Text object: around fold",
+		},
+		{
+			mode = { "o", "x" },
+			"im",
+			function()
+				require("various-textobjs").chainMember("inner")
+			end,
+			description = "Text object: in chain member",
+		},
+		{
+			mode = { "o", "x" },
+			"am",
+			function()
+				require("various-textobjs").chainMember("outer")
+			end,
+			description = "Text object: around chain member",
+		},
+		{
+			mode = { "o", "x" },
+			"gw",
+			function()
+				require("various-textobjs").visibleInWindow()
+			end,
+			description = "Text object: visible in window",
+		},
+		{
+			mode = { "o", "x" },
+			"gW",
+			function()
+				require("various-textobjs").restOfWindow()
+			end,
+			description = "Text object: rest of window",
+		},
 	}),
 }

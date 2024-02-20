@@ -50,7 +50,9 @@ return {
 	{
 		"chrisgrieser/nvim-various-textobjs",
 		event = "VeryLazy",
-		opts = { useDefaultKeymaps = true },
+		opts = {
+			useDefaultKeymaps = false,
+		},
 	},
 	--mutli-cursor
 	{
