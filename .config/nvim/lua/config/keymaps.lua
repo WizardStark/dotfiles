@@ -565,6 +565,16 @@ return {
 			end,
 			description = "Format current buffer",
 		},
+		{
+			mode = { "n", "v" },
+			"<leader>fn",
+			function()
+				require("gitsigns").next_hunk()
+				require("gitsigns").select_hunk()
+				require("conform").format({ async = false })
+			end,
+			description = "Format next hunk",
+		},
 		--latex
 		{
 			mode = "n",
