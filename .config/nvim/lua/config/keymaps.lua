@@ -558,9 +558,11 @@ return {
 		},
 		--conform
 		{
-			mode = "n",
+			mode = { "n", "v" },
 			"<leader>bf",
-			require("conform").format,
+			function()
+				require("conform").format({ async = false })
+			end,
 			description = "Format current buffer",
 		},
 		--latex
