@@ -115,19 +115,8 @@ return {
 	{
 		"kdheepak/lazygit.nvim",
 		event = "VeryLazy",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-		},
-	},
-	--toggleterm
-	{
-		"akinsho/toggleterm.nvim",
-		event = "VeryLazy",
-		version = "*",
-		config = true,
-		opts = { open_mapping = [[<c-\>]] },
-	},
-	--dressing.nvim
+		dependencies = { "nvim-lua/plenary.nvim" },
+	}, --toggleterm { "akinsho/toggleterm.nvim", event = "VeryLazy", version = "*", config = true, opts = { open_mapping = [[<c-\>]] }, }, dressing.nvim
 	{
 		"stevearc/dressing.nvim",
 		event = "VeryLazy",
@@ -136,10 +125,11 @@ return {
 				get_config = function(opts)
 					if opts.kind == "legendary.nvim" then
 						return {
-							-- backend = "builtin",
-							-- builtin = {
-							-- 	width = 0.5,
-							-- },
+							-- backend = "telescope",
+							-- telescope = require("telescope.themes").get_dropdown({
+							-- 	width = 200,
+							-- 	winblend = 80,
+							-- }),
 							backend = "telescope",
 							telescope = require("telescope.themes").get_ivy({}),
 						}
