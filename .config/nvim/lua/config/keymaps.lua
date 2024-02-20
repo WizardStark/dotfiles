@@ -569,11 +569,16 @@ return {
 			mode = { "n", "v" },
 			"<leader>fn",
 			function()
-				require("gitsigns").next_hunk()
-				require("gitsigns").select_hunk()
-				require("conform").format({ async = false })
+				local gitsigns = require("gitsigns")
+				for _ = 1, #gitsigns.get_hunks() do
+					vim.notify(tostring(_))
+					gitsigns.next_hunk()
+					gitsigns.select_hunk()
+					require("conform").format({ async = false })
+				end
+				gitsigns.next_hunk()
 			end,
-			description = "Format next hunk",
+			description = "Format all hunks",
 		},
 		--latex
 		{
