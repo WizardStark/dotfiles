@@ -29,7 +29,6 @@ return {
 						local hlGroup = chunk[2]
 						table.insert(newVirtText, { chunkText, hlGroup })
 						chunkWidth = vim.fn.strdisplaywidth(chunkText)
-						-- str width returned from truncate() may less than 2nd argument, need padding
 						if curWidth + chunkWidth < targetWidth then
 							suffix = suffix .. (" "):rep(targetWidth - curWidth - chunkWidth)
 						end
@@ -58,11 +57,7 @@ return {
 					},
 				},
 				provider_selector = function(filetype)
-					-- if you prefer treesitter provider rather than lsp,
-					-- return ftMap[filetype] or {'treesitter', 'indent'}
 					return ftMap[filetype]
-
-					-- refer to ./doc/example.lua for detail
 				end,
 				fold_virt_text_handler = handler,
 			})
@@ -85,7 +80,6 @@ return {
 		},
 		opts = {
 			lsp = {
-				-- override markdown rendering so that **cmp** and other plugins use **Treesitter**
 				progress = {
 					enabled = false,
 				},
@@ -100,7 +94,6 @@ return {
 				},
 			},
 			popupmenu = {
-				-- cmp-cmdline has more sources and can be extended
 				backend = "cmp", -- backend to use to show regular cmdline completions
 			},
 			presets = {
