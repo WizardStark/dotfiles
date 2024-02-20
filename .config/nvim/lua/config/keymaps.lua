@@ -571,7 +571,6 @@ return {
 			function()
 				local gitsigns = require("gitsigns")
 				for _ = 1, #gitsigns.get_hunks() do
-					vim.notify(tostring(_))
 					gitsigns.next_hunk()
 					gitsigns.select_hunk()
 					require("conform").format({ async = false })
@@ -599,6 +598,7 @@ return {
 			[[:VimtexTocOpen <CR>]],
 			description = "Latex open table of contents",
 		},
+
 		{
 			mode = "n",
 			"<leader>ln",
