@@ -116,7 +116,15 @@ return {
 		"kdheepak/lazygit.nvim",
 		event = "VeryLazy",
 		dependencies = { "nvim-lua/plenary.nvim" },
-	}, --toggleterm { "akinsho/toggleterm.nvim", event = "VeryLazy", version = "*", config = true, opts = { open_mapping = [[<c-\>]] }, }, dressing.nvim
+	}, --toggleterm
+	{
+		"akinsho/toggleterm.nvim",
+		event = "VeryLazy",
+		version = "*",
+		config = true,
+		opts = { open_mapping = [[<c-\>]] },
+	},
+	--dressing.nvim
 	{
 		"stevearc/dressing.nvim",
 		event = "VeryLazy",
