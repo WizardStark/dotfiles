@@ -145,5 +145,20 @@ return {
 		end,
 	},
 	--local
-	{ dir = "~/.config/lcl" },
+	{
+		dir = "~/.config/lcl",
+		event = "VeryLazy",
+		enabled = function()
+			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/init.lua"))
+			return ok
+		end,
+		config = function()
+			require("legendary").commands({
+				{
+					":Lazy reload lcl",
+					description = "Reload local plugin",
+				},
+			})
+		end,
+	},
 }

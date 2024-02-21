@@ -40,9 +40,5 @@ return {
 			":VimtexStopAll<CR>",
 			description = "Stop  all Latex compilation",
 		},
-		{
-			":lua LCL.reload()",
-			description = "Reload local config",
-		},
 	}),
 }
