@@ -144,4 +144,6 @@ return {
 			}
 		end,
 	},
+	--local
+	{ dir = "~/.config/lcl" },
 }
