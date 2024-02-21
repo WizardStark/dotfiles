@@ -142,7 +142,6 @@ return {
 				lualine_c = { "aerial" },
 			},
 			extensions = {
-				"nvim-tree",
 				"nvim-dap-ui",
 				"mason",
 				"aerial",

@@ -12,7 +12,7 @@ return {
 			"rcarriga/nvim-notify",
 			{
 				"nvim-telescope/telescope-fzf-native.nvim",
-				build = "gmake",
+				build = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build",
 			},
 			{
 				"nvim-telescope/telescope-live-grep-args.nvim",
@@ -50,7 +50,6 @@ return {
 						case_mode = "smart_case",
 					},
 					undo = {},
-					bookmarks = {},
 				},
 				pickers = {
 					find_files = {
@@ -61,31 +60,10 @@ return {
 
 			require("telescope").load_extension("fzf")
 			require("telescope").load_extension("live_grep_args")
-			require("telescope").load_extension("bookmarks")
 			require("telescope").load_extension("undo")
 			require("telescope").load_extension("notify")
 			require("telescope").load_extension("git_submodules")
 		end,
-	},
-	--nvim-tree
-	{
-		"nvim-tree/nvim-tree.lua",
-		event = "VeryLazy",
-		dependencies = {
-			"nvim-tree/nvim-web-devicons",
-		},
-		opts = {
-			sort_by = "case_sensitive",
-			view = {
-				width = 40,
-			},
-			renderer = {
-				group_empty = true,
-			},
-			filters = {
-				dotfiles = false,
-			},
-		},
 	},
 	--mini.files
 	{

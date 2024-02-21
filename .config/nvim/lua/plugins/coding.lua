@@ -2,6 +2,7 @@ return {
 	--git
 	{
 		"lewis6991/gitsigns.nvim",
+		lazy = true,
 		event = "VeryLazy",
 		opts = {
 			current_line_blame = true,
@@ -11,17 +12,10 @@ return {
 			},
 		},
 	},
-	{
-		"rhysd/git-messenger.vim",
-		event = "VeryLazy",
-		init = function()
-			vim.cmd([[ let g:git_messenger_floating_win_opts = { "border":"rounded" } ]])
-			vim.cmd([[ let g:git_messenger_always_into_popup = v:true ]])
-		end,
-	},
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",
+		lazy = true,
 		build = ":TSUpdate",
 		config = function()
 			local configs = require("nvim-treesitter.configs")
@@ -177,8 +171,9 @@ return {
 	--snippets
 	{
 		"mireq/luasnip-snippets",
+		event = "VeryLazy",
 		dependencies = { "L3MON4D3/LuaSnip" },
-		init = function()
+		config = function()
 			require("luasnip_snippets.common.snip_utils").setup()
 		end,
 	},

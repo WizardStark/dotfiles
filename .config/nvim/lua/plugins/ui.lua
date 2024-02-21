@@ -66,9 +66,16 @@ return {
 	--notify
 	{
 		"rcarriga/nvim-notify",
+		event = "VeryLazy",
 		opts = {
 			stages = "static",
 		},
+	},
+	--responsive rename
+	{
+		"smjonas/inc-rename.nvim",
+		event = "VeryLazy",
+		opts = {},
 	},
 	--cleaner UI
 	{
@@ -100,16 +107,11 @@ return {
 				bottom_search = true, -- use a classic bottom cmdline for search
 				command_palette = true, -- position the cmdline and popupmenu together
 				long_message_to_split = true, -- long messages will be sent to a split
-				inc_rename = false, -- enables an input dialog for inc-rename.nvim
+				inc_rename = true, -- enables an input dialog for inc-rename.nvim
 			},
 		},
 	},
-	--lazygit
-	{
-		"kdheepak/lazygit.nvim",
-		event = "VeryLazy",
-		dependencies = { "nvim-lua/plenary.nvim" },
-	}, --toggleterm
+	--toggleterm
 	{
 		"akinsho/toggleterm.nvim",
 		event = "VeryLazy",
@@ -142,6 +144,7 @@ return {
 	--markdown "rendering"
 	{
 		"lukas-reineke/headlines.nvim",
+		event = "VeryLazy",
 		dependencies = "nvim-treesitter/nvim-treesitter",
 		opts = {},
 	},

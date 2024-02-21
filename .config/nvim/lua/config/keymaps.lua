@@ -131,43 +131,6 @@ return {
 			end,
 			description = "Command palette",
 		},
-		--Bookmarks
-		{
-			mode = "n",
-			"ma",
-			require("bookmarks").bookmark_toggle,
-			description = "Toggle bookmark on current line",
-		},
-		{
-			mode = "n",
-			"mi",
-			require("bookmarks").bookmark_ann,
-			description = "Add or edit bookmark annotation",
-		},
-		{
-			mode = "n",
-			"mc",
-			require("bookmarks").bookmark_clean,
-			description = "Delete current buffer bookmarks",
-		},
-		{
-			mode = "n",
-			"mn",
-			require("bookmarks").bookmark_next,
-			description = "Go to next bookmark in buffer",
-		},
-		{
-			mode = "n",
-			"mp",
-			require("bookmarks").bookmark_prev,
-			description = "Go to previous bookmark in buffer",
-		},
-		{
-			mode = "n",
-			"ml",
-			require("bookmarks").bookmark_list,
-			description = "List files that have bookmarks",
-		},
 		--Telescope
 		{
 			mode = "n",
@@ -189,12 +152,6 @@ return {
 		},
 		{ mode = "n", "<leader>ff", require("telescope.builtin").find_files, description = "Find files" },
 		{ mode = "n", "<leader>b", require("telescope.builtin").buffers, description = "Show buffers" },
-		{
-			mode = "n",
-			"<leader>fm",
-			[[<Cmd>Telescope bookmarks list<CR>]],
-			description = "List all bookmarks in telescope",
-		},
 		{
 			mode = "n",
 			"<leader>fu",
@@ -292,20 +249,6 @@ return {
 			require("smart-splits").swap_buf_right,
 			description = "Swap buffer right",
 		},
-		--nvim-tree
-		{
-			mode = "n",
-			"<leader>n",
-			function()
-				require("nvim-tree.api").tree.toggle({
-					find_file = true,
-					focus = true,
-					path = "<arg>",
-					update_root = "<bang>",
-				})
-			end,
-			description = "Toggle file tree",
-		},
 		-- mini.files
 		{
 			mode = "n",
@@ -378,7 +321,6 @@ return {
 			description = "Toggle diagnostics window for loclist",
 		},
 		--git
-		{ mode = "n", "<leader>gg", "[[:LazyGit<CR>]]", description = "Open LazyGit" },
 		{
 			mode = "n",
 			"<leader>gd",
@@ -528,25 +470,6 @@ return {
 			require("alternate-toggler").toggleAlternate,
 			description = "Toggle booleans",
 		},
-		--multiple cursors
-		{
-			mode = { "n", "i" },
-			"<C-M-j>",
-			[[<Cmd>MultipleCursorsAddDown<CR>]],
-			description = "Add cursor downwards",
-		},
-		{
-			mode = { "n", "i" },
-			"<C-M-k>",
-			[[<Cmd>MultipleCursorsAddUp<CR>]],
-			description = "Add cursor upwards",
-		},
-		{
-			mode = { "n", "i" },
-			"<C-LeftMouse>",
-			[[<Cmd>MultipleCursorsMouseAddDelete<CR>]],
-			description = "Add cursor upwards",
-		},
 		--overseer
 		{ mode = "n", "<leader>r", [[:OverseerRun <CR>]], description = "Run task" },
 		-- URL handling
@@ -613,7 +536,7 @@ return {
 		{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration" },
 		{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help" },
 		{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition" },
-		{ mode = "n", "<F2>", vim.lsp.buf.rename, description = "Rename" },
+		{ mode = "n", "<F2>", ":IncRename ", description = "Rename" },
 		{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action" },
 		{
 			mode = "n",

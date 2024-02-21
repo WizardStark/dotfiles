@@ -33,13 +33,6 @@ return {
 			})
 		end,
 	},
-	--bookmarks
-	{
-		"tomasky/bookmarks.nvim",
-		opts = {
-			sign_priority = 8,
-		},
-	},
 	--tabout
 	{
 		"kawre/neotab.nvim",
@@ -53,12 +46,6 @@ return {
 		opts = {
 			useDefaultKeymaps = false,
 		},
-	},
-	--mutli-cursor
-	{
-		"brenton-leighton/multiple-cursors.nvim",
-		event = "VeryLazy",
-		opts = {},
 	},
 	--smart splits
 	{

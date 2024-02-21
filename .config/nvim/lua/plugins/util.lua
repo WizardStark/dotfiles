@@ -101,8 +101,6 @@ return {
 		priority = 1001,
 		opts = function()
 			local saved_terminal
-			local tree = require("nvim-tree.api").tree
-			local tree_open
 
 			return {
 				window = {
@@ -116,10 +114,6 @@ return {
 						local term = require("toggleterm.terminal")
 						local termid = term.get_focused_id()
 						saved_terminal = term.get(termid)
-						tree_open = tree.is_visible()
-						if tree_open then
-							tree.close()
-						end
 					end,
 					post_open = function(bufnr, winnr, ft, is_blocking)
 						if is_blocking and saved_terminal then
@@ -143,9 +137,6 @@ return {
 							if saved_terminal then
 								saved_terminal:open()
 								saved_terminal = nil
-							end
-							if tree_open then
-								tree.open({ find_file = true, focus = true, path = "<arg>", update_root = "<bang>" })
 							end
 						end)
 					end,

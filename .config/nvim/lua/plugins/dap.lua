@@ -2,6 +2,7 @@ return {
 	-- dap
 	{
 		"mfussenegger/nvim-dap",
+		event = "VeryLazy",
 		dependencies = {
 			"theHamsta/nvim-dap-virtual-text",
 			"rcarriga/nvim-dap-ui",
@@ -10,14 +11,17 @@ return {
 	},
 	{
 		"jay-babu/mason-nvim-dap.nvim",
+		event = "VeryLazy",
 		opts = {},
 	},
 	{
 		"theHamsta/nvim-dap-virtual-text",
+		event = "VeryLazy",
 		opts = {},
 	},
 	{
 		"rcarriga/nvim-dap-ui",
+		event = "VeryLazy",
 		config = function()
 			local dap = require("dap")
 			local dapui = require("dapui")
