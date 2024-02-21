@@ -21,20 +21,20 @@ require("lazy").setup({
 	ui = { border = "rounded" },
 })
 
-local function loadLCL()
-	local ok, lcl = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lcl.lua"))
-
-	if ok then
-		LCL = lcl
-	else
-		LCL = {}
-		vim.notify("No local config found")
-	end
-
-	LCL.reload = function()
-		vim.notify("Reloading local config")
-		loadLCL()
-	end
-end
-
-loadLCL()
+-- local function loadLCL()
+-- 	local ok, lcl = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lcl.lua"))
+--
+-- 	if ok then
+-- 		LCL = lcl
+-- 	else
+-- 		LCL = {}
+-- 		vim.notify("No local config found")
+-- 	end
+--
+-- 	LCL.reload = function()
+-- 		vim.notify("Reloading local config")
+-- 		loadLCL()
+-- 	end
+-- end
+--
+-- loadLCL()

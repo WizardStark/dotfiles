@@ -29,8 +29,7 @@ return {
 		--general
 		{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
 		{ mode = { "n", "v" }, "<leader>X", save_and_exit, description = "How to save and quit vim" },
-		{ mode = "i", "jf", "<esc>", description = "Exit insert mode" },
-		{ mode = "i", "jk", "<right>", description = "Move right one space" },
+		{ mode = "n", "<esc>", vim.cmd.w, description = "Write buffer" },
 		{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
 		{
 			mode = { "n", "v" },
@@ -209,6 +208,30 @@ return {
 			description = "Git commit history for current buffer",
 		},
 		{ mode = "i", "<C-r>", require("telescope.builtin").registers, description = "Show registers" },
+		{
+			mode = "n",
+			"<leader>bc",
+			function()
+				local cur_line = vim.api.nvim_win_get_cursor(0)[1]
+				local rel_filepath = vim.fn.expand("%p"):gsub(vim.fn.system("git rev-parse --show-toplevel"), "")
+				local command = "git blame -L " .. cur_line .. "," .. cur_line .. " -sl -- " .. rel_filepath
+				local commit = vim.fn.system(command):sub(1, vim.fn.system(command):find(" "))
+				vim.fn.system('git stash -m "nvim autostash" && git checkout ' .. commit)
+				vim.cmd(":e")
+				vim.notify("Checked out " .. commit)
+			end,
+			description = "Git checkout the commit that changed the current line",
+		},
+		{
+			mode = "n",
+			"<leader>bm",
+			function()
+				vim.fn.system("git checkout - && git stash pop")
+				vim.cmd(":e")
+				vim.notify("Checked out last git branch")
+			end,
+			description = "Git checkout previous branch",
+		},
 		--git
 		{
 			mode = "n",
@@ -235,6 +258,14 @@ return {
 				gitsigns.prev_hunk()
 			end,
 			description = "Go to previous git change/hunk",
+		},
+		{
+			mode = "n",
+			"<leader>gb",
+			function()
+				require("gitsigns").blame_line({ full = true })
+			end,
+			description = "Full commit message of last commit to change line",
 		},
 		--harpoon
 		{

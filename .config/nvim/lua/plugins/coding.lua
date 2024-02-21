@@ -10,6 +10,9 @@ return {
 				virt_text_pos = "right_align",
 				delay = 500,
 			},
+			preview_config = {
+				border = "rounded",
+			},
 		},
 	},
 	--treesitter
