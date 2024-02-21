@@ -194,6 +194,12 @@ return {
 			require("telescope.builtin").resume,
 			description = "Resume last telescope search",
 		},
+		{
+			mode = "n",
+			"<leader>f/",
+			require("telescope.builtin").current_buffer_fuzzy_find,
+			description = "Fuzzy find in current buffer",
+		},
 		{ mode = "n", "<leader>gs", require("telescope.builtin").git_status, description = "Git status" },
 		{ mode = "n", "<leader>gh", require("telescope.builtin").git_commits, description = "Git commit history" },
 		{
@@ -203,6 +209,33 @@ return {
 			description = "Git commit history for current buffer",
 		},
 		{ mode = "i", "<C-r>", require("telescope.builtin").registers, description = "Show registers" },
+		--git
+		{
+			mode = "n",
+			"<leader>gd",
+			"[[:Gitsigns diffthis<CR>]]",
+			description = "Git diff of uncommitted changes",
+		},
+		{
+			mode = { "n", "i" },
+			"<C-n>",
+			function()
+				local gitsigns = require("gitsigns")
+				gitsigns.preview_hunk_inline()
+				gitsigns.next_hunk()
+			end,
+			description = "Go to next git change/hunk",
+		},
+		{
+			mode = { "n", "i" },
+			"<C-p>",
+			function()
+				local gitsigns = require("gitsigns")
+				gitsigns.preview_hunk_inline()
+				gitsigns.prev_hunk()
+			end,
+			description = "Go to previous git change/hunk",
+		},
 		--harpoon
 		{
 			mode = "n",
@@ -319,34 +352,6 @@ return {
 				require("trouble").toggle("loclist")
 			end,
 			description = "Toggle diagnostics window for loclist",
-		},
-		--git
-		{
-			mode = "n",
-			"<leader>gd",
-			"[[:Gitsigns diffthis<CR>]]",
-			description = "Git diff of uncommitted changes",
-		},
-		{
-			mode = { "n", "i" },
-			"<C-n>",
-			function()
-				local gitsigns = require("gitsigns")
-				gitsigns.preview_hunk_inline()
-				gitsigns.next_hunk()
-			end,
-			description = "Go to next git change/hunk",
-		},
-
-		{
-			mode = { "n", "i" },
-			"<C-p>",
-			function()
-				local gitsigns = require("gitsigns")
-				gitsigns.preview_hunk_inline()
-				gitsigns.prev_hunk()
-			end,
-			description = "Go to previous git change/hunk",
 		},
 		--comment keybinds
 		{
