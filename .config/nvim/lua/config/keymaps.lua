@@ -216,7 +216,7 @@ return {
 				local rel_filepath = vim.fn.expand("%p"):gsub(vim.fn.system("git rev-parse --show-toplevel"), "")
 				local command = "git blame -L " .. cur_line .. "," .. cur_line .. " -sl -- " .. rel_filepath
 				local commit = vim.fn.system(command):sub(1, vim.fn.system(command):find(" "))
-				vim.fn.system('git stash -m "nvim autostash" && git checkout ' .. commit)
+				vim.fn.system('git stash -m "nvim autostash" && git checkout ' .. commit .. " && git reset HEAD~1")
 				vim.cmd(":e")
 				vim.notify("Checked out " .. commit)
 			end,
@@ -226,9 +226,14 @@ return {
 			mode = "n",
 			"<leader>bm",
 			function()
-				vim.fn.system("git checkout - && git stash pop")
-				vim.cmd(":e")
-				vim.notify("Checked out last git branch")
+				local branch = vim.fn.system("git branch --show-current")
+				if branch ~= "" then
+					vim.fn.system("git reset --hard HEAD && git checkout - && git stash pop")
+					vim.cmd(":e")
+					vim.notify("Checked out last git branch")
+				else
+					vim.notify("Not in detached HEAD state, risk of resetting local changes")
+				end
 			end,
 			description = "Git checkout previous branch",
 		},
