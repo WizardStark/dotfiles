@@ -594,7 +594,15 @@ return {
 		{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration" },
 		{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help" },
 		{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition" },
-		{ mode = "n", "<F2>", ":IncRename ", description = "Rename" },
+		{
+			mode = "n",
+			"<F2>",
+			function()
+				return ":IncRename " .. vim.fn.expand("<cword>")
+			end,
+			opts = { expr = true },
+			description = "Rename",
+		},
 		{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action" },
 		{
 			mode = "n",
