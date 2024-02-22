@@ -24,6 +24,11 @@ local function save_and_exit()
 	vim.cmd.xa()
 end
 
+local function is_detached_head()
+	return vim.fn.system("git branch --show-current") == ""
+end
+
+local original_branch = nil
 return {
 	require("legendary").keymaps({
 		--general
@@ -216,7 +221,14 @@ return {
 				local rel_filepath = vim.fn.expand("%p"):gsub(vim.fn.system("git rev-parse --show-toplevel"), "")
 				local command = "git blame -L " .. cur_line .. "," .. cur_line .. " -sl -- " .. rel_filepath
 				local commit = vim.fn.system(command):sub(1, vim.fn.system(command):find(" "))
-				vim.fn.system('git stash -m "nvim autostash" && git checkout ' .. commit .. " && git reset HEAD~1")
+				if not is_detached_head() then
+					original_branch = vim.fn
+						.system("git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'")
+						:gsub("^%s*(.-)%s*$", "%1")
+					vim.fn.system('git stash -m "nvim autostash" && git checkout ' .. commit .. " && git reset HEAD~1")
+				else
+					vim.fn.system("git reset --hard HEAD && git checkout " .. commit .. " && git reset HEAD~1")
+				end
 				vim.cmd(":e")
 				vim.notify("Checked out " .. commit)
 			end,
@@ -226,11 +238,16 @@ return {
 			mode = "n",
 			"<leader>bm",
 			function()
-				local branch = vim.fn.system("git branch --show-current")
-				if branch ~= "" then
-					vim.fn.system("git reset --hard HEAD && git checkout - && git stash pop")
+				if is_detached_head() then
+					vim.notify(
+						"git reset --hard HEAD && git checkout " .. original_branch .. " --force && git stash pop"
+					)
+					vim.fn.system(
+						"git reset --hard HEAD && git checkout " .. original_branch .. " --force && git stash pop"
+					)
 					vim.cmd(":e")
-					vim.notify("Checked out last git branch")
+					vim.notify("Checked out " .. original_branch)
+					original_branch = nil
 				else
 					vim.notify("Not in detached HEAD state, risk of resetting local changes")
 				end
