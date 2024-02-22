@@ -239,9 +239,6 @@ return {
 			"<leader>bm",
 			function()
 				if is_detached_head() then
-					vim.notify(
-						"git reset --hard HEAD && git checkout " .. original_branch .. " --force && git stash pop"
-					)
 					vim.fn.system(
 						"git reset --hard HEAD && git checkout " .. original_branch .. " --force && git stash pop"
 					)
