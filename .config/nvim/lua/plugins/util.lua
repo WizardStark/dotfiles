@@ -91,6 +91,9 @@ return {
 		config = function()
 			require("legendary").setup({
 				select_prompt = " Command palette",
+				sort = {
+					frecency = false,
+				},
 			})
 		end,
 	},
