@@ -34,7 +34,7 @@ return {
 		--general
 		{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
 		{ mode = { "n", "v" }, "<leader>X", save_and_exit, description = "How to save and quit vim" },
-		{ mode = "n", "<esc>", vim.cmd.w, description = "Write buffer" },
+		{ mode = "n", "<esc>", vim.cmd.up, description = "Write buffer" },
 		{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
 		{
 			mode = { "n", "v" },
