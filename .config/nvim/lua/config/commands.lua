@@ -25,6 +25,10 @@ return {
 			description = "Git reset buffer",
 		},
 		{
+			":Gitsigns undo_stage_hunk<CR>",
+			description = "Git undo stage hunk",
+		},
+		{
 			":VimtexStop<CR>",
 			description = "Stop Latex compilation",
 		},
