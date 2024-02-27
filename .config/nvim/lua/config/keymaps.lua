@@ -70,7 +70,7 @@ return {
 			"<C-^>",
 			description = "Alternate file",
 		},
-		{ mode = { "n", "v", "i" }, "<C-s>", [[<CMD>w <CR>]], description = "Save file" },
+		{ mode = { "n", "v", "i" }, "<C-s>", vim.cmd.up , description = "Save file" },
 		{
 			mode = "v",
 			"<M-j>",
