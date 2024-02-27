@@ -252,6 +252,7 @@ return {
 				lua = { "stylua" },
 				python = { "usort", "black" },
 				java = { "checkstyle" },
+				kotlin = { "ktlint" },
 				javascript = { { "prettierd", "prettier" } },
 				javascriptreact = { { "prettierd", "prettier" } },
 				typescript = { { "prettierd", "prettier" } },
