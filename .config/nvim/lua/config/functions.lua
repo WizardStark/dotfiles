@@ -25,5 +25,22 @@ return {
 			end,
 			description = "Edit local config",
 		},
+        -- Git
+        {
+            function()
+                require("gitsigns").stage_hunk(
+                    require("utils").get_visual_selection_lines()
+                )
+            end,
+			description = "Git stage visual selection",
+        },
+        {
+            function()
+                require("gitsigns").reset_hunk(
+                    require("utils").get_visual_selection_lines()
+                )
+            end,
+			description = "Git reset visual selection",
+        }
 	}),
 }

@@ -17,16 +17,8 @@ return {
 			description = "Show commit message for current line",
 		},
 		{
-			":Gitsigns stage_hunk<CR>",
-			description = "Git stage visual selection",
-		},
-		{
 			":Gitsigns stage_buffer<CR>",
 			description = "Git stage buffer",
-		},
-		{
-			":Gitsigns reset_hunk<CR>",
-			description = "Git reset visual selection",
 		},
 		{
 			":Gitsigns reset_buffer<CR>",
