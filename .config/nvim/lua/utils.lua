@@ -1,6 +1,6 @@
 local M = {}
 
-M.get_visual_selection_lines = function()
+function M.get_visual_selection_lines()
     local vstart = vim.fn.getpos("'<")
     local vend = vim.fn.getpos("'>")
 
