@@ -87,5 +87,11 @@ return {
 				end,
 			},
 		},
+		{
+			"BufWritePost",
+			function()
+				require("lint").try_lint()
+			end,
+		},
 	}),
 }

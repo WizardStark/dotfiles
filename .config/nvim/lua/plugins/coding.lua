@@ -277,6 +277,19 @@ return {
 			vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 		end,
 	},
+    -- lint
+    {
+        "mfussenegger/nvim-lint",
+		event = { "BufWritePre" },
+        init = function()
+            require('lint').linters_by_ft = {
+              	javascript = { "eslint" },
+				javascriptreact = { "eslint" },
+				typescript = { "eslint" },
+				typescriptreact = { "eslint" },
+            }
+        end
+    },
 	--latex
 	{
 		"lervag/vimtex",
