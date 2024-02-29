@@ -94,6 +94,7 @@ return {
 				sort = {
 					frecency = false,
 				},
+                log_level = 'debug'
 			})
 		end,
 	},

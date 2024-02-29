@@ -48,35 +48,36 @@ return {
 			"mzJ`z",
 			description = "Join lines while maintaining cursor position",
 		},
-		{ mode = "n", "<C-d>", "<C-d>zz", description = "Down half page and centre" },
-		{ mode = "n", "<C-u>", "<C-u>zz", description = "Up half page and centre" },
-		{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" },
+		{ mode = "n", "<C-d>", "<C-d>zz", description = "Down half page and centre" }, -- Movement
+		{ mode = "n", "<C-u>", "<C-u>zz", description = "Up half page and centre" }, -- Movement 
+		{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" }, -- Movement 
+        
 		{
 			mode = "n",
 			"N",
 			"Nzzzv",
 			description = "Previous occurrence and centre",
 		},
-		{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" },
+		{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" }, --Kirby
 		{
 			mode = "v",
 			"<leader>uo",
-			[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]],
+			[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]], --Code Util
 			description = "Format one line per sentence",
 		},
 		{
 			mode = "n",
 			"<leader>q",
 			"<C-^>",
-			description = "Alternate file",
+			description = "Alternate file", -- Navigation
 		},
 		{ mode = { "n", "v", "i" }, "<C-s>", vim.cmd.up , description = "Save file" },
 		{
 			mode = "v",
-			"<M-j>",
-			":m '>+1<CR>gv=gv",
-			description = "Move line down",
-		},
+            "<M-j>",
+            ":m '>+1<CR>gv=gv",
+            description = "Move line down", -- beslis misc (Alex 2024), maar tegnies n code util (Alex, 2 minute later)
+        },
 		{
 			mode = "v",
 			"<M-k>",
@@ -85,7 +86,7 @@ return {
 		},
 		{
 			mode = "v",
-			"<M-h>",
+            "<M-h>",
 			"<gv",
 			description = "Move line left",
 		},
