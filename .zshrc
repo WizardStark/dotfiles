@@ -24,7 +24,8 @@ plugins=(git
   zsh-syntax-highlighting
   zsh-autosuggestions
   sudo
-  fzf)
+  fzf
+  ssh-agent)
 
 source $ZSH/oh-my-zsh.sh
 export EDITOR='nvim'
