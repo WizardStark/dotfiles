@@ -52,7 +52,7 @@ return {
 		event = "VeryLazy",
 		opts = {
 			strategy = { "toggleterm" },
-			templates = { "builtin", "user.py_run" },
+			templates = { "builtin", "user.py_run", "user.go_run" },
 		},
 	},
 	--snippet creation
