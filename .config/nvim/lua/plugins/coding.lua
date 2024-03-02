@@ -283,7 +283,7 @@ return {
 				yml = { "yamlfmt" },
 				yaml = { "yamlfmt" },
 			},
-			format_on_save = false,
+			format_on_save = true,
 			formatters = {
 				shfmt = {
 					prepend_args = { "-i", "2" },
