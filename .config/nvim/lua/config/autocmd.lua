@@ -47,7 +47,7 @@ return {
 			{
 				"VimLeavePre",
 				function()
-					if string.find(vim.fn.expand("%:p"), vim.fn.getcwd(), 1, true) then
+					if vim.fn.expand("%:p"):find(vim.fn.getcwd(), 1, true) then
 						local buflist = vim.api.nvim_list_bufs()
 						for _, bufnr in ipairs(buflist) do
 							if vim.bo[bufnr].bt == "terminal" then

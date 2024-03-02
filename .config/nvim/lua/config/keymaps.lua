@@ -309,6 +309,8 @@ return {
 		{ mode = "n", "<C-j>", require("smart-splits").move_cursor_down, description = "Move cursor down" },
 		{ mode = "n", "<C-k>", require("smart-splits").move_cursor_up, description = "Move cursor up" },
 		{ mode = "n", "<C-l>", require("smart-splits").move_cursor_right, description = "Move cursor right" },
+		{ mode = "n", "<A-n>", vim.cmd.tabnext, description = "Go to next tab" },
+		{ mode = "n", "<A-p>", vim.cmd.tabprevious, description = "Go to previous tab" },
 		{
 			mode = "n",
 			"<leader><C-h>",
