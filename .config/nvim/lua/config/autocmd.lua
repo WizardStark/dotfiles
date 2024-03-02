@@ -27,6 +27,16 @@ return {
 			end,
 		},
 		{
+			"BufWinEnter",
+			opts = {
+				pattern = "term",
+			},
+			function()
+				vim.opt_local.number = false
+				vim.opt_local.relativenumber = false
+			end,
+		},
+		{
 			name = "UserSessionManager",
 			clear = true,
 			{
