@@ -138,6 +138,15 @@ return {
 			}
 		end,
 	},
+    --paren-hint
+    {
+        "briangwaltney/paren-hint.nvim",
+        event = "VeryLazy",
+        dependencies = {
+            "nvim-treesitter/nvim-treesitter",
+        },
+        opts = {}
+    },
 	--local
 	{
 		dir = "~/.config/lcl",
