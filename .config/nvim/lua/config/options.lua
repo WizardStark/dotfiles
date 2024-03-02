@@ -21,7 +21,7 @@ opt.wildmode = "longest,list"
 opt.cursorline = true
 opt.ttyfast = true
 opt.laststatus = 2
-opt.pumheight = 20
+opt.pumheight = 10
 opt.signcolumn = "yes"
 opt.updatetime = 100
 opt.fillchars = { eob = " " }

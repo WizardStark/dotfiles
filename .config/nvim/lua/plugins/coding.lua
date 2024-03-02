@@ -127,8 +127,8 @@ return {
 					completion = window_scroll_bordered,
 				},
 				sources = cmp.config.sources({
-					{ name = "nvim_lsp", max_item_count = 5 },
-					{ name = "luasnip", max_item_count = 8 },
+					{ name = "nvim_lsp"},
+					{ name = "luasnip"},
 					{ name = "calc" },
 					{ name = "nvim_lsp_signature_help" },
 				}, {
