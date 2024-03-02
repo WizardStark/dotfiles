@@ -33,9 +33,6 @@ opt.swapfile = false
 opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 
 if vim.g.neovide then
-    vim.o.guifont = "Hack Nerd Font Mono:h12"
-    vim.g.neovide_cursor_trail_size = 0.2
-    vim.g.neovide_cursor_vfx_mode = "pixiedust"
 end
 
 return {}
