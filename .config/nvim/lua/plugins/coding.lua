@@ -105,6 +105,22 @@ return {
 				end
 			end
 
+            local function down(fallback)
+                if cmp.visible() then
+                    cmp.select_next_item()
+                else
+                    fallback()
+                end
+            end
+
+            local function up(fallback)
+                if cmp.visible() then
+                    cmp.select_prev_item()
+                else
+                    fallback()
+                end
+            end
+
 			cmp.setup({
 				snippet = {
 					expand = function(args)
@@ -121,6 +137,8 @@ return {
 					["<CR>"] = cmp.mapping.confirm({
 						select = false,
 					}),
+                    ["<Up>"] = cmp.mapping(up, {"i","s"}),
+                    ["<Down>"] = cmp.mapping(down, {"i","s"}),
 				},
 				window = {
 					documentation = window_scroll_bordered,
