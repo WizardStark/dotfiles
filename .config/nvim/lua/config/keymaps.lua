@@ -49,9 +49,9 @@ return {
 			description = "Join lines while maintaining cursor position",
 		},
 		{ mode = "n", "<C-d>", "<C-d>zz", description = "Down half page and centre" }, -- Movement
-		{ mode = "n", "<C-u>", "<C-u>zz", description = "Up half page and centre" }, -- Movement 
-		{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" }, -- Movement 
-        
+		{ mode = "n", "<C-u>", "<C-u>zz", description = "Up half page and centre" }, -- Movement
+		{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" }, -- Movement
+
 		{
 			mode = "n",
 			"N",
@@ -71,13 +71,13 @@ return {
 			"<C-^>",
 			description = "Alternate file", -- Navigation
 		},
-		{ mode = { "n", "v", "i" }, "<C-s>", vim.cmd.up , description = "Save file" },
+		{ mode = { "n", "v", "i" }, "<C-s>", vim.cmd.up, description = "Save file" },
 		{
 			mode = "v",
-            "<M-j>",
-            ":m '>+1<CR>gv=gv",
-            description = "Move line down", -- beslis misc (Alex 2024), maar tegnies n code util (Alex, 2 minute later)
-        },
+			"<M-j>",
+			":m '>+1<CR>gv=gv",
+			description = "Move line down", -- beslis misc (Alex 2024), maar tegnies n code util (Alex, 2 minute later)
+		},
 		{
 			mode = "v",
 			"<M-k>",
@@ -86,7 +86,7 @@ return {
 		},
 		{
 			mode = "v",
-            "<M-h>",
+			"<M-h>",
 			"<gv",
 			description = "Move line left",
 		},
@@ -673,35 +673,6 @@ return {
 			[[<C-\><C-n>]],
 			{ buffer = 0 },
 			description = "Exit insert mode in terminal",
-		},
-		{ mode = "t", "jf", [[<C-\><C-n>]], { buffer = 0 }, description = "Exit insert mode in terminal" },
-		{
-			mode = "t",
-			"<C-h>",
-			[[<Cmd>wincmd h<CR>]],
-			{ buffer = 0 },
-			description = "Move left from terminal",
-		},
-		{
-			mode = "t",
-			"<C-j>",
-			[[<Cmd>wincmd j<CR>]],
-			{ buffer = 0 },
-			description = "Move down from terminal",
-		},
-		{
-			mode = "t",
-			"<C-k>",
-			[[<Cmd>wincmd k<CR>]],
-			{ buffer = 0 },
-			description = "Move up from terminal",
-		},
-		{
-			mode = "t",
-			"<C-l>",
-			[[<Cmd>wincmd l<CR>]],
-			{ buffer = 0 },
-			description = "Move right from terminal",
 		},
 		{
 			mode = "n",
