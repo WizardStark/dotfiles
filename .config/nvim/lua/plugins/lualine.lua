@@ -117,11 +117,7 @@ return {
 			sections = {
 				lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
-				lualine_c = {
-					{ getWords, cond = is_text_file },
-					{ "filename", path = 1, cond = is_not_toggleterm },
-					"aerial",
-				},
+				lualine_c = { { getWords, cond = is_text_file }, { "filename", cond = is_not_toggleterm }, "aerial" },
 				lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 				lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
 				lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
@@ -138,17 +134,8 @@ return {
 				lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
 				lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 			},
-			tabline = {
-				lualine_a = {
-					{
-						"tabs",
-						mode = 2,
-					},
-				},
-			},
-			inactive_tabline = {
-				lualine_a = { { "tabs", mode = 2 } },
-			},
+			tabline = {},
+			inactive_tabline = {},
 			winbar = {},
 			inactive_winbar = {},
 			extensions = {
@@ -157,7 +144,6 @@ return {
 				"aerial",
 				"lazy",
 				"trouble",
-				"mason",
 			},
 		},
 	},

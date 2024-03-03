@@ -93,5 +93,11 @@ return {
 				require("lint").try_lint()
 			end,
 		},
+		{
+			"VimEnter",
+			function()
+				require("tabline").load_instances()
+			end,
+		},
 	}),
 }
