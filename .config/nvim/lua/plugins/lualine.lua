@@ -157,6 +157,7 @@ return {
 				"aerial",
 				"lazy",
 				"trouble",
+				"mason",
 			},
 		},
 	},

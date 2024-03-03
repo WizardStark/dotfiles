@@ -287,18 +287,24 @@ return {
 			end,
 			description = "Full commit message of last commit to change line",
 		},
-		--harpoon
+		--grapple
 		{
 			mode = "n",
 			"<leader>a",
-			require("harpoon.mark").add_file,
-			description = "Add file to harpoon",
+			require("grapple").toggle,
+			description = "Toggle file in grapple",
 		},
 		{
 			mode = "n",
 			"<leader>t",
-			require("harpoon.ui").toggle_quick_menu,
-			description = "Toggle harpoon ui",
+			require("grapple").toggle_tags,
+			description = "Toggle grapple window",
+		},
+		{
+			mode = "n",
+			"<leader>ac",
+			require("grapple").reset,
+			description = "Clear grapple tags for current scope",
 		},
 		--smart splits
 		{ mode = "n", "<A-h>", require("smart-splits").resize_left, description = "Resize left" },

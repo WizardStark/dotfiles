@@ -93,14 +93,15 @@ return {
 			},
 		},
 	},
-	--harpoon
+	--grapple
 	{
-		"ThePrimeagen/harpoon",
+		"cbochs/grapple.nvim",
 		event = "VeryLazy",
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+		},
 		opts = {
-			global_settings = {
-				mark_branch = true,
-			},
+			scope = "git_branch",
 		},
 	},
 }

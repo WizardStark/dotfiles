@@ -67,7 +67,7 @@ return {
 	{
 		"rcarriga/nvim-notify",
 		event = "VeryLazy",
-		opts = { },
+		opts = {},
 	},
 	--responsive rename
 	{
@@ -126,11 +126,6 @@ return {
 				get_config = function(opts)
 					if opts.kind == "legendary.nvim" then
 						return {
-							-- backend = "telescope",
-							-- telescope = require("telescope.themes").get_dropdown({
-							-- 	width = 200,
-							-- 	winblend = 80,
-							-- }),
 							backend = "telescope",
 							telescope = require("telescope.themes").get_ivy({}),
 						}

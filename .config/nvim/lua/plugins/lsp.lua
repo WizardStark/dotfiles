@@ -54,8 +54,6 @@ return {
 					"jdtls",
 				},
 			})
-			--test
-
 			mason_lspconfig.setup_handlers({
 				function(server_name)
 					lspconfig[server_name].setup({
@@ -75,13 +73,8 @@ return {
 						library = { plugins = { "neotest" }, types = true },
 					})
 					lspconfig.lua_ls.setup({
-						settings = {
-							Lua = {
-								diagnostics = {
-									globals = { "vim" },
-								},
-							},
-						},
+						capabilities = lsp_capabilities,
+						handlers = handlers,
 					})
 				end,
 			})
