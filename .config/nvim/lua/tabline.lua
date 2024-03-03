@@ -262,7 +262,9 @@ function M.previous_session()
 	M.switch_session(current_instance.sessions[current_session_index].name)
 end
 
-function M.switch_instance(name)
+---@param name string
+---@param session_name string | nil Session to switch to after switching instances. If nil it will use the current_session
+function M.switch_instance(name, session_name)
 	local switch_instance = find_instance(name)
 
 	if switch_instance == nil then
@@ -277,14 +279,23 @@ function M.switch_instance(name)
 	vim.cmd.wa()
 	vim.cmd("%bd!")
 
-	if #switch_instance.sessions > 0 and switch_instance.current_session ~= nil then
-		local session = find_session(switch_instance, switch_instance.current_session)
+	if session_name == nil then
+		if #switch_instance.sessions > 0 and switch_instance.current_session ~= nil then
+			local session = find_session(switch_instance, switch_instance.current_session)
+			if session ~= nil then
+				vim.cmd.cd(session.dir)
+				require("session_manager").load_current_dir_session()
+			end
+		else
+			vim.cmd.cd("~")
+		end
+	else
+		local session = find_session(switch_instance, session_name)
 		if session ~= nil then
+			current_instance.current_session = session_name
 			vim.cmd.cd(session.dir)
 			require("session_manager").load_current_dir_session()
 		end
-	else
-		vim.cmd.cd("~")
 	end
 
 	setup_lualine()
@@ -443,8 +454,7 @@ local session_picker = function(opts)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
-					M.switch_instance(selection.value.instance)
-					M.switch_session(selection.value.session)
+					M.switch_instance(selection.value.instance, selection.value.session)
 				end)
 				return true
 			end,
