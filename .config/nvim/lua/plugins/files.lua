@@ -102,6 +102,9 @@ return {
 		},
 		opts = {
 			scope = "git_branch",
+			win_opts = {
+				border = "rounded",
+			},
 		},
 	},
 }
