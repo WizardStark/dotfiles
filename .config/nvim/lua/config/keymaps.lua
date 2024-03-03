@@ -625,12 +625,6 @@ return {
 		},
 		{
 			mode = "n",
-			"<leader>ssd",
-			[[:SessionManager delete_session<CR>]],
-			description = "Delete session for selected directory",
-		},
-		{
-			mode = "n",
 			"<leader>sl",
 			[[:SessionManager load_session<CR>]],
 			description = "Load session for selected directory",
