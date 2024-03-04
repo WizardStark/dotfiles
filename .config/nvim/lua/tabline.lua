@@ -377,6 +377,8 @@ function M.switch_instance(name, session_name)
 		if #switch_instance.sessions > 0 and switch_instance.current_session ~= nil then
 			local session = find_session(switch_instance, switch_instance.current_session)
 			if session ~= nil then
+				current_instance.last_session = current_instance.current_session
+				current_instance.current_session = session.name
 				vim.cmd.cd(session.dir)
 				require("session_manager").load_current_dir_session()
 				set_session_metadata(session)
@@ -387,6 +389,7 @@ function M.switch_instance(name, session_name)
 	else
 		local session = find_session(switch_instance, session_name)
 		if session ~= nil then
+			current_instance.last_session = current_instance.current_session
 			current_instance.current_session = session_name
 			vim.cmd.cd(session.dir)
 			require("session_manager").load_current_dir_session()
@@ -465,6 +468,10 @@ function M.load_instances()
 
 	instances = instance_data.instances
 	current_instance = find_instance(instance_data.current_instance)
+
+	if current_instance ~= nil then
+		_, current_session_index = find_session(current_instance, current_instance.current_session)
+	end
 
 	if should_persist then
 		M.persist_instances()
