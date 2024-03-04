@@ -2,10 +2,10 @@ return {
 	require("legendary").funcs({
 		{
 			function()
-				local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/init.lua"))
+				local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
 				if not ok then
 					vim.fn.system(
-						"mkdir -p ~/.config/lcl && touch ~/.config/lcl/init.lua && echo M={} return M >> ~/.config/lcl/init.lua"
+						"mkdir -p ~/.config/lcl/lua && touch ~/.config/lcl/lua/init.lua && echo M={} return M >> ~/.config/lcl/lua/init.lua"
 					)
 					vim.notify("Please close and reopen vim")
 				else
@@ -16,31 +16,27 @@ return {
 		},
 		{
 			function()
-				local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/init.lua"))
+				local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
 				if not ok then
-					vim.cmd.e("~/.config/lcl/init.lua")
+					vim.cmd.e("~/.config/lcl/lua/init.lua")
 				else
 					vim.notify("Local config does not exist")
 				end
 			end,
 			description = "Edit local config",
 		},
-        -- Git
-        {
-            function()
-                require("gitsigns").stage_hunk(
-                    require("utils").get_visual_selection_lines()
-                )
-            end,
+		-- Git
+		{
+			function()
+				require("gitsigns").stage_hunk(require("utils").get_visual_selection_lines())
+			end,
 			description = "Git stage visual selection",
-        },
-        {
-            function()
-                require("gitsigns").reset_hunk(
-                    require("utils").get_visual_selection_lines()
-                )
-            end,
+		},
+		{
+			function()
+				require("gitsigns").reset_hunk(require("utils").get_visual_selection_lines())
+			end,
 			description = "Git reset visual selection",
-        }
+		},
 	}),
 }

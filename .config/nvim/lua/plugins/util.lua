@@ -93,7 +93,7 @@ return {
 				sort = {
 					frecency = false,
 				},
-                log_level = 'debug'
+				log_level = "debug",
 			})
 		end,
 	},
@@ -137,21 +137,21 @@ return {
 			}
 		end,
 	},
-    --paren-hint
-    {
-        "briangwaltney/paren-hint.nvim",
-        event = "VeryLazy",
-        dependencies = {
-            "nvim-treesitter/nvim-treesitter",
-        },
-        opts = {}
-    },
+	--paren-hint
+	{
+		"briangwaltney/paren-hint.nvim",
+		event = "VeryLazy",
+		dependencies = {
+			"nvim-treesitter/nvim-treesitter",
+		},
+		opts = {},
+	},
 	--local
 	{
 		dir = "~/.config/lcl",
 		event = "VeryLazy",
 		enabled = function()
-			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/init.lua"))
+			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
 			return ok
 		end,
 		config = function()
