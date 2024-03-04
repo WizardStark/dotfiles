@@ -4,11 +4,13 @@ local M = {}
 ---@field name string
 ---@field sessions Session[]
 ---@field current_session string
----@field last_session string
+---@field last_session string | nil
 --
 ---@class Session
 ---@field name string
 ---@field dir string
+---@field last_file string | nil
+---@field last_file_line number | nil
 
 ---@type Instance[]
 local instances = {}
@@ -19,11 +21,6 @@ local current_instance = nil
 local last_instance = nil
 
 local current_session_index = -1
-
--- ---@type Session | nil
--- local current_session = nil
--- ---@type Session | nil
--- local last_session = nil
 
 ---@type string
 local instances_path = vim.fn.stdpath("data") .. "/instances/"
@@ -115,6 +112,18 @@ local function verify_instance_name(name)
 	end
 
 	return true
+end
+
+---Sets session metadata such as last file and line num
+---@param session Session
+local function set_session_metadata(session)
+	local buf_path = vim.fn.expand("%:p")
+	---@cast buf_path string:
+
+	if buf_path ~= "" and Path:new(buf_path):exists() then
+		session.last_file_line = unpack(vim.fn.getcurpos(), 2, 2)
+		session.last_file = buf_path
+	end
 end
 
 function M.rename_current_session(name)
@@ -274,6 +283,12 @@ function M.switch_session(name)
 		return
 	end
 
+	local current_session, _ = find_session(current_instance, current_instance.current_session)
+
+	if current_session ~= nil then
+		set_session_metadata(current_session)
+	end
+
 	local switch_session, i = find_session(current_instance, name)
 
 	if switch_session == nil then
@@ -290,6 +305,8 @@ function M.switch_session(name)
 	vim.cmd("%bd!")
 	vim.cmd.cd(switch_session.dir)
 	require("session_manager").load_current_dir_session()
+
+	set_session_metadata(switch_session)
 
 	setup_lualine()
 
@@ -369,6 +386,8 @@ function M.switch_instance(name, session_name)
 			current_instance.current_session = session_name
 			vim.cmd.cd(session.dir)
 			require("session_manager").load_current_dir_session()
+
+			set_session_metadata(session)
 		end
 	end
 
@@ -460,6 +479,7 @@ end
 
 local pickers = require("telescope.pickers")
 local finders = require("telescope.finders")
+local previewers = require("telescope.previewers")
 local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
@@ -498,15 +518,26 @@ local session_picker = function(opts)
 
 	local results = {}
 
+	local previewer = conf.grep_previewer(opts)
+
 	for _, instance in ipairs(instances) do
 		for _, session in ipairs(instance.sessions) do
 			table.insert(results, {
 				display = instance.name .. ": " .. session.name,
 				value = {
 					instance = instance.name,
-					session = session.name,
+					session = session,
 				},
 			})
+		end
+	end
+
+	-- Update current session metadata so it displays correctly
+	if current_instance ~= nil then
+		local current_session = find_session(current_instance, current_instance.current_session)
+
+		if current_session ~= nil then
+			set_session_metadata(current_session)
 		end
 	end
 
@@ -520,15 +551,18 @@ local session_picker = function(opts)
 						value = entry.value,
 						display = entry.display,
 						ordinal = entry.display,
+						path = entry.value.session.last_file or "No last file",
+						lnum = entry.value.session.last_file_line or nil,
 					}
 				end,
 			}),
+			previewer = previewer,
 			sorter = conf.generic_sorter(opts),
 			attach_mappings = function(prompt_bufnr)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
-					M.switch_instance(selection.value.instance, selection.value.session)
+					M.switch_instance(selection.value.instance, selection.value.session.name)
 				end)
 				return true
 			end,
@@ -581,6 +615,25 @@ require("legendary").keymaps({
 		"<leader>si",
 		M.pick_instance,
 		description = "Pick instance",
+	},
+})
+
+require("session_manager")
+
+require("legendary").autocmds({
+	{
+		"VimLeavePre",
+		function()
+			if current_instance ~= nil then
+				local current_session = find_session(current_instance, current_instance.current_session)
+
+				if current_session ~= nil then
+					set_session_metadata(current_session)
+				end
+			end
+
+			M.persist_instances()
+		end,
 	},
 })
 
