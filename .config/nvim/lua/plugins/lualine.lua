@@ -116,7 +116,15 @@ return {
 			},
 			sections = {
 				lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
-				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
+				lualine_b = {
+					{ "b:gitsigns_head", icon = "" },
+					{ "diff", source = diff_source },
+					"diagnostics",
+					{
+						require("grapple").statusline,
+						cond = require("grapple").exists,
+					},
+				},
 				lualine_c = {
 					{ getWords, cond = is_text_file },
 					{ "filename", path = 1, cond = is_not_toggleterm },
@@ -128,7 +136,15 @@ return {
 			},
 			inactive_sections = {
 				lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
-				lualine_b = { { "b:gitsigns_head", icon = "" }, { "diff", source = diff_source }, "diagnostics" },
+				lualine_b = {
+					{ "b:gitsigns_head", icon = "" },
+					{ "diff", source = diff_source },
+					"diagnostics",
+					{
+						require("grapple").statusline,
+						cond = require("grapple").exists,
+					},
+				},
 				lualine_c = {
 					{ getWords, cond = is_text_file },
 					{ "filename", path = 1, cond = is_not_toggleterm },
