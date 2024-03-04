@@ -47,7 +47,7 @@ local function setup_lualine()
 				M.switch_session(v.name)
 			end,
 			function()
-				return v.name
+				return tostring(i) .. " " .. v.name
 			end,
 		}
 	end
@@ -280,6 +280,22 @@ function M.delete_instance(name)
 	M.persist_instances()
 end
 
+function M.switch_session_by_index(idx)
+	if current_instance == nil then
+		vim.notify("Instance is nil, cannot switch session", vim.log.levels.ERROR)
+		return
+	end
+
+	idx = tonumber(idx)
+
+	if idx < 1 or idx > #current_instance.sessions then
+		vim.notify("Could not find a session with that index", vim.log.levels.ERROR)
+		return
+	end
+
+	M.switch_session(current_instance.sessions[idx].name)
+end
+
 function M.switch_session(name)
 	if current_instance == nil then
 		vim.notify("Instance is nil, cannot switch session", vim.log.levels.ERROR)
@@ -292,24 +308,24 @@ function M.switch_session(name)
 		set_session_metadata(current_session)
 	end
 
-	local switch_session, i = find_session(current_instance, name)
+	local target_session, i = find_session(current_instance, name)
 
-	if switch_session == nil then
+	if target_session == nil then
 		vim.notify("Could not find a session with that name", vim.log.levels.ERROR)
 		return
 	end
 
 	current_session_index = i
 	current_instance.last_session = current_instance.current_session
-	current_instance.current_session = switch_session.name
+	current_instance.current_session = target_session.name
 
 	require("session_manager").save_current_session()
 	vim.cmd.wa()
 	vim.cmd("%bd!")
-	vim.cmd.cd(switch_session.dir)
+	vim.cmd.cd(target_session.dir)
 	require("session_manager").load_current_dir_session()
 
-	set_session_metadata(switch_session)
+	set_session_metadata(target_session)
 
 	setup_lualine()
 
@@ -589,6 +605,21 @@ function M.pick_session()
 	session_picker()
 end
 
+function M.list_session_names()
+	if current_instance == nil then
+		vim.notify("Current instance is nil", vim.log.levels.ERROR)
+		return
+	end
+
+	local sessions = current_instance.sessions
+	local session_names = {}
+
+	for _, value in ipairs(sessions) do
+		table.insert(session_names, value.name)
+	end
+	return session_names
+end
+
 require("legendary").keymaps({
 	-- tabline
 	{
@@ -650,6 +681,27 @@ require("legendary").autocmds({
 
 require("legendary").funcs({
 	-- tabline
+	{
+		function()
+			if current_instance == nil then
+				vim.notify("Current instance is nil")
+				return
+			end
+			vim.ui.input({
+				prompt = "Session number",
+				default = "",
+				kind = "tabline",
+			}, function(idx_input)
+				if idx_input then
+					M.switch_session_by_index(idx_input)
+				else
+					vim.notify("Switch cancelled")
+					return
+				end
+			end)
+		end,
+		description = "Switch session",
+	},
 	{
 		function()
 			if current_instance == nil then
@@ -718,6 +770,10 @@ require("legendary").funcs({
 			end)
 		end,
 		description = "Create instance",
+	},
+	{
+		M.load_instances,
+		description = "Loads instances",
 	},
 	{
 		function()
