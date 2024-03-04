@@ -42,7 +42,9 @@ local function setup_lualine()
 
 		tabs[i] = {
 			mode = 2,
-			color = is_selected and "TabLineSel" or "TabLine",
+			color = function(section)
+				return { fg = is_selected and "#80a0ff" or "#9e9e9e" }
+			end,
 			on_click = function()
 				M.switch_session(v.name)
 			end,
@@ -61,6 +63,15 @@ local function setup_lualine()
 				end,
 			} },
 			lualine_b = tabs,
+			lualine_c = {
+				{
+					mode = 2,
+					color = { fg = "#303030" },
+					function()
+						return ""
+					end,
+				},
+			},
 		},
 	})
 end
