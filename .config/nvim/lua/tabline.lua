@@ -5,7 +5,7 @@ local M = {}
 ---@field sessions Session[]
 ---@field current_session string
 ---@field last_session string | nil
---
+
 ---@class Session
 ---@field name string
 ---@field dir string
@@ -332,7 +332,6 @@ function M.switch_session(name)
 
 	require("session_manager").save_current_session()
 	vim.cmd.wa()
-	vim.cmd("%bd!")
 	vim.cmd.cd(target_session.dir)
 	require("session_manager").load_current_dir_session()
 
@@ -398,7 +397,6 @@ function M.switch_instance(name, session_name)
 
 	require("session_manager").save_current_session()
 	vim.cmd.wa()
-	vim.cmd("%bd!")
 
 	if session_name == nil then
 		if #switch_instance.sessions > 0 and switch_instance.current_session ~= nil then
@@ -407,6 +405,7 @@ function M.switch_instance(name, session_name)
 				current_instance.last_session = current_instance.current_session
 				current_instance.current_session = session.name
 				vim.cmd.cd(session.dir)
+
 				require("session_manager").load_current_dir_session()
 				set_session_metadata(session)
 			end
@@ -419,8 +418,8 @@ function M.switch_instance(name, session_name)
 			current_instance.last_session = current_instance.current_session
 			current_instance.current_session = session_name
 			vim.cmd.cd(session.dir)
-			require("session_manager").load_current_dir_session()
 
+			require("session_manager").load_current_dir_session()
 			set_session_metadata(session)
 		end
 	end
