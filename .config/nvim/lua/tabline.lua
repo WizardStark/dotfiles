@@ -123,6 +123,9 @@ local function set_session_metadata(session)
 	if buf_path ~= "" and Path:new(buf_path):exists() then
 		session.last_file_line = unpack(vim.fn.getcurpos(), 2, 2)
 		session.last_file = buf_path
+	else
+		session.last_file_line = nil
+		session.last_file = nil
 	end
 end
 
@@ -376,6 +379,7 @@ function M.switch_instance(name, session_name)
 			if session ~= nil then
 				vim.cmd.cd(session.dir)
 				require("session_manager").load_current_dir_session()
+				set_session_metadata(session)
 			end
 		else
 			vim.cmd.cd("~")
