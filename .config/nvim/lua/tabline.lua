@@ -93,17 +93,54 @@ local function find_instance(instance_name)
 	return nil
 end
 
+---Verifies is a given session name is valid
+---@param name string
+---@return boolean
+local function verify_session_name(name)
+	if name == nil or name == "" then
+		vim.notify("Session names cannot be nil or empty", vim.log.levels.ERROR)
+		return false
+	end
+
+	return true
+end
+
+---Verifies is a given instance name is valid
+---@param name string
+---@return boolean
+local function verify_instance_name(name)
+	if name == nil or name == "" then
+		vim.notify("Instance names cannot be nil or empty", vim.log.levels.ERROR)
+		return false
+	end
+
+	return true
+end
+
 function M.rename_current_session(name)
 	if current_instance == nil then
 		vim.notify("Instance is nil, cannot rename session", vim.log.levels.ERROR)
 		return
 	end
 
-	if find_session(current_instance, name) ~= nil then
-		vim.notify("A session with that name already exists", vim.log.levels.ERROR)
+	local current_session = find_session(current_instance, current_instance.current_session)
+
+	if current_session == nil then
+		vim.notify("No current session", vim.log.levels.ERROR)
+		return
 	end
 
-	current_instance.name = name
+	if not verify_session_name(name) then
+		return
+	end
+
+	if find_session(current_instance, name) ~= nil then
+		vim.notify("A session with that name already exists", vim.log.levels.ERROR)
+		return
+	end
+
+	current_session.name = name
+	current_instance.current_session = name
 
 	setup_lualine()
 
@@ -113,6 +150,15 @@ end
 function M.create_session(name, dir)
 	if current_instance == nil then
 		vim.notify("Instance is nil, cannot create session", vim.log.levels.ERROR)
+		return
+	end
+
+	if not verify_session_name(name) then
+		return
+	end
+
+	if not Path:new(vim.fn.expand(dir)):exists() then
+		vim.notify("That directory does not exist", vim.log.levels.ERROR)
 		return
 	end
 
@@ -126,9 +172,13 @@ function M.create_session(name, dir)
 		dir = dir,
 	})
 
-	setup_lualine()
-
-	M.persist_instances()
+	-- If the new session is the first one, swap to it
+	if #current_instance.sessions == 1 then
+		M.switch_session(name)
+	else
+		setup_lualine()
+		M.persist_instances()
+	end
 end
 
 function M.delete_session(name)
@@ -149,6 +199,7 @@ function M.delete_session(name)
 		end
 	end
 
+	--TODO: swap sessions if delete current
 	setup_lualine()
 
 	M.persist_instances()
@@ -164,6 +215,29 @@ function M.create_instance(name)
 		name = name,
 		sessions = {},
 	})
+
+	M.persist_instances()
+end
+
+--TODO: maybe make these more generic, so you can rename any session instead of just the current one
+function M.rename_current_instance(name)
+	if current_instance == nil then
+		vim.notify("Instance is nil, cannot rename it", vim.log.levels.ERROR)
+		return
+	end
+
+	if not verify_instance_name(name) then
+		return
+	end
+
+	if find_instance(name) ~= nil then
+		vim.notify("An instance with that name already exists", vim.log.levels.ERROR)
+		return
+	end
+
+	current_instance.name = name
+
+	setup_lualine()
 
 	M.persist_instances()
 end
@@ -507,6 +581,99 @@ require("legendary").keymaps({
 		"<leader>si",
 		M.pick_instance,
 		description = "Pick instance",
+	},
+})
+
+require("legendary").funcs({
+	-- tabline
+	{
+		function()
+			if current_instance == nil then
+				vim.notify("Cannot create a session if the current instance is nil")
+				return
+			end
+			vim.ui.input({
+				prompt = "New session name",
+				default = "",
+				kind = "tabline",
+			}, function(name_input)
+				if name_input then
+					vim.ui.input({
+						prompt = "New session directory",
+						default = "",
+						completion = "dir",
+						kind = "tabline",
+					}, function(dir_input)
+						if dir_input then
+							M.create_session(name_input, dir_input)
+						else
+							vim.notify("Creation cancelled")
+							return
+						end
+					end)
+				else
+					vim.notify("Creation cancelled")
+					return
+				end
+			end)
+		end,
+		description = "Create session",
+	},
+	{
+		function()
+			if current_instance == nil then
+				vim.notify("Cannot rename if the current instance is nil")
+				return
+			end
+			vim.ui.input({
+				prompt = "New name",
+				default = current_instance.current_session,
+				kind = "tabline",
+			}, function(input)
+				if input then
+					M.rename_current_session(input)
+				else
+					vim.notify("Rename cancelled")
+				end
+			end)
+		end,
+		description = "Rename session",
+	},
+	{
+		function()
+			vim.ui.input({
+				prompt = "New instance name",
+				default = "",
+				kind = "tabline",
+			}, function(input)
+				if input then
+					M.create_instance(input)
+				else
+					vim.notify("Creation cancelled")
+				end
+			end)
+		end,
+		description = "Create instance",
+	},
+	{
+		function()
+			if current_instance == nil then
+				vim.notify("Cannot rename if the current instance is nil")
+				return
+			end
+			vim.ui.input({
+				prompt = "New name",
+				default = current_instance.name,
+				kind = "tabline",
+			}, function(input)
+				if input then
+					M.rename_current_instance(input)
+				else
+					vim.notify("Rename cancelled")
+				end
+			end)
+		end,
+		description = "Rename instance",
 	},
 })
 

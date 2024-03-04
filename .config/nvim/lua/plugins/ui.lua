@@ -132,6 +132,15 @@ return {
 					end
 				end,
 			},
+			input = {
+				get_config = function(opts)
+					if opts.kind == "tabline" then
+						return {
+							relative = "win",
+						}
+					end
+				end,
+			},
 		},
 	},
 	--markdown "rendering"
