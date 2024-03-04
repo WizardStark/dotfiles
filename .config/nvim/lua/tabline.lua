@@ -609,7 +609,7 @@ local session_picker = function(opts)
 end
 
 function M.pick_instance()
-	instance_picker()
+	instance_picker(require("telescope.themes").get_dropdown({}))
 end
 
 function M.pick_session()
