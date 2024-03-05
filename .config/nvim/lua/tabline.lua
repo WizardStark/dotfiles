@@ -3,7 +3,7 @@ local M = {}
 ---@class Instance
 ---@field name string
 ---@field sessions Session[]
----@field current_session string | nil
+---@field current_session string
 ---@field last_session string | nil
 
 ---@class Session
@@ -31,14 +31,17 @@ local current_instance = {
 ---@type Instance | nil
 local last_instance = nil
 
----@type Session | nil
-local current_session = nil
+---@type Session
+local current_session = current_instance.sessions[0]
 
 ---@type Session | nil
 local last_session = nil
 
 ---@type string
 local instances_path = vim.fn.stdpath("data") .. "/instances/"
+
+---@type string
+local sessions_path = instances_path .. "sessions/"
 
 local lualine = require("lualine")
 local Path = require("plenary.path")
@@ -47,6 +50,46 @@ local icons = {
 	last = "",
 	cur = "",
 }
+
+---@param instance Instance
+---@param session Session
+---@return string
+local function get_nvim_session_filename(instance, session)
+	local instance_name = instance.name:gsub(" ", "-")
+	local session_name = session.name:gsub(" ", "-")
+
+	return instance_name .. "_" .. session_name
+end
+
+---@param instance Instance
+---@param session Session
+local function write_nvim_session_file(instance, session)
+	vim.cmd.cd(session.dir) -- Always persist defined session dir
+
+	local sessions_dir = Path:new(sessions_path)
+
+	if not sessions_dir:is_dir() then
+		sessions_dir:mkdir()
+	end
+
+	local file = sessions_dir:joinpath(Path:new(get_nvim_session_filename(instance, session)))
+
+	vim.api.nvim_command("mksession! " .. file.filename)
+end
+
+---@param instance Instance
+---@param session Session
+local function source_nvim_session_file(instance, session)
+	local file = Path:new(sessions_path):joinpath(get_nvim_session_filename(instance, session))
+
+	if not file:exists() then
+		vim.cmd.cd(session.dir)
+		vim.cmd.enew()
+		return
+	end
+
+	vim.api.nvim_command("silent source " .. file.filename)
+end
 
 -- This function needs to be called whenever the tabs change
 local function setup_lualine()
@@ -176,15 +219,16 @@ local function set_session_metadata(session)
 end
 
 --- Switch to target session, does nothing if it is equal to current session
----@param target_session Session | nil
+---@param target_session Session
 local function switch_session(target_session)
 	if target_session == current_session then
 		return
 	end
 
-	if current_session ~= nil then
-		set_session_metadata(current_session)
-	end
+	vim.cmd.wa()
+
+	set_session_metadata(current_session)
+	write_nvim_session_file(current_instance, current_session)
 
 	last_session = current_session
 	current_session = target_session
@@ -192,22 +236,11 @@ local function switch_session(target_session)
 	current_instance.last_session = last_session and last_session.name or nil
 	current_instance.current_session = target_session and target_session.name or nil
 
-	if current_session ~= nil then
-		require("session_manager").save_current_session()
-	end
-	vim.cmd.wa()
-
-	if target_session ~= nil then
-		vim.cmd.cd(target_session.dir)
-		require("session_manager").load_current_dir_session()
-
-		set_session_metadata(target_session)
-	else
-		vim.cmd.cd("~")
-		vim.cmd("%bd!")
-	end
-
+	source_nvim_session_file(current_instance, target_session)
+	set_session_metadata(target_session)
 	setup_lualine()
+
+	M.persist_instances()
 end
 
 --- Switch to a target instance, does nothing if it is equal to current instance
@@ -217,27 +250,42 @@ local function switch_instance(target_instance)
 		return
 	end
 
-	if current_session ~= nil then
-		set_session_metadata(current_session)
+	if #target_instance.sessions == 0 then
+		vim.notify(
+			string.format("Cannot switch to '%s', it has no sessions", target_instance.name),
+			vim.log.levels.error
+		)
+
+		return
 	end
 
 	vim.cmd.wa()
 
-	last_instance = current_instance
-	current_instance = target_instance
+	local target_session = find_session(target_instance, target_instance.current_session)
+
+	if target_session == nil then
+		vim.notify(
+			string.format(
+				"There was an error switching to instance '%s' its current session '%s' was not found in instances.json",
+				target_instance.name,
+				target_instance.current_session
+			),
+			vim.log.levels.error
+		)
+		return
+	end
+
+	write_nvim_session_file(current_instance, current_session)
+	set_session_metadata(current_session)
 
 	last_session = find_session(target_instance, target_instance.last_session)
-	current_session = find_session(target_instance, target_instance.current_session)
+	current_session = target_session
 
-	if current_session ~= nil then
-		vim.cmd.cd(current_session.dir)
-		require("session_manager").load_current_dir_session()
+	source_nvim_session_file(target_instance, target_session)
+	set_session_metadata(target_session)
 
-		set_session_metadata(current_session)
-	else
-		vim.cmd.cd("~")
-		vim.cmd("%bd!")
-	end
+	last_instance = current_instance
+	current_instance = target_instance
 
 	setup_lualine()
 end
@@ -274,18 +322,15 @@ function M.create_session(name, dir)
 		return
 	end
 
-	table.insert(current_instance.sessions, {
+	---@type Session
+	local session = {
 		name = name,
 		dir = dir,
-	})
+	}
 
-	-- If the new session is the first one, swap to it
-	if #current_instance.sessions == 1 then
-		M.switch_session(name)
-	else
-		setup_lualine()
-		M.persist_instances()
-	end
+	table.insert(current_instance.sessions, session)
+
+	switch_session(session)
 end
 
 function M.delete_session(name)
@@ -306,16 +351,28 @@ function M.delete_session(name)
 	M.persist_instances()
 end
 
-function M.create_instance(name)
+---@param name string
+---@param session_name string
+---@param dir string
+function M.create_instance(name, session_name, dir)
 	if find_instance(name) ~= nil then
 		vim.notify("An instance with that name already exists", vim.log.levels.ERROR)
 		return
 	end
 
-	table.insert(instances, {
+	---@type Instance
+	local instance = {
 		name = name,
-		sessions = {},
-	})
+		current_session = session_name,
+		sessions = {
+			{
+				name = session_name,
+				dir = dir,
+			},
+		},
+	}
+
+	table.insert(instances, instance)
 
 	M.persist_instances()
 end
@@ -358,7 +415,7 @@ function M.delete_instance(name)
 			M.load_instances()
 		end
 
-		M.switch_instance(instances[1].name)
+		switch_instance(instances[1])
 	end
 
 	M.persist_instances()
@@ -453,7 +510,7 @@ function M.alternate_instance()
 		return
 	end
 
-	M.switch_instance(last_instance.name)
+	switch_instance(last_instance)
 end
 
 function M.persist_instances()
@@ -521,12 +578,29 @@ function M.load_instances()
 
 	current_instance = instance
 
-	current_session = find_session(current_instance, current_instance.current_session)
+	local session = find_session(current_instance, current_instance.current_session)
+
+	if session == nil then
+		vim.notify(
+			string.format(
+				"There was an error loading the current instance '%s' its current session '%s' was not found in instances.json",
+				instance_data.current_instance,
+				current_instance.current_session
+			),
+			vim.log.levels.error
+		)
+		return
+	end
+
+	current_session = session
+
 	last_session = find_session(current_instance, current_instance.last_session)
 
 	if should_persist then
 		M.persist_instances()
 	end
+
+	source_nvim_session_file(current_instance, current_session)
 
 	setup_lualine()
 end
@@ -564,7 +638,7 @@ local instance_picker = function(opts)
 					end
 
 					return {
-						value = entry.name,
+						value = entry,
 						display = display,
 						ordinal = entry.name,
 					}
@@ -575,7 +649,7 @@ local instance_picker = function(opts)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
-					M.switch_instance(selection.value)
+					switch_instance(selection.value)
 				end)
 				return true
 			end,
@@ -595,7 +669,7 @@ local session_picker = function(opts)
 			table.insert(results, {
 				display = instance.name .. ": " .. session.name,
 				value = {
-					instance = instance.name,
+					instance = instance,
 					session = session,
 				},
 			})
@@ -629,8 +703,8 @@ local session_picker = function(opts)
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
 
-					M.switch_instance(selection.value.instance)
-					M.switch_session(selection.value.session.name)
+					switch_instance(selection.value.instance)
+					switch_session(selection.value.session)
 				end)
 				return true
 			end,
@@ -700,21 +774,39 @@ require("legendary").autocmds({
 	{
 		"VimLeavePre",
 		function()
-			M.persist_instances()
-		end,
-	},
-
-	{
-		"BufLeave",
-		function()
-			if current_session ~= nil then
-				set_session_metadata(current_session)
-			end
-
+			write_nvim_session_file(current_instance, current_session)
+			set_session_metadata(current_session)
 			M.persist_instances()
 		end,
 	},
 })
+
+---@param on_success fun(name: string, dir: string)
+---@param on_cancel fun()
+local function input_new_session(on_success, on_cancel)
+	vim.ui.input({
+		prompt = "New session name",
+		default = "",
+		kind = "tabline",
+	}, function(name_input)
+		if name_input then
+			vim.ui.input({
+				prompt = "New session directory",
+				default = "",
+				completion = "dir",
+				kind = "tabline",
+			}, function(dir_input)
+				if dir_input then
+					on_success(name_input, dir_input)
+				else
+					on_cancel()
+				end
+			end)
+		else
+			on_cancel()
+		end
+	end)
+end
 
 require("legendary").funcs({
 	-- tabline
@@ -737,29 +829,10 @@ require("legendary").funcs({
 	},
 	{
 		function()
-			vim.ui.input({
-				prompt = "New session name",
-				default = "",
-				kind = "tabline",
-			}, function(name_input)
-				if name_input then
-					vim.ui.input({
-						prompt = "New session directory",
-						default = "",
-						completion = "dir",
-						kind = "tabline",
-					}, function(dir_input)
-						if dir_input then
-							M.create_session(name_input, dir_input)
-						else
-							vim.notify("Creation cancelled")
-							return
-						end
-					end)
-				else
-					vim.notify("Creation cancelled")
-					return
-				end
+			input_new_session(function(name, dir)
+				M.create_session(name, dir)
+			end, function()
+				vim.notify("Creation cancelled")
 			end)
 		end,
 		description = "Create session",
@@ -787,10 +860,16 @@ require("legendary").funcs({
 				default = "",
 				kind = "tabline",
 			}, function(input)
-				if input then
-					M.create_instance(input)
-				else
+				local on_cancel = function()
 					vim.notify("Creation cancelled")
+				end
+
+				if input then
+					input_new_session(function(session_name, dir)
+						M.create_instance(input, session_name, dir)
+					end, on_cancel)
+				else
+					on_cancel()
 				end
 			end)
 		end,

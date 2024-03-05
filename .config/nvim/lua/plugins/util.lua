@@ -1,17 +1,4 @@
 return {
-	--sessions
-	{
-		"Shatur/neovim-session-manager",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-		},
-		config = function()
-			local config = require("session_manager.config")
-			require("session_manager").setup({
-				autosave_last_session = false,
-			})
-		end,
-	},
 	--indent blankline
 	{
 		"lukas-reineke/indent-blankline.nvim",

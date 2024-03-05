@@ -631,19 +631,6 @@ return {
 			vim.diagnostic.open_float,
 			description = "Open LSP diagnostics in a popup",
 		},
-		--session management
-		{
-			mode = "n",
-			"<leader>sd",
-			[[:SessionManager delete_current_dir_session<CR>]],
-			description = "Delete session for current directory",
-		},
-		{
-			mode = "n",
-			"<leader>sl",
-			[[:SessionManager load_session<CR>]],
-			description = "Load session for selected directory",
-		},
 		--flash
 		{
 			mode = { "n", "x", "o" },
