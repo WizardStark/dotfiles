@@ -3,7 +3,7 @@ local M = {}
 ---@class Instance
 ---@field name string
 ---@field sessions Session[]
----@field current_session string
+---@field current_session string | nil
 ---@field last_session string | nil
 
 ---@class Session
@@ -31,7 +31,11 @@ local current_instance = {
 ---@type Instance | nil
 local last_instance = nil
 
-local current_session_index = -1
+---@type Session | nil
+local current_session = nil
+
+---@type Session | nil
+local last_session = nil
 
 ---@type string
 local instances_path = vim.fn.stdpath("data") .. "/instances/"
@@ -54,7 +58,7 @@ local function setup_lualine()
 
 		tabs[i] = {
 			mode = 2,
-			color = function(section)
+			color = function()
 				return { fg = is_selected and "#80a0ff" or "#9e9e9e" }
 			end,
 			on_click = function()
@@ -96,15 +100,28 @@ end
 
 ---@param instance Instance
 ---@param session_name string
----@return Session | nil, number
+---@return Session | nil
 local function find_session(instance, session_name)
-	for i, v in ipairs(instance.sessions) do
+	for _, v in ipairs(instance.sessions) do
 		if v.name == session_name then
-			return v, i
+			return v
 		end
 	end
 
-	return nil, -1
+	return nil
+end
+
+---@param instance Instance
+---@param session Session
+---@return number | nil
+local function find_session_index(instance, session)
+	for i, v in ipairs(instance.sessions) do
+		if v.name == session.name then
+			return i
+		end
+	end
+
+	return nil
 end
 
 ---@param instance_name string
@@ -158,20 +175,80 @@ local function set_session_metadata(session)
 	end
 end
 
-function M.rename_current_session(name)
-	local current_session = find_session(current_instance, current_instance.current_session)
-
-	if current_session == nil then
-		vim.notify("No current session", vim.log.levels.ERROR)
+--- Switch to target session, does nothing if it is equal to current session
+---@param target_session Session | nil
+local function switch_session(target_session)
+	if target_session == current_session then
 		return
 	end
 
+	if current_session ~= nil then
+		set_session_metadata(current_session)
+	end
+
+	last_session = current_session
+	current_session = target_session
+
+	current_instance.last_session = last_session and last_session.name or nil
+	current_instance.current_session = target_session and target_session.name or nil
+
+	if current_session ~= nil then
+		require("session_manager").save_current_session()
+	end
+	vim.cmd.wa()
+
+	if target_session ~= nil then
+		vim.cmd.cd(target_session.dir)
+		require("session_manager").load_current_dir_session()
+
+		set_session_metadata(target_session)
+	else
+		vim.cmd.cd("~")
+		vim.cmd("%bd!")
+	end
+
+	setup_lualine()
+end
+
+--- Switch to a target instance, does nothing if it is equal to current instance
+---@param target_instance Instance
+local function switch_instance(target_instance)
+	if target_instance == current_instance then
+		return
+	end
+
+	if current_session ~= nil then
+		set_session_metadata(current_session)
+	end
+
+	vim.cmd.wa()
+
+	last_instance = current_instance
+	current_instance = target_instance
+
+	last_session = find_session(target_instance, target_instance.last_session)
+	current_session = find_session(target_instance, target_instance.current_session)
+
+	if current_session ~= nil then
+		vim.cmd.cd(current_session.dir)
+		require("session_manager").load_current_dir_session()
+
+		set_session_metadata(current_session)
+	else
+		vim.cmd.cd("~")
+		vim.cmd("%bd!")
+	end
+
+	setup_lualine()
+end
+
+function M.rename_current_session(name)
 	if not verify_session_name(name) then
 		return
 	end
 
 	if find_session(current_instance, name) ~= nil then
-		vim.notify("A session with that name already exists", vim.log.levels.ERROR)
+		vim.notify("A session with that name already exists in this instance", vim.log.levels.ERROR)
 		return
 	end
 
@@ -179,7 +256,6 @@ function M.rename_current_session(name)
 	current_instance.current_session = name
 
 	setup_lualine()
-
 	M.persist_instances()
 end
 
@@ -194,7 +270,7 @@ function M.create_session(name, dir)
 	end
 
 	if find_session(current_instance, name) ~= nil then
-		vim.notify("An session with that name already exists", vim.log.levels.ERROR)
+		vim.notify("An session with that name already exists in this instance", vim.log.levels.ERROR)
 		return
 	end
 
@@ -227,7 +303,6 @@ function M.delete_session(name)
 
 	--TODO: swap sessions if delete current
 	setup_lualine()
-
 	M.persist_instances()
 end
 
@@ -276,7 +351,7 @@ function M.delete_instance(name)
 		end
 	end
 
-	if current_instance ~= nil and name == current_instance.name then
+	if name == current_instance.name then
 		-- If the current session is the last one delete the local file and recreate it
 		if #instances == 0 then
 			M.purge_instances()
@@ -297,109 +372,79 @@ function M.switch_session_by_index(idx)
 		return
 	end
 
-	M.switch_session(current_instance.sessions[idx].name)
+	switch_session(current_instance.sessions[idx])
 end
 
 function M.switch_session(name)
-	local current_session, _ = find_session(current_instance, current_instance.current_session)
-
-	if current_session ~= nil then
-		set_session_metadata(current_session)
-	end
-
-	local target_session, i = find_session(current_instance, name)
+	local target_session = find_session(current_instance, name)
 
 	if target_session == nil then
 		vim.notify("Could not find a session with that name", vim.log.levels.ERROR)
 		return
 	end
 
-	current_session_index = i
-	current_instance.last_session = current_instance.current_session
-	current_instance.current_session = target_session.name
-
-	require("session_manager").save_current_session()
-	vim.cmd.wa()
-	vim.cmd.cd(target_session.dir)
-	require("session_manager").load_current_dir_session()
-
-	set_session_metadata(target_session)
-
-	setup_lualine()
-
-	M.persist_instances()
+	switch_session(target_session)
 end
 
 function M.alternate_session()
-	if current_instance.last_session == nil then
+	if last_session == nil then
 		vim.notify("No alternate session", vim.log.levels.ERROR)
 		return
 	end
 
-	M.switch_session(current_instance.last_session)
+	switch_session(last_session)
 end
 
 function M.next_session()
+	if current_session == nil then
+		vim.notify("No current session", vim.log.levels.ERROR)
+		return
+	end
+
+	local current_session_index = find_session_index(current_instance, current_session)
+
+	if current_session_index == nil then
+		vim.notify("Could not find index of current session", vim.log.levels.ERROR)
+		return
+	end
+
 	current_session_index = current_session_index % #current_instance.sessions + 1
 
-	M.switch_session(current_instance.sessions[current_session_index].name)
+	switch_session(current_instance.sessions[current_session_index])
 end
 
 function M.previous_session()
+	if current_session == nil then
+		vim.notify("No current session", vim.log.levels.ERROR)
+		return
+	end
+
+	local current_session_index = find_session_index(current_instance, current_session)
+
+	if current_session_index == nil then
+		vim.notify("Could not find index of current session", vim.log.levels.ERROR)
+		return
+	end
+
 	if current_session_index == 1 then
 		current_session_index = #current_instance.sessions
 	else
 		current_session_index = (current_session_index - 1) % #current_instance.sessions
 	end
 
-	M.switch_session(current_instance.sessions[current_session_index].name)
+	switch_session(current_instance.sessions[current_session_index])
 end
 
 ---@param name string
----@param session_name string | nil Session to switch to after switching instances. If nil it will use the current_session
-function M.switch_instance(name, session_name)
-	local switch_instance = find_instance(name)
+function M.switch_instance(name)
+	local target_instance = find_instance(name)
 
-	if switch_instance == nil then
+	if target_instance == nil then
 		vim.notify("Could not find an instance with that name", vim.log.levels.ERROR)
 		return
 	end
 
-	last_instance = current_instance
-	current_instance = switch_instance
-
-	require("session_manager").save_current_session()
-	vim.cmd.wa()
-
-	if session_name == nil then
-		if #switch_instance.sessions > 0 and switch_instance.current_session ~= nil then
-			local session = find_session(switch_instance, switch_instance.current_session)
-			if session ~= nil then
-				current_instance.last_session = current_instance.current_session
-				current_instance.current_session = session.name
-				vim.cmd.cd(session.dir)
-
-				require("session_manager").load_current_dir_session()
-				set_session_metadata(session)
-			end
-		else
-			vim.cmd.cd("~")
-		end
-	else
-		local session = find_session(switch_instance, session_name)
-		if session ~= nil then
-			current_instance.last_session = current_instance.current_session
-			current_instance.current_session = session_name
-			vim.cmd.cd(session.dir)
-
-			require("session_manager").load_current_dir_session()
-			set_session_metadata(session)
-		end
-	end
-
-	setup_lualine()
-
-	M.persist_instances()
+	switch_instance(target_instance)
 end
 
 function M.alternate_instance()
@@ -476,7 +521,8 @@ function M.load_instances()
 
 	current_instance = instance
 
-	_, current_session_index = find_session(current_instance, current_instance.current_session)
+	current_session = find_session(current_instance, current_instance.current_session)
+	last_session = find_session(current_instance, current_instance.last_session)
 
 	if should_persist then
 		M.persist_instances()
@@ -557,12 +603,8 @@ local session_picker = function(opts)
 	end
 
 	-- Update current session metadata so it displays correctly
-	if current_instance ~= nil then
-		local current_session = find_session(current_instance, current_instance.current_session)
-
-		if current_session ~= nil then
-			set_session_metadata(current_session)
-		end
+	if current_session ~= nil then
+		set_session_metadata(current_session)
 	end
 
 	pickers
@@ -586,7 +628,9 @@ local session_picker = function(opts)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
-					M.switch_instance(selection.value.instance, selection.value.session.name)
+
+					M.switch_instance(selection.value.instance)
+					M.switch_session(selection.value.session.name)
 				end)
 				return true
 			end,
@@ -656,12 +700,15 @@ require("legendary").autocmds({
 	{
 		"VimLeavePre",
 		function()
-			if current_instance ~= nil then
-				local current_session = find_session(current_instance, current_instance.current_session)
+			M.persist_instances()
+		end,
+	},
 
-				if current_session ~= nil then
-					set_session_metadata(current_session)
-				end
+	{
+		"BufLeave",
+		function()
+			if current_session ~= nil then
+				set_session_metadata(current_session)
 			end
 
 			M.persist_instances()
