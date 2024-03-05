@@ -33,6 +33,13 @@ return {
 	require("legendary").keymaps({
 		--general
 		{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "How to quit vim" },
+		{ mode = { "n", "v" }, "<D-v>", [["+p]], description = "Paste with OS key" },
+		{
+			mode = { "i" },
+			"<D-v>",
+			[[<C-r>+]],
+			description = "Paste with OS key",
+		},
 		{ mode = { "n", "v" }, "<leader>X", save_and_exit, description = "How to save and quit vim" },
 		{ mode = "n", "<esc>", vim.cmd.up, description = "Write buffer" },
 		{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },

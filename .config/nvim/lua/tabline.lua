@@ -39,6 +39,7 @@ local function setup_lualine()
 
 	for i, v in ipairs(current_instance.sessions) do
 		local is_selected = v.name == current_instance.current_session
+		local is_last_session = v.name == current_instance.last_session
 
 		tabs[i] = {
 			mode = 2,
@@ -49,7 +50,13 @@ local function setup_lualine()
 				M.switch_session(v.name)
 			end,
 			function()
-				return tostring(i) .. " " .. v.name
+				local res = tostring(i) .. " " .. v.name
+				if is_selected then
+					return "*" .. res
+				elseif is_last_session then
+					return "-" .. res
+				end
+				return res
 			end,
 		}
 	end
