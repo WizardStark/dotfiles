@@ -41,6 +41,7 @@ return {
 						"--smart-case",
 						"--hidden",
 					},
+					cache_picker = { num_pickers = 4 },
 				},
 				extensions = {
 					fzf = {

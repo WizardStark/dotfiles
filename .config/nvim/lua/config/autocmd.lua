@@ -21,6 +21,22 @@ return {
 		{
 			"BufWinEnter",
 			function()
+				if vim.bo.bt == "terminal" then
+					vim.opt_local.number = false
+					vim.opt_local.relativenumber = false
+				end
+			end,
+		},
+		{
+			"TermOpen",
+			function()
+				vim.opt_local.number = false
+				vim.opt_local.relativenumber = false
+			end,
+		},
+		{
+			"BufWinEnter",
+			function()
 				if vim.bo.ft == "help" then
 					vim.cmd("wincmd L")
 				end

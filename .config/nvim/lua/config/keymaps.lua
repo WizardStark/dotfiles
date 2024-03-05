@@ -157,6 +157,12 @@ return {
 			description = "Find word",
 		},
 		{
+			mode = "n",
+			"<leader>fq",
+			require("telescope.builtin").command_history,
+			description = "Find command history",
+		},
+		{
 			mode = "v",
 			"<leader>fv",
 			require("telescope-live-grep-args.shortcuts").grep_visual_selection,
@@ -203,7 +209,9 @@ return {
 		{
 			mode = "n",
 			"<leader>fh",
-			require("telescope.builtin").resume,
+			function()
+				require("telescope.builtin").pickers()
+			end,
 			description = "Resume last telescope search",
 		},
 		{
@@ -559,20 +567,20 @@ return {
 			end,
 			description = "Format current buffer",
 		},
-		{
-			mode = { "n", "v" },
-			"<leader>fn",
-			function()
-				local gitsigns = require("gitsigns")
-				for _ = 1, #gitsigns.get_hunks() do
-					gitsigns.next_hunk()
-					gitsigns.select_hunk()
-					require("conform").format({ async = false })
-				end
-				gitsigns.next_hunk()
-			end,
-			description = "Format all hunks",
-		},
+		-- {
+		-- 	mode = { "n", "v" },
+		-- 	"<leader>fn",
+		-- 	function()
+		-- 		local gitsigns = require("gitsigns")
+		-- 		for _ = 1, #gitsigns.get_hunks() do
+		-- 			gitsigns.next_hunk()
+		-- 			gitsigns.select_hunk()
+		-- 			require("conform").format({ async = false })
+		-- 		end
+		-- 		gitsigns.next_hunk()
+		-- 	end,
+		-- 	description = "Format all hunks",
+		-- },
 		--latex
 		{
 			mode = "n",
