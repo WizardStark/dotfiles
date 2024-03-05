@@ -28,6 +28,11 @@ local instances_path = vim.fn.stdpath("data") .. "/instances/"
 local lualine = require("lualine")
 local Path = require("plenary.path")
 
+local icons = {
+	last = "",
+	cur = "",
+}
+
 -- This function needs to be called whenever the tabs change
 local function setup_lualine()
 	if current_instance == nil then
@@ -52,9 +57,9 @@ local function setup_lualine()
 			function()
 				local res = tostring(i) .. " " .. v.name
 				if is_selected then
-					return "*" .. res
+					return icons.cur .. " " .. res
 				elseif is_last_session then
-					return "-" .. res
+					return icons.last .. " " .. res
 				end
 				return res
 			end,
@@ -523,7 +528,6 @@ end
 
 local pickers = require("telescope.pickers")
 local finders = require("telescope.finders")
-local previewers = require("telescope.previewers")
 local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
@@ -537,9 +541,18 @@ local instance_picker = function(opts)
 			finder = finders.new_table({
 				results = instances,
 				entry_maker = function(entry)
+					---@cast entry Instance
+					local display = entry.name
+
+					if entry == current_instance then
+						display = icons.cur .. " " .. display
+					elseif entry == last_instance then
+						display = icons.last .. " " .. display
+					end
+
 					return {
 						value = entry.name,
-						display = entry.name,
+						display = display,
 						ordinal = entry.name,
 					}
 				end,
