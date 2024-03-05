@@ -678,7 +678,7 @@ require("legendary").keymaps({
 	},
 	{
 		mode = { "n" },
-		"<leader>ss",
+		"<leader>sa",
 		M.pick_session,
 		description = "Pick session",
 	},
