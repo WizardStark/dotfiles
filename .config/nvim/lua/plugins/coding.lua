@@ -105,21 +105,21 @@ return {
 				end
 			end
 
-            local function down(fallback)
-                if cmp.visible() then
-                    cmp.select_next_item()
-                else
-                    fallback()
-                end
-            end
+			local function down(fallback)
+				if cmp.visible() then
+					cmp.select_next_item()
+				else
+					fallback()
+				end
+			end
 
-            local function up(fallback)
-                if cmp.visible() then
-                    cmp.select_prev_item()
-                else
-                    fallback()
-                end
-            end
+			local function up(fallback)
+				if cmp.visible() then
+					cmp.select_prev_item()
+				else
+					fallback()
+				end
+			end
 
 			cmp.setup({
 				snippet = {
@@ -137,16 +137,16 @@ return {
 					["<CR>"] = cmp.mapping.confirm({
 						select = false,
 					}),
-                    ["<Up>"] = cmp.mapping(up, {"i","s"}),
-                    ["<Down>"] = cmp.mapping(down, {"i","s"}),
+					["<Up>"] = cmp.mapping(up, { "i", "s" }),
+					["<Down>"] = cmp.mapping(down, { "i", "s" }),
 				},
 				window = {
 					documentation = window_scroll_bordered,
 					completion = window_scroll_bordered,
 				},
 				sources = cmp.config.sources({
-					{ name = "nvim_lsp"},
-					{ name = "luasnip"},
+					{ name = "nvim_lsp" },
+					{ name = "luasnip" },
 					{ name = "calc" },
 					{ name = "nvim_lsp_signature_help" },
 				}, {
@@ -295,19 +295,19 @@ return {
 			vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 		end,
 	},
-    -- lint
-    {
-        "mfussenegger/nvim-lint",
+	-- lint
+	{
+		"mfussenegger/nvim-lint",
 		event = { "BufWritePre" },
-        init = function()
-            require('lint').linters_by_ft = {
-              	javascript = { "eslint" },
+		init = function()
+			require("lint").linters_by_ft = {
+				javascript = { "eslint" },
 				javascriptreact = { "eslint" },
 				typescript = { "eslint" },
 				typescriptreact = { "eslint" },
-            }
-        end
-    },
+			}
+		end,
+	},
 	--latex
 	{
 		"lervag/vimtex",

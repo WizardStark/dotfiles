@@ -1,12 +1,18 @@
 #!/bin/bash
 directory=$(pwd)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    sudo apt update && sudo apt upgrade -y
-    sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
+  sudo apt update && sudo apt upgrade -y
+  sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
 elif [[ "$OSTYPE" == "darwin"* ]]; then
+  if [[ $(command -v brew) == "" ]]; then
+    echo "Installing Hombrew"
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     brew update
-    brew -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
+  else
+    echo "Updating Homebrew"
+    brew update
+  fi
+  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow
 fi
 
 cd
