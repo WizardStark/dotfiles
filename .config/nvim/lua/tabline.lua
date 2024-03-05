@@ -15,8 +15,19 @@ local M = {}
 ---@type Instance[]
 local instances = {}
 
----@type Instance | nil
-local current_instance = nil
+---@type Instance
+local current_instance = {
+	current_session = "nvim",
+	last_session = nil,
+	name = "dotfiles",
+	sessions = {
+		{
+			name = "nvim",
+			dir = "~/dotfiles/.config/nvim",
+		},
+	},
+}
+
 ---@type Instance | nil
 local last_instance = nil
 
@@ -35,11 +46,6 @@ local icons = {
 
 -- This function needs to be called whenever the tabs change
 local function setup_lualine()
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot setup lualine", vim.log.levels.ERROR)
-		return
-	end
-
 	local tabs = {}
 
 	for i, v in ipairs(current_instance.sessions) do
@@ -153,11 +159,6 @@ local function set_session_metadata(session)
 end
 
 function M.rename_current_session(name)
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot rename session", vim.log.levels.ERROR)
-		return
-	end
-
 	local current_session = find_session(current_instance, current_instance.current_session)
 
 	if current_session == nil then
@@ -183,11 +184,6 @@ function M.rename_current_session(name)
 end
 
 function M.create_session(name, dir)
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot create session", vim.log.levels.ERROR)
-		return
-	end
-
 	if not verify_session_name(name) then
 		return
 	end
@@ -217,11 +213,6 @@ function M.create_session(name, dir)
 end
 
 function M.delete_session(name)
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot delete session", vim.log.levels.ERROR)
-		return
-	end
-
 	if find_session(current_instance, name) == nil then
 		vim.notify("That session does not exist", vim.log.levels.ERROR)
 		return
@@ -256,11 +247,6 @@ end
 
 --TODO: maybe make these more generic, so you can rename any session instead of just the current one
 function M.rename_current_instance(name)
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot rename it", vim.log.levels.ERROR)
-		return
-	end
-
 	if not verify_instance_name(name) then
 		return
 	end
@@ -304,11 +290,6 @@ function M.delete_instance(name)
 end
 
 function M.switch_session_by_index(idx)
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot switch session", vim.log.levels.ERROR)
-		return
-	end
-
 	idx = tonumber(idx)
 
 	if idx < 1 or idx > #current_instance.sessions then
@@ -320,11 +301,6 @@ function M.switch_session_by_index(idx)
 end
 
 function M.switch_session(name)
-	if current_instance == nil then
-		vim.notify("Instance is nil, cannot switch session", vim.log.levels.ERROR)
-		return
-	end
-
 	local current_session, _ = find_session(current_instance, current_instance.current_session)
 
 	if current_session ~= nil then
@@ -355,11 +331,6 @@ function M.switch_session(name)
 end
 
 function M.alternate_session()
-	if current_instance == nil then
-		vim.notify("Current instance is nil", vim.log.levels.ERROR)
-		return
-	end
-
 	if current_instance.last_session == nil then
 		vim.notify("No alternate session", vim.log.levels.ERROR)
 		return
@@ -369,22 +340,12 @@ function M.alternate_session()
 end
 
 function M.next_session()
-	if current_instance == nil then
-		vim.notify("Current instance is nil", vim.log.levels.ERROR)
-		return
-	end
-
 	current_session_index = current_session_index % #current_instance.sessions + 1
 
 	M.switch_session(current_instance.sessions[current_session_index].name)
 end
 
 function M.previous_session()
-	if current_instance == nil then
-		vim.notify("Current instance is nil", vim.log.levels.ERROR)
-		return
-	end
-
 	if current_session_index == 1 then
 		current_session_index = #current_instance.sessions
 	else
@@ -451,11 +412,6 @@ function M.alternate_instance()
 end
 
 function M.persist_instances()
-	if current_instance == nil then
-		vim.notify("Cannot persist nil instance", vim.log.levels.ERROR)
-		return
-	end
-
 	local instances_dir = Path:new(instances_path)
 
 	if not instances_dir:is_dir() then
@@ -505,11 +461,22 @@ function M.load_instances()
 	end
 
 	instances = instance_data.instances
-	current_instance = find_instance(instance_data.current_instance)
+	local instance = find_instance(instance_data.current_instance)
 
-	if current_instance ~= nil then
-		_, current_session_index = find_session(current_instance, current_instance.current_session)
+	if instance == nil then
+		vim.notify(
+			string.format(
+				"There was an error loading the current instance '%s' it was not found in instances.json",
+				instance_data.current_instance
+			),
+			vim.log.levels.ERROR
+		)
+		return
 	end
+
+	current_instance = instance
+
+	_, current_session_index = find_session(current_instance, current_instance.current_session)
 
 	if should_persist then
 		M.persist_instances()
@@ -636,11 +603,6 @@ function M.pick_session()
 end
 
 function M.list_session_names()
-	if current_instance == nil then
-		vim.notify("Current instance is nil", vim.log.levels.ERROR)
-		return
-	end
-
 	local sessions = current_instance.sessions
 	local session_names = {}
 
@@ -690,8 +652,6 @@ require("legendary").keymaps({
 	},
 })
 
-require("session_manager")
-
 require("legendary").autocmds({
 	{
 		"VimLeavePre",
@@ -713,10 +673,6 @@ require("legendary").funcs({
 	-- tabline
 	{
 		function()
-			if current_instance == nil then
-				vim.notify("Current instance is nil")
-				return
-			end
 			vim.ui.input({
 				prompt = "Session number",
 				default = "",
@@ -734,10 +690,6 @@ require("legendary").funcs({
 	},
 	{
 		function()
-			if current_instance == nil then
-				vim.notify("Cannot create a session if the current instance is nil")
-				return
-			end
 			vim.ui.input({
 				prompt = "New session name",
 				default = "",
@@ -767,10 +719,6 @@ require("legendary").funcs({
 	},
 	{
 		function()
-			if current_instance == nil then
-				vim.notify("Cannot rename if the current instance is nil")
-				return
-			end
 			vim.ui.input({
 				prompt = "New name",
 				default = current_instance.current_session,
@@ -807,10 +755,6 @@ require("legendary").funcs({
 	},
 	{
 		function()
-			if current_instance == nil then
-				vim.notify("Cannot rename if the current instance is nil")
-				return
-			end
 			vim.ui.input({
 				prompt = "New name",
 				default = current_instance.name,
