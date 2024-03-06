@@ -15,6 +15,11 @@ return {
 			},
 		},
 	},
+	{
+		"sindrets/diffview.nvim",
+		event = "VeryLazy",
+		opts = {},
+	},
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",

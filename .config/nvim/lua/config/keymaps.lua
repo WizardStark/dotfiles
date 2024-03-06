@@ -220,7 +220,7 @@ return {
 			require("telescope.builtin").current_buffer_fuzzy_find,
 			description = "Fuzzy find in current buffer",
 		},
-		{ mode = "n", "<leader>gs", require("telescope.builtin").git_status, description = "Git status" },
+		{ mode = "n", "<leader>gs", [[DiffviewOpen]], description = "Git status" },
 		{ mode = "n", "<leader>gh", require("telescope.builtin").git_commits, description = "Git commit history" },
 		{
 			mode = "n",
