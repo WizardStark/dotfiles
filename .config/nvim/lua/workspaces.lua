@@ -1,6 +1,6 @@
 local M = {}
 
----@class Instance
+---@class Workspace
 ---@field name string
 ---@field sessions Session[]
 ---@field current_session string
@@ -12,11 +12,11 @@ local M = {}
 ---@field last_file string | nil
 ---@field last_file_line number | nil
 
----@type Instance[]
-local instances = {}
+---@type Workspace[]
+local workspaces = {}
 
----@type Instance
-local current_instance = {
+---@type Workspace
+local current_workspace = {
 	current_session = "nvim",
 	last_session = nil,
 	name = "dotfiles",
@@ -28,20 +28,20 @@ local current_instance = {
 	},
 }
 
----@type Instance | nil
-local last_instance = nil
+---@type Workspace | nil
+local last_workspace = nil
 
 ---@type Session
-local current_session = current_instance.sessions[0]
+local current_session = current_workspace.sessions[0]
 
 ---@type Session | nil
 local last_session = nil
 
 ---@type string
-local instances_path = vim.fn.stdpath("data") .. "/instances/"
+local workspaces_path = vim.fn.stdpath("data") .. "/workspaces/"
 
 ---@type string
-local sessions_path = instances_path .. "sessions/"
+local sessions_path = workspaces_path .. "sessions/"
 
 local lualine = require("lualine")
 local Path = require("plenary.path")
@@ -51,19 +51,19 @@ local icons = {
 	cur = "",
 }
 
----@param instance Instance
+---@param workspace Workspace
 ---@param session Session
 ---@return string
-local function get_nvim_session_filename(instance, session)
-	local instance_name = instance.name:gsub(" ", "-")
+local function get_nvim_session_filename(workspace, session)
+	local workspace_name = workspace.name:gsub(" ", "-")
 	local session_name = session.name:gsub(" ", "-")
 
-	return instance_name .. "_" .. session_name
+	return workspace_name .. "_" .. session_name
 end
 
----@param instance Instance
+---@param workspace Workspace
 ---@param session Session
-local function write_nvim_session_file(instance, session)
+local function write_nvim_session_file(workspace, session)
 	vim.cmd.cd(session.dir) -- Always persist defined session dir
 
 	local sessions_dir = Path:new(sessions_path)
@@ -72,15 +72,15 @@ local function write_nvim_session_file(instance, session)
 		sessions_dir:mkdir()
 	end
 
-	local file = sessions_dir:joinpath(Path:new(get_nvim_session_filename(instance, session)))
+	local file = sessions_dir:joinpath(Path:new(get_nvim_session_filename(workspace, session)))
 
 	vim.api.nvim_command("mksession! " .. file.filename)
 end
 
----@param instance Instance
+---@param workspace Workspace
 ---@param session Session
-local function source_nvim_session_file(instance, session)
-	local file = Path:new(sessions_path):joinpath(get_nvim_session_filename(instance, session))
+local function source_nvim_session_file(workspace, session)
+	local file = Path:new(sessions_path):joinpath(get_nvim_session_filename(workspace, session))
 
 	if not file:exists() then
 		vim.cmd.cd(session.dir)
@@ -95,9 +95,9 @@ end
 local function setup_lualine()
 	local tabs = {}
 
-	for i, v in ipairs(current_instance.sessions) do
-		local is_selected = v.name == current_instance.current_session
-		local is_last_session = v.name == current_instance.last_session
+	for i, v in ipairs(current_workspace.sessions) do
+		local is_selected = v.name == current_workspace.current_session
+		local is_last_session = v.name == current_workspace.last_session
 
 		tabs[i] = {
 			mode = 2,
@@ -124,7 +124,7 @@ local function setup_lualine()
 			lualine_a = { {
 				mode = 2,
 				function()
-					return current_instance.name
+					return current_workspace.name
 				end,
 			} },
 			lualine_b = tabs,
@@ -141,11 +141,11 @@ local function setup_lualine()
 	})
 end
 
----@param instance Instance
+---@param workspace Workspace
 ---@param session_name string
 ---@return Session | nil
-local function find_session(instance, session_name)
-	for _, v in ipairs(instance.sessions) do
+local function find_session(workspace, session_name)
+	for _, v in ipairs(workspace.sessions) do
 		if v.name == session_name then
 			return v
 		end
@@ -154,11 +154,11 @@ local function find_session(instance, session_name)
 	return nil
 end
 
----@param instance Instance
+---@param workspace Workspace
 ---@param session Session
 ---@return number | nil
-local function find_session_index(instance, session)
-	for i, v in ipairs(instance.sessions) do
+local function find_session_index(workspace, session)
+	for i, v in ipairs(workspace.sessions) do
 		if v.name == session.name then
 			return i
 		end
@@ -167,11 +167,11 @@ local function find_session_index(instance, session)
 	return nil
 end
 
----@param instance_name string
----@return Instance | nil
-local function find_instance(instance_name)
-	for _, v in ipairs(instances) do
-		if v.name == instance_name then
+---@param workspace_name string
+---@return Workspace | nil
+local function find_workspace(workspace_name)
+	for _, v in ipairs(workspaces) do
+		if v.name == workspace_name then
 			return v
 		end
 	end
@@ -191,12 +191,12 @@ local function verify_session_name(name)
 	return true
 end
 
----Verifies is a given instance name is valid
+---Verifies is a given workspace name is valid
 ---@param name string
 ---@return boolean
-local function verify_instance_name(name)
+local function verify_workspace_name(name)
 	if name == nil or name == "" then
-		vim.notify("Instance names cannot be nil or empty", vim.log.levels.ERROR)
+		vim.notify("Workspace names cannot be nil or empty", vim.log.levels.ERROR)
 		return false
 	end
 
@@ -238,32 +238,32 @@ local function switch_session(target_session)
 	vim.cmd.wa()
 
 	set_session_metadata(current_session)
-	write_nvim_session_file(current_instance, current_session)
+	write_nvim_session_file(current_workspace, current_session)
 	clean_non_terminal_buffers()
 
 	last_session = current_session
 	current_session = target_session
 
-	current_instance.last_session = last_session and last_session.name or nil
-	current_instance.current_session = target_session and target_session.name or nil
+	current_workspace.last_session = last_session and last_session.name or nil
+	current_workspace.current_session = target_session and target_session.name or nil
 
-	source_nvim_session_file(current_instance, target_session)
+	source_nvim_session_file(current_workspace, target_session)
 	set_session_metadata(target_session)
 	setup_lualine()
 
-	M.persist_instances()
+	M.persist_workspaces()
 end
 
---- Switch to a target instance, does nothing if it is equal to current instance
----@param target_instance Instance
-local function switch_instance(target_instance)
-	if target_instance == current_instance then
+--- Switch to a target workspace, does nothing if it is equal to current workspace
+---@param target_workspace Workspace
+local function switch_workspace(target_workspace)
+	if target_workspace == current_workspace then
 		return
 	end
 
-	if #target_instance.sessions == 0 then
+	if #target_workspace.sessions == 0 then
 		vim.notify(
-			string.format("Cannot switch to '%s', it has no sessions", target_instance.name),
+			string.format("Cannot switch to '%s', it has no sessions", target_workspace.name),
 			vim.log.levels.error
 		)
 
@@ -272,31 +272,31 @@ local function switch_instance(target_instance)
 
 	vim.cmd.wa()
 
-	local target_session = find_session(target_instance, target_instance.current_session)
+	local target_session = find_session(target_workspace, target_workspace.current_session)
 
 	if target_session == nil then
 		vim.notify(
 			string.format(
-				"There was an error switching to instance '%s' its current session '%s' was not found in instances.json",
-				target_instance.name,
-				target_instance.current_session
+				"There was an error switching to workspace '%s' its current session '%s' was not found in workspaces.json",
+				target_workspace.name,
+				target_workspace.current_session
 			),
 			vim.log.levels.error
 		)
 		return
 	end
 
-	write_nvim_session_file(current_instance, current_session)
+	write_nvim_session_file(current_workspace, current_session)
 	set_session_metadata(current_session)
 
-	last_session = find_session(target_instance, target_instance.last_session)
+	last_session = find_session(target_workspace, target_workspace.last_session)
 	current_session = target_session
 
-	source_nvim_session_file(target_instance, target_session)
+	source_nvim_session_file(target_workspace, target_session)
 	set_session_metadata(target_session)
 
-	last_instance = current_instance
-	current_instance = target_instance
+	last_workspace = current_workspace
+	current_workspace = target_workspace
 
 	setup_lualine()
 end
@@ -306,16 +306,16 @@ function M.rename_current_session(name)
 		return
 	end
 
-	if find_session(current_instance, name) ~= nil then
-		vim.notify("A session with that name already exists in this instance", vim.log.levels.ERROR)
+	if find_session(current_workspace, name) ~= nil then
+		vim.notify("A session with that name already exists in this workspace", vim.log.levels.ERROR)
 		return
 	end
 
 	current_session.name = name
-	current_instance.current_session = name
+	current_workspace.current_session = name
 
 	setup_lualine()
-	M.persist_instances()
+	M.persist_workspaces()
 end
 
 function M.create_session(name, dir)
@@ -328,8 +328,8 @@ function M.create_session(name, dir)
 		return
 	end
 
-	if find_session(current_instance, name) ~= nil then
-		vim.notify("An session with that name already exists in this instance", vim.log.levels.ERROR)
+	if find_session(current_workspace, name) ~= nil then
+		vim.notify("An session with that name already exists in this workspace", vim.log.levels.ERROR)
 		return
 	end
 
@@ -339,40 +339,40 @@ function M.create_session(name, dir)
 		dir = dir,
 	}
 
-	table.insert(current_instance.sessions, session)
+	table.insert(current_workspace.sessions, session)
 
 	switch_session(session)
 end
 
 function M.delete_session(name)
-	if find_session(current_instance, name) == nil then
+	if find_session(current_workspace, name) == nil then
 		vim.notify("That session does not exist", vim.log.levels.ERROR)
 		return
 	end
 
-	for i, v in ipairs(current_instance.sessions) do
+	for i, v in ipairs(current_workspace.sessions) do
 		if v.name == name then
-			table.remove(current_instance.sessions, i)
+			table.remove(current_workspace.sessions, i)
 			break
 		end
 	end
 
 	--TODO: swap sessions if delete current
 	setup_lualine()
-	M.persist_instances()
+	M.persist_workspaces()
 end
 
 ---@param name string
 ---@param session_name string
 ---@param dir string
-function M.create_instance(name, session_name, dir)
-	if find_instance(name) ~= nil then
-		vim.notify("An instance with that name already exists", vim.log.levels.ERROR)
+function M.create_workspace(name, session_name, dir)
+	if find_workspace(name) ~= nil then
+		vim.notify("An workspace with that name already exists", vim.log.levels.ERROR)
 		return
 	end
 
-	---@type Instance
-	local instance = {
+	---@type Workspace
+	local workspace = {
 		name = name,
 		current_session = session_name,
 		sessions = {
@@ -383,68 +383,68 @@ function M.create_instance(name, session_name, dir)
 		},
 	}
 
-	table.insert(instances, instance)
+	table.insert(workspaces, workspace)
 
-	M.persist_instances()
+	M.persist_workspaces()
 end
 
 --TODO: maybe make these more generic, so you can rename any session instead of just the current one
-function M.rename_current_instance(name)
-	if not verify_instance_name(name) then
+function M.rename_current_workspace(name)
+	if not verify_workspace_name(name) then
 		return
 	end
 
-	if find_instance(name) ~= nil then
-		vim.notify("An instance with that name already exists", vim.log.levels.ERROR)
+	if find_workspace(name) ~= nil then
+		vim.notify("An workspace with that name already exists", vim.log.levels.ERROR)
 		return
 	end
 
-	current_instance.name = name
+	current_workspace.name = name
 
 	setup_lualine()
 
-	M.persist_instances()
+	M.persist_workspaces()
 end
 
-function M.delete_instance(name)
-	if find_instance(name) == nil then
-		vim.notify("An instance with that name does not exist", vim.log.levels.ERROR)
+function M.delete_workspace(name)
+	if find_workspace(name) == nil then
+		vim.notify("An workspace with that name does not exist", vim.log.levels.ERROR)
 		return
 	end
 
-	for i, v in ipairs(instances) do
+	for i, v in ipairs(workspaces) do
 		if v.name == name then
-			table.remove(instances, i)
+			table.remove(workspaces, i)
 			break
 		end
 	end
 
-	if name == current_instance.name then
+	if name == current_workspace.name then
 		-- If the current session is the last one delete the local file and recreate it
-		if #instances == 0 then
-			M.purge_instances()
-			M.load_instances()
+		if #workspaces == 0 then
+			M.purge_workspaces()
+			M.load_workspaces()
 		end
 
-		switch_instance(instances[1])
+		switch_workspace(workspaces[1])
 	end
 
-	M.persist_instances()
+	M.persist_workspaces()
 end
 
 function M.switch_session_by_index(idx)
 	idx = tonumber(idx)
 
-	if idx < 1 or idx > #current_instance.sessions then
+	if idx < 1 or idx > #current_workspace.sessions then
 		vim.notify("Could not find a session with that index", vim.log.levels.ERROR)
 		return
 	end
 
-	switch_session(current_instance.sessions[idx])
+	switch_session(current_workspace.sessions[idx])
 end
 
 function M.switch_session(name)
-	local target_session = find_session(current_instance, name)
+	local target_session = find_session(current_workspace, name)
 
 	if target_session == nil then
 		vim.notify("Could not find a session with that name", vim.log.levels.ERROR)
@@ -469,16 +469,16 @@ function M.next_session()
 		return
 	end
 
-	local current_session_index = find_session_index(current_instance, current_session)
+	local current_session_index = find_session_index(current_workspace, current_session)
 
 	if current_session_index == nil then
 		vim.notify("Could not find index of current session", vim.log.levels.ERROR)
 		return
 	end
 
-	current_session_index = current_session_index % #current_instance.sessions + 1
+	current_session_index = current_session_index % #current_workspace.sessions + 1
 
-	switch_session(current_instance.sessions[current_session_index])
+	switch_session(current_workspace.sessions[current_session_index])
 end
 
 function M.previous_session()
@@ -487,7 +487,7 @@ function M.previous_session()
 		return
 	end
 
-	local current_session_index = find_session_index(current_instance, current_session)
+	local current_session_index = find_session_index(current_workspace, current_session)
 
 	if current_session_index == nil then
 		vim.notify("Could not find index of current session", vim.log.levels.ERROR)
@@ -495,67 +495,67 @@ function M.previous_session()
 	end
 
 	if current_session_index == 1 then
-		current_session_index = #current_instance.sessions
+		current_session_index = #current_workspace.sessions
 	else
-		current_session_index = (current_session_index - 1) % #current_instance.sessions
+		current_session_index = (current_session_index - 1) % #current_workspace.sessions
 	end
 
-	switch_session(current_instance.sessions[current_session_index])
+	switch_session(current_workspace.sessions[current_session_index])
 end
 
 ---@param name string
-function M.switch_instance(name)
-	local target_instance = find_instance(name)
+function M.switch_workspace(name)
+	local target_workspace = find_workspace(name)
 
-	if target_instance == nil then
-		vim.notify("Could not find an instance with that name", vim.log.levels.ERROR)
+	if target_workspace == nil then
+		vim.notify("Could not find an workspace with that name", vim.log.levels.ERROR)
 		return
 	end
 
-	switch_instance(target_instance)
+	switch_workspace(target_workspace)
 end
 
-function M.alternate_instance()
-	if last_instance == nil then
-		vim.notify("No alternate instance", vim.log.levels.ERROR)
+function M.alternate_workspace()
+	if last_workspace == nil then
+		vim.notify("No alternate workspace", vim.log.levels.ERROR)
 		return
 	end
 
-	switch_instance(last_instance)
+	switch_workspace(last_workspace)
 end
 
-function M.persist_instances()
-	local instances_dir = Path:new(instances_path)
+function M.persist_workspaces()
+	local workspaces_dir = Path:new(workspaces_path)
 
-	if not instances_dir:is_dir() then
-		instances_dir:mkdir()
+	if not workspaces_dir:is_dir() then
+		workspaces_dir:mkdir()
 	end
 
-	local instances_file = Path:new(instances_path .. Path.path.sep .. "instances.json")
-	instances_file:touch()
+	local workspaces_file = Path:new(workspaces_path .. Path.path.sep .. "workspaces.json")
+	workspaces_file:touch()
 
-	local instance_data = {
-		current_instance = current_instance.name,
-		instances = instances,
+	local workspace_data = {
+		current_workspace = current_workspace.name,
+		workspaces = workspaces,
 	}
 
-	instances_file:write(vim.fn.json_encode(instance_data), "w")
+	workspaces_file:write(vim.fn.json_encode(workspace_data), "w")
 end
 
-function M.load_instances()
-	local instances_file = Path:new(instances_path .. Path.path.sep .. "instances.json")
+function M.load_workspaces()
+	local workspaces_file = Path:new(workspaces_path .. Path.path.sep .. "workspaces.json")
 
-	local instance_data = {}
+	local workspace_data = {}
 
 	local should_persist = false
 
-	if instances_file:exists() then
-		instance_data = vim.fn.json_decode(instances_file:read())
+	if workspaces_file:exists() then
+		workspace_data = vim.fn.json_decode(workspaces_file:read())
 	else
-		instance_data = {
-			current_instance = "dotfiles",
-			last_instance = nil,
-			instances = {
+		workspace_data = {
+			current_workspace = "dotfiles",
+			last_workspace = nil,
+			workspaces = {
 				{
 					current_session = "nvim",
 					last_session = nil,
@@ -573,30 +573,30 @@ function M.load_instances()
 		should_persist = true
 	end
 
-	instances = instance_data.instances
-	local instance = find_instance(instance_data.current_instance)
+	workspaces = workspace_data.workspaces
+	local workspace = find_workspace(workspace_data.current_workspace)
 
-	if instance == nil then
+	if workspace == nil then
 		vim.notify(
 			string.format(
-				"There was an error loading the current instance '%s' it was not found in instances.json",
-				instance_data.current_instance
+				"There was an error loading the current workspace '%s' it was not found in workspaces.json",
+				workspace_data.current_workspace
 			),
 			vim.log.levels.ERROR
 		)
 		return
 	end
 
-	current_instance = instance
+	current_workspace = workspace
 
-	local session = find_session(current_instance, current_instance.current_session)
+	local session = find_session(current_workspace, current_workspace.current_session)
 
 	if session == nil then
 		vim.notify(
 			string.format(
-				"There was an error loading the current instance '%s' its current session '%s' was not found in instances.json",
-				instance_data.current_instance,
-				current_instance.current_session
+				"There was an error loading the current workspace '%s' its current session '%s' was not found in workspaces.json",
+				workspace_data.current_workspace,
+				current_workspace.current_session
 			),
 			vim.log.levels.error
 		)
@@ -605,22 +605,22 @@ function M.load_instances()
 
 	current_session = session
 
-	last_session = find_session(current_instance, current_instance.last_session)
+	last_session = find_session(current_workspace, current_workspace.last_session)
 
 	if should_persist then
-		M.persist_instances()
+		M.persist_workspaces()
 	end
 
-	source_nvim_session_file(current_instance, current_session)
+	source_nvim_session_file(current_workspace, current_session)
 
 	setup_lualine()
 end
 
-function M.purge_instances()
-	local instances_file = Path:new(instances_path .. Path.path.sep .. "instances.json")
+function M.purge_workspaces()
+	local workspaces_file = Path:new(workspaces_path .. Path.path.sep .. "workspaces.json")
 
-	if instances_file:exists() then
-		instances_file:rm()
+	if workspaces_file:exists() then
+		workspaces_file:rm()
 	end
 end
 
@@ -630,21 +630,21 @@ local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
-local instance_picker = function(opts)
+local workspace_picker = function(opts)
 	opts = opts or {}
 
 	pickers
 		.new(opts, {
-			prompt_title = "Instances",
+			prompt_title = "Workspaces",
 			finder = finders.new_table({
-				results = instances,
+				results = workspaces,
 				entry_maker = function(entry)
-					---@cast entry Instance
+					---@cast entry Workspace
 					local display = entry.name
 
-					if entry == current_instance then
+					if entry == current_workspace then
 						display = icons.cur .. " " .. display
-					elseif entry == last_instance then
+					elseif entry == last_workspace then
 						display = icons.last .. " " .. display
 					end
 
@@ -660,7 +660,7 @@ local instance_picker = function(opts)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
-					switch_instance(selection.value)
+					switch_workspace(selection.value)
 				end)
 				return true
 			end,
@@ -675,12 +675,12 @@ local session_picker = function(opts)
 
 	local previewer = conf.grep_previewer(opts)
 
-	for _, instance in ipairs(instances) do
-		for _, session in ipairs(instance.sessions) do
+	for _, workspace in ipairs(workspaces) do
+		for _, session in ipairs(workspace.sessions) do
 			table.insert(results, {
-				display = instance.name .. ": " .. session.name,
+				display = workspace.name .. ": " .. session.name,
 				value = {
-					instance = instance,
+					workspace = workspace,
 					session = session,
 				},
 			})
@@ -694,7 +694,7 @@ local session_picker = function(opts)
 
 	pickers
 		.new(opts, {
-			prompt_title = "Instances",
+			prompt_title = "Workspaces",
 			finder = finders.new_table({
 				results = results,
 				entry_maker = function(entry)
@@ -714,7 +714,7 @@ local session_picker = function(opts)
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
 
-					switch_instance(selection.value.instance)
+					switch_workspace(selection.value.workspace)
 					switch_session(selection.value.session)
 				end)
 				return true
@@ -723,8 +723,8 @@ local session_picker = function(opts)
 		:find()
 end
 
-function M.pick_instance()
-	instance_picker(require("telescope.themes").get_dropdown({}))
+function M.pick_workspace()
+	workspace_picker(require("telescope.themes").get_dropdown({}))
 end
 
 function M.pick_session()
@@ -732,7 +732,7 @@ function M.pick_session()
 end
 
 function M.list_session_names()
-	local sessions = current_instance.sessions
+	local sessions = current_workspace.sessions
 	local session_names = {}
 
 	for _, value in ipairs(sessions) do
@@ -764,8 +764,8 @@ require("legendary").keymaps({
 	{
 		mode = { "n" },
 		"<leader>sz",
-		M.alternate_instance,
-		description = "Alternate instance",
+		M.alternate_workspace,
+		description = "Alternate workspace",
 	},
 	{
 		mode = { "n" },
@@ -776,8 +776,8 @@ require("legendary").keymaps({
 	{
 		mode = { "n" },
 		"<leader>si",
-		M.pick_instance,
-		description = "Pick instance",
+		M.pick_workspace,
+		description = "Pick workspace",
 	},
 })
 
@@ -785,9 +785,9 @@ require("legendary").autocmds({
 	{
 		"VimLeavePre",
 		function()
-			write_nvim_session_file(current_instance, current_session)
+			write_nvim_session_file(current_workspace, current_session)
 			set_session_metadata(current_session)
-			M.persist_instances()
+			M.persist_workspaces()
 		end,
 	},
 })
@@ -852,7 +852,7 @@ require("legendary").funcs({
 		function()
 			vim.ui.input({
 				prompt = "New name",
-				default = current_instance.current_session,
+				default = current_workspace.current_session,
 				kind = "tabline",
 			}, function(input)
 				if input then
@@ -867,7 +867,7 @@ require("legendary").funcs({
 	{
 		function()
 			vim.ui.input({
-				prompt = "New instance name",
+				prompt = "New workspace name",
 				default = "",
 				kind = "tabline",
 			}, function(input)
@@ -877,34 +877,34 @@ require("legendary").funcs({
 
 				if input then
 					input_new_session(function(session_name, dir)
-						M.create_instance(input, session_name, dir)
+						M.create_workspace(input, session_name, dir)
 					end, on_cancel)
 				else
 					on_cancel()
 				end
 			end)
 		end,
-		description = "Create instance",
+		description = "Create workspace",
 	},
 	{
-		M.load_instances,
-		description = "Loads instances",
+		M.load_workspaces,
+		description = "Load workspaces",
 	},
 	{
 		function()
 			vim.ui.input({
 				prompt = "New name",
-				default = current_instance.name,
+				default = current_workspace.name,
 				kind = "tabline",
 			}, function(input)
 				if input then
-					M.rename_current_instance(input)
+					M.rename_current_workspace(input)
 				else
 					vim.notify("Rename cancelled")
 				end
 			end)
 		end,
-		description = "Rename instance",
+		description = "Rename workspace",
 	},
 })
 

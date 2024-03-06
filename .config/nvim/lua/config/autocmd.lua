@@ -79,7 +79,7 @@ return {
 		{
 			"VimEnter",
 			function()
-				require("tabline").load_instances()
+				require("workspaces").load_workspaces()
 			end,
 		},
 	}),
