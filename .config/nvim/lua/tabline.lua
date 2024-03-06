@@ -218,6 +218,16 @@ local function set_session_metadata(session)
 	end
 end
 
+local function clean_non_terminal_buffers()
+	local current_buffer = vim.api.nvim_get_current_buf()
+	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buffer) and buffer ~= current_buffer then
+			vim.api.nvim_buf_delete(buffer, { force = true })
+		end
+	end
+	vim.api.nvim_buf_delete(current_buffer, { force = true })
+end
+
 --- Switch to target session, does nothing if it is equal to current session
 ---@param target_session Session
 local function switch_session(target_session)
@@ -229,6 +239,7 @@ local function switch_session(target_session)
 
 	set_session_metadata(current_session)
 	write_nvim_session_file(current_instance, current_session)
+	clean_non_terminal_buffers()
 
 	last_session = current_session
 	current_session = target_session
