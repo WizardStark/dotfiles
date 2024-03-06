@@ -1,28 +1,61 @@
 local M = {}
 
-M.prefixes = {
-	-- Merge everything with Misc?
-	code_u = "Code utils",
-	debugging = "Debugging", -- Merge with Diagnostics?
+---@enum Prefix
+M.PREFIXES = {
+	code = "Code utils",
+	debug = "Debugging",
 	diag = "Diagnostics",
 	git = "Git",
-	lsp = "LSP", -- Merge with Diagnostics?
+	lsp = "LSP",
 	misc = "Misc",
 	move = "Movement",
 	nav = "Navigation",
 	notes = "Notes",
 	run = "Run",
 	term = "Terminal",
+	nogroup = "Ungrouped",
 }
+
+local function get_longest_prefix_length()
+	local maxlen = 0
+	for _, prefix in pairs(M.PREFIXES) do
+		maxlen = math.max(#prefix, maxlen)
+	end
+	return maxlen
+end
+
+local maxlen = get_longest_prefix_length()
 
 function M.get_visual_selection_lines()
 	return { vim.fn.getpos("'<")[2], vim.fn.getpos("'>")[2] }
 end
 
-function M.prefix_description(prefix, description) end
+---Applies prefix to given description
+---@param prefix Prefix | nil
+---@param description string | nil
+function M.prefix_description(prefix, description)
+	if description == nil then
+		return "No description"
+	end
+	if prefix == nil then
+		return M.PREFIXES.nogroup .. string.rep(" ", maxlen - #M.PREFIXES.nogroup) .. " │ " .. description
+	end
+	return prefix .. string.rep(" ", maxlen - #prefix) .. " │ " .. description
+end
+
+---Wraps a mapping function with a function that calls prefix_description
+---@param func fun(map: table)
+---@return fun(map: table)
+function M.prefixifier(func)
+	return function(map)
+		for _, entry in pairs(map) do
+			entry.description = M.prefix_description(entry.prefix, entry.description)
+		end
+		func(map)
+	end
+end
 
 return M
---  │
 --general
 --ufo - Code util
 --Legendary - Misc
@@ -38,10 +71,10 @@ return M
 --debugging - Debugging
 --overseer - Run
 --URL handling - External
---conform - Code Util
+--conform - Code utils
 --latex - Misc
 --LSP - LSP
---session management - Instances
+--session management - Workspaces
 --flash - Movement
 --Mason - LSP
 --Notes - Notes
