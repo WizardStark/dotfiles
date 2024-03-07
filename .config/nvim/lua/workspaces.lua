@@ -12,6 +12,8 @@ local M = {}
 ---@field last_file string | nil
 ---@field last_file_line number | nil
 
+local Path = require("plenary.path")
+
 ---@type Workspace[]
 local workspaces = {}
 
@@ -38,13 +40,15 @@ local current_session = current_workspace.sessions[0]
 local last_session = nil
 
 ---@type string
-local workspaces_path = vim.fn.stdpath("data") .. "/workspaces/"
+local workspaces_path = vim.fn.stdpath("data") .. Path.path.sep .. "workspaces"
 
 ---@type string
-local sessions_path = workspaces_path .. "sessions/"
+local sessions_path = workspaces_path .. Path.path.sep .. "sessions"
+
+---@type string
+local sessions_bak_path = sessions_path .. Path.path.sep .. "backups"
 
 local lualine = require("lualine")
-local Path = require("plenary.path")
 
 local icons = {
 	last = "",
@@ -72,23 +76,118 @@ local function write_nvim_session_file(workspace, session)
 		sessions_dir:mkdir()
 	end
 
-	local file = sessions_dir:joinpath(Path:new(get_nvim_session_filename(workspace, session)))
+	local file = sessions_dir:joinpath(Path:new(get_nvim_session_filename(workspace, session)) .. ".vim")
 
-	vim.api.nvim_command("mksession! " .. file.filename)
+	local ok, res = pcall(vim.api.nvim_command, "mksession! " .. file.filename)
+
+	if not ok then
+		vim.notify(
+			string.format(
+				"Could not create session file for %s: %s, the following error was thrown:\n %s",
+				workspace.name,
+				session.name,
+				tostring(res)
+			),
+			vim.log.levels.ERROR
+		)
+	end
 end
 
 ---@param workspace Workspace
 ---@param session Session
 local function source_nvim_session_file(workspace, session)
-	local file = Path:new(sessions_path):joinpath(get_nvim_session_filename(workspace, session))
+	local session_filename = get_nvim_session_filename(workspace, session)
+	local session_file = Path:new(sessions_path):joinpath(session_filename .. ".vim")
 
-	if not file:exists() then
+	if not session_file:exists() then
 		vim.cmd.cd(session.dir)
 		vim.cmd.enew()
 		return
 	end
 
-	vim.api.nvim_command("silent source " .. file.filename)
+	local source_ok, source_res = pcall(vim.api.nvim_command, "silent source " .. session_file.filename)
+
+	-- TODO: Keep a "last working backup" sessions file for each session, this way we can fall back to it if sourcing the current one fails.
+	if not source_ok then
+		local corrupt_bak_file = Path:new(sessions_bak_path):joinpath(session_filename .. ".corrupt-bak.vim")
+
+		if corrupt_bak_file:exists() then
+			corrupt_bak_file:rm()
+		end
+
+		-- Make backup in case the user wants to manually fix the session file
+		local corrupt_bak_save_ok, corrupt_bak_save_res = pcall(Path.rename, session_file, {
+			new_name = corrupt_bak_file.filename,
+		})
+
+		if not corrupt_bak_save_ok then
+			vim.notify(
+				string.format(
+					"Could not source session file for %s: %s\nThe following error was thrown while trying to source the session file:\n%s\nBut while trying to backup the corrupted session file another error was thrown:\n%s\n!!! IMPORTANT: If you want to attemp to manually restore the session make a manual backup of it ('%s') now, any session switching or even exiting neovim can potentially overwrite the corrupted session file premanently.",
+					workspace.name,
+					session.name,
+					tostring(source_res),
+					tostring(corrupt_bak_save_res),
+					session_file.filename
+				),
+				vim.log.levels.ERROR
+			)
+		end
+
+		-- Try to load a previous good version
+		local working_bak_file = Path:new(sessions_bak_path):joinpath(session_filename .. ".bak.vim")
+		if working_bak_file:exists() then
+			local bak_source_ok, bak_source_res =
+				pcall(vim.api.nvim_command, "silent source " .. working_bak_file.filename)
+
+			if bak_source_ok then
+				vim.notify(
+					string.format(
+						"Could not source session file for %s: %s\nLast known good backup was restored. The corrupted session has been moved to '%s'\nThe following error was thrown while trying to source the session file:\n%s",
+						workspace.name,
+						session.name,
+						corrupt_bak_file.filename,
+						tostring(source_res)
+					),
+					vim.log.levels.WARN
+				)
+			else
+				vim.notify(
+					string.format(
+						"Could not source session file for %s: %s\nLast known good backup was found but could not be restored. The corrupted session has been moved to '%s'\nThe following error was thrown while trying to source the session file:\n%s\nWhile trying to source the backup session the following error was thrown:\n%s",
+						workspace.name,
+						session.name,
+						corrupt_bak_file.filename,
+						tostring(source_res),
+						tostring(bak_source_res)
+					),
+					vim.log.levels.ERROR
+				)
+			end
+		else
+			vim.notify(
+				string.format(
+					"Could not source session file for %s: %s\nNo backup was found. The corrupted session has been moved to '%s'\nThe following error was thrown while trying to source the session file:\n %s",
+					workspace.name,
+					session.name,
+					corrupt_bak_file.filename,
+					tostring(source_res)
+				),
+				vim.log.levels.ERROR
+			)
+		end
+	else
+		local bak_folder = Path:new(sessions_bak_path)
+
+		if not bak_folder:is_dir() then
+			bak_folder:mkdir()
+		end
+
+		-- If the source was successful, attempt to backup it. We will soft fail on backup fails
+		pcall(Path.copy, session_file, {
+			destination = Path:new(sessions_bak_path):joinpath(session_filename .. ".bak.vim"),
+		})
+	end
 end
 
 -- This function needs to be called whenever the tabs change
@@ -270,7 +369,7 @@ local function switch_workspace(target_workspace)
 	if #target_workspace.sessions == 0 then
 		vim.notify(
 			string.format("Cannot switch to '%s', it has no sessions", target_workspace.name),
-			vim.log.levels.error
+			vim.log.levels.ERROR
 		)
 
 		return
@@ -287,7 +386,7 @@ local function switch_workspace(target_workspace)
 				target_workspace.name,
 				target_workspace.current_session
 			),
-			vim.log.levels.error
+			vim.log.levels.ERROR
 		)
 		return
 	end
@@ -604,7 +703,7 @@ function M.load_workspaces()
 				workspace_data.current_workspace,
 				current_workspace.current_session
 			),
-			vim.log.levels.error
+			vim.log.levels.ERROR
 		)
 		return
 	end
