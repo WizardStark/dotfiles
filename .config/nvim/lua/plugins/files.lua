@@ -26,6 +26,10 @@ return {
 		config = function()
 			require("telescope").setup({
 				defaults = {
+					mappings = {
+						i = { ["<C-t>"] = require("trouble.providers.telescope").open_with_trouble },
+						n = { ["<C-t>"] = require("trouble.providers.telescope").open_with_trouble },
+					},
 					layout_strategy = "horizontal",
 					layout_config = {
 						horizontal = { width = 0.85, preview_width = 0.6 },
@@ -41,7 +45,7 @@ return {
 						"--smart-case",
 						"--hidden",
 					},
-					cache_picker = { num_pickers = 4 },
+					cache_picker = { num_pickers = 15 },
 				},
 				extensions = {
 					fzf = {

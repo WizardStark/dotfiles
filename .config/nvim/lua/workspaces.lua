@@ -747,45 +747,9 @@ function M.list_session_names()
 	return session_names
 end
 
-require("legendary").keymaps({
-	-- tabline
-	{
-		mode = { "n" },
-		"<leader>sn",
-		M.next_session,
-		description = "Next session",
-	},
-	{
-		mode = { "n" },
-		"<leader>sp",
-		M.previous_session,
-		description = "Previous session",
-	},
-	{
-		mode = { "n" },
-		"<leader>z",
-		M.alternate_session,
-		description = "Alternate session",
-	},
-	{
-		mode = { "n" },
-		"<leader>sz",
-		M.alternate_workspace,
-		description = "Alternate workspace",
-	},
-	{
-		mode = { "n" },
-		"<leader>sa",
-		M.pick_session,
-		description = "Pick session",
-	},
-	{
-		mode = { "n" },
-		"<leader>si",
-		M.pick_workspace,
-		description = "Pick workspace",
-	},
-})
+function M.get_current_workspace()
+	return current_workspace
+end
 
 require("legendary").autocmds({
 	{
@@ -793,124 +757,8 @@ require("legendary").autocmds({
 		function()
 			write_nvim_session_file(current_workspace, current_session)
 			set_session_metadata(current_session)
-			M.persist_workspaces()
+			require("workspaces").persist_workspaces()
 		end,
-	},
-})
-
----@param on_success fun(name: string, dir: string)
----@param on_cancel fun()
-local function input_new_session(on_success, on_cancel)
-	vim.ui.input({
-		prompt = "New session name",
-		default = "",
-		kind = "tabline",
-	}, function(name_input)
-		if name_input then
-			vim.ui.input({
-				prompt = "New session directory",
-				default = "",
-				completion = "dir",
-				kind = "tabline",
-			}, function(dir_input)
-				if dir_input then
-					on_success(name_input, dir_input)
-				else
-					on_cancel()
-				end
-			end)
-		else
-			on_cancel()
-		end
-	end)
-end
-
-require("legendary").funcs({
-	-- tabline
-	{
-		function()
-			vim.ui.input({
-				prompt = "Session number",
-				default = "",
-				kind = "tabline",
-			}, function(idx_input)
-				if idx_input then
-					M.switch_session_by_index(idx_input)
-				else
-					vim.notify("Switch cancelled")
-					return
-				end
-			end)
-		end,
-		description = "Switch session",
-	},
-	{
-		function()
-			input_new_session(function(name, dir)
-				M.create_session(name, dir)
-			end, function()
-				vim.notify("Creation cancelled")
-			end)
-		end,
-		description = "Create session",
-	},
-	{
-		function()
-			vim.ui.input({
-				prompt = "New name",
-				default = current_workspace.current_session,
-				kind = "tabline",
-			}, function(input)
-				if input then
-					M.rename_current_session(input)
-				else
-					vim.notify("Rename cancelled")
-				end
-			end)
-		end,
-		description = "Rename session",
-	},
-	{
-		function()
-			vim.ui.input({
-				prompt = "New workspace name",
-				default = "",
-				kind = "tabline",
-			}, function(input)
-				local on_cancel = function()
-					vim.notify("Creation cancelled")
-				end
-
-				if input then
-					input_new_session(function(session_name, dir)
-						M.create_workspace(input, session_name, dir)
-					end, on_cancel)
-				else
-					on_cancel()
-				end
-			end)
-		end,
-		description = "Create workspace",
-	},
-	{
-		M.load_workspaces,
-		description = "Load workspaces",
-	},
-	{
-		function()
-			vim.ui.input({
-				prompt = "New name",
-				default = current_workspace.name,
-				kind = "tabline",
-			}, function(input)
-				if input then
-					M.rename_current_workspace(input)
-				else
-					vim.notify("Rename cancelled")
-				end
-			end)
-		end,
-		description = "Rename workspace",
 	},
 })
 

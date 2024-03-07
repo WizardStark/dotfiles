@@ -24,87 +24,163 @@ local function save_and_exit()
 	vim.cmd.xa()
 end
 
-local pd = require("utils").prefix_description
-local PREFIXES = require("utils").PREFIXES
-
 local function is_detached_head()
 	return vim.fn.system("git branch --show-current") == ""
 end
 
 local original_branch = nil
 
-require("utils").prefixifier(require("legendary").keymaps)({
-	--general
-	{ mode = { "n", "v" }, "<leader>Q", [[<CMD>qa! <CR>]], description = "Tes" },
-	{ mode = { "n", "v" }, "<D-v>", [["+p]], description = "Paste with OS key" },
+local prefixifier = require("utils").prefixifier
+local P = require("utils").PREFIXES
+local keymaps = require("legendary").keymaps
+
+prefixifier(keymaps)({
+	{
+		mode = { "n", "v" },
+		"<leader>Q",
+		[[<CMD>qa! <CR>]],
+		prefix = P.misc,
+		description = "How to quit vim",
+	},
+	{
+		mode = { "n", "v" },
+		"<D-v>",
+		[["+p]],
+		prefix = P.misc,
+		description = "Paste with OS key",
+	},
 	{
 		mode = { "i" },
 		"<D-v>",
 		[[<C-r>+]],
+		prefix = P.misc,
 		description = "Paste with OS key",
 	},
-	{ mode = { "n", "v" }, "<leader>X", save_and_exit, description = "How to save and quit vim" },
-	{ mode = "n", "<esc>", vim.cmd.up, description = "Write buffer" },
-	{ mode = { "n", "v" }, "<leader>y", [["+y]], description = "Yank to system clipboard" },
+	{
+		mode = { "n", "v" },
+		"<leader>X",
+		save_and_exit,
+		prefix = P.misc,
+		description = "How to save and quit vim",
+	},
+	{
+		mode = "n",
+		"<esc>",
+		vim.cmd.up,
+		prefix = P.misc,
+		description = "Write buffer",
+	},
+	{
+		mode = { "n" },
+		"r",
+		vim.cmd.redo,
+		prefix = P.misc,
+		description = "Redo",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader>y",
+		[["+y]],
+		prefix = P.misc,
+		description = "Copy/Yank to system clipboard",
+	},
 	{
 		mode = { "n", "v" },
 		"<leader>D",
 		[["_d]],
-		description = "Delete without adding to register",
+		prefix = P.misc,
+		description = "Delete without altering registers",
 	},
 	{
 		mode = "n",
 		"J",
 		"mzJ`z",
+		prefix = P.misc,
 		description = "Join lines while maintaining cursor position",
 	},
-	{ mode = "n", "<C-d>", "<C-d>zz", description = "Down half page and centre" }, -- Movement
-	{ mode = "n", "<C-u>", "<C-u>zz", description = "Up half page and centre" }, -- Movement
-	{ mode = "n", "n", "nzzzv", description = "Next occurrence and centre" }, -- Movement
-
+	{
+		mode = "n",
+		"<C-d>",
+		"<C-d>zz",
+		prefix = P.move,
+		description = "Down half page and centre",
+	},
+	{
+		mode = "n",
+		"<C-u>",
+		"<C-u>zz",
+		prefix = P.move,
+		description = "Up half page and centre",
+	},
+	{
+		mode = "n",
+		"n",
+		"nzzzv",
+		prefix = P.move,
+		description = "Next occurrence of search and centre",
+	},
 	{
 		mode = "n",
 		"N",
 		"Nzzzv",
-		description = "Previous occurrence and centre",
+		prefix = P.move,
+		description = "Next occurrence of search and centre",
 	},
-	{ mode = "v", "<leader>k", [[:s/\(.*\)/]], description = "Kirby" }, --Kirby
+	{
+		mode = "v",
+		"<leader>k",
+		[[:s/\(.*\)/]],
+		prefix = P.misc,
+		description = "Initiate visual selection replace with selection as capture group 1",
+	},
 	{
 		mode = "v",
 		"<leader>uo",
-		[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]], --Code Util
+		[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]],
+		prefix = P.code,
 		description = "Format one line per sentence",
 	},
 	{
 		mode = "n",
 		"<leader>q",
 		"<C-^>",
-		description = "Alternate file", -- Navigation
+		prefix = P.nav,
+		description = "Alternate file",
 	},
-	{ mode = { "n", "v", "i" }, "<C-s>", vim.cmd.up, description = "Save file" },
+	{
+		mode = { "n", "v", "i" },
+		"<C-s>",
+		vim.cmd.up,
+		prefix = P.misc,
+		description = "Save file",
+	},
 	{
 		mode = "v",
 		"<M-j>",
 		":m '>+1<CR>gv=gv",
-		description = "Move line down", -- beslis misc (Alex 2024), maar tegnies n code util (Alex, 2 minute later)
+		prefix = P.misc,
+		description = "Move visual selection one line down",
 	},
 	{
 		mode = "v",
 		"<M-k>",
 		":m '<-2<CR>gv=gv",
-		description = "Move line up",
+		prefix = P.misc,
+		description = "Move visual selection one line up",
 	},
 	{
 		mode = "v",
-		"<M-h>",
+		"<",
 		"<gv",
-		description = "Move line left",
+		prefix = P.misc,
+		description = "Move visual selection one indentation left",
 	},
 	{
 		mode = "v",
-		"<M-l>",
+		">",
 		">gv",
-		description = "Move line right",
+		prefix = P.misc,
+		description = "Move visual selection one indentation right",
 	},
 	{
 		mode = { "n", "v" },
@@ -114,100 +190,129 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			vim.fn.setreg("+", path)
 			vim.notify("Copied " .. path .. " to clipboard")
 		end,
+		prefix = P.misc,
 		description = "Copy file path to clipboard",
 	},
-	--ufo
 	{
 		mode = "n",
 		"zR",
 		require("ufo").openAllFolds,
-		description = "Open all folds",
+		prefix = P.fold,
+		description = "Open all",
 	},
 	{
 		mode = "n",
 		"zM",
 		require("ufo").closeAllFolds,
-		description = "Close all folds",
+		prefix = P.fold,
+		description = "Close all",
 	},
 	{
 		mode = "n",
 		"zr",
 		require("ufo").openFoldsExceptKinds,
-		description = "Open all non-excluded folds",
+		prefix = P.fold,
+		description = "Open all non-excluded",
 	},
-	{ mode = "n", "zm", require("ufo").closeFoldsWith, description = "Close folds with" },
-	{ mode = "n", "zP", require("ufo").peekFoldedLinesUnderCursor, description = "Peek folded lines" },
-	--Legendary
+	{
+		mode = "n",
+		"zm",
+		require("ufo").closeFoldsWith,
+		prefix = P.fold,
+		description = "Close folds with indentation level greater prefixed than number",
+	},
+	{
+		mode = "n",
+		"zP",
+		require("ufo").peekFoldedLinesUnderCursor,
+		prefix = P.fold,
+		description = "Peek folded lines",
+	},
 	{
 		mode = { "n", "v" },
 		"<leader><leader>",
 		function()
 			require("legendary").find({})
 		end,
+		prefix = P.misc,
 		description = "Command palette",
 	},
-	--Telescope
 	{
 		mode = "n",
 		"<leader>fg",
 		require("telescope").extensions.live_grep_args.live_grep_args,
-		description = "Live Grep",
+		prefix = P.find,
+		description = "Grep in cwd",
 	},
 	{
 		mode = "n",
 		"<leader>fw",
 		require("telescope-live-grep-args.shortcuts").grep_word_under_cursor,
-		description = "Find word",
+		prefix = P.find,
+		description = "Word in cwd",
 	},
 	{
 		mode = "n",
 		"<leader>fq",
 		require("telescope.builtin").command_history,
-		description = "Find command history",
+		prefix = P.misc,
+		description = "Show command history",
 	},
 	{
 		mode = "v",
 		"<leader>fv",
 		require("telescope-live-grep-args.shortcuts").grep_visual_selection,
-		desription = "Find visual selection",
+		prefix = P.find,
+		description = "Grep visual selection in cwd",
 	},
-	{ mode = "n", "<leader>ff", require("telescope.builtin").find_files, description = "Find files" },
-	{ mode = "n", "<leader>b", require("telescope.builtin").buffers, description = "Show buffers" },
+	{
+		mode = "n",
+		"<leader>ff",
+		require("telescope.builtin").find_files,
+		prefix = P.find,
+		description = "Files by filename in cwd",
+	},
 	{
 		mode = "n",
 		"<leader>fu",
 		require("telescope").extensions.undo.undo,
-		description = "Show undotree",
+		prefix = P.misc,
+		description = "Show change history (undotree)",
 	},
 	{
 		mode = "n",
 		"<leader>fr",
 		require("telescope.builtin").lsp_references,
-		description = "Find symbol references",
+		prefix = P.find,
+		description = "References to symbol under cursor",
 	},
 	{
 		mode = "n",
 		"<leader>fs",
 		require("telescope.builtin").lsp_document_symbols,
-		description = "Document symbols",
+		prefix = P.misc,
+		description = "List all symbols in current buffer",
 	},
 	{
 		mode = "n",
 		"<leader>fc",
 		require("telescope.builtin").lsp_incoming_calls,
-		description = "Find incoming calls",
+		prefix = P.find,
+		description = "Calls to this symbol",
 	},
 	{
 		mode = "n",
 		"<leader>fo",
 		require("telescope.builtin").lsp_outgoing_calls,
-		description = "Find outgoing calls",
+		prefix = P.find,
+		description = "Calls made by this symbol",
 	},
 	{
 		mode = "n",
 		"<leader>fi",
 		require("telescope.builtin").lsp_implementations,
-		description = "Find symbol implementations",
+		prefix = P.find,
+		description = "Implementations of symbol under cursor",
 	},
 	{
 		mode = "n",
@@ -215,24 +320,51 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("telescope.builtin").pickers()
 		end,
-		description = "Resume last telescope search",
+		prefix = P.find,
+		description = "Open history of searches",
 	},
 	{
 		mode = "n",
 		"<leader>f/",
 		require("telescope.builtin").current_buffer_fuzzy_find,
-		description = "Fuzzy find in current buffer",
+		prefix = P.find,
+		description = "Fuzzy search in current buffer",
 	},
-	{ mode = "n", "<leader>gs", [[<CMD>DiffviewOpen<CR>]], description = "Open Git diffview" },
-	{ mode = "n", "<leader>gq", [[<CMD>DiffviewClose<CR>]], description = "Close Git diffview" },
-	{ mode = "n", "<leader>gh", require("telescope.builtin").git_commits, description = "Git commit history" },
+	{
+		mode = "n",
+		"<leader>gs",
+		[[<CMD>DiffviewOpen<CR>]],
+		prefix = P.git,
+		description = "Open Git diffview",
+	},
+	{
+		mode = "n",
+		"<leader>gq",
+		[[<CMD>DiffviewClose<CR>]],
+		prefix = P.git,
+		description = "Close Git diffview",
+	},
+	{
+		mode = "n",
+		"<leader>gh",
+		require("telescope.builtin").git_commits,
+		prefix = P.git,
+		description = "Commit history",
+	},
 	{
 		mode = "n",
 		"<leader>gc",
 		require("telescope.builtin").git_bcommits,
-		description = "Git commit history for current buffer",
+		prefix = P.git,
+		description = "Commit history for current buffer",
 	},
-	{ mode = "i", "<C-r>", require("telescope.builtin").registers, description = "Show registers" },
+	{
+		mode = { "i", "n" },
+		"<C-r>",
+		require("telescope.builtin").registers,
+		prefix = P.misc,
+		description = "Show registers",
+	},
 	{
 		mode = "n",
 		"<leader>bc",
@@ -252,7 +384,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			vim.cmd(":e")
 			vim.notify("Checked out " .. commit)
 		end,
-		description = "Git checkout the commit that changed the current line",
+		prefix = P.git,
+		description = "Browse source at the commit that changed the current line",
 	},
 	{
 		mode = "n",
@@ -269,14 +402,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 				vim.notify("Not in detached HEAD state, risk of resetting local changes")
 			end
 		end,
-		description = "Git checkout previous branch",
-	},
-	--git
-	{
-		mode = "n",
-		"<leader>gd",
-		"[[:Gitsigns diffthis<CR>]]",
-		description = "Git diff of uncommitted changes",
+		prefix = P.git,
+		description = "Stop browsing source at commit",
 	},
 	{
 		mode = { "n", "i" },
@@ -286,7 +413,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			gitsigns.preview_hunk_inline()
 			gitsigns.next_hunk()
 		end,
-		description = "Go to next git change/hunk",
+		prefix = P.git,
+		description = "Go to next change/hunk",
 	},
 	{
 		mode = { "n", "i" },
@@ -296,7 +424,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			gitsigns.preview_hunk_inline()
 			gitsigns.prev_hunk()
 		end,
-		description = "Go to previous git change/hunk",
+		prefix = P.git,
+		description = "Go to previous change/hunk",
 	},
 	{
 		mode = "n",
@@ -304,63 +433,114 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("gitsigns").blame_line({ full = true })
 		end,
+		prefix = P.git,
 		description = "Full commit message of last commit to change line",
 	},
-	--grapple
 	{
 		mode = "n",
 		"<leader>a",
 		require("grapple").toggle,
-		description = "Toggle file in grapple",
+		prefix = P.nav,
+		description = "Toggle file in quick access list",
 	},
 	{
 		mode = "n",
 		"<leader>t",
 		require("grapple").toggle_tags,
-		description = "Toggle grapple window",
+		prefix = P.nav,
+		description = "Open/close quick access list",
 	},
 	{
 		mode = "n",
 		"<leader>ac",
 		require("grapple").reset,
-		description = "Clear grapple tags for current scope",
+		prefix = P.nav,
+		description = "Clear quick access tags for current grapple scope",
 	},
-	--smart splits
-	{ mode = "n", "<A-h>", require("smart-splits").resize_left, description = "Resize left" },
-	{ mode = "n", "<A-j>", require("smart-splits").resize_down, description = "Resize down" },
-	{ mode = "n", "<A-k>", require("smart-splits").resize_up, description = "Resize up" },
-	{ mode = "n", "<A-l>", require("smart-splits").resize_right, description = "Resize right" },
-	{ mode = "n", "<C-h>", require("smart-splits").move_cursor_left, description = "Move cursor left" },
-	{ mode = "n", "<C-j>", require("smart-splits").move_cursor_down, description = "Move cursor down" },
-	{ mode = "n", "<C-k>", require("smart-splits").move_cursor_up, description = "Move cursor up" },
-	{ mode = "n", "<C-l>", require("smart-splits").move_cursor_right, description = "Move cursor right" },
-	{ mode = "n", "<A-n>", vim.cmd.tabnext, description = "Go to next tab" },
-	{ mode = "n", "<A-p>", vim.cmd.tabprevious, description = "Go to previous tab" },
+	{
+		mode = "n",
+		"<A-h>",
+		require("smart-splits").resize_left,
+		prefix = P.window,
+		description = "Resize leftwards",
+	},
+	{
+		mode = "n",
+		"<A-j>",
+		require("smart-splits").resize_down,
+		prefix = P.window,
+		description = "Resize downwards",
+	},
+	{
+		mode = "n",
+		"<A-k>",
+		require("smart-splits").resize_up,
+		prefix = P.window,
+		description = "Resize upwards",
+	},
+	{
+		mode = "n",
+		"<A-l>",
+		require("smart-splits").resize_right,
+		prefix = P.window,
+		description = "Resize rightwards",
+	},
+	{
+		mode = "n",
+		"<C-h>",
+		require("smart-splits").move_cursor_left,
+		prefix = P.window,
+		description = "Focus window to the left",
+	},
+	{
+		mode = "n",
+		"<C-j>",
+		require("smart-splits").move_cursor_down,
+		prefix = P.window,
+		description = "Focus window below",
+	},
+	{
+		mode = "n",
+		"<C-k>",
+		require("smart-splits").move_cursor_up,
+		prefix = P.window,
+		description = "Focus window above",
+	},
+	{
+		mode = "n",
+		"<C-l>",
+		require("smart-splits").move_cursor_right,
+		prefix = P.window,
+		description = "Focus window to the right",
+	},
 	{
 		mode = "n",
 		"<leader><C-h>",
 		require("smart-splits").swap_buf_left,
-		description = "Swap buffer left",
+		prefix = P.window,
+		description = "Swap current buffer leftwards",
 	},
 	{
 		mode = "n",
 		"<leader><C-j>",
 		require("smart-splits").swap_buf_down,
-		description = "Swap buffer down",
+		prefix = P.window,
+		description = "Swap current buffer downwards",
 	},
 	{
 		mode = "n",
 		"<leader><C-k>",
 		require("smart-splits").swap_buf_up,
-		description = "Swap buffer up",
+		prefix = P.window,
+		description = "Swap current buffer upwards",
 	},
 	{
 		mode = "n",
 		"<leader><C-l>",
 		require("smart-splits").swap_buf_right,
-		description = "Swap buffer right",
+		prefix = P.window,
+		description = "Swap current buffer rightwards",
 	},
-	-- mini.files
 	{
 		mode = "n",
 		"<leader>e",
@@ -377,7 +557,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 				end
 			end
 		end,
-		description = "Open mini.files",
+		prefix = P.nav,
+		description = "Open file explorer",
 	},
 	{
 		mode = "n",
@@ -388,16 +569,20 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			MiniFiles.go_out_plus()
 			MiniFiles.go_in()
 		end,
-		description = "Open mini.files",
 	},
-	--aerial
-	{ mode = "n", "<leader>mm", "<cmd>AerialToggle!<CR>", description = "Open function minimap" },
-	--diagnostics quicklist
+	{
+		mode = "n",
+		"<leader>mm",
+		"<cmd>AerialToggle!<CR>",
+		prefix = P.code,
+		description = "Open function minimap",
+	},
 	{
 		mode = "n",
 		"<leader>xx",
 		require("trouble").toggle,
-		{ description = "Toggle diagnostics window" },
+		prefix = P.diag,
+		description = "Toggle diagnostics window",
 	},
 	{
 		mode = "n",
@@ -405,6 +590,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("trouble").toggle("workspace_diagnostics")
 		end,
+		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
 	},
 	{
@@ -413,6 +599,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("trouble").toggle("document_diagnostics")
 		end,
+		prefix = P.diag,
 		description = "Toggle diagnostics for current document",
 	},
 	{
@@ -421,6 +608,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("trouble").toggle("quickfix")
 		end,
+		prefix = P.diag,
 		description = "Toggle diagnostics window with quickfix list",
 	},
 	{
@@ -429,13 +617,14 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("trouble").toggle("loclist")
 		end,
+		prefix = P.diag,
 		description = "Toggle diagnostics window for loclist",
 	},
-	--comment keybinds
 	{
 		mode = "n",
 		"<leader>/",
 		require("Comment.api").toggle.linewise.current,
+		prefix = P.code,
 		description = "Comment current line",
 	},
 	{
@@ -445,6 +634,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			vim.api.nvim_feedkeys(esc, "nx", false)
 			require("Comment.api").toggle.linewise(vim.fn.visualmode())
 		end,
+		prefix = P.code,
 		description = "Comment selection linewise",
 	},
 	{
@@ -454,6 +644,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			vim.api.nvim_feedkeys(esc, "nx", false)
 			require("Comment.api").toggle.blockwise(vim.fn.visualmode())
 		end,
+		prefix = P.code,
 		description = "Comment selection blockwise",
 	},
 	--debugging
@@ -463,6 +654,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dap").toggle_breakpoint()
 		end,
+		prefix = P.debug,
 		description = "Toggle breakpoint",
 	},
 	{
@@ -473,7 +665,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 				require("dap").set_breakpoint(input)
 			end)
 		end,
-		description = "Toggle breakpoint",
+		prefix = P.debug,
+		description = "Toggle conditional breakpoint",
 	},
 	{
 		mode = "n",
@@ -481,7 +674,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			trigger_dap(require("dap").run_last)
 		end,
-		description = "Choose nearest test",
+		prefix = P.debug,
+		description = "Nearest test",
 	},
 	{
 		mode = "n",
@@ -489,6 +683,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dap").step_over()
 		end,
+		prefix = P.debug,
 		description = "Step over",
 	},
 	{
@@ -497,6 +692,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dap").step_into()
 		end,
+		prefix = P.debug,
 		description = "Step into",
 	},
 	{
@@ -505,6 +701,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dap").step_out()
 		end,
+		prefix = P.debug,
 		description = "Step out",
 	},
 	{
@@ -513,6 +710,7 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dap").step_back()
 		end,
+		prefix = P.debug,
 		description = "Step back",
 	},
 	{
@@ -521,12 +719,14 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dap").run_to_cursor()
 		end,
+		prefix = P.debug,
 		description = "Run to cursor",
 	},
 	{
 		mode = "n",
 		"<leader>dc",
 		continue,
+		prefix = P.debug,
 		description = "Start debug session, or continue session",
 	},
 	{
@@ -536,7 +736,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			require("dap").terminate()
 			require("dapui").close()
 		end,
-		description = "Terminate debug session",
+		prefix = P.debug,
+		description = "Stop debug session",
 	},
 	{
 		mode = "n",
@@ -544,31 +745,37 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("dapui").toggle({ reset = true })
 		end,
+		prefix = P.debug,
 		description = "Reset and toggle ui",
 	},
-	--toggle booleans
 	{
 		mode = "n",
 		"<leader>bt",
 		require("alternate-toggler").toggleAlternate,
+		prefix = P.misc,
 		description = "Toggle booleans",
 	},
-	--overseer
-	{ mode = "n", "<leader>r", [[:OverseerRun <CR>]], description = "Run task" },
-	-- URL handling
+	{
+		mode = "n",
+		"<leader>r",
+		[[:OverseerRun <CR>]],
+		prefix = P.task,
+		description = "Run task",
+	},
 	{
 		mode = { "n", "v" },
 		"gx",
 		"<cmd>Browse<cr>",
-		description = "Open URL under cursor",
+		prefix = P.misc,
+		description = "Open anything under cursor in web browser",
 	},
-	--conform
 	{
 		mode = { "n", "v" },
 		"<leader>bf",
 		function()
 			require("conform").format({ async = false })
 		end,
+		prefix = P.code,
 		description = "Format current buffer",
 	},
 	-- {
@@ -583,42 +790,73 @@ require("utils").prefixifier(require("legendary").keymaps)({
 	-- 		end
 	-- 		gitsigns.next_hunk()
 	-- 	end,
-	-- 	description = "Format all hunks",
+	-- 	prefix = P.misc, description = "Format all hunks",
 	-- },
 	--latex
 	{
 		mode = "n",
 		"<leader>lb",
 		[[:VimtexCompile <CR>]],
-		description = "Latex build/compile document",
+		prefix = P.latex,
+		description = "Build/compile document",
 	},
 	{
 		mode = "n",
 		"<leader>lc",
 		[[:VimtexClean <CR>]],
-		description = "Latex clean aux files",
+		prefix = P.latex,
+		description = "Clean aux files",
 	},
 	{
 		mode = "n",
 		"<leader>le",
 		[[:VimtexTocOpen <CR>]],
-		description = "Latex open table of contents",
+		prefix = P.latex,
+		description = "Open table of contents",
 	},
 
 	{
 		mode = "n",
 		"<leader>ln",
 		[[:VimtexTocToggle <CR>]],
-		description = "Latex toggle table of contents",
+		prefix = P.latex,
+		description = "Toggle table of contents",
 	},
-	--LSP
-	{ mode = "n", "K", vim.lsp.buf.hover, description = "Show documentation" },
-	{ mode = "n", "gd", vim.lsp.buf.definition, description = "Go to definition" },
-	{ mode = "n", "gi", vim.lsp.buf.implementation, description = "Show implementations" },
-	{ mode = "n", "gr", vim.lsp.buf.references, description = "Show references" },
-	{ mode = "n", "gD", vim.lsp.buf.declaration, description = "Go to declaration" },
-	{ mode = "n", "<leader>K", vim.lsp.buf.signature_help, description = "Signature help" },
-	{ mode = "n", "gt", vim.lsp.buf.type_definition, description = "Go to type definition" },
+	{
+		mode = "n",
+		"K",
+		vim.lsp.buf.hover,
+		prefix = P.code,
+		description = "Show documentation",
+	},
+	{
+		mode = "n",
+		"gd",
+		vim.lsp.buf.definition,
+		prefix = P.code,
+		description = "Go to definition",
+	},
+	{
+		mode = "n",
+		"gD",
+		vim.lsp.buf.declaration,
+		prefix = P.code,
+		description = "Go to declaration",
+	},
+	{
+		mode = "n",
+		"<leader>K",
+		vim.lsp.buf.signature_help,
+		prefix = P.code,
+		description = "Show function signature",
+	},
+	{
+		mode = "n",
+		"gt",
+		vim.lsp.buf.type_definition,
+		prefix = P.code,
+		description = "Go to type definition",
+	},
 	{
 		mode = "n",
 		"<F2>",
@@ -626,39 +864,31 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			return ":IncRename " .. vim.fn.expand("<cword>")
 		end,
 		opts = { expr = true },
+		prefix = P.code,
 		description = "Rename",
 	},
-	{ mode = "n", "<leader>ca", vim.lsp.buf.code_action, description = "Code Action" },
+	{
+		mode = "n",
+		"<leader>ca",
+		vim.lsp.buf.code_action,
+		prefix = P.code,
+		description = "Show code actions",
+	},
 	{
 		mode = "n",
 		"<leader>ds",
 		vim.diagnostic.open_float,
-		description = "Open LSP diagnostics in a popup",
+		prefix = P.code,
+		description = "Open LSP diagnostics in a floating window",
 	},
-	--flash
 	{
 		mode = { "n", "x", "o" },
 		"s",
 		function()
 			require("flash").jump()
 		end,
-		description = "Flash",
-	},
-	{
-		mode = "o",
-		"r",
-		function()
-			require("flash").remote()
-		end,
-		description = "Remote Flash",
-	},
-	{
-		mode = { "o", "x" },
-		"R",
-		function()
-			require("flash").treesitter_search()
-		end,
-		description = "Treesitter Search",
+		prefix = P.move,
+		description = "Flash see :h flash.nvim.txt",
 	},
 	{
 		mode = { "c" },
@@ -666,20 +896,43 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("flash").toggle()
 		end,
+		prefix = P.move,
 		description = "Toggle Flash Search",
 	},
-	--Mason
-	{ mode = "n", "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" },
-	--Notes
-	{ mode = "n", "<leader>nn", "<cmd>NotesNew<cr>", desc = "New note" },
-	{ mode = "n", "<leader>nf", "<cmd>NotesFind<cr>", desc = "Find note" },
-	{ mode = "n", "<leader>ng", "<cmd>NotesGrep<cr>", desc = "Grep notes" },
-	--Terminal
+	{
+		mode = "n",
+		"<leader>cm",
+		"<cmd>Mason<cr>",
+		prefix = P.misc,
+		description = "Open Mason: LSP server, formatter, DAP and linter manager",
+	},
+	{
+		mode = "n",
+		"<leader>nn",
+		"<cmd>NotesNew<cr>",
+		prefix = P.notes,
+		description = "New note",
+	},
+	{
+		mode = "n",
+		"<leader>nf",
+		"<cmd>NotesFind<cr>",
+		prefix = P.notes,
+		description = "Find note",
+	},
+	{
+		mode = "n",
+		"<leader>ng",
+		"<cmd>NotesGrep<cr>",
+		prefix = P.notes,
+		description = "Grep notes",
+	},
 	{
 		mode = "t",
 		"<esc>",
 		[[<C-\><C-n>]],
 		{ buffer = 0 },
+		prefix = P.term,
 		description = "Exit insert mode in terminal",
 	},
 	{
@@ -688,7 +941,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			vim.cmd(":ToggleTerm direction=vertical size=120")
 		end,
-		description = "Open terminal in vertical split",
+		prefix = P.term,
+		description = "Open in vertical split",
 	},
 	{
 		mode = "n",
@@ -698,7 +952,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 			vim.cmd("wincmd H")
 			vim.cmd("vert res 120")
 		end,
-		description = "Open terminal in left vertical split",
+		prefix = P.term,
+		description = "Open in left vertical split",
 	},
 	{
 		mode = { "o", "x" },
@@ -706,7 +961,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").indentation("inner", "inner")
 		end,
-		description = "Text object: in inner indentation",
+		prefix = P.text,
+		description = "In inner indentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -714,7 +970,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").indentation("outer", "inner")
 		end,
-		description = "Text object: around inner indentation",
+		prefix = P.text,
+		description = "Around inner indentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -722,7 +979,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").indentation("inner", "outer")
 		end,
-		description = "Text object: in outer indentation",
+		prefix = P.text,
+		description = "In outer indentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -730,7 +988,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").indentation("outer", "outer")
 		end,
-		description = "Text object: around outer indentation",
+		prefix = P.text,
+		description = "Around outer indentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -738,7 +997,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").restOfIndentation()
 		end,
-		description = "Text object: rest of indentation",
+		prefix = P.text,
+		description = "Rest of indentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -746,7 +1006,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").greedyOuterIndentation("inner")
 		end,
-		description = "Text object: in greedyOuterIndentation",
+		prefix = P.text,
+		description = "In greedyOuterIndentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -754,7 +1015,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").greedyOuterIndentation("outer")
 		end,
-		description = "Text object: around greedyOuterIndentation",
+		prefix = P.text,
+		description = "Around greedyOuterIndentation",
 	},
 	{
 		mode = { "o", "x" },
@@ -762,7 +1024,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").subword("inner")
 		end,
-		description = "Text object: in subword",
+		prefix = P.text,
+		description = "In subword",
 	},
 	{
 		mode = { "o", "x" },
@@ -770,7 +1033,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").subword("outer")
 		end,
-		description = "Text object: around subword",
+		prefix = P.text,
+		description = "Around subword",
 	},
 	{
 		mode = { "o", "x" },
@@ -778,7 +1042,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").toNextClosingBracket()
 		end,
-		description = "Text object: to next closing bracket",
+		prefix = P.text,
+		description = "To next closing bracket",
 	},
 	{
 		mode = { "o", "x" },
@@ -786,7 +1051,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").toNextQuotationMark()
 		end,
-		description = "Text object: to next quotation mark",
+		prefix = P.text,
+		description = "To next quotation mark",
 	},
 	{
 		mode = { "o", "x" },
@@ -794,7 +1060,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").anyBracket("inner")
 		end,
-		description = "Text object: in any bracket",
+		prefix = P.text,
+		description = "In any bracket",
 	},
 	{
 		mode = { "o", "x" },
@@ -802,7 +1069,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").anyBracket("outer")
 		end,
-		description = "Text object: around any bracket",
+		prefix = P.text,
+		description = "Around any bracket",
 	},
 	{
 		mode = { "o", "x" },
@@ -810,7 +1078,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").restOfParagraph()
 		end,
-		description = "Text object: rest of paragraph",
+		prefix = P.text,
+		description = "Rest of paragraph",
 	},
 	{
 		mode = { "o", "x" },
@@ -818,7 +1087,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").entireBuffer()
 		end,
-		description = "Text object: entire buffer",
+		prefix = P.text,
+		description = "Entire buffer",
 	},
 	{
 		mode = { "o", "x" },
@@ -826,7 +1096,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").nearEoL()
 		end,
-		description = "Text object: 1 char befor EoL",
+		prefix = P.text,
+		description = "1 char befor EoL",
 	},
 	{
 		mode = { "o", "x" },
@@ -834,7 +1105,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").lastChange()
 		end,
-		description = "Text object: last change",
+		prefix = P.text,
+		description = "Last change",
 	},
 	{
 		mode = { "o", "x" },
@@ -842,7 +1114,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").lineCharacterwise("inner")
 		end,
-		description = "Text object: in line characterwise",
+		prefix = P.text,
+		description = "In line characterwise",
 	},
 	{
 		mode = { "o", "x" },
@@ -850,7 +1123,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").lineCharacterwise("outer")
 		end,
-		description = "Text object: around line characterwise",
+		prefix = P.text,
+		description = "Around line characterwise",
 	},
 	{
 		mode = { "o", "x" },
@@ -858,7 +1132,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").column()
 		end,
-		description = "Text object: column",
+		prefix = P.text,
+		description = "Column",
 	},
 	{
 		mode = { "o", "x" },
@@ -866,7 +1141,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").multiCommentedLines()
 		end,
-		description = "Text object: multi commented lines",
+		prefix = P.text,
+		description = "Multi commented lines",
 	},
 	{
 		mode = { "o", "x" },
@@ -874,7 +1150,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").notebookCell("inner")
 		end,
-		description = "Text object: in notebook cell",
+		prefix = P.text,
+		description = "In notebook cell",
 	},
 	{
 		mode = { "o", "x" },
@@ -882,7 +1159,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").notebookCell("outer")
 		end,
-		description = "Text object: around notebook cell",
+		prefix = P.text,
+		description = "Around notebook cell",
 	},
 	{
 		mode = { "o", "x" },
@@ -890,7 +1168,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").value("inner")
 		end,
-		description = "Text object: in value",
+		prefix = P.text,
+		description = "In value",
 	},
 	{
 		mode = { "o", "x" },
@@ -898,7 +1177,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").value("outer")
 		end,
-		description = "Text object: around value",
+		prefix = P.text,
+		description = "Around value",
 	},
 	{
 		mode = { "o", "x" },
@@ -906,7 +1186,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").key("inner")
 		end,
-		description = "Text object: in key",
+		prefix = P.text,
+		description = "In key",
 	},
 	{
 		mode = { "o", "x" },
@@ -914,7 +1195,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").key("outer")
 		end,
-		description = "Text object: around key",
+		prefix = P.text,
+		description = "Around key",
 	},
 	{
 		mode = { "o", "x" },
@@ -922,7 +1204,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").url()
 		end,
-		description = "Text object: url",
+		prefix = P.text,
+		description = "Url",
 	},
 	{
 		mode = { "o", "x" },
@@ -930,7 +1213,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").number("inner")
 		end,
-		description = "Text object: in number",
+		prefix = P.text,
+		description = "In number",
 	},
 	{
 		mode = { "o", "x" },
@@ -938,7 +1222,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").number("outer")
 		end,
-		description = "Text object: around number",
+		prefix = P.text,
+		description = "Around number",
 	},
 	{
 		mode = { "o", "x" },
@@ -946,7 +1231,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").diagnostic()
 		end,
-		description = "Text object: lsp diagnostic",
+		prefix = P.text,
+		description = "Lsp diagnostic",
 	},
 	{
 		mode = { "o", "x" },
@@ -954,7 +1240,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").closedFold("inner")
 		end,
-		description = "Text object: in fold",
+		prefix = P.text,
+		description = "In fold",
 	},
 	{
 		mode = { "o", "x" },
@@ -962,7 +1249,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").closedFold("outer")
 		end,
-		description = "Text object: around fold",
+		prefix = P.text,
+		description = "Around fold",
 	},
 	{
 		mode = { "o", "x" },
@@ -970,7 +1258,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").chainMember("inner")
 		end,
-		description = "Text object: in chain member",
+		prefix = P.text,
+		description = "In chain member",
 	},
 	{
 		mode = { "o", "x" },
@@ -978,7 +1267,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").chainMember("outer")
 		end,
-		description = "Text object: around chain member",
+		prefix = P.text,
+		description = "Around chain member",
 	},
 	{
 		mode = { "o", "x" },
@@ -986,7 +1276,8 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").visibleInWindow()
 		end,
-		description = "Text object: visible in window",
+		prefix = P.text,
+		description = "Visible in window",
 	},
 	{
 		mode = { "o", "x" },
@@ -994,8 +1285,50 @@ require("utils").prefixifier(require("legendary").keymaps)({
 		function()
 			require("various-textobjs").restOfWindow()
 		end,
-		description = "Text object: rest of window",
+		prefix = P.text,
+		description = "Rest of window",
+	},
+	{
+		mode = { "n" },
+		"<leader>sn",
+		require("workspaces").next_session,
+		prefix = P.work,
+		description = "Next session",
+	},
+	{
+		mode = { "n" },
+		"<leader>sp",
+		require("workspaces").previous_session,
+		prefix = P.work,
+		description = "Previous session",
+	},
+	{
+		mode = { "n" },
+		"<leader>z",
+		require("workspaces").alternate_session,
+		prefix = P.work,
+		description = "Alternate session",
+	},
+	{
+		mode = { "n" },
+		"<leader>sz",
+		require("workspaces").alternate_workspace,
+		prefix = P.work,
+		description = "Alternate workspace",
+	},
+	{
+		mode = { "n" },
+		"<leader>sa",
+		require("workspaces").pick_session,
+		prefix = P.work,
+		description = "Pick session",
+	},
+	{
+		mode = { "n" },
+		"<leader>sw",
+		require("workspaces").pick_workspace,
+		prefix = P.work,
+		description = "Pick workspace",
 	},
 })
-
 return {}

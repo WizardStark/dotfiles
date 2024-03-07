@@ -1,36 +1,47 @@
-return {
-	require("legendary").commands({
-		{ ":Lazy", description = "Open Lazy plugin manager" },
-		{ ":Mason", description = "Open Mason LSP manager" },
-		{ ":LspInfo", description = "Show LSP information for current buffer" },
-		{ ":LspLog", description = "Open LSP log in a new buffer" },
-		{ ":LspStop", description = "Stop currently attached LSP" },
-		{ ":LspStart", description = "Start LSP for current buffer" },
-		{ ":LspRestart", description = "Restart currently attached LSP" },
-		{
-			":Gitsigns diffthis {diff_target}",
-			unfinished = true,
-			description = "Git diff, requires diff target, e.g. ~1 for previous commit",
-		},
-		{
-			":Gitsigns stage_buffer<CR>",
-			description = "Git stage buffer",
-		},
-		{
-			":Gitsigns reset_buffer<CR>",
-			description = "Git reset buffer",
-		},
-		{
-			":Gitsigns undo_stage_hunk<CR>",
-			description = "Git undo stage hunk",
-		},
-		{
-			":VimtexStop<CR>",
-			description = "Stop Latex compilation",
-		},
-		{
-			":VimtexStopAll<CR>",
-			description = "Stop  all Latex compilation",
-		},
-	}),
-}
+local prefixifier = require("utils").prefixifier
+local P = require("utils").PREFIXES
+local commands = require("legendary").commands
+
+prefixifier(commands)({
+	{
+		":Lazy",
+		prefix = P.misc,
+		description = "Open Lazy plugin manager",
+	},
+	{
+		":LspInfo",
+		prefix = P.lsp,
+		description = "Show LSP information for current buffer",
+	},
+	{
+		":LspLog",
+		prefix = P.lsp,
+		description = "Open LSP log in a new buffer",
+	},
+	{
+		":LspStop",
+		prefix = P.lsp,
+		description = "Stop currently attached LSP",
+	},
+	{
+		":LspStart",
+		prefix = P.lsp,
+		description = "Start LSP for current buffer",
+	},
+	{
+		":LspRestart",
+		prefix = P.lsp,
+		description = "Restart currently attached LSP",
+	},
+	{
+		":VimtexStop<CR>",
+		prefix = P.latex,
+		description = "Stop Latex compilation",
+	},
+	{
+		":VimtexStopAll<CR>",
+		prefix = P.latex,
+		description = "Stop  all Latex compilation",
+	},
+})
+return {}

@@ -2,18 +2,25 @@ local M = {}
 
 ---@enum Prefix
 M.PREFIXES = {
+	auto = "AutoCmds",
 	code = "Code utils",
 	debug = "Debugging",
 	diag = "Diagnostics",
+	find = "Find",
+	fold = "Folds",
 	git = "Git",
-	lsp = "LSP",
+	latex = "Latex",
+	lsp = "Language server",
 	misc = "Misc",
 	move = "Movement",
 	nav = "Navigation",
 	notes = "Notes",
-	run = "Run",
+	task = "Tasks",
 	term = "Terminal",
+	text = "Text object",
 	nogroup = "Ungrouped",
+	window = "Window",
+	work = "Workspaces",
 }
 
 local function get_longest_prefix_length()
@@ -35,7 +42,7 @@ end
 ---@param description string | nil
 function M.prefix_description(prefix, description)
 	if description == nil then
-		return "No description"
+		description = "No description"
 	end
 	if prefix == nil then
 		return M.PREFIXES.nogroup .. string.rep(" ", maxlen - #M.PREFIXES.nogroup) .. " │ " .. description
