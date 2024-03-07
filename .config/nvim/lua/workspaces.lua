@@ -221,11 +221,17 @@ end
 local function clean_non_terminal_buffers()
 	local current_buffer = vim.api.nvim_get_current_buf()
 	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
-		if vim.api.nvim_buf_is_valid(buffer) and buffer ~= current_buffer then
-			vim.api.nvim_buf_delete(buffer, { force = true })
+		local should_delete = vim.api.nvim_buf_is_valid(buffer)
+			and buffer ~= current_buffer
+			and vim.bo[buffer].bt ~= "terminal"
+		if should_delete then
+			pcall(vim.api.nvim_buf_delete, buffer, { force = true })
 		end
 	end
-	vim.api.nvim_buf_delete(current_buffer, { force = true })
+
+	if vim.bo[current_buffer].bt ~= "terminal" then
+		pcall(vim.api.nvim_buf_delete, current_buffer, { force = true })
+	end
 end
 
 --- Switch to target session, does nothing if it is equal to current session
