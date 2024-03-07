@@ -107,7 +107,7 @@ return {
 	--lualine
 	{
 		"nvim-lualine/lualine.nvim",
-		event = "VeryLazy",
+		lazy = false,
 		dependencies = { "stevearc/aerial.nvim" },
 		config = function()
 			require("lualine").setup({
@@ -167,7 +167,6 @@ return {
 					"trouble",
 				},
 			})
-			require("workspaces").load_workspaces()
 		end,
 	},
 }

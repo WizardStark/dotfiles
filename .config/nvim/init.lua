@@ -20,3 +20,5 @@ require("lazy").setup({
 	spec = { { import = "plugins" }, { import = "config" } },
 	ui = { border = "rounded" },
 })
+
+require("workspaces").load_workspaces()
