@@ -21,4 +21,6 @@ require("lazy").setup({
 	ui = { border = "rounded" },
 })
 
-require("workspaces").load_workspaces()
+if next(vim.fn.argv()) == nil then
+	require("workspaces").load_workspaces()
+end
