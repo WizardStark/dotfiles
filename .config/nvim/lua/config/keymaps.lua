@@ -30,6 +30,33 @@ end
 
 local original_branch = nil
 
+---@param on_success fun(name: string, dir: string)
+---@param on_cancel fun()
+local function input_new_session(on_success, on_cancel)
+	vim.ui.input({
+		prompt = "New session name",
+		default = "",
+		kind = "tabline",
+	}, function(name_input)
+		if name_input then
+			vim.ui.input({
+				prompt = "New session directory",
+				default = "",
+				completion = "dir",
+				kind = "tabline",
+			}, function(dir_input)
+				if dir_input then
+					on_success(name_input, dir_input)
+				else
+					on_cancel()
+				end
+			end)
+		else
+			on_cancel()
+		end
+	end)
+end
+
 local prefixifier = require("utils").prefixifier
 local P = require("utils").PREFIXES
 local keymaps = require("legendary").keymaps
@@ -332,7 +359,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"<leader>gs",
+		"<leader>gd",
 		[[<CMD>DiffviewOpen<CR>]],
 		prefix = P.git,
 		description = "Open Git diffview",
@@ -343,6 +370,51 @@ prefixifier(keymaps)({
 		[[<CMD>DiffviewClose<CR>]],
 		prefix = P.git,
 		description = "Close Git diffview",
+	},
+	{
+		mode = "n",
+		"<leader>gsb",
+		function()
+			require("gitsigns").stage_buffer()
+		end,
+		prefix = P.git,
+		description = "Git stage buffer",
+	},
+	{
+		mode = "n",
+		"<leader>grb",
+		function()
+			require("gitsigns").reset_buffer()
+		end,
+		prefix = P.git,
+		description = "Git reset buffer",
+	},
+	{
+		mode = "n",
+		"<leader>guh",
+		function()
+			require("gitsigns").undo_stage_hunk()
+		end,
+		prefix = P.git,
+		description = "Git undo last stage hunk",
+	},
+	{
+		mode = "v",
+		"<leader>gsv",
+		function()
+			require("gitsigns").stage_hunk(require("utils").get_visual_selection_lines())
+		end,
+		prefix = P.git,
+		description = "Git stage visual selection",
+	},
+	{
+		mode = "v",
+		"<leader>grv",
+		function()
+			require("gitsigns").reset_hunk(require("utils").get_visual_selection_lines())
+		end,
+		prefix = P.git,
+		description = "Git reset visual selection",
 	},
 	{
 		mode = "n",
@@ -1325,10 +1397,106 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n" },
+		"<leader>si",
+		function()
+			vim.ui.input({
+				prompt = "Session number",
+				default = "",
+				kind = "tabline",
+			}, function(idx_input)
+				if idx_input then
+					require("workspaces").switch_session_by_index(idx_input)
+				else
+					vim.notify("Switch cancelled")
+					return
+				end
+			end)
+		end,
+		prefix = P.work,
+		description = "Switch session by index",
+	},
+	{
+		mode = { "n" },
 		"<leader>sw",
 		require("workspaces").pick_workspace,
 		prefix = P.work,
 		description = "Pick workspace",
+	},
+	{
+		mode = { "n" },
+		"<leader>ssc",
+		function()
+			input_new_session(function(name, dir)
+				require("workspaces").create_session(name, dir)
+			end, function()
+				vim.notify("Creation cancelled")
+			end)
+		end,
+		prefix = P.work,
+		description = "Create session",
+	},
+	{
+		mode = { "n" },
+		"<leader>ssr",
+		function()
+			vim.ui.input({
+				prompt = "New name",
+				default = require("workspaces").get_current_workspace().current_session,
+				kind = "tabline",
+			}, function(input)
+				if input then
+					require("workspaces").rename_current_session(input)
+				else
+					vim.notify("Rename cancelled")
+				end
+			end)
+		end,
+		prefix = P.work,
+		description = "Rename session",
+	},
+	{
+		mode = { "n" },
+		"<leader>ssw",
+		function()
+			vim.ui.input({
+				prompt = "New workspace name",
+				default = "",
+				kind = "tabline",
+			}, function(input)
+				local on_cancel = function()
+					vim.notify("Creation cancelled")
+				end
+
+				if input then
+					input_new_session(function(session_name, dir)
+						require("workspaces").create_workspace(input, session_name, dir)
+					end, on_cancel)
+				else
+					on_cancel()
+				end
+			end)
+		end,
+		prefix = P.work,
+		description = "Create workspace",
+	},
+	{
+		mode = { "n" },
+		"<leader>ssn",
+		function()
+			vim.ui.input({
+				prompt = "New name",
+				default = require("workspaces").get_current_workspace().name,
+				kind = "tabline",
+			}, function(input)
+				if input then
+					require("workspaces").rename_current_workspace(input)
+				else
+					vim.notify("Rename cancelled")
+				end
+			end)
+		end,
+		prefix = P.work,
+		description = "Rename workspace",
 	},
 })
 return {}
