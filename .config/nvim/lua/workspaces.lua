@@ -107,7 +107,6 @@ local function source_nvim_session_file(workspace, session)
 
 	local source_ok, source_res = pcall(vim.api.nvim_command, "silent source " .. session_file.filename)
 
-	-- TODO: Keep a "last working backup" sessions file for each session, this way we can fall back to it if sourcing the current one fails.
 	if not source_ok then
 		local corrupt_bak_file = Path:new(sessions_bak_path):joinpath(session_filename .. ".corrupt-bak.vim")
 
@@ -406,6 +405,47 @@ local function switch_workspace(target_workspace)
 	setup_lualine()
 end
 
+---@param on_success fun(name: string, dir: string)
+---@param on_cancel fun()
+local function input_new_session(on_success, on_cancel)
+	vim.ui.input({
+		prompt = "Create: New session name",
+		default = "",
+		kind = "tabline",
+	}, function(name_input)
+		if name_input then
+			vim.ui.input({
+				prompt = "New session directory",
+				default = "",
+				completion = "dir",
+				kind = "tabline",
+			}, function(dir_input)
+				if dir_input then
+					on_success(name_input, dir_input)
+				else
+					on_cancel()
+				end
+			end)
+		else
+			on_cancel()
+		end
+	end)
+end
+
+function M.rename_current_session_input()
+	vim.ui.input({
+		prompt = "Rename: New session name",
+		default = current_workspace.current_session,
+		kind = "tabline",
+	}, function(input)
+		if input then
+			M.rename_current_session(input)
+		else
+			vim.notify("Rename cancelled")
+		end
+	end)
+end
+
 function M.rename_current_session(name)
 	if not verify_session_name(name) then
 		return
@@ -421,6 +461,14 @@ function M.rename_current_session(name)
 
 	setup_lualine()
 	M.persist_workspaces()
+end
+
+function M.create_session_input()
+	input_new_session(function(name, dir)
+		M.create_session(name, dir)
+	end, function()
+		vim.notify("Creation cancelled")
+	end)
 end
 
 function M.create_session(name, dir)
@@ -449,22 +497,62 @@ function M.create_session(name, dir)
 	switch_session(session)
 end
 
+function M.delete_session_input()
+	vim.ui.input({
+		prompt = "Delete session",
+		default = current_workspace.current_session,
+		kind = "tabline",
+	}, function(input)
+		if input then
+			M.delete_session(input)
+		else
+			vim.notify("Deletion cancelled")
+		end
+	end)
+end
+
 function M.delete_session(name)
-	if find_session(current_workspace, name) == nil then
+	local session_idx = find_session(current_workspace, name)
+	if session_idx == nil then
 		vim.notify("That session does not exist", vim.log.levels.ERROR)
 		return
 	end
 
-	for i, v in ipairs(current_workspace.sessions) do
-		if v.name == name then
-			table.remove(current_workspace.sessions, i)
-			break
+	if #current_workspace.sessions == 1 then
+		M.delete_workspace(current_workspace.name)
+	else
+		for i, v in ipairs(current_workspace.sessions) do
+			if v.name == name then
+				table.remove(current_workspace.sessions, i)
+				break
+			end
+		end
+		if name == current_workspace.current_session then
+			switch_session(current_workspace.sessions[1])
 		end
 	end
 
-	--TODO: swap sessions if delete current
 	setup_lualine()
 	M.persist_workspaces()
+end
+
+function M.create_workspace_input()
+	vim.ui.input({
+		prompt = "Create: New workspace name",
+		default = "",
+		kind = "tabline",
+	}, function(input)
+		local on_cancel = function()
+			vim.notify("Creation cancelled")
+		end
+		if input then
+			input_new_session(function(session_name, dir)
+				M.create_workspace(input, session_name, dir)
+			end, on_cancel)
+		else
+			on_cancel()
+		end
+	end)
 end
 
 ---@param name string
@@ -493,14 +581,27 @@ function M.create_workspace(name, session_name, dir)
 	M.persist_workspaces()
 end
 
---TODO: maybe make these more generic, so you can rename any session instead of just the current one
+function M.rename_current_workspace_input()
+	vim.ui.input({
+		prompt = "Rename: New workspace name",
+		default = require("workspaces").get_current_workspace().name,
+		kind = "tabline",
+	}, function(input)
+		if input then
+			require("workspaces").rename_current_workspace(input)
+		else
+			vim.notify("Rename cancelled")
+		end
+	end)
+end
+
 function M.rename_current_workspace(name)
 	if not verify_workspace_name(name) then
 		return
 	end
 
 	if find_workspace(name) ~= nil then
-		vim.notify("An workspace with that name already exists", vim.log.levels.ERROR)
+		vim.notify("A session with that name already exists", vim.log.levels.ERROR)
 		return
 	end
 
@@ -511,9 +612,23 @@ function M.rename_current_workspace(name)
 	M.persist_workspaces()
 end
 
+function M.delete_workspace_input()
+	vim.ui.input({
+		prompt = "Delete workspace",
+		default = current_workspace.name,
+		kind = "tabline",
+	}, function(input)
+		if input then
+			M.delete_workspace(input)
+		else
+			vim.notify("Deletion cancelled")
+		end
+	end)
+end
+
 function M.delete_workspace(name)
 	if find_workspace(name) == nil then
-		vim.notify("An workspace with that name does not exist", vim.log.levels.ERROR)
+		vim.notify("A workspace with that name does not exist", vim.log.levels.ERROR)
 		return
 	end
 
@@ -537,9 +652,29 @@ function M.delete_workspace(name)
 	M.persist_workspaces()
 end
 
-function M.switch_session_by_index(idx)
-	idx = tonumber(idx)
+function M.switch_session_by_index_input()
+	vim.ui.input({
+		prompt = "Session number",
+		default = "",
+		kind = "tabline",
+	}, function(idx_input)
+		---@cast idx_input string | nil
+		if idx_input and #idx_input > 0 then
+			local idx = tonumber(idx_input)
+			if idx then
+				M.switch_session_by_index(idx)
+			else
+				vim.notify(idx_input .. " is not a number", vim.log.levels.ERROR)
+			end
+		else
+			vim.notify("Switch cancelled")
+			return
+		end
+	end)
+end
 
+---@param idx number
+function M.switch_session_by_index(idx)
 	if idx < 1 or idx > #current_workspace.sessions then
 		vim.notify("Could not find a session with that index", vim.log.levels.ERROR)
 		return
@@ -650,13 +785,15 @@ end
 function M.load_workspaces()
 	local workspaces_file = Path:new(workspaces_path .. Path.path.sep .. "workspaces.json")
 
-	local workspace_data = {}
+	local workspace_data = nil
 
 	local should_persist = false
 
 	if workspaces_file:exists() then
 		workspace_data = vim.fn.json_decode(workspaces_file:read())
-	else
+	end
+
+	if not workspace_data then
 		workspace_data = {
 			current_workspace = "dotfiles",
 			last_workspace = nil,
