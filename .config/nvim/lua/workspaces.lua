@@ -497,6 +497,7 @@ function M.create_session(name, dir)
 	switch_session(session)
 end
 
+--TODO: Delete session files on session deletion
 function M.delete_session_input()
 	vim.ui.input({
 		prompt = "Delete session",
@@ -512,24 +513,33 @@ function M.delete_session_input()
 end
 
 function M.delete_session(name)
-	local session_idx = find_session(current_workspace, name)
-	if session_idx == nil then
+	local session = find_session(current_workspace, name)
+	if session == nil then
 		vim.notify("That session does not exist", vim.log.levels.ERROR)
 		return
 	end
 
-	if #current_workspace.sessions == 1 then
-		M.delete_workspace(current_workspace.name)
+	local workspace = current_workspace
+
+	if #workspace.sessions == 1 then
+		M.delete_workspace(workspace.name)
 	else
-		for i, v in ipairs(current_workspace.sessions) do
+		for i, v in ipairs(workspace.sessions) do
 			if v.name == name then
-				table.remove(current_workspace.sessions, i)
+				table.remove(workspace.sessions, i)
 				break
 			end
 		end
-		if name == current_workspace.current_session then
-			switch_session(current_workspace.sessions[1])
+		if name == workspace.current_session then
+			switch_session(workspace.sessions[1])
 		end
+	end
+
+	local session_filename = get_nvim_session_filename(workspace, session)
+	local session_file = Path:new(sessions_path):joinpath(session_filename .. ".vim")
+
+	if session_file:exists() then
+		session_file:rm()
 	end
 
 	setup_lualine()

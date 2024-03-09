@@ -106,6 +106,7 @@ return {
 				"prettierd",
 				"shfmt",
 				"checkstyle",
+				"stylua",
 				"jq",
 				"yamlfmt",
 			},
