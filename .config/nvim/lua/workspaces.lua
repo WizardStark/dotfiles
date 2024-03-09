@@ -497,7 +497,6 @@ function M.create_session(name, dir)
 	switch_session(session)
 end
 
---TODO: Delete session files on session deletion
 function M.delete_session_input()
 	vim.ui.input({
 		prompt = "Delete session",

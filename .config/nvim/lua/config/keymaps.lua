@@ -58,6 +58,20 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n", "v" },
+		"<C-v>",
+		[["+p]],
+		prefix = P.misc,
+		description = "Paste with ctrl",
+	},
+	{
+		mode = { "i" },
+		"<C-v>",
+		[[<C-r>+]],
+		prefix = P.misc,
+		description = "Paste with ctrl",
+	},
+	{
+		mode = { "n", "v" },
 		"<leader>X",
 		save_and_exit,
 		prefix = P.misc,
