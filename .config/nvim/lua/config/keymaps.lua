@@ -1438,6 +1438,34 @@ prefixifier(keymaps)({
 		prefix = P.work,
 		description = "Delete workspace",
 	},
+	{
+		mode = { "n" },
+		"m",
+		require("substitute").operator,
+		prefix = P.misc,
+		description = "Substitute text object",
+	},
+	{
+		mode = { "n" },
+		"mm",
+		require("substitute").line,
+		prefix = P.misc,
+		description = "Substitute line",
+	},
+	{
+		mode = { "n" },
+		"M",
+		require("substitute").eol,
+		prefix = P.misc,
+		description = "Substitute to end of line",
+	},
+	{
+		mode = { "x" },
+		"m",
+		require("substitute").visual,
+		prefix = P.misc,
+		description = "Substitute visual selection",
+	},
 })
 
 return {}

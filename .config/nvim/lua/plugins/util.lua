@@ -133,6 +133,17 @@ return {
 		},
 		opts = {},
 	},
+	{
+		"gbprod/substitute.nvim",
+		event = "VeryLazy",
+		opts = {},
+	},
+	{
+		"chrisgrieser/nvim-recorder",
+		event = "VeryLazy",
+		dependencies = "rcarriga/nvim-notify",
+		opts = {},
+	},
 	--local
 	{
 		dir = "~/.config/lcl",

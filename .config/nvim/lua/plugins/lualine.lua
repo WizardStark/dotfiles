@@ -132,7 +132,11 @@ return {
 						"aerial",
 					},
 					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
-					lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
+					lualine_y = {
+						{ "progress", cond = is_not_toggleterm },
+						{ "location", cond = is_not_toggleterm },
+						{ require("recorder").recordingStatus, cond = is_not_toggleterm },
+					},
 					lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 				},
 				inactive_sections = {
