@@ -205,6 +205,7 @@ return {
 	},
 	{
 		"L3MON4D3/LuaSnip",
+		build = "make install_jsregexp",
 		event = "VeryLazy",
 		dependencies = {
 			"rafamadriz/friendly-snippets",
@@ -316,9 +317,10 @@ return {
 	--latex
 	{
 		"lervag/vimtex",
+		event = "VeryLazy",
 		ft = { "markdown", "tex" },
 		init = function()
-			vim.g.vimtex_syntax_enabled = 1
+			-- vim.g.vimtex_syntax_enabled = 1
 			vim.g.vimtex_compiler_latexmk = {
 				build_dir = function()
 					return vim.fn["vimtex#util#find_root"]()

@@ -1,5 +1,9 @@
 local M = {}
 
+--TODO there is a bug on session restore for .tex files for autocmd group "syntaxenabled", I am
+--pretty sure this is to to with the way vimtex does its configuration, and these global vars
+--are run on plugin setup, so it should probably just not be persisted into the session files
+
 ---@class Workspace
 ---@field name string
 ---@field sessions Session[]

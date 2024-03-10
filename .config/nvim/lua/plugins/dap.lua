@@ -8,6 +8,8 @@ return {
 			"rcarriga/nvim-dap-ui",
 			"jay-babu/mason-nvim-dap.nvim",
 		},
+		--Add the following to run program in debug mode
+		--require('dap').defaults.fallback.exception_breakpoints = {'raised'}
 	},
 	{
 		"jay-babu/mason-nvim-dap.nvim",

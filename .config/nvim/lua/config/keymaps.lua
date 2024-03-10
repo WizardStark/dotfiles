@@ -64,6 +64,13 @@ prefixifier(keymaps)({
 		description = "Paste with ctrl",
 	},
 	{
+		mode = { "n" },
+		"<C-r>",
+		"r",
+		prefix = P.misc,
+		description = "Replace one character",
+	},
+	{
 		mode = { "i" },
 		"<C-v>",
 		[[<C-r>+]],
@@ -418,7 +425,7 @@ prefixifier(keymaps)({
 		description = "Commit history for current buffer",
 	},
 	{
-		mode = { "i", "n" },
+		mode = { "i" },
 		"<C-r>",
 		require("telescope.builtin").registers,
 		prefix = P.misc,
