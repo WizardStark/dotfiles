@@ -142,7 +142,9 @@ return {
 		"chrisgrieser/nvim-recorder",
 		event = "VeryLazy",
 		dependencies = "rcarriga/nvim-notify",
-		opts = {},
+		opts = {
+			slots = { "a", "r", "s", "m", "n", "e" },
+		},
 	},
 	--local
 	{

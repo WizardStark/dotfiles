@@ -136,6 +136,7 @@ return {
 						{ "progress", cond = is_not_toggleterm },
 						{ "location", cond = is_not_toggleterm },
 						{ require("recorder").recordingStatus, cond = is_not_toggleterm },
+						{ require("recorder").displaySlots, cond = is_not_toggleterm },
 					},
 					lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 				},
