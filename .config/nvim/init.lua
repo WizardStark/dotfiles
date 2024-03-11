@@ -24,3 +24,5 @@ require("lazy").setup({
 if next(vim.fn.argv()) == nil then
 	require("workspaces").load_workspaces()
 end
+
+require("workspaces").initialise_toggleterms()

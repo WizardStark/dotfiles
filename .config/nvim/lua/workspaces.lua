@@ -21,6 +21,12 @@ local Path = require("plenary.path")
 ---@type Workspace[]
 local workspaces = {}
 
+---@type table
+local toggleterms = {}
+
+---@type number
+M.term_count = 0
+
 ---@type Workspace
 local current_workspace = {
 	current_session = "nvim",
@@ -977,6 +983,49 @@ end
 
 function M.get_current_workspace()
 	return current_workspace
+end
+
+local function get_term_target()
+	local target
+	if next(vim.fn.argv()) ~= nil then
+		target = "toggleterm"
+	else
+		target = current_workspace.name .. current_workspace.current_session
+	end
+
+	return target
+end
+
+function M.initialise_toggleterms()
+	local target = get_term_target()
+
+	if target == "toggleterm" then
+		toggleterms[target] = {}
+		return
+	end
+
+	for _, workspace in ipairs(workspaces) do
+		for _, session in ipairs(workspace.sessions) do
+			toggleterms[current_workspace.name .. session.name] = {}
+		end
+	end
+end
+
+function M.toggle_term(number, direction, size)
+	local target = get_term_target()
+
+	if not toggleterms[target][number] then
+		M.term_count = M.term_count + 1
+		toggleterms[target][number] = M.term_count
+	end
+
+	local target_term = toggleterms[target][number]
+
+	vim.cmd(":" .. target_term .. "ToggleTerm direction=" .. direction .. " size=" .. size)
+end
+
+function M.get_session_terms()
+	return toggleterms[get_term_target()]
 end
 
 require("legendary").autocmds({

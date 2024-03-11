@@ -1003,9 +1003,18 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<C-\\>",
+		function()
+			require("workspaces").toggle_term(vim.v.count, "horizontal", 20)
+		end,
+		prefix = P.term,
+		description = "Open in horizontal split",
+	},
+	{
+		mode = "n",
 		"<C-]>",
 		function()
-			vim.cmd(":" .. vim.v.count .. "ToggleTerm direction=vertical size=120")
+			require("workspaces").toggle_term(vim.v.count, "vertical", 120)
 		end,
 		prefix = P.term,
 		description = "Open in vertical split",
@@ -1014,7 +1023,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>[",
 		function()
-			vim.cmd(":" .. vim.v.count .. "ToggleTerm direction=vertical size=120")
+			require("workspaces").toggle_term(vim.v.count, "vertical", 120)
 			vim.cmd("wincmd H")
 			vim.cmd("vert res 120")
 		end,

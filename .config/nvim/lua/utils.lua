@@ -63,26 +63,3 @@ function M.prefixifier(func)
 end
 
 return M
---general
---ufo - Code util
---Legendary - Misc
---Telescope - Navigation
---git - Git
---harpoon - Navigation
---smart splits - Windows
---mini.files - Navigation
---aerial - Navigation
---diagnostics quicklist - Diagnostics
---comment keybinds - Code utils
---toggle booleans - Code utils
---debugging - Debugging
---overseer - Run
---URL handling - External
---conform - Code utils
---latex - Misc
---LSP - LSP
---session management - Workspaces
---flash - Movement
---Mason - LSP
---Notes - Notes
---Terminal - Terminal
