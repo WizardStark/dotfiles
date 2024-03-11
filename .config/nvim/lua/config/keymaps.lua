@@ -688,6 +688,25 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>xn",
+		function()
+			require("trouble").next({ skip_groups = true, jump = true })
+		end,
+		prefix = P.diag,
+		description = "Go to next diagnostics item",
+	},
+	{
+		mode = "n",
+		"<leader>xp",
+		function()
+			require("trouble").previous({ skip_groups = true, jump = true })
+		end,
+		prefix = P.diag,
+		description = "Go to previous diagnostic item",
+	},
+
+	{
+		mode = "n",
 		"<leader>/",
 		require("Comment.api").toggle.linewise.current,
 		prefix = P.code,
