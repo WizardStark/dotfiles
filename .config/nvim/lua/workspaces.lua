@@ -996,23 +996,12 @@ local function get_term_target()
 	return target
 end
 
-function M.initialise_toggleterms()
-	local target = get_term_target()
-
-	if target == "toggleterm" then
-		toggleterms[target] = {}
-		return
-	end
-
-	for _, workspace in ipairs(workspaces) do
-		for _, session in ipairs(workspace.sessions) do
-			toggleterms[current_workspace.name .. session.name] = {}
-		end
-	end
-end
-
 function M.toggle_term(number, direction, size)
 	local target = get_term_target()
+
+	if not toggleterms[target] then
+		toggleterms[target] = {}
+	end
 
 	if not toggleterms[target][number] then
 		M.term_count = M.term_count + 1
