@@ -30,7 +30,7 @@ opt.undofile = true
 opt.showtabline = 1
 opt.undodir = { vim.fn.expand("~/.undo") }
 opt.swapfile = false
-opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
+opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,localoptions"
 
 if vim.g.neovide then
 end

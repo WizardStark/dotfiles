@@ -45,7 +45,7 @@ return {
 	{
 		"chrisgrieser/nvim-scissors",
 		cmd = { "ScissorsEditSnippet", "ScissorsAddNewSnippet" },
-		dependencies = "nvim-telescope/telescope.nvim", -- optional
+		dependencies = "nvim-telescope/telescope.nvim",
 		opts = {},
 	},
 	--open links

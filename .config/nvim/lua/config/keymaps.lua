@@ -1005,7 +1005,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<C-]>",
 		function()
-			vim.cmd(":ToggleTerm direction=vertical size=120")
+			vim.cmd(":" .. vim.v.count .. "ToggleTerm direction=vertical size=120")
 		end,
 		prefix = P.term,
 		description = "Open in vertical split",
@@ -1014,7 +1014,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>[",
 		function()
-			vim.cmd(":ToggleTerm direction=vertical size=120")
+			vim.cmd(":" .. vim.v.count .. "ToggleTerm direction=vertical size=120")
 			vim.cmd("wincmd H")
 			vim.cmd("vert res 120")
 		end,
@@ -1392,7 +1392,9 @@ prefixifier(keymaps)({
 	{
 		mode = { "n" },
 		"<leader>si",
-		require("workspaces").switch_session_by_index_input,
+		function()
+			require("workspaces").switch_session_by_index(vim.v.count1)
+		end,
 		prefix = P.work,
 		description = "Switch session by index",
 	},

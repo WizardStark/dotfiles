@@ -1,7 +1,7 @@
 local M = {}
 
 --TODO there is a bug on session restore for .tex files for autocmd group "syntaxenabled", I am
---pretty sure this is to to with the way vimtex does its configuration, and these global vars
+--pretty sure this is to do with the way vimtex does its configuration, and these global vars
 --are run on plugin setup, so it should probably just not be persisted into the session files
 
 ---@class Workspace
@@ -663,27 +663,6 @@ function M.delete_workspace(name)
 	end
 
 	M.persist_workspaces()
-end
-
-function M.switch_session_by_index_input()
-	vim.ui.input({
-		prompt = "Session number",
-		default = "",
-		kind = "tabline",
-	}, function(idx_input)
-		---@cast idx_input string | nil
-		if idx_input and #idx_input > 0 then
-			local idx = tonumber(idx_input)
-			if idx then
-				M.switch_session_by_index(idx)
-			else
-				vim.notify(idx_input .. " is not a number", vim.log.levels.ERROR)
-			end
-		else
-			vim.notify("Switch cancelled")
-			return
-		end
-	end)
 end
 
 ---@param idx number
