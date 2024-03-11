@@ -704,7 +704,6 @@ prefixifier(keymaps)({
 		prefix = P.diag,
 		description = "Go to previous diagnostic item",
 	},
-
 	{
 		mode = "n",
 		"<leader>/",
