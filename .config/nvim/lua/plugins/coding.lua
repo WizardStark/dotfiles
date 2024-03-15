@@ -23,7 +23,13 @@ return {
 	{
 		"rrethy/vim-illuminate",
 		event = "VeryLazy",
-		opts = {},
+		config = function()
+			require("illuminate").configure({
+				delay = 20,
+				large_file_cutoff = 10000,
+				min_count_to_highlight = 2,
+			})
+		end,
 	},
 	--treesitter
 	{
