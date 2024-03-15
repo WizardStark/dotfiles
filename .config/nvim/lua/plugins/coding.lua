@@ -20,6 +20,11 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	{
+		"rrethy/vim-illuminate",
+		event = "VeryLazy",
+		opts = {},
+	},
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",
