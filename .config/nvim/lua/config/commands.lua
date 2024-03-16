@@ -43,5 +43,25 @@ prefixifier(commands)({
 		prefix = P.latex,
 		description = "Stop  all Latex compilation",
 	},
+	{
+		":CoverageShow",
+		prefix = P.code,
+		description = "Show code coverage gutters",
+	},
+	{
+		":CoverageHide",
+		prefix = P.code,
+		description = "Hide code coverage gutters",
+	},
+	{
+		":CoverageLoad",
+		prefix = P.code,
+		description = "Load code coverage",
+	},
+	{
+		":CoverageSummary",
+		prefix = P.code,
+		description = "Show code coverage summary",
+	},
 })
 return {}

@@ -21,6 +21,11 @@ return {
 		opts = {},
 	},
 	{
+		"andythigpen/nvim-coverage",
+		event = "VeryLazy",
+		opts = {},
+	},
+	{
 		"rrethy/vim-illuminate",
 		event = "VeryLazy",
 		config = function()
