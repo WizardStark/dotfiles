@@ -62,8 +62,20 @@ return {
 		event = "VeryLazy",
 		config = function()
 			local debugpy_path = require("mason-registry").get_package("debugpy"):get_install_path()
-			require("dap-python").setup(debugpy_path .. "/venv/bin/python")
-			-- require("dap-python").setup("/usr/bin/python3")
+			-- require("dap-python").setup(debugpy_path .. "/venv/bin/python")
+			require("dap-python").setup("/usr/bin/python3")
+		end,
+	},
+	--dap-go
+	{
+		"leoluz/nvim-dap-go",
+		dependencies = {
+			"mfussenegger/nvim-dap",
+			"rcarriga/nvim-dap-ui",
+		},
+		event = "VeryLazy",
+		config = function()
+			require("dap-go").setup()
 		end,
 	},
 }
