@@ -32,4 +32,9 @@ return {
 			})
 		end,
 	},
+	{
+		"andythigpen/nvim-coverage",
+		event = "VeryLazy",
+		opts = {},
+	},
 }
