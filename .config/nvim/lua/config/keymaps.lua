@@ -1509,6 +1509,13 @@ prefixifier(keymaps)({
 		prefix = P.misc,
 		description = "Substitute visual selection",
 	},
+	{
+		mode = { "n" },
+		"<leader>p",
+		require("portal.builtin").grapple.tunnel,
+		prefix = P.misc,
+		description = "Open portal for grapple files",
+	},
 })
 
 return {}
