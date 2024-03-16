@@ -20,11 +20,6 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
-	{
-		"andythigpen/nvim-coverage",
-		event = "VeryLazy",
-		opts = {},
-	},
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",
