@@ -59,15 +59,12 @@ return {
 						local max_filesize = 500 * 1024 -- 500 KB
 						local filename = vim.api.nvim_buf_get_name(buf)
 						local ok, stats = pcall(vim.loop.fs_stat, filename)
-						local big = false
 						if ok and stats then
-							big = big or (stats.size > max_filesize)
-							local long = vim.fn.line("$") < 2 and stats.size > max_filesize / 10
-							big = big or long
+							return (stats.size > max_filesize)
+								or (vim.fn.line("$") < 2 and stats.size > max_filesize / 10)
 						end
-						if big then
-							return true
-						end
+
+						return false
 					end,
 				},
 				indent = { enable = true },
@@ -256,9 +253,7 @@ return {
 	{
 		"numToStr/Comment.nvim",
 		event = "VeryLazy",
-		opts = {
-			-- add any options here
-		},
+		opts = {},
 	},
 	--function overview
 	{
