@@ -36,6 +36,7 @@ alias erc='vim ~/.zshrc'
 alias pls='sudo $(fc -ln -1)'
 alias tmux='tmux -2'
 alias ta='tmux a || tmux'
+alias gpff='git pull --ff-only'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f ~/.lcl.zsh ] && source ~/.lcl.zsh
