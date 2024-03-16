@@ -75,13 +75,6 @@ return {
 			})
 		end,
 	},
-	--lsp diagnostics
-	{
-		"folke/trouble.nvim",
-		event = "VeryLazy",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		opts = {},
-	},
 	--lsp garbage collection
 	{
 		"zeioth/garbage-day.nvim",

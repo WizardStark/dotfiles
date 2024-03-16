@@ -150,6 +150,7 @@ return {
 		dependencies = "nvim-treesitter/nvim-treesitter",
 		opts = {},
 	},
+	--portal
 	{
 		"cbochs/portal.nvim",
 		dependencies = {
@@ -168,5 +169,18 @@ return {
 				style = "minimal",
 			},
 		},
+	},
+	--lsp diagnostics
+	{
+		"folke/trouble.nvim",
+		event = "VeryLazy",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		opts = {},
+	},
+	{
+		"folke/todo-comments.nvim",
+		event = "VeryLazy",
+		dependencies = { "nvim-lua/plenary.nvim", "folke/trouble.nvim" },
+		opts = {},
 	},
 }

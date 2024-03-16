@@ -645,6 +645,13 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>xt",
+		"<cmd>TodoTelescope<CR>",
+		prefix = P.code,
+		description = "Toggle diagnostics window",
+	},
+	{
+		mode = "n",
 		"<leader>xx",
 		require("trouble").toggle,
 		prefix = P.diag,
