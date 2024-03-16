@@ -88,6 +88,7 @@ return {
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-buffer",
 			"hrsh7th/cmp-calc",
+			"f3fora/cmp-spell",
 			"onsails/lspkind.nvim",
 			"hrsh7th/cmp-nvim-lsp-signature-help",
 			"saadparwaiz1/cmp_luasnip",
@@ -165,6 +166,15 @@ return {
 					{ name = "luasnip" },
 					{ name = "calc" },
 					{ name = "nvim_lsp_signature_help" },
+					{
+						name = "spell",
+						option = {
+							keep_all_entries = true,
+							enable_in_context = function()
+								return true
+							end,
+						},
+					},
 				}, {
 					{ name = "buffer" },
 				}),
