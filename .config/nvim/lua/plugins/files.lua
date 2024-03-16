@@ -75,6 +75,21 @@ return {
 							},
 						},
 					},
+					git_bcommits = {
+						mappings = {
+							i = {
+								["<M-d>"] = function()
+									local selected_entry = require("telescope.actions.state").get_selected_entry()
+									local value = selected_entry.value
+									vim.api.nvim_win_close(0, true)
+									vim.cmd("stopinsert")
+									vim.schedule(function()
+										vim.cmd(("DiffviewOpen %s^!"):format(value))
+									end)
+								end,
+							},
+						},
+					},
 				},
 			})
 
