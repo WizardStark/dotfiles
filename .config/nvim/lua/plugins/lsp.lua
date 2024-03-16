@@ -43,7 +43,6 @@ return {
 			require("mason").setup({
 				ui = { border = "rounded" },
 				registries = {
-					"github:nvim-java/mason-registry",
 					"github:mason-org/mason-registry",
 				},
 			})
@@ -62,11 +61,7 @@ return {
 					})
 				end,
 				["jdtls"] = function()
-					require("java").setup()
-					lspconfig.jdtls.setup({
-						capabilities = lsp_capabilities,
-						handlers = handlers,
-					})
+					return true
 				end,
 				["lua_ls"] = function()
 					require("neodev").setup({

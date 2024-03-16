@@ -19,7 +19,14 @@ return {
 	{
 		"theHamsta/nvim-dap-virtual-text",
 		event = "VeryLazy",
-		opts = {},
+		opts = {
+			automatic_installation = true,
+			handlers = {
+				function(config)
+					require("mason-nvim-dap").default_setup(config)
+				end,
+			},
+		},
 	},
 	{
 		"rcarriga/nvim-dap-ui",
