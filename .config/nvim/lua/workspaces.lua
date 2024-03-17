@@ -758,6 +758,7 @@ function M.persist_workspaces()
 
 	local workspace_data = {
 		current_workspace = current_workspace.name,
+		last_workspace = last_workspace and last_workspace.name or nil,
 		workspaces = workspaces,
 	}
 
@@ -810,6 +811,8 @@ function M.load_workspaces()
 		)
 		return
 	end
+
+	last_workspace = find_workspace(workspace_data.last_workspace)
 
 	current_workspace = workspace
 
