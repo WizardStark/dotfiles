@@ -62,4 +62,26 @@ function M.prefixifier(func)
 	end
 end
 
+--- Force closes all non terminal buffers
+---@param close_current boolean | nil -- Defaults to true if nil
+function M.close_non_terminal_buffers(close_current)
+	if close_current == nil then
+		close_current = true
+	end
+
+	local current_buffer = vim.api.nvim_get_current_buf()
+	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+		local should_delete = vim.api.nvim_buf_is_valid(buffer)
+			and buffer ~= current_buffer
+			and vim.bo[buffer].bt ~= "terminal"
+		if should_delete then
+			pcall(vim.api.nvim_buf_delete, buffer, { force = true })
+		end
+	end
+
+	if close_current and vim.bo[current_buffer].bt ~= "terminal" then
+		pcall(vim.api.nvim_buf_delete, current_buffer, { force = true })
+	end
+end
+
 return M

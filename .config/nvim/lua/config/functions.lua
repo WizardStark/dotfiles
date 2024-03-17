@@ -35,5 +35,12 @@ prefixifier(funcs)({
 		prefix = P.work,
 		description = "Load workspaces",
 	},
+	{
+		function()
+			require("utils").close_non_terminal_buffers(false)
+		end,
+		prefix = P.misc,
+		description = "Force close all non-terminal buffers except the current one (writes and reopens current buffer)",
+	},
 })
 return {}

@@ -64,9 +64,9 @@ prefixifier(commands)({
 		description = "Show code coverage summary",
 	},
 	{
-		":w | %bd | e#",
+		":w | %bd! | e#",
 		prefix = P.misc,
-		description = "Close all buffers except the current one (writes and reopens current buffer)",
+		description = "Force close all buffers except the current one (writes and reopens current buffer)",
 	},
 })
 return {}
