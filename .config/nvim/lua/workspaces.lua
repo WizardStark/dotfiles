@@ -65,6 +65,15 @@ local icons = {
 	cur = "",
 }
 
+local ok, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
+
+if not ok or vim.g.colors_name == "moonfly" then
+	colors = {
+		blue = "#80a0ff",
+		text = "#9e9e9e",
+	}
+end
+
 ---@param workspace Workspace
 ---@param session Session
 ---@return string
@@ -210,7 +219,7 @@ local function setup_lualine()
 		tabs[i] = {
 			mode = 2,
 			color = function()
-				return { fg = is_selected and "#80a0ff" or "#9e9e9e" }
+				return { fg = is_selected and colors.blue or colors.text }
 			end,
 			on_click = function()
 				M.switch_session(v.name)
@@ -236,15 +245,6 @@ local function setup_lualine()
 				end,
 			} },
 			lualine_b = tabs,
-			lualine_c = {
-				{
-					mode = 2,
-					color = { fg = "#303030" },
-					function()
-						return ""
-					end,
-				},
-			},
 		},
 	})
 end
