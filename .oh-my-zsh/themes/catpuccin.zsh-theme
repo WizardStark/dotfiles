@@ -44,7 +44,7 @@ for color in RED GREEN YELLOW BLUE MAGENTA CYAN WHITE GREY; do
 done
 PR_NO_COLOUR="%{$terminfo[sgr0]%}"
 typeset -g PR_RED="%F{#f38ba8}"
-typeset -g PR_GREEN="%F{#a6e3a1}"
+typeset -g PR_GREEN="%F{#92c48e}"
 typeset -g PR_YELLOW="%F{#f9e2af}"
 typeset -g PR_BLUE="%F{#89b4fa}"
 typeset -g PR_MAGENTA="%F{#b4befe}"
@@ -54,7 +54,7 @@ typeset -g PR_GREY="%F{#bac2de}"
 
 
 typeset -g PR_LIGHT_RED="%F{#f8aec2}"
-typeset -g PR_LIGHT_GREEN="%F{#b2efb9}"
+typeset -g PR_LIGHT_GREEN="%F{#a0d29c}"
 typeset -g PR_LIGHT_YELLOW="%F{#fbebc1}"
 typeset -g PR_LIGHT_BLUE="%F{#9dc4ff}"
 typeset -g PR_LIGHT_MAGENTA="%F{#c0c9ff}"
