@@ -123,7 +123,6 @@ return {
 		config = function()
 			require("lualine").setup({
 				options = {
-					theme = "moonfly",
 					always_divide_middle = false,
 				},
 				sections = {
