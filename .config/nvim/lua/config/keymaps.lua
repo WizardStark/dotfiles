@@ -260,6 +260,13 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>ft",
+		"<cmd>TodoTelescope<CR>",
+		prefix = P.find,
+		description = "TODOs, FIXs, NOTEs (etc) comments in cwd",
+	},
+	{
+		mode = "n",
 		"<leader>fg",
 		require("telescope").extensions.live_grep_args.live_grep_args,
 		prefix = P.find,
@@ -642,13 +649,6 @@ prefixifier(keymaps)({
 		"<cmd>AerialToggle!<CR>",
 		prefix = P.code,
 		description = "Open function minimap",
-	},
-	{
-		mode = "n",
-		"<leader>xt",
-		"<cmd>TodoTelescope<CR>",
-		prefix = P.code,
-		description = "Toggle diagnostics window",
 	},
 	{
 		mode = "n",
