@@ -58,16 +58,16 @@ return {
 			vim.g.netrw_nogx = 1
 		end,
 		config = function()
+			local app
+			if vim.fn.has("mac") then
+				app = "open"
+			elseif vim.fn.has("wsl") then
+				app = "wslview"
+			else
+				app = "xdg-open"
+			end
 			require("gx").setup({
-				open_browser_app = function()
-					if vim.fn.has("mac") then
-						return "open"
-					elseif vim.fn.has("wsl") then
-						return "wslview"
-					else
-						return "xdg-open"
-					end
-				end,
+				open_browser_app = app,
 			})
 		end,
 	},
