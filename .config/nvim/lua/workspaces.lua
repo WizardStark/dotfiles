@@ -238,12 +238,11 @@ local function setup_lualine()
 
 	lualine.setup({
 		tabline = {
-			lualine_a = { {
-				mode = 2,
+			lualine_a = {
 				function()
 					return current_workspace.name
 				end,
-			} },
+			},
 			lualine_b = tabs,
 		},
 	})

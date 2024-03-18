@@ -54,9 +54,14 @@ return {
 		"chrishrb/gx.nvim",
 		cmd = { "Browse" },
 		dependencies = { "nvim-lua/plenary.nvim" },
-		config = true,
 		init = function()
 			vim.g.netrw_nogx = 1
+		end,
+		config = function()
+			-- require('gx').setup({
+			--     open_browser_app =
+			-- })
+			--
 		end,
 	},
 	--notes
@@ -96,6 +101,7 @@ return {
 				window = {
 					open = "alternate",
 				},
+				nest_if_no_args = true,
 				callbacks = {
 					should_block = function(argv)
 						return vim.tbl_contains(argv, "-b")
@@ -163,7 +169,7 @@ return {
 	--local
 	{
 		dir = "~/.config/lcl",
-		event = "VeryLazy",
+		priority = 999,
 		enabled = function()
 			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
 			return ok
@@ -175,6 +181,7 @@ return {
 					description = "Reload local plugin",
 				},
 			})
+			vim.cmd("colorscheme " .. vim.g.colorscheme)
 		end,
 	},
 }

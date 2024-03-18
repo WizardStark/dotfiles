@@ -32,7 +32,6 @@ opt.undodir = { vim.fn.expand("~/.undo") }
 opt.swapfile = false
 opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
 
-if vim.g.neovide then
-end
+vim.g.colorscheme = "catppuccin-mocha"
 
 return {}
