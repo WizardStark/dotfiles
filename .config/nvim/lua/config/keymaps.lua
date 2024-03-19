@@ -848,10 +848,31 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"<leader>r",
-		[[:OverseerRun <CR>]],
+		"<leader>rt",
+		[[:CompilerOpen <CR>]],
 		prefix = P.task,
 		description = "Run task",
+	},
+	{
+		mode = "n",
+		"<leader>ro",
+		[[:CompilerToggleResults <CR>]],
+		prefix = P.task,
+		description = "Open task output window",
+	},
+	{
+		mode = "n",
+		"<leader>rr",
+		[[:CompilerRedo <CR>]],
+		prefix = P.task,
+		description = "Rerun last task",
+	},
+	{
+		mode = "n",
+		"<leader>rc",
+		[[:CompilerStop <CR>]],
+		prefix = P.task,
+		description = "Stop all tasks",
 	},
 	{
 		mode = { "n", "v" },

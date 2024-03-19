@@ -32,13 +32,27 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	--overseer tasks
+	{
+		"Zeioth/compiler.nvim",
+		cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
+		dependencies = { "stevearc/overseer.nvim" },
+		opts = {},
+	},
 	--overseer
 	{
 		"stevearc/overseer.nvim",
-		event = "VeryLazy",
+		cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
+		-- event = "VeryLazy",
 		opts = {
-			strategy = { "toggleterm" },
-			templates = { "builtin", "user.py_run", "user.go_run" },
+			-- strategy = { "toggleterm" },
+			-- templates = { "builtin", "user.py_run", "user.go_run" },
+			task_list = {
+				direction = "bottom",
+				min_height = 25,
+				max_height = 25,
+				default_detail = 1,
+			},
 		},
 	},
 	--snippet creation
