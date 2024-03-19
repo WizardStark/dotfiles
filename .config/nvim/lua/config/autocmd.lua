@@ -20,6 +20,16 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
+		"BufEnter",
+		opts = {
+			pattern = "*.zsh-theme",
+		},
+		function()
+			vim.api.nvim_buf_set_option(vim.api.nvim_get_current_buf(), "filetype", "zsh")
+		end,
+		prefix = P.auto,
+	},
+	{
 		"FileType",
 		opts = {
 			pattern = "markdown",
