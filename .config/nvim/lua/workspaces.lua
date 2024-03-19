@@ -385,6 +385,7 @@ local function switch_workspace(target_workspace)
 
 	write_nvim_session_file(current_workspace, current_session)
 	set_session_metadata(current_session)
+	require("utils").close_non_terminal_buffers()
 
 	last_session = find_session(target_workspace, target_workspace.last_session)
 	current_session = target_session
