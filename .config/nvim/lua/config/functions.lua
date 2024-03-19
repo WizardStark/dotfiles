@@ -36,6 +36,11 @@ prefixifier(funcs)({
 		description = "Load workspaces",
 	},
 	{
+		require("workspaces").purge_session_files,
+		prefix = P.work,
+		description = "Delete all session files",
+	},
+	{
 		function()
 			require("utils").close_non_terminal_buffers(false)
 		end,

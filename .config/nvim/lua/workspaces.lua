@@ -112,6 +112,23 @@ local function write_nvim_session_file(workspace, session)
 	end
 end
 
+function M.purge_session_files()
+	local sessions_dir = Path:new(sessions_path)
+	vim.ui.input({
+		prompt = "Are you sure you want to delete all sessions (yes/no)",
+		default = "",
+		kind = "tabline",
+	}, function(input)
+		if input == "yes" then
+			sessions_dir:rmdir()
+		elseif not input or input == "no" then
+			vim.notify("Session files deletion cancelled")
+		else
+			vim.notify('Confirmation failure, please type "yes" or "no"')
+		end
+	end)
+end
+
 ---@param workspace Workspace
 ---@param session Session
 local function source_nvim_session_file(workspace, session)
