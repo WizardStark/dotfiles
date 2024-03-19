@@ -120,7 +120,8 @@ function M.purge_session_files()
 		kind = "tabline",
 	}, function(input)
 		if input == "yes" then
-			sessions_dir:rmdir()
+			vim.notify(vim.inspect(sessions_dir))
+			sessions_dir:rm({ recursive = true })
 		elseif not input or input == "no" then
 			vim.notify("Session files deletion cancelled")
 		else
