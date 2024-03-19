@@ -944,7 +944,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"gd",
-		vim.lsp.buf.definition,
+		function()
+			require("trouble").toggle("lsp_definitions")
+		end,
 		prefix = P.code,
 		description = "Go to definition",
 	},
@@ -965,7 +967,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"gt",
-		vim.lsp.buf.type_definition,
+		function()
+			require("trouble").toggle("lsp_type_definitions")
+		end,
 		prefix = P.code,
 		description = "Go to type definition",
 	},
