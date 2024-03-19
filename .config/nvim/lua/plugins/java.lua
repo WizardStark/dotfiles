@@ -69,7 +69,6 @@ return {
 					local start_opts = resolve_opts()
 					if start_opts.root_dir and start_opts.root_dir ~= "" then
 						require("jdtls").start_or_attach(start_opts)
-						-- require("jdtls.dap").setup_dap_main_class_configs()
 					end
 				end,
 			})

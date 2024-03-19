@@ -13,9 +13,11 @@ from this repository to your $HOME directory.
 ## Setup
 
 NOTE:
-* This script requires sudo permissions
-* This script will create symlinks to ~/.zshrc, ~/.config/nvim and ~/.config/tmux,
-    see [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html#Conflicts) for how conflicts will be handled 
+
+- This script requires sudo permissions
+- This script will create symlinks to ~/.zshrc, ~/.config/nvim and ~/.config/tmux,
+  see [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html#Conflicts) for how conflicts will be handled
+
 ```
 git clone https://github.com/WizardStark/dotfiles.git
 cd dotfiles
@@ -25,6 +27,7 @@ chmod +x setup.sh
 
 If on an Apple Silicon device, after running `nvim` once, also
 run the following to recompile the broken plugin:
+
 ```
 cd ~/.local/share/nvim/lazy/telescope-fzf-native.nvim &&
 cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release &&
@@ -32,6 +35,7 @@ cmake --build build --config Release &&
 cmake --install build --prefix build &&
 cd -
 ```
+
 ## Notes for tweaking
 
 The most extensive configuration is for NeoVim. The config layout:
@@ -41,16 +45,16 @@ The most extensive configuration is for NeoVim. The config layout:
 ├── lazy-lock.json
 └── lua
     ├── config
-    │   ├── autocmd.lua         //events that should happen automatically 
+    │   ├── autocmd.lua         //events that should happen automatically
     │   ├── commands.lua
     │   ├── keymaps.lua
-    │   └── options.lua         //core editor functionality 
+    │   └── options.lua         //core editor functionality
     ├── overseer
     │   └── template
     │       └── user            //place your definitions for build tasks here
     │           └── py_run.lua
     └── plugins
-        ├── coding.lua          //git, autocompletion and formatting plugins 
+        ├── coding.lua          //git, autocompletion and formatting plugins
         ├── colourschemes.lua
         ├── dap.lua             //debugging plugins
         ├── files.lua           //file traversal/manipulation plugins
@@ -59,13 +63,20 @@ The most extensive configuration is for NeoVim. The config layout:
         ├── lualine.lua         //nvim statusline configuration
         ├── motion.lua          //plugins for in-buffer movement
         ├── neotest.lua         //plugins for test-running
-        ├── ui.lua              
+        ├── ui.lua
         └── util.lua
 ```
 
 The best sources to consult for understanding the above:
-* [Lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
-* [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette
+
+```json
+{
+  "testy": "besty"
+}
+```
+
+- [Lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
+- [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette
 
 ## Usage
 

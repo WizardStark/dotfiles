@@ -4,6 +4,22 @@ local autocmds = require("legendary").autocmds
 
 prefixifier(autocmds)({
 	{
+		"BufEnter",
+		function()
+			if not vim.g.workspaces_loaded then
+				vim.g.workspaces_loaded = true
+				if next(vim.fn.argv()) == nil then
+					local is_floating_win = vim.api.nvim_win_get_config(0).relative ~= ""
+					if is_floating_win then
+						vim.cmd.wincmd({ args = { "w" }, count = 1 })
+					end
+					require("workspaces").load_workspaces()
+				end
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
 		"FileType",
 		opts = {
 			pattern = "markdown",

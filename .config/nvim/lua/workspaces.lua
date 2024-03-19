@@ -1009,7 +1009,7 @@ require("legendary").autocmds({
 		function()
 			write_nvim_session_file(current_workspace, current_session)
 			set_session_metadata(current_session)
-			require("workspaces").persist_workspaces()
+			M.persist_workspaces()
 		end,
 	},
 })

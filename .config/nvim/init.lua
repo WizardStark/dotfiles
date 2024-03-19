@@ -20,7 +20,3 @@ require("lazy").setup({
 	spec = { { import = "plugins" }, { import = "config" } },
 	ui = { border = "rounded" },
 })
-
-if next(vim.fn.argv()) == nil then
-	require("workspaces").load_workspaces()
-end

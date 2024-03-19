@@ -92,7 +92,6 @@ return {
 				sort = {
 					frecency = false,
 				},
-				log_level = "debug",
 			})
 		end,
 	},
@@ -146,11 +145,13 @@ return {
 		},
 		opts = {},
 	},
+	--substitution
 	{
 		"gbprod/substitute.nvim",
 		event = "VeryLazy",
 		opts = {},
 	},
+	--better macros
 	{
 		"chrisgrieser/nvim-recorder",
 		event = "VeryLazy",
@@ -159,6 +160,7 @@ return {
 			slots = { "a", "r", "s", "m", "n", "e" },
 		},
 	},
+	--highlight symbol
 	{
 		"rrethy/vim-illuminate",
 		event = "VeryLazy",
