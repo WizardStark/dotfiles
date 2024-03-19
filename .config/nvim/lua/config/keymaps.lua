@@ -43,7 +43,7 @@ prefixifier(keymaps)({
 		description = "How to quit vim",
 	},
 	{
-		mode = { "n", "v" },
+		mode = { "n", "v", "t" },
 		"<D-v>",
 		[["+p]],
 		prefix = P.misc,
@@ -57,7 +57,7 @@ prefixifier(keymaps)({
 		description = "Paste with OS key",
 	},
 	{
-		mode = { "n", "v" },
+		mode = { "n", "v", "t" },
 		"<C-v>",
 		[["+p]],
 		prefix = P.misc,

@@ -9,7 +9,71 @@ return {
 			"jay-babu/mason-nvim-dap.nvim",
 		},
 		config = function()
-			require("dap").defaults.fallback.exception_breakpoints = { "raised" }
+			local dap = require("dap")
+			dap.set_log_level("TRACE")
+			dap.defaults.fallback.exception_breakpoints = { "raised" }
+
+			local chrome_debug_path = require("mason-registry").get_package("chrome-debug-adapter"):get_install_path()
+			dap.adapters.chrome = {
+				type = "executable",
+				command = "node",
+				args = { chrome_debug_path .. "/out/src/chromeDebug.js" },
+			}
+			dap.configurations.javascriptreact = {
+				{
+					name = "Launch",
+					type = "chrome",
+					request = "launch",
+					program = "${file}",
+					cwd = vim.fn.getcwd(),
+					sourceMaps = true,
+					protocol = "inspector",
+					-- TODO: Make runtime exe differ per os <19-03-24, yourname> --
+					runtimeExecutable = "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe",
+					runtimeArgs = { "--remote-debugging-port=9222" },
+					port = 9222,
+					webRoot = "${workspaceFolder}",
+					url = "http://localhost:5173/",
+				},
+				{
+					name = "Attach",
+					type = "chrome",
+					request = "attach",
+					program = "${file}",
+					cwd = vim.fn.getcwd(),
+					sourceMaps = true,
+					protocol = "inspector",
+					port = 9222,
+					webRoot = "${workspaceFolder}",
+				},
+			}
+			dap.configurations.typescriptreact = {
+				{
+					name = "Launch",
+					type = "chrome",
+					request = "launch",
+					program = "${file}",
+					cwd = vim.fn.getcwd(),
+					sourceMaps = true,
+					protocol = "inspector",
+					runtimeExecutable = "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe",
+					runtimeArgs = { "--remote-debugging-port=9222" },
+					port = 9222,
+					webRoot = "${workspaceFolder}",
+					url = "http://localhost:5173/",
+				},
+				{
+					name = "Attach",
+					type = "chrome",
+					request = "attach",
+					program = "${file}",
+					cwd = vim.fn.getcwd(),
+					sourceMaps = true,
+					protocol = "inspector",
+					port = 9222,
+					webRoot = "${workspaceFolder}",
+				},
+			}
 		end,
 	},
 	{
