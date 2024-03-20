@@ -189,7 +189,7 @@ return {
 	--local
 	{
 		dir = "~/.config/lcl",
-		priority = 999,
+		priority = 2000,
 		enabled = function()
 			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
 			return ok
@@ -201,6 +201,11 @@ return {
 					description = "Reload local plugin",
 				},
 			})
+			if vim.g.colorscheme == "catppuccin-mocha" then
+				require("catppuccin").setup({
+					color_overrides = vim.g.color_overrides,
+				})
+			end
 			vim.cmd("colorscheme " .. vim.g.colorscheme)
 		end,
 	},
