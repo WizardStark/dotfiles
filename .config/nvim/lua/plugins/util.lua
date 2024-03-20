@@ -17,7 +17,7 @@ return {
 	-- surround
 	{
 		"kylechui/nvim-surround",
-		version = "*", -- Use for stability; omit to use `main` branch for the latest features
+		version = "*",
 		event = "VeryLazy",
 		opts = {},
 	},
@@ -43,10 +43,7 @@ return {
 	{
 		"stevearc/overseer.nvim",
 		cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
-		-- event = "VeryLazy",
 		opts = {
-			-- strategy = { "toggleterm" },
-			-- templates = { "builtin", "user.py_run", "user.go_run" },
 			task_list = {
 				direction = "bottom",
 				min_height = 25,

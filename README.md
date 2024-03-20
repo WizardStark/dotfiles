@@ -47,33 +47,27 @@ The most extensive configuration is for NeoVim. The config layout:
     ├── config
     │   ├── autocmd.lua         //events that should happen automatically
     │   ├── commands.lua
+    │   ├── functions.lua
     │   ├── keymaps.lua
     │   └── options.lua         //core editor functionality
-    ├── overseer
-    │   └── template
-    │       └── user            //place your definitions for build tasks here
-    │           └── py_run.lua
-    └── plugins
-        ├── coding.lua          //git, autocompletion and formatting plugins
-        ├── colourschemes.lua
-        ├── dap.lua             //debugging plugins
-        ├── files.lua           //file traversal/manipulation plugins
-        ├── java.lua            //the dark place
-        ├── lsp.lua             //intellisense
-        ├── lualine.lua         //nvim statusline configuration
-        ├── motion.lua          //plugins for in-buffer movement
-        ├── neotest.lua         //plugins for test-running
-        ├── ui.lua
-        └── util.lua
+    ├── plugins
+    │   ├── coding.lua          //git, autocompletion and formatting plugins
+    │   ├── colourschemes.lua
+    │   ├── dap.lua             //debugging plugins
+    │   ├── files.lua           //file traversal/manipulation plugins
+    │   ├── java.lua
+    │   ├── jupyter.lua         //plugins for running jupyter notebooks
+    │   ├── lsp.lua             //intellisense
+    │   ├── lualine.lua         //nvim statusline configuration
+    │   ├── motion.lua          //plugins for in-buffer movement
+    │   ├── neotest.lua         //plugins for test running
+    │   ├── ui.lua
+    │   └── util.lua
+    ├── utils.lua               //commonly used lua functions
+    └── workspaces.lua          //custom session management/multiplexing solution
 ```
 
 The best sources to consult for understanding the above:
-
-```json
-{
-  "testy": "besty"
-}
-```
 
 - [Lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
 - [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette
