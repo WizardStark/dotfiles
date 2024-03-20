@@ -15,7 +15,7 @@ return {
 				local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
 				local workspace_dir = vim.fn.stdpath("cache") .. "/jdtls/workspace-root/" .. project_name
 				if vim.loop.fs_stat(workspace_dir) == nil then
-					Path:new(workspace_dir):mkdir()
+					Path:new(workspace_dir):mkdir({ parents = true })
 				end
 				local jdtls_path = require("mason-registry").get_package("jdtls"):get_install_path()
 				local java_debug_path = require("mason-registry").get_package("java-debug-adapter"):get_install_path()
