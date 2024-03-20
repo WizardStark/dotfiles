@@ -63,6 +63,12 @@ return {
 			},
 		},
 	},
+	--auto close html tags
+	{
+		"windwp/nvim-ts-autotag",
+		event = { "InsertEnter", "CmdlineEnter" },
+		opts = {},
+	},
 	--cmp
 	{
 		"hrsh7th/nvim-cmp",
