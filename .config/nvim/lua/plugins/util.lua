@@ -186,6 +186,12 @@ return {
 			})
 		end,
 	},
+	--colourize colors
+	{
+		"norcalli/nvim-colorizer.lua",
+		event = "VeryLazy",
+		opts = {},
+	},
 	--local
 	{
 		dir = "~/.config/lcl",
