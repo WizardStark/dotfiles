@@ -66,10 +66,7 @@ return {
 			vim.api.nvim_create_autocmd("Filetype", {
 				pattern = "java",
 				callback = function()
-					local start_opts = resolve_opts()
-					if start_opts.root_dir and start_opts.root_dir ~= "" then
-						require("jdtls").start_or_attach(start_opts)
-					end
+					require("jdtls").start_or_attach(resolve_opts())
 				end,
 			})
 		end,
