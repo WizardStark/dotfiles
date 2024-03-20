@@ -24,7 +24,10 @@ opt.laststatus = 2
 opt.pumheight = 10
 opt.signcolumn = "yes"
 opt.updatetime = 100
-opt.fillchars = { eob = " " }
+opt.fillchars = {
+	vert = "│",
+	eob = " ",
+}
 opt.scrolloff = 8
 opt.undofile = true
 opt.showtabline = 1
