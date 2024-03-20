@@ -9,6 +9,7 @@ return {
 			"nvim-neotest/neotest-go",
 			"rcasia/neotest-java",
 			"nvim-neotest/neotest-vim-test",
+			"nvim-neotest/nvim-nio",
 		},
 		config = function()
 			require("neotest").setup({

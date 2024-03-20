@@ -95,6 +95,9 @@ return {
 	},
 	{
 		"rcarriga/nvim-dap-ui",
+		dependencies = {
+			"nvim-neotest/nvim-nio",
+		},
 		event = "VeryLazy",
 		config = function()
 			local dap = require("dap")
