@@ -210,6 +210,23 @@ return {
 			if vim.g.colorscheme == "catppuccin-mocha" then
 				require("catppuccin").setup({
 					color_overrides = vim.g.color_overrides,
+					integrations = {
+						aerial = true,
+						flash = true,
+						gitsigns = true,
+						headlines = true,
+						mason = true,
+						neotest = true,
+						noice = true,
+						cmp = true,
+						dap = true,
+						dap_ui = true,
+						notify = true,
+						treesitter = true,
+						ufo = true,
+						overseer = true,
+						lsp_trouble = true,
+					},
 				})
 			end
 			vim.cmd("colorscheme " .. vim.g.colorscheme)
