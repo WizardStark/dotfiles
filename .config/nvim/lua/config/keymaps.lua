@@ -948,7 +948,6 @@ prefixifier(keymaps)({
 			require("trouble").toggle("lsp_definitions")
 		end,
 		prefix = P.code,
-        P.lsp
 		description = "Go to definition",
 	},
 	{
