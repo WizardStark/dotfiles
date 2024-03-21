@@ -124,7 +124,7 @@ return {
 			require("lualine").setup({
 				options = {
 					always_divide_middle = false,
-					theme = "catpuccin",
+					theme = "catppuccin",
 				},
 				sections = {
 					lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
