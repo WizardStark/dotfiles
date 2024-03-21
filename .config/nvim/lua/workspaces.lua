@@ -70,13 +70,6 @@ local icons = {
 
 local ok, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
 
-if not ok or vim.g.colors_name == "moonfly" then
-	colors = {
-		blue = "#80a0ff",
-		text = "#9e9e9e",
-	}
-end
-
 ---@param workspace Workspace
 ---@param session Session
 ---@return string
