@@ -512,7 +512,14 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>a",
-		require("grapple").toggle,
+		function()
+			if vim.bo.ft == "minifiles" then
+				local path = require("mini.files").get_fs_entry().path
+				require("grapple").toggle({ path = path })
+			else
+				require("grapple").toggle()
+			end
+		end,
 		prefix = P.nav,
 		description = "Toggle file in quick access list",
 	},
@@ -522,13 +529,6 @@ prefixifier(keymaps)({
 		require("grapple").toggle_tags,
 		prefix = P.nav,
 		description = "Open/close quick access list",
-	},
-	{
-		mode = "n",
-		"<leader>ac",
-		require("grapple").reset,
-		prefix = P.nav,
-		description = "Clear quick access tags for current grapple scope",
 	},
 	{
 		mode = "n",
