@@ -1,3 +1,4 @@
+M = {}
 local esc = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
 local function trigger_dap(dapStart)
 	require("dapui").open({ reset = true })
@@ -617,19 +618,7 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>e",
-		function()
-			local MiniFiles = require("mini.files")
-			local function open_and_center(path)
-				MiniFiles.open(path)
-				MiniFiles.go_out()
-				MiniFiles.go_in()
-			end
-			if not MiniFiles.close() then
-				if not pcall(open_and_center, vim.fn.expand("%:p")) then
-					open_and_center()
-				end
-			end
-		end,
+		require("utils").toggle_minifiles,
 		prefix = P.nav,
 		description = "Open file explorer",
 	},
@@ -1553,4 +1542,4 @@ prefixifier(keymaps)({
 	},
 })
 
-return {}
+return M

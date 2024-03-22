@@ -15,6 +15,7 @@ local M = {}
 ---@field dir string
 ---@field last_file string | nil
 ---@field last_file_line number | nil
+---@field toggled_types string[]
 
 local Path = require("plenary.path")
 
@@ -36,6 +37,7 @@ local current_workspace = {
 		{
 			name = "nvim",
 			dir = "~/dotfiles/.config/nvim",
+			toggled_types = {},
 		},
 	},
 }
@@ -68,7 +70,7 @@ local icons = {
 	cur = "",
 }
 
-local ok, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
+local _, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
 
 ---@param workspace Workspace
 ---@param session Session
@@ -325,7 +327,8 @@ end
 
 ---Sets session metadata such as last file and line num
 ---@param session Session
-local function set_session_metadata(session)
+---@param toggled_types string[]
+local function set_session_metadata(session, toggled_types)
 	local buf_path = vim.fn.expand("%:p")
 	---@cast buf_path string:
 
@@ -336,6 +339,8 @@ local function set_session_metadata(session)
 		session.last_file_line = nil
 		session.last_file = nil
 	end
+
+	session.toggled_types = toggled_types
 end
 
 --- Switch to target session, does nothing if it is equal to current session
@@ -347,9 +352,10 @@ local function switch_session(target_session)
 
 	vim.cmd.wa()
 	M.persist_breakpoints()
+	local toggled_types = require("utils").toggle_special_buffers({})
 
-	set_session_metadata(current_session)
 	write_nvim_session_file(current_workspace, current_session)
+	set_session_metadata(current_session, toggled_types)
 	require("utils").close_non_terminal_buffers()
 
 	last_session = current_session
@@ -359,7 +365,9 @@ local function switch_session(target_session)
 	current_workspace.current_session = target_session and target_session.name or nil
 
 	source_nvim_session_file(current_workspace, target_session)
-	set_session_metadata(target_session)
+	require("utils").toggle_special_buffers(target_session.toggled_types)
+
+	set_session_metadata(target_session, {})
 	setup_lualine()
 	M.load_breakpoints()
 
@@ -399,15 +407,18 @@ local function switch_workspace(target_workspace)
 		return
 	end
 
+	local toggled_types = require("utils").toggle_special_buffers({})
+
 	write_nvim_session_file(current_workspace, current_session)
-	set_session_metadata(current_session)
+	set_session_metadata(current_session, toggled_types)
 	require("utils").close_non_terminal_buffers()
 
 	last_session = find_session(target_workspace, target_workspace.last_session)
 	current_session = target_session
 
 	source_nvim_session_file(target_workspace, target_session)
-	set_session_metadata(target_session)
+	require("utils").toggle_special_buffers(target_session.toggled_types)
+	set_session_metadata(target_session, {})
 
 	last_workspace = current_workspace
 	current_workspace = target_workspace
@@ -502,6 +513,7 @@ function M.create_session(name, dir)
 	local session = {
 		name = name,
 		dir = dir,
+		toggled_types = {},
 	}
 
 	table.insert(current_workspace.sessions, session)
@@ -593,6 +605,7 @@ function M.create_workspace(name, session_name, dir)
 			{
 				name = session_name,
 				dir = dir,
+				toggled_types = {},
 			},
 		},
 	}
@@ -816,6 +829,14 @@ function M.load_workspaces()
 		should_persist = true
 	end
 
+	for _, workspace in ipairs(workspace_data.workspaces) do
+		for _, session in ipairs(workspace.sessions) do
+			if not session["toggled_types"] then
+				session["toggled_types"] = {}
+			end
+		end
+	end
+
 	workspaces = workspace_data.workspaces
 	local workspace = find_workspace(workspace_data.current_workspace)
 
@@ -857,6 +878,7 @@ function M.load_workspaces()
 	end
 
 	source_nvim_session_file(current_workspace, current_session)
+	require("utils").toggle_special_buffers(current_session.toggled_types)
 	M.load_breakpoints()
 
 	setup_lualine()
@@ -935,7 +957,7 @@ local session_picker = function(opts)
 
 	-- Update current session metadata so it displays correctly
 	if current_session ~= nil then
-		set_session_metadata(current_session)
+		set_session_metadata(current_session, {})
 	end
 
 	pickers
@@ -1088,7 +1110,8 @@ require("legendary").autocmds({
 		"VimLeavePre",
 		function()
 			write_nvim_session_file(current_workspace, current_session)
-			set_session_metadata(current_session)
+			local toggled_types = require("utils").toggle_special_buffers({})
+			set_session_metadata(current_session, toggled_types)
 			M.persist_workspaces()
 			M.persist_breakpoints()
 		end,
