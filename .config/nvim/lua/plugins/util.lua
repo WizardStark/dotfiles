@@ -210,7 +210,7 @@ return {
 					description = "Reload local plugin",
 				},
 			})
-			if vim.g.colorscheme == "catppuccin-mocha" then
+			if vim.g.colorscheme:find("catppuccin") then
 				local opts = {
 					integrations = {
 						aerial = true,
