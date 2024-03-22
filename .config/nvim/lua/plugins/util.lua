@@ -231,7 +231,7 @@ return {
 					},
 				}
 
-				opts = vim.tbl_deep_extend("force", opts, vim.g.catppuccin_opts)
+				opts = vim.tbl_deep_extend("force", opts, vim.g.catppuccin_opts or {})
 				require("catppuccin").setup(opts)
 			end
 			vim.cmd("colorscheme " .. vim.g.colorscheme)
