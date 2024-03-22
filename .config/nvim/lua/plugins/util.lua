@@ -203,10 +203,6 @@ return {
 	{
 		dir = "~/.config/lcl",
 		priority = 2000,
-		enabled = function()
-			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
-			return ok
-		end,
 		config = function()
 			require("legendary").commands({
 				{
@@ -215,8 +211,7 @@ return {
 				},
 			})
 			if vim.g.colorscheme == "catppuccin-mocha" then
-				require("catppuccin").setup({
-					color_overrides = vim.g.color_overrides,
+				local opts = {
 					integrations = {
 						aerial = true,
 						flash = true,
@@ -234,7 +229,10 @@ return {
 						overseer = true,
 						lsp_trouble = true,
 					},
-				})
+				}
+
+				opts = vim.tbl_deep_extend("force", opts, vim.g.catppuccin_opts)
+				require("catppuccin").setup(opts)
 			end
 			vim.cmd("colorscheme " .. vim.g.colorscheme)
 		end,
