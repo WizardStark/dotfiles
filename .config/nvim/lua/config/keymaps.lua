@@ -985,6 +985,16 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<F5>",
+		function()
+			require("pickers.spectre").toggle()
+		end,
+		opts = { expr = true },
+		prefix = P.code,
+		description = "Super Rename",
+	},
+	{
+		mode = "n",
 		"<leader>ca",
 		vim.lsp.buf.code_action,
 		prefix = P.code,

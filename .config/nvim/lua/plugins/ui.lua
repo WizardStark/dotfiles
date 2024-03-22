@@ -177,10 +177,19 @@ return {
 		dependencies = { "nvim-tree/nvim-web-devicons" },
 		opts = {},
 	},
+	--todo highlighting
 	{
 		"folke/todo-comments.nvim",
 		event = "VeryLazy",
 		dependencies = { "nvim-lua/plenary.nvim", "folke/trouble.nvim" },
 		opts = {},
+	},
+	--reactive ui lib
+	{
+		"grapp-dev/nui-components.nvim",
+		dependencies = {
+			"MunifTanjim/nui.nvim",
+		},
+		event = "VeryLazy",
 	},
 }

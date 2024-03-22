@@ -192,6 +192,13 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	--powerful find and replace
+	{
+		"nvim-pack/nvim-spectre",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		event = "VeryLazy",
+		opts = {},
+	},
 	--local
 	{
 		dir = "~/.config/lcl",
