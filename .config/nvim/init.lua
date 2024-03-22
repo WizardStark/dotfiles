@@ -16,8 +16,7 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
-if not ok then
+if not vim.loop.fs_stat(vim.fn.expand("$HOME/.config/lcl/lua/init.lua")) then
 	vim.fn.system(
 		"mkdir -p ~/.config/lcl/lua && touch ~/.config/lcl/lua/init.lua && echo M={} return M >> ~/.config/lcl/lua/init.lua"
 	)

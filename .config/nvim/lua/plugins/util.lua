@@ -203,6 +203,10 @@ return {
 	{
 		dir = "~/.config/lcl",
 		priority = 2000,
+		enabled = function()
+			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
+			return ok
+		end,
 		config = function()
 			require("legendary").commands({
 				{
