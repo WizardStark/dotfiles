@@ -37,6 +37,7 @@ alias tmux='tmux -2'
 alias ta='tmux a || tmux'
 alias gpff='git pull --ff-only'
 alias gs='git pull --rebase --autostash'
+alias gsgp='gs && gp'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
