@@ -36,7 +36,7 @@ alias pls='sudo $(fc -ln -1)'
 alias tmux='tmux -2'
 alias ta='tmux a || tmux'
 alias gpff='git pull --ff-only'
-alias gs='git pull --ff-only || git pull --rebase --autostash'
+alias gs='git pull --rebase --autostash'
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
