@@ -293,6 +293,8 @@ return {
 				typescript = { { "prettierd", "prettier" } },
 				typescriptreact = { { "prettierd", "prettier" } },
 				markdown = { { "prettierd", "prettier" } },
+				css = { { "prettierd", "prettier" } },
+				scss = { { "prettierd", "prettier" } },
 				json = { "jq" },
 				go = { "gofumpt" },
 				bash = { "shfmt" },
