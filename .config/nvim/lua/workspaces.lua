@@ -62,9 +62,6 @@ local sessions_path = workspaces_path .. Path.path.sep .. "sessions"
 ---@type string
 local sessions_bak_path = sessions_path .. Path.path.sep .. "backups"
 
----@type string
-local breakpoints_path = workspaces_path .. Path.path.sep .. "breakpoints"
-
 local lualine = require("lualine")
 
 local icons = {
@@ -369,10 +366,9 @@ local function switch_session(target_session)
 	source_nvim_session_file(current_workspace, target_session)
 	require("utils").toggle_special_buffers(target_session.toggled_types)
 	M.apply_breakpoints(target_session.breakpoints)
-
 	set_session_metadata(target_session, {})
-	setup_lualine()
 
+	setup_lualine()
 	M.persist_workspaces()
 end
 
@@ -1056,7 +1052,11 @@ function M.get_breakpoints()
 	return breakpoints
 end
 
+--
 function M.apply_breakpoints(breakpoints)
+	if not breakpoints then
+		return
+	end
 	local loaded_buffers = {}
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		local file_name = vim.api.nvim_buf_get_name(buf)
