@@ -27,8 +27,12 @@ M.special_windows = {
 	["OverseerList"] = function()
 		vim.cmd(":CompilerToggleResults")
 	end,
-	["Trouble"] = require("trouble").toggle,
-	["dapui"] = require("dapui").toggle,
+	["Trouble"] = function()
+		require("trouble").toggle()
+	end,
+	["dapui"] = function()
+		require("dapui").toggle()
+	end,
 	["DiffviewFiles"] = function()
 		vim.cmd(":DiffviewClose")
 	end,

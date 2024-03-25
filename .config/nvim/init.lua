@@ -24,5 +24,7 @@ end
 
 require("lazy").setup({
 	spec = { { import = "plugins" }, { import = "config" } },
+	install = { colorscheme = { "catppuccin-mocha", "habamax" } },
 	ui = { border = "rounded" },
+	profiling = { loader = true, require = true },
 })

@@ -218,35 +218,45 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"zR",
-		require("ufo").openAllFolds,
+		function()
+			require("ufo").openAllFolds()
+		end,
 		prefix = P.fold,
 		description = "Open all",
 	},
 	{
 		mode = "n",
 		"zM",
-		require("ufo").closeAllFolds,
+		function()
+			require("ufo").closeAllFolds()
+		end,
 		prefix = P.fold,
 		description = "Close all",
 	},
 	{
 		mode = "n",
 		"zr",
-		require("ufo").openFoldsExceptKinds,
+		function()
+			require("ufo").openFoldsExceptKinds()
+		end,
 		prefix = P.fold,
 		description = "Open all non-excluded",
 	},
 	{
 		mode = "n",
 		"zm",
-		require("ufo").closeFoldsWith,
+		function()
+			require("ufo").closeFoldsWith()
+		end,
 		prefix = P.fold,
 		description = "Close folds with indentation level greater prefixed than number",
 	},
 	{
 		mode = "n",
 		"zP",
-		require("ufo").peekFoldedLinesUnderCursor,
+		function()
+			require("ufo").peekFoldedLinesUnderCursor()
+		end,
 		prefix = P.fold,
 		description = "Peek folded lines",
 	},
@@ -269,77 +279,99 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>fg",
-		require("telescope").extensions.live_grep_args.live_grep_args,
+		function()
+			require("telescope").extensions.live_grep_args.live_grep_args()
+		end,
 		prefix = P.find,
 		description = "Grep in cwd",
 	},
 	{
 		mode = "n",
 		"<leader>fw",
-		require("telescope-live-grep-args.shortcuts").grep_word_under_cursor,
+		function()
+			require("telescope-live-grep-args.shortcuts").grep_word_under_cursor()
+		end,
 		prefix = P.find,
 		description = "Word in cwd",
 	},
 	{
 		mode = "n",
 		"<leader>fq",
-		require("telescope.builtin").command_history,
+		function()
+			require("telescope.builtin").command_history()
+		end,
 		prefix = P.misc,
 		description = "Show command history",
 	},
 	{
 		mode = "v",
 		"<leader>fv",
-		require("telescope-live-grep-args.shortcuts").grep_visual_selection,
+		function()
+			require("telescope-live-grep-args.shortcuts").grep_visual_selection()
+		end,
 		prefix = P.find,
 		description = "Grep visual selection in cwd",
 	},
 	{
 		mode = "n",
 		"<leader>ff",
-		require("telescope.builtin").find_files,
+		function()
+			require("telescope.builtin").find_files()
+		end,
 		prefix = P.find,
 		description = "Files by filename in cwd",
 	},
 	{
 		mode = "n",
 		"<leader>fu",
-		require("telescope").extensions.undo.undo,
+		function()
+			require("telescope").extensions.undo.undo()
+		end,
 		prefix = P.misc,
 		description = "Show change history (undotree)",
 	},
 	{
 		mode = "n",
 		"<leader>fr",
-		require("telescope.builtin").lsp_references,
+		function()
+			require("telescope.builtin").lsp_references()
+		end,
 		prefix = P.find,
 		description = "References to symbol under cursor",
 	},
 	{
 		mode = "n",
 		"<leader>fs",
-		require("telescope.builtin").lsp_document_symbols,
+		function()
+			require("telescope.builtin").lsp_document_symbols()
+		end,
 		prefix = P.misc,
 		description = "List all symbols in current buffer",
 	},
 	{
 		mode = "n",
 		"<leader>fc",
-		require("telescope.builtin").lsp_incoming_calls,
+		function()
+			require("telescope.builtin").lsp_incoming_calls()
+		end,
 		prefix = P.find,
 		description = "Calls to this symbol",
 	},
 	{
 		mode = "n",
 		"<leader>fo",
-		require("telescope.builtin").lsp_outgoing_calls,
+		function()
+			require("telescope.builtin").lsp_outgoing_calls()
+		end,
 		prefix = P.find,
 		description = "Calls made by this symbol",
 	},
 	{
 		mode = "n",
 		"<leader>fi",
-		require("telescope.builtin").lsp_implementations,
+		function()
+			require("telescope.builtin").lsp_implementations()
+		end,
 		prefix = P.find,
 		description = "Implementations of symbol under cursor",
 	},
@@ -355,7 +387,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>f/",
-		require("telescope.builtin").current_buffer_fuzzy_find,
+		function()
+			require("telescope.builtin").current_buffer_fuzzy_find()
+		end,
 		prefix = P.find,
 		description = "Fuzzy search in current buffer",
 	},
@@ -421,21 +455,27 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>gh",
-		require("telescope.builtin").git_commits,
+		function()
+			require("telescope.builtin").git_commits()
+		end,
 		prefix = P.git,
 		description = "Commit history",
 	},
 	{
 		mode = "n",
 		"<leader>gc",
-		require("telescope.builtin").git_bcommits,
+		function()
+			require("telescope.builtin").git_bcommits()
+		end,
 		prefix = P.git,
 		description = "Commit history for current buffer",
 	},
 	{
 		mode = { "i" },
 		"<C-r>",
-		require("telescope.builtin").registers,
+		function()
+			require("telescope.builtin").registers()
+		end,
 		prefix = P.misc,
 		description = "Show registers",
 	},
@@ -527,98 +567,126 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>t",
-		require("grapple").toggle_tags,
+		function()
+			require("grapple").toggle_tags()
+		end,
 		prefix = P.nav,
 		description = "Open/close quick access list",
 	},
 	{
 		mode = "n",
 		"<A-h>",
-		require("smart-splits").resize_left,
+		function()
+			require("smart-splits").resize_left()
+		end,
 		prefix = P.window,
 		description = "Resize leftwards",
 	},
 	{
 		mode = "n",
 		"<A-j>",
-		require("smart-splits").resize_down,
+		function()
+			require("smart-splits").resize_down()
+		end,
 		prefix = P.window,
 		description = "Resize downwards",
 	},
 	{
 		mode = "n",
 		"<A-k>",
-		require("smart-splits").resize_up,
+		function()
+			require("smart-splits").resize_up()
+		end,
 		prefix = P.window,
 		description = "Resize upwards",
 	},
 	{
 		mode = "n",
 		"<A-l>",
-		require("smart-splits").resize_right,
+		function()
+			require("smart-splits").resize_right()
+		end,
 		prefix = P.window,
 		description = "Resize rightwards",
 	},
 	{
 		mode = "n",
 		"<C-h>",
-		require("smart-splits").move_cursor_left,
+		function()
+			require("smart-splits").move_cursor_left()
+		end,
 		prefix = P.window,
 		description = "Focus window to the left",
 	},
 	{
 		mode = "n",
 		"<C-j>",
-		require("smart-splits").move_cursor_down,
+		function()
+			require("smart-splits").move_cursor_down()
+		end,
 		prefix = P.window,
 		description = "Focus window below",
 	},
 	{
 		mode = "n",
 		"<C-k>",
-		require("smart-splits").move_cursor_up,
+		function()
+			require("smart-splits").move_cursor_up()
+		end,
 		prefix = P.window,
 		description = "Focus window above",
 	},
 	{
 		mode = "n",
 		"<C-l>",
-		require("smart-splits").move_cursor_right,
+		function()
+			require("smart-splits").move_cursor_right()
+		end,
 		prefix = P.window,
 		description = "Focus window to the right",
 	},
 	{
 		mode = "n",
 		"<leader><C-h>",
-		require("smart-splits").swap_buf_left,
+		function()
+			require("smart-splits").swap_buf_left()
+		end,
 		prefix = P.window,
 		description = "Swap current buffer leftwards",
 	},
 	{
 		mode = "n",
 		"<leader><C-j>",
-		require("smart-splits").swap_buf_down,
+		function()
+			require("smart-splits").swap_buf_down()
+		end,
 		prefix = P.window,
 		description = "Swap current buffer downwards",
 	},
 	{
 		mode = "n",
 		"<leader><C-k>",
-		require("smart-splits").swap_buf_up,
+		function()
+			require("smart-splits").swap_buf_up()
+		end,
 		prefix = P.window,
 		description = "Swap current buffer upwards",
 	},
 	{
 		mode = "n",
 		"<leader><C-l>",
-		require("smart-splits").swap_buf_right,
+		function()
+			require("smart-splits").swap_buf_right()
+		end,
 		prefix = P.window,
 		description = "Swap current buffer rightwards",
 	},
 	{
 		mode = "n",
 		"<leader>e",
-		require("utils").toggle_minifiles,
+		function()
+			require("utils").toggle_minifiles()
+		end,
 		prefix = P.nav,
 		description = "Open file explorer",
 	},
@@ -642,7 +710,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>xx",
-		require("trouble").toggle,
+		function()
+			require("trouble").toggle()
+		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window",
 	},
@@ -703,7 +773,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>/",
-		require("Comment.api").toggle.linewise.current,
+		function()
+			require("Comment.api").toggle.linewise.current()
+		end,
 		prefix = P.code,
 		description = "Comment current line",
 	},
@@ -831,7 +903,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>bt",
-		require("alternate-toggler").toggleAlternate,
+		function()
+			require("alternate-toggler").toggleAlternate()
+		end,
 		prefix = P.misc,
 		description = "Toggle booleans",
 	},
@@ -926,7 +1000,9 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"K",
-		vim.lsp.buf.hover,
+		function()
+			vim.lsp.buf.hover()
+		end,
 		prefix = P.code,
 		description = "Show documentation",
 	},
@@ -942,14 +1018,18 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"gD",
-		vim.lsp.buf.declaration,
+		function()
+			vim.lsp.buf.declaration()
+		end,
 		prefix = P.code,
 		description = "Go to declaration",
 	},
 	{
 		mode = "n",
 		"<leader>K",
-		vim.lsp.buf.signature_help,
+		function()
+			vim.lsp.buf.signature_help()
+		end,
 		prefix = P.code,
 		description = "Show function signature",
 	},
@@ -985,14 +1065,18 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>ca",
-		vim.lsp.buf.code_action,
+		function()
+			vim.lsp.buf.code_action()
+		end,
 		prefix = P.code,
 		description = "Show code actions",
 	},
 	{
 		mode = "n",
 		"<leader>ds",
-		vim.diagnostic.open_float,
+		function()
+			vim.diagnostic.open_float()
+		end,
 		prefix = P.code,
 		description = "Open LSP diagnostics in a floating window",
 	},
@@ -1415,35 +1499,45 @@ prefixifier(keymaps)({
 	{
 		mode = { "n" },
 		"<leader>sn",
-		require("workspaces").next_session,
+		function()
+			require("workspaces").next_session()
+		end,
 		prefix = P.work,
 		description = "Next session",
 	},
 	{
 		mode = { "n" },
 		"<leader>sp",
-		require("workspaces").previous_session,
+		function()
+			require("workspaces").previous_session()
+		end,
 		prefix = P.work,
 		description = "Previous session",
 	},
 	{
 		mode = { "n" },
 		"<leader>z",
-		require("workspaces").alternate_session,
+		function()
+			require("workspaces").alternate_session()
+		end,
 		prefix = P.work,
 		description = "Alternate session",
 	},
 	{
 		mode = { "n" },
 		"<leader>sz",
-		require("workspaces").alternate_workspace,
+		function()
+			require("workspaces").alternate_workspace()
+		end,
 		prefix = P.work,
 		description = "Alternate workspace",
 	},
 	{
 		mode = { "n" },
 		"<leader>sa",
-		require("workspaces").pick_session,
+		function()
+			require("workspaces").pick_session()
+		end,
 		prefix = P.work,
 		description = "Pick session",
 	},
@@ -1459,86 +1553,101 @@ prefixifier(keymaps)({
 	{
 		mode = { "n" },
 		"<leader>sw",
-		require("workspaces").pick_workspace,
+		function()
+			require("workspaces").pick_workspace()
+		end,
 		prefix = P.work,
 		description = "Pick workspace",
 	},
 	{
 		mode = { "n" },
 		"<leader>scs",
-		require("workspaces").create_session_input,
+		function()
+			require("workspaces").create_session_input()
+		end,
 		prefix = P.work,
 		description = "Create session",
 	},
 	{
 		mode = { "n" },
 		"<leader>srs",
-		require("workspaces").rename_current_session_input,
+		function()
+			require("workspaces").rename_current_session_input()
+		end,
 		prefix = P.work,
 		description = "Rename session",
 	},
 	{
 		mode = { "n" },
 		"<leader>scw",
-		require("workspaces").create_workspace_input,
+		function()
+			require("workspaces").create_workspace_input()
+		end,
 		prefix = P.work,
 		description = "Create workspace",
 	},
 	{
 		mode = { "n" },
 		"<leader>srw",
-		require("workspaces").rename_current_workspace_input,
+		function()
+			require("workspaces").rename_current_workspace_input()
+		end,
 		prefix = P.work,
 		description = "Rename workspace",
 	},
 	{
 		mode = { "n" },
 		"<leader>sds",
-		require("workspaces").delete_session_input,
+		function()
+			require("workspaces").delete_session_input()
+		end,
 		prefix = P.work,
 		description = "Delete session",
 	},
 	{
 		mode = { "n" },
 		"<leader>sdw",
-		require("workspaces").delete_workspace_input,
+		function()
+			require("workspaces").delete_workspace_input()
+		end,
 		prefix = P.work,
 		description = "Delete workspace",
 	},
 	{
 		mode = { "n" },
 		"m",
-		require("substitute").operator,
+		function()
+			require("substitute").operator()
+		end,
 		prefix = P.misc,
 		description = "Substitute text object",
 	},
 	{
 		mode = { "n" },
 		"mm",
-		require("substitute").line,
+		function()
+			require("substitute").line()
+		end,
 		prefix = P.misc,
 		description = "Substitute line",
 	},
 	{
 		mode = { "n" },
 		"M",
-		require("substitute").eol,
+		function()
+			require("substitute").eol()
+		end,
 		prefix = P.misc,
 		description = "Substitute to end of line",
 	},
 	{
 		mode = { "x" },
 		"m",
-		require("substitute").visual,
+		function()
+			require("substitute").visual()
+		end,
 		prefix = P.misc,
 		description = "Substitute visual selection",
-	},
-	{
-		mode = { "n" },
-		"<leader>p",
-		require("portal.builtin").grapple.tunnel,
-		prefix = P.misc,
-		description = "Open portal for grapple files",
 	},
 })
 

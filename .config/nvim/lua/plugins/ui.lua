@@ -150,26 +150,6 @@ return {
 		dependencies = "nvim-treesitter/nvim-treesitter",
 		opts = {},
 	},
-	--portal
-	{
-		"cbochs/portal.nvim",
-		dependencies = {
-			"cbochs/grapple.nvim",
-		},
-		opts = {
-			window_options = {
-				width = 80,
-				height = 7,
-				row = 0.5,
-				col = 0.5,
-
-				relative = "cursor",
-				border = "rounded",
-				focusable = false,
-				style = "minimal",
-			},
-		},
-	},
 	--lsp diagnostics
 	{
 		"folke/trouble.nvim",

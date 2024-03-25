@@ -1,7 +1,7 @@
 return {
 	{
 		"nvim-neotest/neotest",
-		event = "VeryLazy",
+		cmd = { "Neotest" },
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"nvim-treesitter/nvim-treesitter",
@@ -35,7 +35,7 @@ return {
 	},
 	{
 		"andythigpen/nvim-coverage",
-		event = "VeryLazy",
+		cmd = { "CoverageShow", "CoverageHide", "CoverageLoad", "CoverageSummary" },
 		opts = {},
 	},
 }

@@ -16,6 +16,7 @@ local M = {}
 ---@field last_file string | nil
 ---@field last_file_line number | nil
 ---@field toggled_types string[]
+---@field breakpoints table
 
 local Path = require("plenary.path")
 
@@ -38,6 +39,7 @@ local current_workspace = {
 			name = "nvim",
 			dir = "~/dotfiles/.config/nvim",
 			toggled_types = {},
+			breakpoints = {},
 		},
 	},
 }
@@ -341,6 +343,7 @@ local function set_session_metadata(session, toggled_types)
 	end
 
 	session.toggled_types = toggled_types
+	session.breakpoints = M.get_breakpoints()
 end
 
 --- Switch to target session, does nothing if it is equal to current session
@@ -351,7 +354,6 @@ local function switch_session(target_session)
 	end
 
 	vim.cmd.wa()
-	M.persist_breakpoints()
 	local toggled_types = require("utils").toggle_special_buffers({})
 
 	write_nvim_session_file(current_workspace, current_session)
@@ -366,10 +368,10 @@ local function switch_session(target_session)
 
 	source_nvim_session_file(current_workspace, target_session)
 	require("utils").toggle_special_buffers(target_session.toggled_types)
+	M.apply_breakpoints(target_session.breakpoints)
 
 	set_session_metadata(target_session, {})
 	setup_lualine()
-	M.load_breakpoints()
 
 	M.persist_workspaces()
 end
@@ -391,7 +393,6 @@ local function switch_workspace(target_workspace)
 	end
 
 	vim.cmd.wa()
-	M.persist_breakpoints()
 
 	local target_session = find_session(target_workspace, target_workspace.current_session)
 
@@ -418,13 +419,13 @@ local function switch_workspace(target_workspace)
 
 	source_nvim_session_file(target_workspace, target_session)
 	require("utils").toggle_special_buffers(target_session.toggled_types)
+	M.apply_breakpoints(target_session.breakpoints)
 	set_session_metadata(target_session, {})
 
 	last_workspace = current_workspace
 	current_workspace = target_workspace
 
 	setup_lualine()
-	M.load_breakpoints()
 	M.persist_workspaces()
 end
 
@@ -879,7 +880,7 @@ function M.load_workspaces()
 
 	source_nvim_session_file(current_workspace, current_session)
 	require("utils").toggle_special_buffers(current_session.toggled_types)
-	M.load_breakpoints()
+	M.apply_breakpoints(session.breakpoints)
 
 	setup_lualine()
 end
@@ -1045,47 +1046,17 @@ function M.get_session_terms()
 	return toggleterms[get_term_target()]
 end
 
-function M.persist_breakpoints()
-	local workspace = current_workspace
-	local session = current_session
-	local breakpoints_dir = Path:new(breakpoints_path)
-
-	if not breakpoints_dir:is_dir() then
-		breakpoints_dir:mkdir()
-	end
-
-	local breakpoints_file =
-		breakpoints_dir:joinpath(Path:new(get_nvim_session_filename(workspace, session)) .. ".bp.json")
-	if not breakpoints_file:exists() then
-		breakpoints_file:touch()
-	end
-
+function M.get_breakpoints()
 	local breakpoints = {}
 	local breakpoints_by_buf = require("dap.breakpoints").get()
 	for buf, buf_breakpoints in pairs(breakpoints_by_buf) do
 		breakpoints[vim.api.nvim_buf_get_name(buf)] = buf_breakpoints
 	end
 
-	breakpoints_file:write(vim.fn.json_encode(breakpoints), "w")
+	return breakpoints
 end
 
-function M.load_breakpoints()
-	local workspace = current_workspace
-	local session = current_session
-	local breakpoints_dir = Path:new(breakpoints_path)
-	local breakpoints_file =
-		breakpoints_dir:joinpath(Path:new(get_nvim_session_filename(workspace, session)) .. ".bp.json")
-
-	if not breakpoints_file:exists() then
-		return
-	end
-
-	local breakpoints = vim.fn.json_decode(breakpoints_file:read())
-
-	if not breakpoints then
-		return
-	end
-
+function M.apply_breakpoints(breakpoints)
 	local loaded_buffers = {}
 	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
 		local file_name = vim.api.nvim_buf_get_name(buf)
@@ -1113,7 +1084,6 @@ require("legendary").autocmds({
 			local toggled_types = require("utils").toggle_special_buffers({})
 			set_session_metadata(current_session, toggled_types)
 			M.persist_workspaces()
-			M.persist_breakpoints()
 		end,
 	},
 })

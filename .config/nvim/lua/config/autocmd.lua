@@ -7,8 +7,8 @@ prefixifier(autocmds)({
 		"BufEnter",
 		function()
 			if not vim.g.workspaces_loaded then
-				vim.g.workspaces_loaded = true
 				if next(vim.fn.argv()) == nil then
+					vim.g.workspaces_loaded = true
 					local is_floating_win = vim.api.nvim_win_get_config(0).relative ~= ""
 					if is_floating_win then
 						vim.cmd.wincmd({ args = { "w" }, count = 1 })
@@ -45,7 +45,7 @@ prefixifier(autocmds)({
 			pattern = "*.bib",
 		},
 		function()
-			vim.cmd([[!bibtex main]])
+			vim.cmd("!bibtex main")
 		end,
 		prefix = P.auto,
 	},
@@ -55,6 +55,9 @@ prefixifier(autocmds)({
 			if vim.bo.bt == "terminal" then
 				vim.opt_local.number = false
 				vim.opt_local.relativenumber = false
+			end
+			if vim.bo.ft == "help" then
+				vim.cmd("wincmd L")
 			end
 		end,
 		prefix = P.auto,

@@ -23,7 +23,7 @@ return {
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",
-		lazy = true,
+		cmd = { "DiffviewOpen", "DiffviewClose" },
 		build = ":TSUpdate",
 		config = function()
 			local configs = require("nvim-treesitter.configs")

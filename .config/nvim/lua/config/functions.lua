@@ -16,12 +16,16 @@ prefixifier(funcs)({
 		description = "Edit local config",
 	},
 	{
-		require("workspaces").load_workspaces,
+		function()
+			require("workspaces").load_workspaces()
+		end,
 		prefix = P.work,
 		description = "Load workspaces",
 	},
 	{
-		require("workspaces").purge_session_files,
+		function()
+			require("workspaces").purge_session_files()
+		end,
 		prefix = P.work,
 		description = "Delete all session files",
 	},

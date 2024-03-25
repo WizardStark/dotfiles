@@ -118,7 +118,7 @@ return {
 	--lualine
 	{
 		"nvim-lualine/lualine.nvim",
-		lazy = false,
+		event = "VeryLazy",
 		dependencies = { "stevearc/aerial.nvim" },
 		config = function()
 			require("lualine").setup({
