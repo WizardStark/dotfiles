@@ -358,10 +358,8 @@ local function switch_session(target_session)
 	require("utils").close_non_terminal_buffers()
 
 	last_session = current_session
-	current_session = target_session
-
-	current_workspace.last_session = last_session and last_session.name or nil
-	current_workspace.current_session = target_session and target_session.name or nil
+	current_workspace.last_session = current_session.name
+	current_workspace.current_session = target_session.name
 
 	source_nvim_session_file(current_workspace, target_session)
 	require("utils").toggle_special_buffers(target_session.toggled_types)
@@ -410,14 +408,12 @@ local function switch_workspace(target_workspace)
 	set_session_metadata(current_session, toggled_types)
 	require("utils").close_non_terminal_buffers()
 
-	last_session = find_session(target_workspace, target_workspace.last_session)
-	current_session = target_session
-
 	source_nvim_session_file(target_workspace, target_session)
 	require("utils").toggle_special_buffers(target_session.toggled_types)
 	M.apply_breakpoints(target_session.breakpoints)
 	set_session_metadata(target_session, {})
 
+	last_session = find_session(target_workspace, target_workspace.last_session)
 	last_workspace = current_workspace
 	current_workspace = target_workspace
 
@@ -511,6 +507,7 @@ function M.create_session(name, dir)
 		name = name,
 		dir = dir,
 		toggled_types = {},
+		breakpoints = {},
 	}
 
 	table.insert(current_workspace.sessions, session)
@@ -603,6 +600,7 @@ function M.create_workspace(name, session_name, dir)
 				name = session_name,
 				dir = dir,
 				toggled_types = {},
+				breakpoints = {},
 			},
 		},
 	}
