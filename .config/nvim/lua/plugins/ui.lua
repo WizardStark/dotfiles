@@ -160,7 +160,7 @@ return {
 	--todo highlighting
 	{
 		"folke/todo-comments.nvim",
-		dependencies = { "nvim-lua/plenary.nvim", "folke/trouble.nvim" },
+		dependencies = { "nvim-lua/plenary.nvim" },
 		opts = {},
 	},
 	--reactive ui lib
