@@ -45,4 +45,4 @@ stow -v --adopt -t $HOME home
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
 chsh -s $(which zsh)
-exec $SHELL
+zsh
