@@ -1,5 +1,4 @@
 #!/bin/bash
-directory=$(pwd)
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   sudo apt update && sudo apt upgrade -y
   sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
@@ -24,7 +23,6 @@ sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1
   -p https://github.com/zsh-users/zsh-syntax-highlighting
 
 mkdir -p ~/.config
-rm ~/.zshrc
 
 (
   git clone -b v0.9.5 https://github.com/neovim/neovim
@@ -38,6 +36,8 @@ rm ~/.zshrc
   git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
   ~/.fzf/install --key-bindings --completion --update-rc
 )
+
+rm ~/.zshrc
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
