@@ -37,7 +37,7 @@ local current_workspace = {
 	sessions = {
 		{
 			name = "nvim",
-			dir = "~/dotfiles/.config/nvim",
+			dir = "~/dotfiles/home/.config/nvim",
 			toggled_types = {},
 			breakpoints = {},
 		},
