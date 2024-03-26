@@ -15,8 +15,6 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow
 fi
 
-cd
-
 sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)" -- \
   -t "jonathan" \
   -p git \
@@ -26,24 +24,24 @@ sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1
   -p https://github.com/zsh-users/zsh-syntax-highlighting
 
 mkdir -p ~/.config
-cd "$directory"
 rm ~/.zshrc
-cp .zshrc ~/.zshrc
 
-cd
-git clone -b v0.9.5 https://github.com/neovim/neovim
-cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
-sudo make install
-cd ../
-rm -rf neovim
+(
+  git clone -b v0.9.5 https://github.com/neovim/neovim
+  cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
+  sudo make install
+  cd ../
+  rm -rf neovim
+)
 
-git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install --key-bindings --completion --update-rc
+(
+  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  ~/.fzf/install --key-bindings --completion --update-rc
+)
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
-cd "$directory"
-stow --adopt -t $HOME .
+stow -v --adopt -t $HOME home
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
 chsh -s $(which zsh)
