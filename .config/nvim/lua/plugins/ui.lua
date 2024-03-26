@@ -160,7 +160,6 @@ return {
 	--todo highlighting
 	{
 		"folke/todo-comments.nvim",
-		lazy = true,
 		dependencies = { "nvim-lua/plenary.nvim", "folke/trouble.nvim" },
 		opts = {},
 	},
