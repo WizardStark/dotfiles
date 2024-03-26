@@ -816,7 +816,7 @@ function M.load_workspaces()
 					sessions = {
 						{
 							name = "nvim",
-							dir = "~/dotfiles/.config/nvim",
+							dir = "~/dotfiles/home/.config/nvim",
 						},
 					},
 				},
