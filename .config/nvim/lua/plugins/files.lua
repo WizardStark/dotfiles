@@ -4,6 +4,7 @@ return {
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.3",
 		lazy = true,
+		cmd = { "Telescope" },
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"junegunn/fzf.vim",
