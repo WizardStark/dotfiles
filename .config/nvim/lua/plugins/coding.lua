@@ -17,13 +17,12 @@ return {
 	},
 	{
 		"sindrets/diffview.nvim",
-		event = "VeryLazy",
+		cmd = { "DiffviewOpen", "DiffviewClose" },
 		opts = {},
 	},
 	--treesitter
 	{
 		"nvim-treesitter/nvim-treesitter",
-		cmd = { "DiffviewOpen", "DiffviewClose" },
 		build = ":TSUpdate",
 		config = function()
 			local configs = require("nvim-treesitter.configs")
@@ -73,7 +72,7 @@ return {
 	{
 		"hrsh7th/nvim-cmp",
 		version = false, -- last release is way too old
-		event = "VeryLazy",
+		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			"hrsh7th/cmp-nvim-lsp",
 			"L3MON4D3/LuaSnip",
@@ -210,7 +209,7 @@ return {
 	--snippets
 	{
 		"mireq/luasnip-snippets",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = { "L3MON4D3/LuaSnip" },
 		config = function()
 			require("luasnip_snippets.common.snip_utils").setup()
@@ -218,28 +217,27 @@ return {
 	},
 	{
 		"L3MON4D3/LuaSnip",
+		lazy = true,
 		build = "make install_jsregexp",
-		event = "VeryLazy",
 		dependencies = {
 			"rafamadriz/friendly-snippets",
 			"nvim-treesitter/nvim-treesitter",
-			init = function()
-				local ls = require("luasnip")
-				ls.setup({
-					load_ft_func = require("luasnip_snippets.common.snip_utils").load_ft_func,
-					ft_func = require("luasnip_snippets.common.snip_utils").ft_func,
-					enable_autosnippets = true,
-					history = true,
-					updateevents = "TextChanged,TextChangedI",
-				})
-				require("luasnip/loaders/from_vscode").lazy_load()
-			end,
 		},
+		config = function()
+			require("luasnip").setup({
+				load_ft_func = require("luasnip_snippets.common.snip_utils").load_ft_func,
+				ft_func = require("luasnip_snippets.common.snip_utils").ft_func,
+				enable_autosnippets = true,
+				history = true,
+				updateevents = "TextChanged,TextChangedI",
+			})
+			require("luasnip/loaders/from_vscode").lazy_load()
+		end,
 	},
 	--better commenting
 	{
 		"numToStr/Comment.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	--function overview
@@ -249,7 +247,7 @@ return {
 			"nvim-treesitter/nvim-treesitter",
 			"nvim-tree/nvim-web-devicons",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		opts = {
 			backends = { "lsp", "treesitter", "markdown", "man" },
 			filter_kind = {
@@ -331,7 +329,6 @@ return {
 	--latex
 	{
 		"lervag/vimtex",
-		event = "VeryLazy",
 		ft = { "markdown", "tex" },
 		init = function()
 			vim.g.vimtex_syntax_enabled = 1

@@ -2,6 +2,7 @@ return {
 	--neodev
 	{
 		"folke/neodev.nvim",
+		lazy = true,
 	},
 	-- lspconfig
 	{
@@ -17,7 +18,6 @@ return {
 	{
 		"williamboman/mason.nvim",
 		cmd = "Mason",
-		build = ":MasonUpdate",
 		config = function()
 			local lspconfig = require("lspconfig")
 			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
@@ -85,7 +85,7 @@ return {
 	},
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {
 			ensure_installed = {
 				"black",

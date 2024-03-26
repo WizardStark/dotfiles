@@ -5,7 +5,7 @@ return {
 		dependencies = {
 			"kevinhwang91/promise-async",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		config = function()
 			local ftMap = {
 				vim = "indent",
@@ -72,7 +72,7 @@ return {
 	--responsive rename
 	{
 		"smjonas/inc-rename.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	--cleaner UI
@@ -120,7 +120,7 @@ return {
 	--dressing.nvim
 	{
 		"stevearc/dressing.nvim",
-		event = "VeryLazy",
+		-- event = "VeryLazy",
 		opts = {
 			select = {
 				get_config = function(opts)
@@ -146,21 +146,21 @@ return {
 	--markdown "rendering"
 	{
 		"lukas-reineke/headlines.nvim",
-		event = "VeryLazy",
+		ft = "markdown",
 		dependencies = "nvim-treesitter/nvim-treesitter",
 		opts = {},
 	},
 	--lsp diagnostics
 	{
 		"folke/trouble.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = { "nvim-tree/nvim-web-devicons" },
 		opts = {},
 	},
 	--todo highlighting
 	{
 		"folke/todo-comments.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = { "nvim-lua/plenary.nvim", "folke/trouble.nvim" },
 		opts = {},
 	},
@@ -170,6 +170,6 @@ return {
 		dependencies = {
 			"MunifTanjim/nui.nvim",
 		},
-		event = "VeryLazy",
+		lazy = true,
 	},
 }

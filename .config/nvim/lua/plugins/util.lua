@@ -24,12 +24,12 @@ return {
 	-- undotree
 	{
 		"mbbill/undotree",
-		event = "VeryLazy",
+		lazy = true,
 	},
 	--toggle booleans
 	{
 		"rmagatti/alternate-toggler",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	--overseer tasks
@@ -97,6 +97,7 @@ return {
 		"mrjones2014/legendary.nvim",
 		priority = 10000,
 		lazy = false,
+		dependencies = { "stevearc/dressing.nvim" },
 		config = function()
 			require("legendary").setup({
 				select_prompt = " Command palette",
@@ -159,13 +160,13 @@ return {
 	--substitution
 	{
 		"gbprod/substitute.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	--better macros
 	{
 		"chrisgrieser/nvim-recorder",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = "rcarriga/nvim-notify",
 		opts = {
 			slots = { "a", "r", "s", "m", "n", "e" },
@@ -189,14 +190,14 @@ return {
 	--colourize colors
 	{
 		"norcalli/nvim-colorizer.lua",
-		event = "VeryLazy",
+		cmd = { "ColorizerAttachToBuffer", "ColorizerReloadAllBuffers", "ColorizerDetachFromBuffer", "ColorizerToggle" },
 		opts = {},
 	},
 	--powerful find and replace
 	{
 		"nvim-pack/nvim-spectre",
 		dependencies = { "nvim-lua/plenary.nvim" },
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	--local

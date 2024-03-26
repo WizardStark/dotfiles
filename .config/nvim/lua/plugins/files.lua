@@ -3,7 +3,7 @@ return {
 	{
 		"nvim-telescope/telescope.nvim",
 		tag = "0.1.3",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"junegunn/fzf.vim",
@@ -103,7 +103,7 @@ return {
 	--mini.files
 	{
 		"echasnovski/mini.files",
-		event = "VeryLazy",
+		lazy = true,
 		version = false,
 		opts = {
 			mappings = {
@@ -123,7 +123,7 @@ return {
 	--grapple
 	{
 		"cbochs/grapple.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = {
 			"nvim-tree/nvim-web-devicons",
 		},

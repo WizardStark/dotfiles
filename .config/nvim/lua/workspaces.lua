@@ -62,8 +62,6 @@ local sessions_path = workspaces_path .. Path.path.sep .. "sessions"
 ---@type string
 local sessions_bak_path = sessions_path .. Path.path.sep .. "backups"
 
-local lualine = require("lualine")
-
 local icons = {
 	last = "",
 	cur = "",
@@ -250,7 +248,7 @@ local function setup_lualine()
 		}
 	end
 
-	lualine.setup({
+	require("lualine").setup({
 		tabline = {
 			lualine_a = {
 				function()
@@ -891,14 +889,13 @@ function M.purge_workspaces()
 	end
 end
 
-local pickers = require("telescope.pickers")
-local finders = require("telescope.finders")
-local conf = require("telescope.config").values
-local actions = require("telescope.actions")
-local action_state = require("telescope.actions.state")
-
 local workspace_picker = function(opts)
 	opts = opts or {}
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
 
 	pickers
 		.new(opts, {
@@ -937,6 +934,11 @@ end
 
 local session_picker = function(opts)
 	opts = opts or {}
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
 
 	local results = {}
 

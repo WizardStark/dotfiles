@@ -42,7 +42,7 @@ return {
 	--more text objects
 	{
 		"chrisgrieser/nvim-various-textobjs",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {
 			useDefaultKeymaps = false,
 		},
@@ -50,13 +50,13 @@ return {
 	--smart splits
 	{
 		"mrjones2014/smart-splits.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	-- Quick navigation
 	{
 		"folke/flash.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {
 			modes = {
 				search = {

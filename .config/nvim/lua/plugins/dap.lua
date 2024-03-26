@@ -2,7 +2,7 @@ return {
 	-- dap
 	{
 		"mfussenegger/nvim-dap",
-		event = "VeryLazy",
+		lazy = true,
 		dependencies = {
 			"theHamsta/nvim-dap-virtual-text",
 			"rcarriga/nvim-dap-ui",
@@ -78,12 +78,12 @@ return {
 	},
 	{
 		"jay-babu/mason-nvim-dap.nvim",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {},
 	},
 	{
 		"theHamsta/nvim-dap-virtual-text",
-		event = "VeryLazy",
+		lazy = true,
 		opts = {
 			automatic_installation = true,
 			handlers = {
@@ -98,7 +98,7 @@ return {
 		dependencies = {
 			"nvim-neotest/nvim-nio",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		config = function()
 			local dap = require("dap")
 			local dapui = require("dapui")
@@ -127,7 +127,7 @@ return {
 			"mfussenegger/nvim-dap",
 			"rcarriga/nvim-dap-ui",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		config = function()
 			local debugpy_path = require("mason-registry").get_package("debugpy"):get_install_path()
 			-- require("dap-python").setup(debugpy_path .. "/venv/bin/python")
@@ -141,7 +141,7 @@ return {
 			"mfussenegger/nvim-dap",
 			"rcarriga/nvim-dap-ui",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		config = function()
 			require("dap-go").setup()
 		end,
@@ -152,7 +152,7 @@ return {
 		dependencies = {
 			"mfussenegger/nvim-dap",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		config = function()
 			local dap = require("dap")
 			dap.configurations.lua = {
