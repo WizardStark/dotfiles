@@ -187,9 +187,7 @@ end
 
 function M.load_workspaces()
 	local workspaces_file = Path:new(M.workspaces_path .. Path.path.sep .. "workspaces.json")
-
 	local workspace_data = nil
-
 	local should_persist = false
 
 	if workspaces_file:exists() then
@@ -201,7 +199,25 @@ function M.load_workspaces()
 		should_persist = true
 	end
 
+	if workspace_data["current_workspace"] then
+		workspace_data["current_workspace_name"] = workspace_data["current_workspace"]
+		workspace_data["current_workspace"] = nil
+	end
+
+	if workspace_data["last_workspace"] then
+		workspace_data["last_workspace_name"] = workspace_data["last_workspace"]
+		workspace_data["last_workspace"] = nil
+	end
+
 	for _, workspace in ipairs(workspace_data.workspaces) do
+		if workspace["current_session"] then
+			workspace["current_session_name"] = workspace["current_session"]
+			workspace["current_session"] = nil
+		end
+		if workspace["last_session"] then
+			workspace["last_session_name"] = workspace["last_session"]
+			workspace["last_session"] = nil
+		end
 		for _, session in ipairs(workspace.sessions) do
 			if not session.toggled_types then
 				session.toggled_types = {}
