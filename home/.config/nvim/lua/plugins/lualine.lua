@@ -93,7 +93,7 @@ local function get_term_name()
 	local terms = require("toggleterm.terminal").get_all()
 	for _, term in ipairs(terms) do
 		if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
-			local session_terms = require("workspaces").get_session_terms()
+			local session_terms = require("workspaces.toggleterms").get_session_terms()
 			local prefix
 			local term_id
 			for key, value in pairs(session_terms) do
@@ -105,8 +105,8 @@ local function get_term_name()
 			if next(vim.fn.argv()) ~= nil then
 				prefix = "toggleterm"
 			else
-				local workspace = require("workspaces").get_current_workspace()
-				prefix = workspace.name .. "-" .. workspace.current_session
+				local workspace = require("workspaces.state").get().current_workspace
+				prefix = workspace.name .. "-" .. workspace.current_session_name
 			end
 
 			return prefix .. ": Term " .. term_id

@@ -17,14 +17,14 @@ prefixifier(funcs)({
 	},
 	{
 		function()
-			require("workspaces").load_workspaces()
+			require("workspaces.persistence").load_workspaces()
 		end,
 		prefix = P.work,
 		description = "Load workspaces",
 	},
 	{
 		function()
-			require("workspaces").purge_session_files()
+			require("workspaces.persistence").purge_session_files()
 		end,
 		prefix = P.work,
 		description = "Delete all session files",

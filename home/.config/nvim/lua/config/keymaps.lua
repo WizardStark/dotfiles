@@ -1138,7 +1138,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<C-\\>",
 		function()
-			require("workspaces").toggle_term(vim.v.count, "horizontal", 20)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "horizontal", 20)
 		end,
 		prefix = P.term,
 		description = "Open in horizontal split",
@@ -1147,7 +1147,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<C-]>",
 		function()
-			require("workspaces").toggle_term(vim.v.count, "vertical", 120)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", 120)
 		end,
 		prefix = P.term,
 		description = "Open in vertical split",
@@ -1156,7 +1156,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>[",
 		function()
-			require("workspaces").toggle_term(vim.v.count, "vertical", 120)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", 120)
 			vim.cmd("wincmd H")
 			vim.cmd("vert res 120")
 		end,
@@ -1500,7 +1500,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sn",
 		function()
-			require("workspaces").next_session()
+			require("workspaces.workspaces").next_session()
 		end,
 		prefix = P.work,
 		description = "Next session",
@@ -1509,7 +1509,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sp",
 		function()
-			require("workspaces").previous_session()
+			require("workspaces.workspaces").previous_session()
 		end,
 		prefix = P.work,
 		description = "Previous session",
@@ -1518,7 +1518,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>z",
 		function()
-			require("workspaces").alternate_session()
+			require("workspaces.workspaces").alternate_session()
 		end,
 		prefix = P.work,
 		description = "Alternate session",
@@ -1527,7 +1527,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sz",
 		function()
-			require("workspaces").alternate_workspace()
+			require("workspaces.workspaces").alternate_workspace()
 		end,
 		prefix = P.work,
 		description = "Alternate workspace",
@@ -1536,7 +1536,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sa",
 		function()
-			require("workspaces").pick_session()
+			require("workspaces.ui").pick_session()
 		end,
 		prefix = P.work,
 		description = "Pick session",
@@ -1545,7 +1545,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>si",
 		function()
-			require("workspaces").switch_session_by_index(vim.v.count1)
+			require("workspaces.workspaces").switch_session_by_index(vim.v.count1)
 		end,
 		prefix = P.work,
 		description = "Switch session by index",
@@ -1554,7 +1554,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sw",
 		function()
-			require("workspaces").pick_workspace()
+			require("workspaces.ui").pick_workspace()
 		end,
 		prefix = P.work,
 		description = "Pick workspace",
@@ -1563,7 +1563,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>scs",
 		function()
-			require("workspaces").create_session_input()
+			require("workspaces.ui").create_session_input()
 		end,
 		prefix = P.work,
 		description = "Create session",
@@ -1572,7 +1572,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>srs",
 		function()
-			require("workspaces").rename_current_session_input()
+			require("workspaces.ui").rename_current_session_input()
 		end,
 		prefix = P.work,
 		description = "Rename session",
@@ -1581,7 +1581,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>scw",
 		function()
-			require("workspaces").create_workspace_input()
+			require("workspaces.ui").create_workspace_input()
 		end,
 		prefix = P.work,
 		description = "Create workspace",
@@ -1590,7 +1590,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>srw",
 		function()
-			require("workspaces").rename_current_workspace_input()
+			require("workspaces.ui").rename_current_workspace_input()
 		end,
 		prefix = P.work,
 		description = "Rename workspace",
@@ -1599,7 +1599,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sds",
 		function()
-			require("workspaces").delete_session_input()
+			require("workspaces.ui").delete_session_input()
 		end,
 		prefix = P.work,
 		description = "Delete session",
@@ -1608,7 +1608,7 @@ prefixifier(keymaps)({
 		mode = { "n" },
 		"<leader>sdw",
 		function()
-			require("workspaces").delete_workspace_input()
+			require("workspaces.ui").delete_workspace_input()
 		end,
 		prefix = P.work,
 		description = "Delete workspace",
