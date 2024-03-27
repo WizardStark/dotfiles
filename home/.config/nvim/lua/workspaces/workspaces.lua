@@ -9,7 +9,7 @@ local persist = require("workspaces.persistence")
 ---Sets session metadata such as last file and line num
 ---@param session Session
 ---@param toggled_types string[]
-function M.set_session_metadata(workspace, session, toggled_types)
+function M.set_session_metadata(session, toggled_types)
 	local buf_path = vim.fn.expand("%:p")
 	---@cast buf_path string:
 
@@ -23,14 +23,12 @@ function M.set_session_metadata(workspace, session, toggled_types)
 
 	session.toggled_types = toggled_types
 	session.breakpoints = bps.get_breakpoints()
-
-	state.get().workspaces[utils.find_workspace_index(workspace.name)][session.name] = session
 end
 
 --- Switch to target session, does nothing if it is equal to current session
 ---@param target_session Session
 ---@param target_workspace Workspace
-local function switch_session(target_session, target_workspace)
+function M.switch_session(target_session, target_workspace)
 	if target_session == state.get().current_session then
 		return
 	end
@@ -41,20 +39,20 @@ local function switch_session(target_session, target_workspace)
 	local toggled_types = require("utils").toggle_special_buffers({})
 
 	persist.write_nvim_session_file(state.get().current_workspace, state.get().current_session)
-	M.set_session_metadata(state.get().current_workspace, state.get().current_session, toggled_types)
+	M.set_session_metadata(state.get().current_session, toggled_types)
 	require("utils").close_non_terminal_buffers()
 
 	if within_workspace then
-		state.set("last_session", state.get().current_session)
+		state.get().last_session = state.get().current_session
 	else
-		state.set("last_session", utils.find_session(target_workspace, target_workspace.last_session_name))
+		state.get().last_session = utils.find_session(target_workspace, target_workspace.last_session_name)
 	end
 
-	state.set("current_session", target_session)
+	state.get().current_session = target_session
 
 	if within_workspace then
-		state.set_sub("current_workspace", "last_session", state.get().last_session.name)
-		state.set_sub("current_workspace", "current_session", target_session.name)
+		state.get().current_workspace.last_session_name = state.get().last_session.name
+		state.get().current_workspace.current_session_name = state.get().current_session.name
 		persist.source_nvim_session_file(state.get().current_workspace, target_session)
 	else
 		persist.source_nvim_session_file(target_workspace, target_session)
@@ -62,19 +60,17 @@ local function switch_session(target_session, target_workspace)
 
 	require("utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
+	M.set_session_metadata(target_session, {})
 
 	if within_workspace then
-		M.set_session_metadata(state.get().current_workspace, target_session, {})
 		utils.setup_lualine()
 		persist.persist_workspaces()
-	else
-		M.set_session_metadata(target_workspace, target_session, {})
 	end
 end
 
 --- Switch to a target workspace, does nothing if it is equal to current workspace
 ---@param target_workspace Workspace
-local function switch_workspace(target_workspace)
+function M.switch_workspace(target_workspace)
 	if target_workspace == state.get().current_workspace then
 		return
 	end
@@ -102,10 +98,10 @@ local function switch_workspace(target_workspace)
 		return
 	end
 
-	switch_session(target_session, target_workspace)
+	M.switch_session(target_session, target_workspace)
 
-	state.set("last_workspace", state.get().current_workspace)
-	state.set("current_workspace", target_workspace)
+	state.get().last_workspace = state.get().current_workspace
+	state.get().current_workspace = target_workspace
 
 	utils.setup_lualine()
 	persist.persist_workspaces()
@@ -121,8 +117,8 @@ function M.rename_current_session(name)
 		return
 	end
 
-	state.set_sub("current_session", "name", name)
-	state.set_sub("current_workspace", "current_session_name", name)
+	state.get().current_session.name = name
+	state.get().current_workspace.current_session_name = name
 
 	utils.setup_lualine()
 	persist.persist_workspaces()
@@ -153,7 +149,7 @@ function M.create_session(name, dir)
 
 	table.insert(state.get().current_workspace.sessions, session)
 
-	switch_session(session, state.get().current_workspace)
+	M.switch_session(session, state.get().current_workspace)
 end
 
 function M.delete_session(name)
@@ -175,7 +171,7 @@ function M.delete_session(name)
 			end
 		end
 		if name == workspace.current_session_name then
-			switch_session(workspace.sessions[1], workspace)
+			M.switch_session(workspace.sessions[1], workspace)
 		end
 	end
 
@@ -228,7 +224,7 @@ function M.rename_current_workspace(name)
 		return
 	end
 
-	state.set_sub("current_workspace", "name", name)
+	state.get().current_workspace.name = name
 
 	utils.setup_lualine()
 	persist.persist_workspaces()
@@ -254,7 +250,7 @@ function M.delete_workspace(name)
 			M.load_workspaces()
 		end
 
-		switch_workspace(state.get().workspaces[1])
+		M.switch_workspace(state.get().workspaces[1])
 	end
 
 	persist.persist_workspaces()
@@ -268,20 +264,7 @@ function M.switch_session_by_index(idx)
 		return
 	end
 
-	switch_session(current_workspace.sessions[idx], current_workspace)
-end
-
-function M.switch_session(name)
-	local current_workspace = state.get().current_workspace
-
-	local target_session = utils.find_session(current_workspace, name)
-
-	if target_session == nil then
-		vim.notify("Could not find a session with that name", vim.log.levels.ERROR)
-		return
-	end
-
-	switch_session(target_session, current_workspace)
+	M.switch_session(current_workspace.sessions[idx], current_workspace)
 end
 
 function M.alternate_session()
@@ -291,7 +274,7 @@ function M.alternate_session()
 		return
 	end
 
-	switch_session(current_state.last_session, current_state.current_workspace)
+	M.switch_session(current_state.last_session, current_state.current_workspace)
 end
 
 function M.next_session()
@@ -309,9 +292,9 @@ function M.next_session()
 		return
 	end
 
-	current_session_index = current_session_index % #current_workspace.sessions + 1
+	local target_session_index = current_session_index % #current_workspace.sessions + 1
 
-	switch_session(current_workspace.sessions[current_session_index], current_workspace)
+	M.switch_session(current_workspace.sessions[target_session_index], current_workspace)
 end
 
 function M.previous_session()
@@ -335,19 +318,19 @@ function M.previous_session()
 		current_session_index = (current_session_index - 1) % #current_workspace.sessions
 	end
 
-	switch_session(current_workspace.sessions[current_session_index], current_workspace)
+	M.switch_session(current_workspace.sessions[current_session_index], current_workspace)
 end
 
 ---@param name string
-function M.switch_workspace(name)
+function M.switch_workspace_by_name(name)
 	local target_workspace = utils.find_workspace(name)
 
 	if target_workspace == nil then
-		vim.notify("Could not find an workspace with that name", vim.log.levels.ERROR)
+		vim.notify("Could not find a workspace with that name", vim.log.levels.ERROR)
 		return
 	end
 
-	switch_workspace(target_workspace)
+	M.switch_workspace(target_workspace)
 end
 
 function M.alternate_workspace()
@@ -357,7 +340,7 @@ function M.alternate_workspace()
 		return
 	end
 
-	switch_workspace(last_workspace)
+	M.switch_workspace(last_workspace)
 end
 
 function M.list_session_names()
@@ -369,19 +352,5 @@ function M.list_session_names()
 	end
 	return session_names
 end
-
-require("legendary").autocmds({
-	{
-		"VimLeavePre",
-		function()
-			local current_workspace = state.get().current_workspace
-			local current_session = state.get().current_session
-			persist.write_nvim_session_file(current_workspace, current_session)
-			local toggled_types = require("utils").toggle_special_buffers({})
-			M.set_session_metadata(current_workspace, current_session, toggled_types)
-			persist.persist_workspaces()
-		end,
-	},
-})
 
 return M

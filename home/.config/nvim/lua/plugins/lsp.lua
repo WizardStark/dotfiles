@@ -7,17 +7,12 @@ return {
 	-- lspconfig
 	{
 		"neovim/nvim-lspconfig",
-		event = { "BufReadPre", "BufNewFile" },
+		event = "VeryLazy",
 		dependencies = {
 			"mason.nvim",
 			"williamboman/mason-lspconfig.nvim",
 			"hrsh7th/cmp-nvim-lsp",
 		},
-	},
-	--lsp servers
-	{
-		"williamboman/mason.nvim",
-		cmd = "Mason",
 		config = function()
 			local lspconfig = require("lspconfig")
 			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
@@ -40,12 +35,6 @@ return {
 				["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
 			}
 
-			require("mason").setup({
-				ui = { border = "rounded" },
-				registries = {
-					"github:mason-org/mason-registry",
-				},
-			})
 			mason_lspconfig.setup({
 				ensure_installed = {
 					"lua_ls",
@@ -74,6 +63,17 @@ return {
 				end,
 			})
 		end,
+	},
+	--lsp servers
+	{
+		"williamboman/mason.nvim",
+		cmd = "Mason",
+		opts = {
+			ui = { border = "rounded" },
+			registries = {
+				"github:mason-org/mason-registry",
+			},
+		},
 	},
 	--lsp garbage collection
 	{

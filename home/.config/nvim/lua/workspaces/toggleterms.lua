@@ -22,11 +22,11 @@ function M.toggle_term(number, direction, size)
 	end
 
 	if not toggleterms[target][number] then
-		state.set("term_count", state.get().term_count + 1)
+		state.get().term_count = state.get().term_count + 1
 		toggleterms[target][number] = state.get().term_count
 	end
 
-	state.set("toggleterms", toggleterms)
+	state.get().toggleterms = toggleterms
 
 	local target_term = toggleterms[target][number]
 

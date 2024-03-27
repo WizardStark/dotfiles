@@ -31,7 +31,7 @@ function M.setup_lualine()
 				if is_selected then
 					return M.icons.cur .. " " .. res
 				elseif is_last_session then
-					return M.last .. " " .. res
+					return M.icons.last .. " " .. res
 				end
 				return res
 			end,
@@ -79,9 +79,7 @@ end
 ---@param workspace_name string
 ---@return Workspace | nil
 function M.find_workspace(workspace_name)
-	vim.notify(workspace_name)
 	for _, v in ipairs(state.get().workspaces) do
-		vim.notify(v.name)
 		if v.name == workspace_name then
 			return v
 		end

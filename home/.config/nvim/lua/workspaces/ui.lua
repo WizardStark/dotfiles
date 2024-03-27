@@ -32,7 +32,7 @@ end
 
 function M.create_session_input()
 	input_new_session(function(name, dir)
-		M.create_session(name, dir)
+		ws.create_session(name, dir)
 	end, function()
 		vim.notify("Creation cancelled")
 	end)
@@ -45,7 +45,7 @@ function M.rename_current_session_input()
 		kind = "tabline",
 	}, function(input)
 		if input then
-			M.rename_current_session(input)
+			ws.rename_current_session(input)
 		else
 			vim.notify("Rename cancelled")
 		end
@@ -59,7 +59,7 @@ function M.delete_session_input()
 		kind = "tabline",
 	}, function(input)
 		if input then
-			M.delete_session(input)
+			ws.delete_session(input)
 		else
 			vim.notify("Deletion cancelled")
 		end
@@ -77,7 +77,7 @@ function M.create_workspace_input()
 		end
 		if input then
 			input_new_session(function(session_name, dir)
-				M.create_workspace(input, session_name, dir)
+				ws.create_workspace(input, session_name, dir)
 			end, on_cancel)
 		else
 			on_cancel()
@@ -92,7 +92,7 @@ function M.rename_current_workspace_input()
 		kind = "tabline",
 	}, function(input)
 		if input then
-			M.rename_current_workspace(input)
+			ws.rename_current_workspace(input)
 		else
 			vim.notify("Rename cancelled")
 		end
@@ -106,7 +106,7 @@ function M.delete_workspace_input()
 		kind = "tabline",
 	}, function(input)
 		if input then
-			M.delete_workspace(input)
+			ws.delete_workspace(input)
 		else
 			vim.notify("Deletion cancelled")
 		end
@@ -182,7 +182,7 @@ local session_picker = function(opts)
 
 	-- Update current session metadata so it displays correctly
 	if state.get().current_session ~= nil then
-		ws.set_session_metadata(state.get().current_workspace, state.get().current_session, {})
+		ws.set_session_metadata(state.get().current_session, {})
 	end
 
 	pickers
@@ -207,8 +207,7 @@ local session_picker = function(opts)
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
 
-					ws.switch_workspace(selection.value.workspace)
-					ws.switch_session(selection.value.session)
+					ws.switch_session(selection.value.session, selection.value.workspace)
 				end)
 				return true
 			end,

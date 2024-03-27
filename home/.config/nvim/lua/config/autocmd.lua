@@ -116,6 +116,21 @@ prefixifier(autocmds)({
 		end,
 		prefix = P.auto,
 	},
+	{
+		"VimLeavePre",
+		function()
+			if vim.g.workspaces_loaded then
+				local state = require("workspaces.state")
+				local persist = require("workspaces.persistence")
+				local current_session = state.get().current_session
+				persist.write_nvim_session_file(state.get().current_workspace, current_session)
+				local toggled_types = require("utils").toggle_special_buffers({})
+				M.set_session_metadata(current_session, toggled_types)
+				persist.persist_workspaces()
+			end
+		end,
+		prefix = P.auto,
+	},
 })
 
 return {}

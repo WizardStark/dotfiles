@@ -212,7 +212,7 @@ function M.load_workspaces()
 		end
 	end
 
-	state.set("workspaces", workspace_data.workspaces)
+	state.get().workspaces = workspace_data.workspaces
 	local workspace = utils.find_workspace(workspace_data.current_workspace_name)
 
 	if workspace == nil then
@@ -226,8 +226,8 @@ function M.load_workspaces()
 		return
 	end
 
-	state.set("last_workspace", utils.find_workspace(workspace_data.last_workspace_name))
-	state.set("current_workspace", workspace)
+	state.get().last_workspace = utils.find_workspace(workspace_data.last_workspace_name)
+	state.get().current_workspace = workspace
 	local current_workspace = state.get().current_workspace
 
 	local session = utils.find_session(current_workspace, current_workspace.current_session_name)
@@ -244,8 +244,8 @@ function M.load_workspaces()
 		return
 	end
 
-	state.set("current_session", session)
-	state.set("last_session", utils.find_session(current_workspace, current_workspace.last_session_name))
+	state.get().current_session = session
+	state.get().last_session = utils.find_session(current_workspace, current_workspace.last_session_name)
 
 	if should_persist then
 		M.persist_workspaces()

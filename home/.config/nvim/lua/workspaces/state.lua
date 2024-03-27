@@ -14,6 +14,15 @@ local M = {}
 ---@field toggled_types string[]
 ---@field breakpoints table
 
+---@class State
+---@field workspaces Workspace[]
+---@field toggleterms table
+---@field term_count number
+---@field current_workspace Workspace
+---@field last_workspace Workspace | nil
+---@field current_session Session
+---@field last_session Session | nil
+
 ---@type Workspace
 M.default_workspace = {
 	current_session_name = "nvim",
@@ -36,30 +45,16 @@ M.default_workspace_data = {
 	workspaces = { M.default_workspace },
 }
 
+---@type State
 local state = {
-	---@type Workspace[]
 	workspaces = {},
-	---@type table
 	toggleterms = {},
-	---@type number
 	term_count = 0,
-	---@type Workspace
 	current_workspace = M.default_workspace,
-	---@type Workspace | nil
 	last_workspace = nil,
-	---@type Session
 	current_session = M.default_workspace.sessions[0],
-	---@type Session | nil
 	last_session = nil,
 }
-
-function M.set(key, value)
-	state[key] = value
-end
-
-function M.set_sub(primary_key, sub_key, value)
-	state[primary_key][sub_key] = value
-end
 
 function M.get()
 	return state
