@@ -45,16 +45,27 @@ return {
 			mason_lspconfig.setup_handlers({
 				function(server_name)
 					lspconfig[server_name].setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
 						capabilities = lsp_capabilities,
 						handlers = handlers,
 					})
 				end,
-				["jdtls"] = function()
-					return true
-				end,
+				["jdtls"] = function() end,
 				["lua_ls"] = function()
 					require("neodev").setup({
 						library = { plugins = { "neotest" }, types = true },
+						override = function(root_dir, library)
+							if root_dir:find("nvim") or root_dir:find("dotfiles") then
+								library.enabled = true
+								library.plugins = true
+								library.types = true
+								library.runtime = true
+							end
+						end,
 					})
 					lspconfig.lua_ls.setup({
 						capabilities = lsp_capabilities,

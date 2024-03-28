@@ -67,6 +67,9 @@ return {
 				pattern = "java",
 				callback = function()
 					require("jdtls").start_or_attach(resolve_opts())
+					if vim.g.extra_lsp_actions ~= nil then
+						vim.g.extra_lsp_actions()
+					end
 				end,
 			})
 		end,
