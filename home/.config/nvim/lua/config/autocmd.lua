@@ -13,7 +13,9 @@ prefixifier(autocmds)({
 					if is_floating_win then
 						vim.cmd.wincmd({ args = { "w" }, count = 1 })
 					end
+
 					require("workspaces.persistence").load_workspaces()
+					require("workspaces.workspaces").setup_lualine()
 				end
 			end
 		end,

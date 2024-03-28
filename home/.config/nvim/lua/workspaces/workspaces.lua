@@ -6,6 +6,49 @@ local utils = require("workspaces.utils")
 local bps = require("workspaces.breakpoints")
 local persist = require("workspaces.persistence")
 
+local _, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
+
+-- This function needs to be called whenever the tabs change
+function M.setup_lualine()
+	local tabs = {}
+	local current_workspace = state.get().current_workspace
+
+	for i, v in ipairs(current_workspace.sessions) do
+		local is_selected = v.name == current_workspace.current_session_name
+		local is_last_session = v.name == current_workspace.last_session_name
+
+		tabs[i] = {
+			mode = 2,
+			color = function()
+				return { fg = is_selected and colors.blue or colors.text }
+			end,
+			on_click = function()
+				M.switch_session(v, current_workspace)
+			end,
+			function()
+				local res = tostring(i) .. " " .. v.name
+				if is_selected then
+					return utils.icons.cur .. " " .. res
+				elseif is_last_session then
+					return utils.icons.last .. " " .. res
+				end
+				return res
+			end,
+		}
+	end
+
+	require("lualine").setup({
+		tabline = {
+			lualine_a = {
+				function()
+					return current_workspace.name
+				end,
+			},
+			lualine_b = tabs,
+		},
+	})
+end
+
 ---Sets session metadata such as last file and line num
 ---@param session Session
 ---@param toggled_types string[]
@@ -63,7 +106,7 @@ function M.switch_session(target_session, target_workspace)
 	M.set_session_metadata(target_session, {})
 
 	if within_workspace then
-		utils.setup_lualine()
+		M.setup_lualine()
 		persist.persist_workspaces()
 	end
 end
@@ -103,7 +146,7 @@ function M.switch_workspace(target_workspace)
 	state.get().last_workspace = state.get().current_workspace
 	state.get().current_workspace = target_workspace
 
-	utils.setup_lualine()
+	M.setup_lualine()
 	persist.persist_workspaces()
 end
 
@@ -120,7 +163,7 @@ function M.rename_current_session(name)
 	state.get().current_session.name = name
 	state.get().current_workspace.current_session_name = name
 
-	utils.setup_lualine()
+	M.setup_lualine()
 	persist.persist_workspaces()
 end
 
@@ -182,7 +225,7 @@ function M.delete_session(name)
 		session_file:rm()
 	end
 
-	utils.setup_lualine()
+	M.setup_lualine()
 	persist.persist_workspaces()
 end
 
@@ -226,7 +269,7 @@ function M.rename_current_workspace(name)
 
 	state.get().current_workspace.name = name
 
-	utils.setup_lualine()
+	M.setup_lualine()
 	persist.persist_workspaces()
 end
 
