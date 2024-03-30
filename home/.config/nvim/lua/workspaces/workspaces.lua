@@ -69,15 +69,41 @@ function M.set_session_metadata(session, toggled_types)
 end
 
 --- Switch to target session, does nothing if it is equal to current session
----@param target_session Session
+---@param target_session Session | nil
 ---@param target_workspace Workspace
 function M.switch_session(target_session, target_workspace)
+	-- No target session passed in, we will default to the target workspace current values
+	if target_session == nil then
+		if #target_workspace.sessions == 0 then
+			vim.notify(
+				string.format("Cannot switch to '%s', it has no sessions", target_workspace.name),
+				vim.log.levels.ERROR
+			)
+
+			return
+		end
+
+		target_session = utils.find_session(target_workspace, target_workspace.current_session_name)
+
+		if target_session == nil then
+			vim.notify(
+				string.format(
+					"There was an error switching to workspace '%s' its current session '%s' was not found in workspaces.json",
+					target_workspace.name,
+					target_workspace.current_session_name
+				),
+				vim.log.levels.ERROR
+			)
+			return
+		end
+	end
+
+	-- After defaulting nil sessions stop execution if no change is needed
 	if target_session == state.get().current_session then
 		return
 	end
 
-	local within_workspace = target_workspace == state.get().current_workspace
-
+	-- Save current session before switching
 	vim.cmd.wa()
 	local toggled_types = require("utils").toggle_special_buffers({})
 
@@ -85,66 +111,27 @@ function M.switch_session(target_session, target_workspace)
 	M.set_session_metadata(state.get().current_session, toggled_types)
 	require("utils").close_non_terminal_buffers()
 
-	if within_workspace then
-		state.get().last_session = state.get().current_session
-	else
+	-- Switch to new session and workspace
+	if target_workspace ~= state.get().current_workspace then
+		state.get().last_workspace = state.get().current_workspace
+		state.get().current_workspace = target_workspace
+
+		-- When swapping workspaces we need to load the last session instead of setting it to current session
+		-- otherwise alternate session will not be within the same workspace
 		state.get().last_session = utils.find_session(target_workspace, target_workspace.last_session_name)
+	else
+		state.get().last_session = state.get().current_session
 	end
 
 	state.get().current_session = target_session
+	state.get().current_workspace.last_session_name = state.get().last_session.name
+	state.get().current_workspace.current_session_name = state.get().current_session.name
 
-	if within_workspace then
-		state.get().current_workspace.last_session_name = state.get().last_session.name
-		state.get().current_workspace.current_session_name = state.get().current_session.name
-		persist.source_nvim_session_file(state.get().current_workspace, target_session)
-	else
-		persist.source_nvim_session_file(target_workspace, target_session)
-	end
+	persist.source_nvim_session_file(state.get().current_workspace, target_session)
 
 	require("utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
 	M.set_session_metadata(target_session, {})
-
-	if within_workspace then
-		M.setup_lualine()
-		persist.persist_workspaces()
-	end
-end
-
---- Switch to a target workspace, does nothing if it is equal to current workspace
----@param target_workspace Workspace
-function M.switch_workspace(target_workspace)
-	if target_workspace == state.get().current_workspace then
-		return
-	end
-
-	if #target_workspace.sessions == 0 then
-		vim.notify(
-			string.format("Cannot switch to '%s', it has no sessions", target_workspace.name),
-			vim.log.levels.ERROR
-		)
-
-		return
-	end
-
-	local target_session = utils.find_session(target_workspace, target_workspace.current_session_name)
-
-	if target_session == nil then
-		vim.notify(
-			string.format(
-				"There was an error switching to workspace '%s' its current session '%s' was not found in workspaces.json",
-				target_workspace.name,
-				target_workspace.current_session_name
-			),
-			vim.log.levels.ERROR
-		)
-		return
-	end
-
-	M.switch_session(target_session, target_workspace)
-
-	state.get().last_workspace = state.get().current_workspace
-	state.get().current_workspace = target_workspace
 
 	M.setup_lualine()
 	persist.persist_workspaces()
@@ -293,7 +280,7 @@ function M.delete_workspace(name)
 			M.load_workspaces()
 		end
 
-		M.switch_workspace(state.get().workspaces[1])
+		M.switch_session(nil, state.get().workspaces[1])
 	end
 
 	persist.persist_workspaces()
@@ -373,7 +360,7 @@ function M.switch_workspace_by_name(name)
 		return
 	end
 
-	M.switch_workspace(target_workspace)
+	M.switch_session(nil, target_workspace)
 end
 
 function M.alternate_workspace()
@@ -383,7 +370,7 @@ function M.alternate_workspace()
 		return
 	end
 
-	M.switch_workspace(last_workspace)
+	M.switch_session(nil, last_workspace)
 end
 
 function M.list_session_names()

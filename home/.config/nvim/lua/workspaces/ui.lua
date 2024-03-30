@@ -148,7 +148,7 @@ local workspace_picker = function(opts)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
-					ws.switch_workspace(selection.value)
+					ws.switch_session(nil, selection.value)
 				end)
 				return true
 			end,
