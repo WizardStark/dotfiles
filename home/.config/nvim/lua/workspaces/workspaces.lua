@@ -124,7 +124,7 @@ function M.switch_session(target_session, target_workspace)
 	end
 
 	state.get().current_session = target_session
-	state.get().current_workspace.last_session_name = state.get().last_session.name
+	state.get().current_workspace.last_session_name = state.get().last_session and state.get().last_session.name
 	state.get().current_workspace.current_session_name = state.get().current_session.name
 
 	persist.source_nvim_session_file(state.get().current_workspace, target_session)
