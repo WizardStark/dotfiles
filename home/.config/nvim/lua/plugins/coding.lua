@@ -35,7 +35,7 @@ return {
 				sync_install = false,
 				highlight = {
 					enable = true,
-					disable = function(lang, buf)
+					disable = function(_, buf)
 						local max_filesize = 500 * 1024 -- 500 KB
 						local filename = vim.api.nvim_buf_get_name(buf)
 						local ok, stats = pcall(vim.loop.fs_stat, filename)

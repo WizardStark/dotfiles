@@ -108,6 +108,7 @@ return {
 		version = false,
 		opts = {
 			mappings = {
+				go_in_plus = "<CR>",
 				go_out = "H",
 				go_out_plus = "",
 				synchronize = "s",
