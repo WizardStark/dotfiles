@@ -36,5 +36,12 @@ prefixifier(funcs)({
 		prefix = P.misc,
 		description = "Force close all non-terminal buffers except the current one",
 	},
+	{
+		function()
+			require("utils").toggle_keys_window()
+		end,
+		prefix = P.misc,
+		description = "Toggle window that logs keypresses",
+	},
 })
 return {}
