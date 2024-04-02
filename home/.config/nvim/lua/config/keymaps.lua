@@ -164,7 +164,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"<leader>q",
+		"<leader>a",
 		"<C-^>",
 		prefix = P.nav,
 		description = "Alternate file",
@@ -552,7 +552,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"<leader>a",
+		"<leader>q",
 		function()
 			if vim.bo.ft == "minifiles" then
 				local path = require("mini.files").get_fs_entry().path
