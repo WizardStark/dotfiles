@@ -273,7 +273,7 @@ local function register_keys(key)
 end
 
 local function start_registering_keys()
-	vim.on_key(register_keys)
+	vim.on_key(register_keys, ns)
 	plugin_loaded = true
 end
 
