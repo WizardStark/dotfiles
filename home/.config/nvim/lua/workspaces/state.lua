@@ -13,9 +13,16 @@ local M = {}
 ---@field last_file_line number | nil
 ---@field toggled_types string[]
 ---@field breakpoints table
+--
+---@class Mark
+---@field workspace_name string
+---@field session_name string
+---@field path string
+---@field pos number[]
 
 ---@class State
 ---@field workspaces Workspace[]
+---@field marks Mark[]
 ---@field toggleterms table
 ---@field term_count number
 ---@field current_workspace Workspace
@@ -47,6 +54,7 @@ M.default_workspace_data = {
 
 ---@type State
 local state = {
+	marks = {},
 	workspaces = {},
 	toggleterms = {},
 	term_count = 0,

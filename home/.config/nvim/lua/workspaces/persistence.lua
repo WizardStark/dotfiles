@@ -175,6 +175,9 @@ function M.persist_workspaces()
 	local workspaces_file = Path:new(M.workspaces_path .. Path.path.sep .. "workspaces.json")
 	workspaces_file:touch()
 
+	local marks_file = Path:new(M.workspaces_path .. Path.path.sep .. "marks.json")
+	marks_file:touch()
+
 	local current_state = state.get()
 	local workspace_data = {
 		current_workspace_name = current_state.current_workspace.name,
@@ -182,6 +185,7 @@ function M.persist_workspaces()
 		workspaces = current_state.workspaces,
 	}
 
+	marks_file:write(vim.fn.json_encode(current_state.marks), "w")
 	workspaces_file:write(vim.fn.json_encode(workspace_data), "w")
 end
 
