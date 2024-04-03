@@ -261,7 +261,7 @@ end
 local function register_keys(key)
 	key = sanitize_key(key)
 
-	if key and plugin_loaded then
+	if key and plugin_loaded and vim.bo.bt ~= "terminal" then
 		if #typed_letters >= 35 then
 			table.remove(typed_letters, 1)
 		end
