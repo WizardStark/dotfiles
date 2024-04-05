@@ -64,7 +64,7 @@ The most extensive configuration is for NeoVim. The config layout:
     │   ├── ui.lua
     │   └── util.lua
     ├── utils.lua               //commonly used lua functions
-    └── workspaces.lua          //custom session management/multiplexing solution
+    └── workspaces              //custom session management/multiplexing solution
 ```
 
 The best sources to consult for understanding the above:
