@@ -106,7 +106,7 @@ function M.switch_session(target_session, target_workspace)
 	-- Save current session before switching
 	vim.cmd.wa()
 	-- Stop lsp for current session, excluding jdtls
-	require("garbage-day.utils").stop_lsp()
+	-- require("garbage-day.utils").stop_lsp()
 	local toggled_types = require("utils").toggle_special_buffers({})
 
 	persist.write_nvim_session_file(state.get().current_workspace, state.get().current_session)

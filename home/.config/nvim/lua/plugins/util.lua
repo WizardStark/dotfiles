@@ -215,6 +215,9 @@ return {
 					description = "Reload local plugin",
 				},
 			})
+			if vim.g.log_keys then
+				require("utils").toggle_keys_window()
+			end
 		end,
 	},
 }
