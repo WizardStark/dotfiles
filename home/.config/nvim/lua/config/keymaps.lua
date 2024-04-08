@@ -65,6 +65,13 @@ prefixifier(keymaps)({
 		description = "Paste with ctrl",
 	},
 	{
+		mode = { "t" },
+		"<S-BS>",
+		"<BS>",
+		prefix = P.misc,
+		description = "Backspace in terminal when holding shift",
+	},
+	{
 		mode = { "n" },
 		"<C-r>",
 		"r",

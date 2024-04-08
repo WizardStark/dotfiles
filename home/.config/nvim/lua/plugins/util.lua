@@ -200,6 +200,15 @@ return {
 		lazy = true,
 		opts = {},
 	},
+	--enable vim motions in terminal buffer
+	{
+		"chomosuke/term-edit.nvim",
+		ft = "toggleterm",
+		version = "1.*",
+		opts = {
+			prompt_end = "──> ",
+		},
+	},
 	--local
 	{
 		dir = "~/.config/lcl",

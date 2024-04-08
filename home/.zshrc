@@ -17,6 +17,10 @@ plugins=(git
   fzf
   ssh-agent)
 
+show_blame() {
+  git ls-files | while read f; do git blame -w --line-porcelain -- "$f" | grep -I '^author '; done | sort -f | uniq -ic | sort -n
+}
+
 source $ZSH/oh-my-zsh.sh
 export EDITOR='nvim'
 alias vim="nvim"
@@ -29,7 +33,7 @@ alias ta='tmux a || tmux'
 alias gpff='git pull --ff-only'
 alias gs='git pull --rebase --autostash'
 alias gsgp='gs && gp'
-
+alias gsbl=show_blame
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$0]=1; printf(((NR==1) ?"" : ":") $0) }}')"
