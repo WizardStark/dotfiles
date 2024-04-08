@@ -43,5 +43,13 @@ prefixifier(funcs)({
 		prefix = P.misc,
 		description = "Toggle window that logs keypresses",
 	},
+
+	{
+		function()
+			require("lint").try_lint()
+		end,
+		prefix = P.code,
+		description = "Run linter",
+	},
 })
 return {}

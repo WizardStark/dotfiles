@@ -115,13 +115,6 @@ prefixifier(autocmds)({
 		},
 	},
 	{
-		"BufWritePost",
-		function()
-			require("lint").try_lint()
-		end,
-		prefix = P.auto,
-	},
-	{
 		"VimLeavePre",
 		function()
 			if vim.g.workspaces_loaded then
