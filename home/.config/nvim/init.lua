@@ -32,7 +32,7 @@ if not vim.loop.fs_stat(vim.fn.resolve(vim.fn.stdpath("config") .. "/lua/lcl")) 
 end
 
 require("lazy").setup({
-	spec = { { import = "lcl" }, { import = "plugins" }, { import = "config" } },
+	spec = { { import = "plugins" }, { import = "lcl" }, { import = "config" } },
 	install = { colorscheme = { "catppuccin-mocha", "habamax" } },
 	ui = { border = "rounded" },
 	profiling = { loader = true, require = true },
