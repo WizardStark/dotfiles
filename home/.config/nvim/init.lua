@@ -16,14 +16,23 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-if not vim.loop.fs_stat(vim.fn.expand("$HOME/.config/lcl/lua/init.lua")) then
+local configpath = vim.fn.resolve(vim.fn.stdpath("config") .. "/lua")
+vim.g.lclpath = configpath .. "/lcl"
+vim.g.lclfilepath = vim.g.lclpath .. "/options.lua"
+
+if not vim.loop.fs_stat(vim.fn.resolve(vim.fn.stdpath("config") .. "/lua/lcl")) then
 	vim.fn.system(
-		"mkdir -p ~/.config/lcl/lua && touch ~/.config/lcl/lua/init.lua && echo M={} return M >> ~/.config/lcl/lua/init.lua"
+		"mkdir -p "
+			.. vim.g.lclpath
+			.. " && touch "
+			.. vim.g.lclfilepath
+			.. " && echo M={} return M >> "
+			.. vim.g.lclfilepath
 	)
 end
 
 require("lazy").setup({
-	spec = { { import = "plugins" }, { import = "config" } },
+	spec = { { import = "lcl" }, { import = "plugins" }, { import = "config" } },
 	install = { colorscheme = { "catppuccin-mocha", "habamax" } },
 	ui = { border = "rounded" },
 	profiling = { loader = true, require = true },

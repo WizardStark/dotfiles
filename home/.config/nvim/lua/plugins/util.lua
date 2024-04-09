@@ -209,24 +209,4 @@ return {
 			prompt_end = "──> ",
 		},
 	},
-	--local
-	{
-		dir = "~/.config/lcl",
-		priority = 2000,
-		enabled = function()
-			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
-			return ok
-		end,
-		config = function()
-			require("legendary").commands({
-				{
-					":Lazy reload lcl",
-					description = "Reload local plugin",
-				},
-			})
-			if vim.g.log_keys then
-				require("utils").toggle_keys_window()
-			end
-		end,
-	},
 }

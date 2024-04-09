@@ -5,12 +5,7 @@ local funcs = require("legendary").funcs
 prefixifier(funcs)({
 	{
 		function()
-			local ok, _ = pcall(dofile, vim.fn.expand("$HOME/.config/lcl/lua/init.lua"))
-			if not ok then
-				vim.cmd.e("~/.config/lcl/lua/init.lua")
-			else
-				vim.notify("Local config does not exist, please close and reopen vim")
-			end
+			vim.cmd.e(vim.g.lclfilepath)
 		end,
 		prefix = P.misc,
 		description = "Edit local config",
