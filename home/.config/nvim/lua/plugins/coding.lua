@@ -289,7 +289,7 @@ return {
 				javascriptreact = { { "prettierd", "prettier" } },
 				typescript = { { "prettierd", "prettier" } },
 				typescriptreact = { { "prettierd", "prettier" } },
-				markdown = { { "prettierd", "prettier" } },
+				-- markdown = { { "prettierd", "prettier" } },
 				css = { { "prettierd", "prettier" } },
 				scss = { { "prettierd", "prettier" } },
 				json = { "jq" },

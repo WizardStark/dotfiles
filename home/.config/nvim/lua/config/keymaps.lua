@@ -1553,7 +1553,8 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n" },
-		"<leader>si",
+		"\\",
+		-- "<leader>si",
 		function()
 			require("workspaces.workspaces").switch_session_by_index(vim.v.count1)
 		end,
