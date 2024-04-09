@@ -582,6 +582,24 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>-",
+		function()
+			vim.cmd("split")
+		end,
+		prefix = P.window,
+		description = "Create horizontal split",
+	},
+	{
+		mode = "n",
+		"<leader>|",
+		function()
+			vim.cmd("vsplit")
+		end,
+		prefix = P.window,
+		description = "Create vertical split",
+	},
+	{
+		mode = "n",
 		"<A-h>",
 		function()
 			require("smart-splits").resize_left()
