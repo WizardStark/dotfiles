@@ -123,6 +123,18 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
+		"User",
+		opts = {
+			pattern = "LazyReload",
+		},
+		function()
+			if vim.g.workspaces_loaded then
+				require("workspaces.workspaces").setup_lualine()
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
 		"VimLeavePre",
 		function()
 			if vim.g.workspaces_loaded then
