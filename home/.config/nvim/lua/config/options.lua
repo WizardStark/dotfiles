@@ -34,6 +34,10 @@ opt.showtabline = 1
 opt.undodir = { vim.fn.expand("~/.undo") }
 opt.swapfile = false
 opt.sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions"
+opt.grepprg = "rg --vimgrep"
+opt.grepformat = "%f:%l:%c:%m"
+
+-- from TJ's config
 opt.formatoptions = opt.formatoptions
 	- "a" -- Auto formatting is BAD.
 	- "t" -- Don't auto format my code. I got linters for that.

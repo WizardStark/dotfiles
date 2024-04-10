@@ -116,6 +116,13 @@ prefixifier(autocmds)({
 		},
 	},
 	{
+		"QuickFixCmdPost",
+		function()
+			require("trouble").toggle("quickfix")
+		end,
+		prefix = P.auto,
+	},
+	{
 		"VimLeavePre",
 		function()
 			if vim.g.workspaces_loaded then
