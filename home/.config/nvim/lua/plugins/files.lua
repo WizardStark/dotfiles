@@ -46,6 +46,12 @@ return {
 						"--smart-case",
 						"--hidden",
 					},
+					file_ignore_patterns = {
+						"^bin/",
+						"/bin/",
+						"^.git/",
+						"/.git/",
+					},
 					cache_picker = { num_pickers = 15 },
 				},
 				extensions = {
@@ -60,6 +66,7 @@ return {
 				pickers = {
 					find_files = {
 						follow = true,
+						hidden = true,
 					},
 					git_commits = {
 						mappings = {
