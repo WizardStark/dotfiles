@@ -1014,7 +1014,6 @@ prefixifier(keymaps)({
 		prefix = P.latex,
 		description = "Open table of contents",
 	},
-
 	{
 		mode = "n",
 		"<leader>ln",
@@ -1081,30 +1080,12 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<F5>",
 		function()
-			local text_to_replace = vim.fn.expand("<cword>")
-			local new_name
-
-			vim.ui.input({
-				prompt = "New name",
-				default = "",
-				completion = "",
-				kind = "custom_replace",
-			}, function(new_name_input)
-				if new_name_input then
-					new_name = new_name_input
-				else
-					vim.notify("Rename cancelled")
-				end
-			end)
-
-			vim.cmd("grep " .. text_to_replace)
-			vim.cmd("cdo s/" .. text_to_replace .. "/" .. new_name .. "/gc | up")
-
+			return ":grep " .. vim.fn.expand("<cword>") .. "<CR>"
 			-- require("pickers.spectre").toggle()
 		end,
 		opts = { expr = true },
 		prefix = P.code,
-		description = "Super Rename",
+		description = "Grep word under cursor and put results in qflist",
 	},
 	{
 		mode = "n",
@@ -1696,6 +1677,15 @@ prefixifier(keymaps)({
 		end,
 		prefix = P.misc,
 		description = "Substitute visual selection",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader><BS>",
+		function()
+			require("notify").dismiss({ pending = true, silent = true })
+		end,
+		prefix = P.misc,
+		description = "Dismiss all notifications",
 	},
 })
 
