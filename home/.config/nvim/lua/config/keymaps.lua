@@ -1081,7 +1081,26 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<F5>",
 		function()
-			require("pickers.spectre").toggle()
+			local text_to_replace = vim.fn.expand("<cword>")
+			local new_name
+
+			vim.ui.input({
+				prompt = "New name",
+				default = "",
+				completion = "",
+				kind = "custom_replace",
+			}, function(new_name_input)
+				if new_name_input then
+					new_name = new_name_input
+				else
+					vim.notify("Rename cancelled")
+				end
+			end)
+
+			vim.cmd("grep " .. text_to_replace)
+			vim.cmd("cdo s/" .. text_to_replace .. "/" .. new_name .. "/gc | up")
+
+			-- require("pickers.spectre").toggle()
 		end,
 		opts = { expr = true },
 		prefix = P.code,
