@@ -1248,24 +1248,6 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "o", "x" },
-		"ig",
-		function()
-			require("various-textobjs").greedyOuterIndentation("inner")
-		end,
-		prefix = P.text,
-		description = "In greedyOuterIndentation",
-	},
-	{
-		mode = { "o", "x" },
-		"ag",
-		function()
-			require("various-textobjs").greedyOuterIndentation("outer")
-		end,
-		prefix = P.text,
-		description = "Around greedyOuterIndentation",
-	},
-	{
-		mode = { "o", "x" },
 		"iS",
 		function()
 			require("various-textobjs").subword("inner")
@@ -1281,42 +1263,6 @@ prefixifier(keymaps)({
 		end,
 		prefix = P.text,
 		description = "Around subword",
-	},
-	{
-		mode = { "o", "x" },
-		"C",
-		function()
-			require("various-textobjs").toNextClosingBracket()
-		end,
-		prefix = P.text,
-		description = "To next closing bracket",
-	},
-	{
-		mode = { "o", "x" },
-		"Q",
-		function()
-			require("various-textobjs").toNextQuotationMark()
-		end,
-		prefix = P.text,
-		description = "To next quotation mark",
-	},
-	{
-		mode = { "o", "x" },
-		"io",
-		function()
-			require("various-textobjs").anyBracket("inner")
-		end,
-		prefix = P.text,
-		description = "In any bracket",
-	},
-	{
-		mode = { "o", "x" },
-		"ao",
-		function()
-			require("various-textobjs").anyBracket("outer")
-		end,
-		prefix = P.text,
-		description = "Around any bracket",
 	},
 	{
 		mode = { "o", "x" },
@@ -1344,15 +1290,6 @@ prefixifier(keymaps)({
 		end,
 		prefix = P.text,
 		description = "1 char befor EoL",
-	},
-	{
-		mode = { "o", "x" },
-		"g;",
-		function()
-			require("various-textobjs").lastChange()
-		end,
-		prefix = P.text,
-		description = "Last change",
 	},
 	{
 		mode = { "o", "x" },
@@ -1482,25 +1419,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "o", "x" },
-		"iz",
-		function()
-			require("various-textobjs").closedFold("inner")
-		end,
-		prefix = P.text,
-		description = "In fold",
-	},
-	{
-		mode = { "o", "x" },
-		"az",
-		function()
-			require("various-textobjs").closedFold("outer")
-		end,
-		prefix = P.text,
-		description = "Around fold",
-	},
-	{
-		mode = { "o", "x" },
-		"im",
+		"iM",
 		function()
 			require("various-textobjs").chainMember("inner")
 		end,
@@ -1509,30 +1428,12 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "o", "x" },
-		"am",
+		"aM",
 		function()
 			require("various-textobjs").chainMember("outer")
 		end,
 		prefix = P.text,
 		description = "Around chain member",
-	},
-	{
-		mode = { "o", "x" },
-		"gw",
-		function()
-			require("various-textobjs").visibleInWindow()
-		end,
-		prefix = P.text,
-		description = "Visible in window",
-	},
-	{
-		mode = { "o", "x" },
-		"gW",
-		function()
-			require("various-textobjs").restOfWindow()
-		end,
-		prefix = P.text,
-		description = "Rest of window",
 	},
 	{
 		mode = { "n" },
