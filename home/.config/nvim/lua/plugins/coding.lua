@@ -57,21 +57,20 @@ return {
 					swap = {
 						enable = true,
 						swap_next = {
-							["<leader>na"] = "@parameter.inner", -- swap parameters/argument with next
-							["<leader>nm"] = "@function.outer", -- swap function with next
+							["<leader>na"] = "@parameter.inner",
+							["<leader>nm"] = "@function.outer",
 						},
 						swap_previous = {
-							["<leader>pa"] = "@parameter.inner", -- swap parameters/argument with prev
-							["<leader>pm"] = "@function.outer", -- swap function with previous
+							["<leader>pa"] = "@parameter.inner",
+							["<leader>pm"] = "@function.outer",
 						},
 					},
 					move = {
 						enable = true,
-						set_jumps = true, -- whether to set jumps in the jumplist
+						set_jumps = true,
 						goto_next_start = {
 							["]f"] = { query = "@call.outer", desc = "Next function call start" },
 							["]m"] = { query = "@function.outer", desc = "Next method/function def start" },
-							["]s"] = { query = "@scope", query_group = "locals", desc = "Next scope" },
 						},
 						goto_previous_start = {
 							["[f"] = { query = "@call.outer", desc = "Prev function call start" },
@@ -81,7 +80,7 @@ return {
 				},
 				textsubjects = {
 					enable = true,
-					prev_selection = ",", -- (Optional) keymap to select the previous selection
+					prev_selection = ",",
 					keymaps = {
 						["."] = "textsubjects-smart",
 						[";"] = "textsubjects-container-outer",
