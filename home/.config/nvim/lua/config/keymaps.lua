@@ -268,7 +268,7 @@ prefixifier(keymaps)({
 		description = "Peek folded lines",
 	},
 	{
-		mode = { "n", "v" },
+		mode = { "n", "v", "o" },
 		"<leader><leader>",
 		function()
 			require("legendary").find({})
