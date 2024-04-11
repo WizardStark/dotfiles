@@ -409,6 +409,16 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>gn",
+		function()
+			local range = vim.fn.expand("<cWORD>")
+			vim.cmd("DiffviewOpen " .. range)
+		end,
+		prefix = P.git,
+		description = "Open Git diffview",
+	},
+	{
+		mode = "n",
 		"<leader>gq",
 		[[<CMD>DiffviewClose<CR>]],
 		prefix = P.git,
