@@ -200,6 +200,12 @@ return {
 		lazy = true,
 		opts = {},
 	},
+	--yank history
+	{
+		"ptdewey/yankbank-nvim",
+		event = "VeryLazy",
+		opts = {},
+	},
 	--enable vim motions in terminal buffer
 	{
 		"chomosuke/term-edit.nvim",

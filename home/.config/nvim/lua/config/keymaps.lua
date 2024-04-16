@@ -271,7 +271,7 @@ prefixifier(keymaps)({
 		mode = { "n", "v", "o" },
 		"<leader><leader>",
 		function()
-			require("legendary").find({})
+			require("legendary").find()
 		end,
 		prefix = P.misc,
 		description = "Command palette",
@@ -1483,7 +1483,6 @@ prefixifier(keymaps)({
 	{
 		mode = { "n" },
 		"\\",
-		-- "<leader>si",
 		function()
 			require("workspaces.workspaces").switch_session_by_index(vim.v.count1)
 		end,
@@ -1597,6 +1596,15 @@ prefixifier(keymaps)({
 		end,
 		prefix = P.misc,
 		description = "Dismiss all notifications",
+	},
+	{
+		mode = { "n" },
+		"<leader>p",
+		function()
+			vim.cmd("YankBank")
+		end,
+		prefix = P.misc,
+		description = "Open window to select item to paste from last 10 yanks",
 	},
 })
 
