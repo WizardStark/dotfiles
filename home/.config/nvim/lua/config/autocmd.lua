@@ -97,7 +97,7 @@ prefixifier(autocmds)({
 				vim.keymap.set("n", "h", function()
 					MiniFiles.go_out()
 					MiniFiles.go_out()
-					MiniFiles.go_in()
+					MiniFiles.go_in({})
 				end, { buffer = buf_id })
 				vim.keymap.set("n", "<CR>", function()
 					MiniFiles.go_in({ close_on_file = true })
