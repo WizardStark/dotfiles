@@ -74,15 +74,6 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
-		"BufWinEnter",
-		function()
-			if vim.bo.ft == "help" then
-				vim.cmd("wincmd L")
-			end
-		end,
-		prefix = P.auto,
-	},
-	{
 		name = "UserMiniFiles",
 		{
 			"User",
