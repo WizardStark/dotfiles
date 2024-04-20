@@ -1174,7 +1174,7 @@ prefixifier(keymaps)({
 		"<C-\\>",
 		function()
 			local height = vim.fn.min({ 20, vim.fn.round(vim.api.nvim_win_get_height(0) * 0.3) })
-			require("workspaces.toggleterms").toggle_term(vim.v.count, "horizontal", height)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "horizontal", height, "bottom")
 		end,
 		prefix = P.term,
 		description = "Open in horizontal split",
@@ -1184,7 +1184,7 @@ prefixifier(keymaps)({
 		"<C-]>",
 		function()
 			local width = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
-			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", width)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", width, "right")
 		end,
 		prefix = P.term,
 		description = "Open in vertical split",
@@ -1194,9 +1194,7 @@ prefixifier(keymaps)({
 		"<leader>[",
 		function()
 			local width = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
-			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", width)
-			vim.cmd("wincmd H")
-			vim.cmd("vert res " .. width)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", width, "left")
 		end,
 		prefix = P.term,
 		description = "Open in left vertical split",

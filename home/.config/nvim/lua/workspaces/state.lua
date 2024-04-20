@@ -2,33 +2,41 @@ local M = {}
 
 ---@class Workspace
 ---@field name string
----@field sessions Session[]
+---@field sessions WorkspaceSession[]
 ---@field current_session_name string
 ---@field last_session_name string | nil
 
----@class Session
+---@class WorkspaceSession
 ---@field name string
 ---@field dir string
 ---@field last_file string | nil
 ---@field last_file_line number | nil
 ---@field toggled_types string[]
 ---@field breakpoints table
---
+---@field toggleterms SessionTerminal[]
+
 ---@class Mark
 ---@field workspace_name string
 ---@field session_name string
 ---@field path string
 ---@field pos number[]
 
+---@class SessionTerminal
+---@field term_direction string
+---@field size number
+---@field visible boolean
+---@field global_id number
+---@field local_id number
+---@field term_pos string
+
 ---@class State
 ---@field workspaces Workspace[]
 ---@field marks Mark[]
----@field toggleterms table
 ---@field term_count number
 ---@field current_workspace Workspace
 ---@field last_workspace Workspace | nil
----@field current_session Session
----@field last_session Session | nil
+---@field current_session WorkspaceSession
+---@field last_session WorkspaceSession | nil
 
 ---@type Workspace
 M.default_workspace = {
@@ -41,6 +49,7 @@ M.default_workspace = {
 			dir = "~/dotfiles/home/.config/nvim",
 			toggled_types = {},
 			breakpoints = {},
+			toggleterms = {},
 		},
 	},
 }

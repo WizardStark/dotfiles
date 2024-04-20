@@ -9,7 +9,7 @@ M.icons = {
 
 ---@param workspace Workspace
 ---@param session_name string
----@return Session | nil
+---@return WorkspaceSession | nil
 function M.find_session(workspace, session_name)
 	for _, v in ipairs(workspace.sessions) do
 		if v.name == session_name then
@@ -21,7 +21,7 @@ function M.find_session(workspace, session_name)
 end
 
 ---@param workspace Workspace
----@param session Session
+---@param session WorkspaceSession
 ---@return number | nil
 function M.find_session_index(workspace, session)
 	for i, v in ipairs(workspace.sessions) do

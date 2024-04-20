@@ -4,6 +4,7 @@ local Path = require("plenary.path")
 local state = require("workspaces.state")
 local bps = require("workspaces.breakpoints")
 local utils = require("workspaces.utils")
+local toggleterms = require("workspaces.toggleterms")
 
 ---@type string
 M.workspaces_path = vim.fn.stdpath("data") .. Path.path.sep .. "workspaces"
@@ -15,7 +16,7 @@ local sessions_path = M.workspaces_path .. Path.path.sep .. "sessions"
 M.sessions_bak_path = sessions_path .. Path.path.sep .. "backups"
 
 ---@param workspace Workspace
----@param session Session
+---@param session WorkspaceSession
 ---@return string
 function M.get_nvim_session_filename(workspace, session)
 	local workspace_name = workspace.name:gsub(" ", "-")
@@ -42,7 +43,7 @@ function M.purge_session_files()
 end
 
 ---@param workspace Workspace
----@param session Session
+---@param session WorkspaceSession
 function M.write_nvim_session_file(workspace, session)
 	vim.cmd.cd(session.dir) -- Always persist defined session dir
 
@@ -70,7 +71,7 @@ function M.write_nvim_session_file(workspace, session)
 end
 
 ---@param workspace Workspace
----@param session Session
+---@param session WorkspaceSession
 function M.source_nvim_session_file(workspace, session)
 	local session_filename = M.get_nvim_session_filename(workspace, session)
 	local session_file = Path:new(sessions_path):joinpath(session_filename .. ".vim")
@@ -229,6 +230,9 @@ function M.load_workspaces()
 			if not session.breakpoints then
 				session.breakpoints = {}
 			end
+			if not session.toggleterms then
+				session.toggleterms = {}
+			end
 		end
 	end
 
@@ -274,6 +278,7 @@ function M.load_workspaces()
 	M.source_nvim_session_file(state.get().current_workspace, state.get().current_session)
 	require("utils").toggle_special_buffers(state.get().current_session.toggled_types)
 	bps.apply_breakpoints(session.breakpoints)
+	toggleterms.toggle_visible_terms(false)
 end
 
 function M.purge_workspaces()

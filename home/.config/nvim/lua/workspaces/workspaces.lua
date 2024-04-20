@@ -5,6 +5,7 @@ local state = require("workspaces.state")
 local utils = require("workspaces.utils")
 local bps = require("workspaces.breakpoints")
 local persist = require("workspaces.persistence")
+local toggleterms = require("workspaces.toggleterms")
 
 local _, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
 
@@ -50,7 +51,7 @@ function M.setup_lualine()
 end
 
 ---Sets session metadata such as last file and line num
----@param session Session
+---@param session WorkspaceSession
 ---@param toggled_types string[]
 function M.set_session_metadata(session, toggled_types)
 	local buf_path = vim.fn.expand("%:p")
@@ -69,7 +70,7 @@ function M.set_session_metadata(session, toggled_types)
 end
 
 --- Switch to target session, does nothing if it is equal to current session
----@param target_session Session | nil
+---@param target_session WorkspaceSession | nil
 ---@param target_workspace Workspace
 function M.switch_session(target_session, target_workspace)
 	-- No target session passed in, we will default to the target workspace current values
@@ -105,6 +106,9 @@ function M.switch_session(target_session, target_workspace)
 
 	-- Save current session before switching
 	vim.cmd.wa()
+	-- hide all toggleterms
+	toggleterms.toggle_visible_terms(true)
+
 	-- Stop lsp for current session, excluding jdtls
 	-- require("garbage-day.utils").stop_lsp()
 	local toggled_types = require("utils").toggle_special_buffers({})
@@ -134,6 +138,7 @@ function M.switch_session(target_session, target_workspace)
 	require("utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
 	M.set_session_metadata(target_session, {})
+	toggleterms.toggle_visible_terms(false)
 
 	M.setup_lualine()
 	persist.persist_workspaces()
@@ -171,7 +176,7 @@ function M.create_session(name, dir)
 		return
 	end
 
-	---@type Session
+	---@type WorkspaceSession
 	local session = {
 		name = name,
 		dir = dir,

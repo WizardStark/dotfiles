@@ -95,10 +95,10 @@ local function get_term_name()
 		if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
 			local session_terms = require("workspaces.toggleterms").get_session_terms()
 			local prefix
-			local term_id
-			for key, value in pairs(session_terms) do
-				if value == term.id then
-					term_id = key
+			local term_display_id
+			for _, value in ipairs(session_terms) do
+				if value.global_id == term.id then
+					term_display_id = value.local_id
 				end
 			end
 
@@ -109,7 +109,7 @@ local function get_term_name()
 				prefix = workspace.name .. "-" .. workspace.current_session_name
 			end
 
-			return prefix .. ": Term " .. term_id
+			return prefix .. ": Term " .. term_display_id
 		end
 	end
 end
