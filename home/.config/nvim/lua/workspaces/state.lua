@@ -65,7 +65,6 @@ M.default_workspace_data = {
 local state = {
 	marks = {},
 	workspaces = {},
-	toggleterms = {},
 	term_count = 0,
 	current_workspace = M.default_workspace,
 	last_workspace = nil,

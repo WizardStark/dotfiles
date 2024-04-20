@@ -74,6 +74,24 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
+		"QuitPre",
+		function()
+			vim.notify(vim.inspect(vim.fn.winnr()))
+			local terms = require("toggleterm.terminal").get_all()
+			for _, term in ipairs(terms) do
+				if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
+					local session_terms = require("workspaces.toggleterms").get_session_terms()
+					for _, value in ipairs(session_terms) do
+						if value.global_id == term.id then
+							require("workspaces.toggleterms").delete_term(value.local_id)
+						end
+					end
+				end
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
 		name = "UserMiniFiles",
 		{
 			"User",

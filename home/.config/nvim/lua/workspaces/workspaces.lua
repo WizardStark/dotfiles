@@ -182,6 +182,7 @@ function M.create_session(name, dir)
 		dir = dir,
 		toggled_types = {},
 		breakpoints = {},
+		toggleterms = {},
 	}
 
 	table.insert(state.get().current_workspace.sessions, session)
@@ -242,6 +243,7 @@ function M.create_workspace(name, session_name, dir)
 				dir = dir,
 				toggled_types = {},
 				breakpoints = {},
+				toggleterms = {},
 			},
 		},
 	}

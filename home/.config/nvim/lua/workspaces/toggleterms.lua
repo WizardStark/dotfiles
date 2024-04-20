@@ -6,13 +6,22 @@ require("toggleterm")
 ---@param session_terms SessionTerminal[]
 ---@param id number
 local function find_term(session_terms, id)
-	for _, v in ipairs(session_terms) do
+	for i, v in ipairs(session_terms) do
 		if v.local_id == id then
-			return v
+			return { i, v }
 		end
 	end
 
 	return nil
+end
+
+function M.delete_term(local_id)
+	local toggleterms = state.get().current_session.toggleterms
+	local target_term = find_term(toggleterms, local_id)[1]
+	if target_term then
+		table.remove(toggleterms, target_term)
+		state.get().current_session.toggleterms = toggleterms
+	end
 end
 
 ---comment
@@ -34,7 +43,7 @@ end
 function M.toggle_term(local_id, direction, size, term_pos)
 	local toggleterms = state.get().current_session.toggleterms
 
-	local target_term = find_term(toggleterms, local_id)
+	local target_term = find_term(toggleterms, local_id)[2]
 
 	if not target_term then
 		state.get().term_count = state.get().term_count + 1
