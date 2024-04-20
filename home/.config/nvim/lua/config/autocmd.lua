@@ -16,6 +16,7 @@ prefixifier(autocmds)({
 
 					require("workspaces.persistence").load_workspaces()
 					require("workspaces.workspaces").setup_lualine()
+					vim.cmd.stopinsert()
 				end
 			end
 		end,
