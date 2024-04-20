@@ -17,9 +17,9 @@ end
 
 function M.delete_term(local_id)
 	local toggleterms = state.get().current_session.toggleterms
-	local target_term = find_term(toggleterms, local_id)[1]
+	local target_term = find_term(toggleterms, local_id)
 	if target_term then
-		table.remove(toggleterms, target_term)
+		table.remove(toggleterms, target_term[1])
 		state.get().current_session.toggleterms = toggleterms
 	end
 end
@@ -43,7 +43,7 @@ end
 function M.toggle_term(local_id, direction, size, term_pos)
 	local toggleterms = state.get().current_session.toggleterms
 
-	local target_term = find_term(toggleterms, local_id)[2]
+	local target_term = find_term(toggleterms, local_id)
 
 	if not target_term then
 		state.get().term_count = state.get().term_count + 1
@@ -61,6 +61,7 @@ function M.toggle_term(local_id, direction, size, term_pos)
 		target_term = new_term
 		table.insert(toggleterms, target_term)
 	else
+		target_term = target_term[2]
 		target_term.term_pos = term_pos
 		target_term.term_direction = direction
 		target_term.size = size
