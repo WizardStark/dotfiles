@@ -129,6 +129,11 @@ return {
 				sections = {
 					lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 					lualine_b = {
+						{ getWords, cond = is_text_file },
+						{ "filename", path = 1, cond = is_not_toggleterm },
+						"aerial",
+					},
+					lualine_c = {
 						{ "b:gitsigns_head", icon = "" },
 						{ "diff", source = diff_source },
 						"diagnostics",
@@ -136,11 +141,6 @@ return {
 							require("grapple").statusline,
 							cond = require("grapple").exists,
 						},
-					},
-					lualine_c = {
-						{ getWords, cond = is_text_file },
-						{ "filename", path = 1, cond = is_not_toggleterm },
-						"aerial",
 					},
 					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 					lualine_y = {
@@ -154,6 +154,11 @@ return {
 				inactive_sections = {
 					lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 					lualine_b = {
+						{ getWords, cond = is_text_file },
+						{ "filename", path = 1, cond = is_not_toggleterm },
+						"aerial",
+					},
+					lualine_c = {
 						{ "b:gitsigns_head", icon = "" },
 						{ "diff", source = diff_source },
 						"diagnostics",
@@ -161,11 +166,6 @@ return {
 							require("grapple").statusline,
 							cond = require("grapple").exists,
 						},
-					},
-					lualine_c = {
-						{ getWords, cond = is_text_file },
-						{ "filename", path = 1, cond = is_not_toggleterm },
-						"aerial",
 					},
 					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 					lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },

@@ -303,6 +303,20 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>fa",
+		function()
+			require("telescope.builtin").grep_string({
+				only_sort_text = true,
+				word_match = "-w",
+				search = "",
+				prompt_title = "Fuzzy in cwd",
+			})
+		end,
+		prefix = P.find,
+		description = "Fuzzy over all lines in cwd",
+	},
+	{
+		mode = "n",
 		"<leader>fq",
 		function()
 			require("telescope.builtin").command_history()
