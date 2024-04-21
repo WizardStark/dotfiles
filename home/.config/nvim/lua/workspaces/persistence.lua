@@ -232,6 +232,8 @@ function M.load_workspaces()
 			end
 			if not session.toggleterms then
 				session.toggleterms = {}
+			else
+				state.get().term_count = state.get().term_count + #session.toggleterms
 			end
 		end
 	end
