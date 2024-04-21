@@ -77,7 +77,6 @@ prefixifier(autocmds)({
 	{
 		"QuitPre",
 		function()
-			vim.notify(vim.inspect(vim.fn.winnr()))
 			local terms = require("toggleterm.terminal").get_all()
 			for _, term in ipairs(terms) do
 				if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
