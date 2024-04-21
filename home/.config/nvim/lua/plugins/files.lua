@@ -2,7 +2,6 @@ return {
 	--Telescope
 	{
 		"nvim-telescope/telescope.nvim",
-		tag = "0.1.3",
 		lazy = true,
 		cmd = { "Telescope" },
 		dependencies = {
@@ -53,6 +52,11 @@ return {
 						"/.git/",
 					},
 					cache_picker = { num_pickers = 15 },
+					path_display = {
+						filename_first = {
+							reverse_directories = false,
+						},
+					},
 				},
 				extensions = {
 					fzf = {
