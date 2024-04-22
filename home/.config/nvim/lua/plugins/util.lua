@@ -210,6 +210,7 @@ return {
 	{
 		"NStefan002/screenkey.nvim",
 		cmd = "Screenkey",
+		lazy = true,
 		version = "*",
 		opts = {
 			win_opts = {
