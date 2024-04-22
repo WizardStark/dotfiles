@@ -206,6 +206,27 @@ return {
 		event = "VeryLazy",
 		opts = {},
 	},
+	--key display
+	{
+		"NStefan002/screenkey.nvim",
+		cmd = "Screenkey",
+		version = "*",
+		opts = {
+			win_opts = {
+				relative = "editor",
+				anchor = "SE",
+				width = 60,
+				height = 3,
+				border = "single",
+			},
+			compress_after = 3,
+			clear_after = 60,
+			disable = {
+				filetypes = { "toggleterm" },
+				buftypes = { "terminal" },
+			},
+		},
+	},
 	--enable vim motions in terminal buffer
 	{
 		"chomosuke/term-edit.nvim",
