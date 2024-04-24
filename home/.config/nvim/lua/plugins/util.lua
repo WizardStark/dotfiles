@@ -189,6 +189,7 @@ return {
 	},
 	--colourize colors
 	{
+
 		"norcalli/nvim-colorizer.lua",
 		cmd = { "ColorizerAttachToBuffer", "ColorizerReloadAllBuffers", "ColorizerDetachFromBuffer", "ColorizerToggle" },
 		opts = {},

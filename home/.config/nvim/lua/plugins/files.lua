@@ -112,6 +112,38 @@ return {
 			require("telescope").load_extension("git_submodules")
 		end,
 	},
+	{
+		"axkirillov/easypick.nvim",
+		cmd = { "Easypick" },
+		lazy = true,
+		dependencies = { "nvim-telescope/telescope.nvim" },
+		config = function()
+			local easypick = require("easypick")
+
+			local get_default_branch = "git rev-parse --symbolic-full-name refs/remotes/origin/HEAD | sed 's!.*/!!'"
+			local base_branch = vim.fn.system(get_default_branch) or "main"
+
+			easypick.setup({
+				pickers = {
+					{
+						name = "ls",
+						command = "ls",
+						previewer = easypick.previewers.default(),
+					},
+					{
+						name = "changed_files",
+						command = "git diff --name-only $(git merge-base HEAD " .. base_branch .. " )",
+						previewer = easypick.previewers.branch_diff({ base_branch = base_branch }),
+					},
+					{
+						name = "conflicts",
+						command = "git diff --name-only --diff-filter=U --relative",
+						previewer = easypick.previewers.file_diff(),
+					},
+				},
+			})
+		end,
+	},
 	--mini.files
 	{
 		"echasnovski/mini.files",

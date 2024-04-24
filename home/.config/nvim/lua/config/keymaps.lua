@@ -294,6 +294,15 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>fd",
+		function()
+			vim.cmd("Easypick changed_files")
+		end,
+		prefix = P.find,
+		description = "Grep in cwd",
+	},
+	{
+		mode = "n",
 		"<leader>fw",
 		function()
 			require("telescope-live-grep-args.shortcuts").grep_word_under_cursor()
