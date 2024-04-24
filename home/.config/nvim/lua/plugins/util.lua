@@ -235,6 +235,7 @@ return {
 		version = "1.*",
 		opts = {
 			prompt_end = "> ",
+			mapping = { n = { s = false } },
 		},
 	},
 }
