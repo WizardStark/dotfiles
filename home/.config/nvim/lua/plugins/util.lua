@@ -193,13 +193,6 @@ return {
 		cmd = { "ColorizerAttachToBuffer", "ColorizerReloadAllBuffers", "ColorizerDetachFromBuffer", "ColorizerToggle" },
 		opts = {},
 	},
-	--powerful find and replace
-	{
-		"nvim-pack/nvim-spectre",
-		dependencies = { "nvim-lua/plenary.nvim" },
-		lazy = true,
-		opts = {},
-	},
 	--yank history
 	{
 		"ptdewey/yankbank-nvim",
