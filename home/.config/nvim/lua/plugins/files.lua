@@ -133,7 +133,7 @@ return {
 					{
 						name = "changed_files",
 						command = "git status -suall| awk '{print $2}'",
-						previewer = easypick.previewers.branch_diff({ base_branch = base_branch }),
+						previewer = easypick.previewers.file_diff(),
 					},
 					{
 						name = "conflicts",
