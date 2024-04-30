@@ -43,6 +43,7 @@ alias tmux='tmux -2'
 alias ta='tmux a || tmux'
 alias gpff='git pull --ff-only'
 alias gs='git pull --rebase --autostash'
+alias gst='git status -suall'
 alias gsgp='gs && gp'
 alias gsbl=show_blame
 alias nkc="kill_all_but_last nvim"

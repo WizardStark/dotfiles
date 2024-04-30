@@ -132,7 +132,7 @@ return {
 					},
 					{
 						name = "changed_files",
-						command = "git diff --name-only $(git merge-base HEAD " .. base_branch .. " )",
+						command = "git status -suall| awk '{print $2}'",
 						previewer = easypick.previewers.branch_diff({ base_branch = base_branch }),
 					},
 					{
