@@ -11,7 +11,7 @@ pathmunge() {
   fi
 }
 
-[ -f ~/.lcl.zsh ] && source ~/.lcl.zsh
+[ -f ~/.lcl.zprofile ] && source ~/.lcl.zprofile
 
 pathmunge $HOME/local/bin
 pathmunge $HOME/.local/bin

@@ -1,3 +1,6 @@
+autoload -U +X compinit && compinit
+autoload -U +X bashcompinit && bashcompinit
+
 pathmunge() {
   if ! echo $PATH | /usr/bin/env egrep -q "(^|:)$1($|:)"; then
     if [ "$2" = "after" ]; then
@@ -7,8 +10,6 @@ pathmunge() {
     fi
   fi
 }
-
-[ -f ~/.lcl.zsh ] && source ~/.lcl.zsh
 
 plugins=(git
   zsh-syntax-highlighting
@@ -47,6 +48,8 @@ alias gst='git status -suall'
 alias gsgp='gs && gp'
 alias gsbl=show_blame
 alias nkc="kill_all_but_last nvim"
+
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
 
 export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$0]=1; printf(((NR==1) ?"" : ":") $0) }}')"
