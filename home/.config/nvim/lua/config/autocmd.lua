@@ -25,10 +25,10 @@ prefixifier(autocmds)({
 	{
 		"BufEnter",
 		opts = {
-			pattern = "*.zsh-theme",
+			pattern = { "*.zsh-theme", "*.zshrc", "*.zshenv", "*.zprofile" },
 		},
 		function()
-			vim.api.nvim_buf_set_option(vim.api.nvim_get_current_buf(), "filetype", "zsh")
+			vim.cmd("setfiletype zsh")
 		end,
 		prefix = P.auto,
 	},
