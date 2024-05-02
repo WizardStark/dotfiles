@@ -117,8 +117,53 @@ prefixifier(autocmds)({
 					MiniFiles.go_out()
 					MiniFiles.go_in({})
 				end, { buffer = buf_id })
+
 				vim.keymap.set("n", "<CR>", function()
 					MiniFiles.go_in({ close_on_file = true })
+				end, { buffer = buf_id })
+
+				vim.keymap.set("n", "<leader>scs", function()
+					local fs_entry = MiniFiles.get_fs_entry()
+
+					if not fs_entry then
+						vim.notify("Cannot identify filesystem entry")
+						return
+					end
+
+					if fs_entry.fs_type == "directory" then
+						MiniFiles.close()
+						require("workspaces.workspaces").create_session(fs_entry.name, fs_entry.path)
+					else
+						MiniFiles.close()
+						vim.notify("File selected, creating session from parent directory")
+						local split_path = vim.split(fs_entry.path, "/")
+						table.remove(split_path)
+						local new_path = table.concat(split_path, "/")
+						require("workspaces.workspaces").create_session(fs_entry.name, new_path)
+					end
+				end, { buffer = buf_id })
+
+				vim.keymap.set("n", "<leader>scw", function()
+					local fs_entry = MiniFiles.get_fs_entry()
+
+					if not fs_entry then
+						vim.notify("Cannot identify filesystem entry")
+						return
+					end
+
+					if fs_entry.fs_type == "directory" then
+						MiniFiles.close()
+						require("workspaces.workspaces").create_workspace(fs_entry.name, fs_entry.name, fs_entry.path)
+						vim.notify("Workspace created")
+					else
+						MiniFiles.close()
+						vim.notify("File selected, creating workspace from parent directory")
+						local split_path = vim.split(fs_entry.path, "/")
+						table.remove(split_path)
+						local new_path = table.concat(split_path, "/")
+						require("workspaces.workspaces").create_workspace(fs_entry.name, fs_entry.name, new_path)
+						vim.notify("Workspace created")
+					end
 				end, { buffer = buf_id })
 			end,
 			prefix = P.auto,
