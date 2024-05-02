@@ -7,6 +7,7 @@ return {
 			"theHamsta/nvim-dap-virtual-text",
 			"rcarriga/nvim-dap-ui",
 			"jay-babu/mason-nvim-dap.nvim",
+			"nvim-telescope/telescope-dap.nvim",
 		},
 		config = function()
 			local dap = require("dap")
@@ -85,6 +86,29 @@ return {
 				program = "${file}",
 				justMyCode = false,
 			})
+
+			-- dap.configurations.java = {
+			-- 	{
+			-- 		name = "Debug Launch (8GB)",
+			-- 		type = "java",
+			-- 		request = "launch",
+			-- 		vmArgs = "-Xmx8g ",
+			-- 	},
+			-- 	{
+			-- 		name = "Debug Attach (8000)",
+			-- 		type = "java",
+			-- 		request = "attach",
+			-- 		hostName = "127.0.0.1",
+			-- 		port = 8000,
+			-- 	},
+			-- 	{
+			-- 		name = "Debug Attach (5005)",
+			-- 		type = "java",
+			-- 		request = "attach",
+			-- 		hostName = "127.0.0.1",
+			-- 		port = 5005,
+			-- 	},
+			-- }
 		end,
 	},
 	{
