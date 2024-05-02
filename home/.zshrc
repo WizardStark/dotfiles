@@ -1,14 +1,17 @@
 autoload -U +X compinit && compinit
 autoload -U +X bashcompinit && bashcompinit
 
-plugins=(git
-  zsh-syntax-highlighting
-  zsh-autosuggestions
-  sudo
-  fzf
-  ssh-agent)
+if [[ ! -v OVERRIDE_OMZ_SETUP ]]; then
+  echo "default omz setup running"
+  plugins=(git
+    zsh-syntax-highlighting
+    zsh-autosuggestions
+    sudo
+    fzf
+    ssh-agent)
 
-source $ZSH/oh-my-zsh.sh
+  source $ZSH/oh-my-zsh.sh
+fi
 
 show_blame() {
   git ls-files | while read f; do git blame -w --line-porcelain -- "$f" | grep -I '^author '; done | sort -f | uniq -ic | sort -n
