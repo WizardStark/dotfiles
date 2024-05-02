@@ -2,7 +2,6 @@ autoload -U +X compinit && compinit
 autoload -U +X bashcompinit && bashcompinit
 
 if [[ ! -v OVERRIDE_OMZ_SETUP ]]; then
-  echo "default omz setup running"
   plugins=(git
     zsh-syntax-highlighting
     zsh-autosuggestions
