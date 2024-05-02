@@ -17,4 +17,3 @@ pathmunge $HOME/local/bin
 pathmunge $HOME/.local/bin
 pathmunge $HOME/local/lib
 CASE_SENSITIVE="true"
-HIST_STAMPS="mm/dd/yyyy"
