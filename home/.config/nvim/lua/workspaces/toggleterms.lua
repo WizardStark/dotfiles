@@ -24,7 +24,6 @@ function M.delete_term(local_id)
 	end
 end
 
----comment
 ---@param term SessionTerminal
 ---@param override_visible boolean
 local function toggle_term(term, override_visible)
@@ -35,42 +34,44 @@ local function toggle_term(term, override_visible)
 	end
 end
 
----comment
 ---@param local_id number
 ---@param direction string
 ---@param size number
 ---@param term_pos string
 function M.toggle_term(local_id, direction, size, term_pos)
-	local toggleterms = state.get().current_session.toggleterms
+	if vim.g.workspaces_loaded then
+		local toggleterms = state.get().current_session.toggleterms
 
-	local target_term = find_term(toggleterms, local_id)
+		local target_term = find_term(toggleterms, local_id)
+		if not target_term then
+			state.get().term_count = state.get().term_count + 1
 
-	if not target_term then
-		state.get().term_count = state.get().term_count + 1
+			---@type SessionTerminal
+			local new_term = {
+				term_direction = direction,
+				size = size,
+				local_id = local_id,
+				global_id = state.get().term_count,
+				visible = false,
+				term_pos = term_pos,
+			}
 
-		---@type SessionTerminal
-		local new_term = {
-			term_direction = direction,
-			size = size,
-			local_id = local_id,
-			global_id = state.get().term_count,
-			visible = false,
-			term_pos = term_pos,
-		}
+			target_term = new_term
+			table.insert(toggleterms, target_term)
+		else
+			target_term = target_term[2]
+			target_term.term_pos = term_pos
+			target_term.term_direction = direction
+			target_term.size = size
+		end
 
-		target_term = new_term
-		table.insert(toggleterms, target_term)
+		target_term.visible = not target_term.visible
+		toggle_term(target_term, false)
+
+		state.get().current_session.toggleterms = toggleterms
 	else
-		target_term = target_term[2]
-		target_term.term_pos = term_pos
-		target_term.term_direction = direction
-		target_term.size = size
+		vim.cmd(":" .. local_id .. "ToggleTerm direction=" .. direction .. " size=" .. size)
 	end
-
-	target_term.visible = not target_term.visible
-	toggle_term(target_term, false)
-
-	state.get().current_session.toggleterms = toggleterms
 end
 
 ---toggle all terms that should be visible
