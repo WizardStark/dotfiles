@@ -178,6 +178,7 @@ return {
 			},
 		},
 	},
+	--zoxide integration
 	{
 		"thunder-coding/zincoxide",
 		lazy = true,
