@@ -45,4 +45,8 @@ alias nkc="kill_all_but_last nvim"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
 
+if [ -x "$(command -v zoxide)" ]; then
+  eval "$(zoxide init zsh)"
+fi
+
 export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$1]=1; printf(((NR==1) ?"" : ":") $0) }}')"
