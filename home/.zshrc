@@ -7,6 +7,7 @@ if [[ ! -v OVERRIDE_OMZ_SETUP ]]; then
     zsh-autosuggestions
     sudo
     fzf
+    per-directory-history
     ssh-agent)
 
   source $ZSH/oh-my-zsh.sh
