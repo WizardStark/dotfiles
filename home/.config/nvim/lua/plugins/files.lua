@@ -178,4 +178,14 @@ return {
 			},
 		},
 	},
+	{
+		"thunder-coding/zincoxide",
+		lazy = true,
+		cmd = { "Z", "Zg", "Zt", "Zw" },
+		opts = {
+			zincoxide_cmd = "zoxide",
+			complete = true,
+			behaviour = "tabs",
+		},
+	},
 }
