@@ -750,16 +750,6 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"H",
-		function()
-			local MiniFiles = require("mini.files")
-			MiniFiles.go_out_plus()
-			MiniFiles.go_out_plus()
-			MiniFiles.go_in()
-		end,
-	},
-	{
-		mode = "n",
 		"<leader>mm",
 		"<cmd>AerialToggle!<CR>",
 		prefix = P.code,
