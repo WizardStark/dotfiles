@@ -94,17 +94,6 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
-		"BufAdd",
-		function(event)
-			vim.notify("Adding buffer")
-			if vim.bo.ft == "minifiles" then
-				vim.notify("In minifiles buffer")
-			end
-			vim.notify(vim.inspect(event))
-		end,
-		prefix = P.auto,
-	},
-	{
 		name = "UserMiniFiles",
 		{
 			"User",
