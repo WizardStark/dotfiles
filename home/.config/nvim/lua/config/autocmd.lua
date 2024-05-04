@@ -94,7 +94,52 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
+		"BufAdd",
+		function(event)
+			vim.notify("Adding buffer")
+			if vim.bo.ft == "minifiles" then
+				vim.notify("In minifiles buffer")
+			end
+			vim.notify(vim.inspect(event))
+		end,
+		prefix = P.auto,
+	},
+	{
 		name = "UserMiniFiles",
+		{
+			"User",
+			opts = {
+				pattern = { "MiniFilesBufferUpdate" },
+			},
+			function(args)
+				local bufnr = args.data.buf_id
+				local git_root = vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
+				local utils = require("utils")
+				local gitStatusCache = utils.getStatusCache()
+				if gitStatusCache[git_root] then
+					utils.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
+				end
+			end,
+		},
+		{
+			"User",
+			opts = {
+				pattern = "MiniFilesExplorerClose",
+			},
+			function()
+				require("utils").clearCache()
+			end,
+		},
+		{
+			"User",
+			opts = {
+				pattern = "MiniFilesExplorerOpen",
+			},
+			function()
+				local bufnr = vim.api.nvim_get_current_buf()
+				require("utils").updateGitStatus(bufnr)
+			end,
+		},
 		{
 			"User",
 			opts = {
@@ -114,10 +159,16 @@ prefixifier(autocmds)({
 			function(args)
 				local MiniFiles = require("mini.files")
 				local buf_id = args.data.buf_id
+				local git_root = vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
 				vim.keymap.set("n", "h", function()
 					MiniFiles.go_out()
 					MiniFiles.go_out()
 					MiniFiles.go_in({})
+					local utils = require("utils")
+					local gitStatusCache = utils.getStatusCache()
+					if gitStatusCache[git_root] then
+						require("utils").updateMiniWithGit(buf_id, gitStatusCache[git_root].statusMap)
+					end
 				end, { buffer = buf_id })
 
 				vim.keymap.set("n", "<CR>", function()

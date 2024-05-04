@@ -38,12 +38,28 @@ M.special_windows = {
 	end,
 }
 
+-- Cache for git status
+local gitStatusCache = {}
+local cacheTimeout = 2000 -- Cache timeout in milliseconds
+
 function M.toggle_minifiles()
 	local MiniFiles = require("mini.files")
 	local function open_and_center(path)
+		local git_root = vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
+
 		MiniFiles.open(path)
+		local bufnr = vim.api.nvim_get_current_buf()
+		if gitStatusCache[git_root] then
+			M.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
+		end
+
 		MiniFiles.go_out()
-		MiniFiles.go_in()
+		bufnr = vim.api.nvim_get_current_buf()
+		if gitStatusCache[git_root] then
+			M.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
+		end
+
+		MiniFiles.go_in({ close_on_file = false })
 	end
 	if not MiniFiles.close() then
 		if not pcall(open_and_center, vim.fn.expand("%:p")) then
@@ -159,6 +175,155 @@ function M.toggle_special_buffers(toggled_types)
 	end
 
 	return toggled_types
+end
+
+local nsMiniFiles = vim.api.nvim_create_namespace("mini_files_git")
+
+function M.getStatusCache()
+	return gitStatusCache
+end
+
+local function mapSymbols(status)
+	local statusMap = {
+		[" M"] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- Modified in the working directory
+		["M "] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- modified in index
+		["MM"] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- modified in both working tree and index
+		["A "] = { symbol = "┃", hlGroup = "GitSignsAdd" }, -- Added to the staging area, new file
+		["AA"] = { symbol = "┃", hlGroup = "GitSignsAdd" }, -- file is added in both working tree and index
+		["D "] = { symbol = "▁", hlGroup = "GitSignsDelete" }, -- Deleted from the staging area
+		["AM"] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- added in working tree, modified in index
+		["AD"] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- Added in the index and deleted in the working directory
+		["R "] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- Renamed in the index
+		["U "] = { symbol = "┃", hlGroup = "GitSignsChange" }, -- Unmerged path
+		["UU"] = { symbol = "┃", hlGroup = "GitSignsAdd" }, -- file is unmerged
+		["UA"] = { symbol = "┃", hlGroup = "GitSignsAdd" }, -- file is unmerged and added in working tree
+		["??"] = { symbol = "▁", hlGroup = "GitSignsUntracked" }, -- Untracked files
+		["!!"] = { symbol = "", hlGroup = "GitSignsUntracked" }, -- Ignored files
+	}
+
+	local result = statusMap[status] or { symbol = "?", hlGroup = "NonText" }
+	return result.symbol, result.hlGroup
+end
+
+local function fetchGitStatus(cwd, callback)
+	local stdout = (vim.uv or vim.loop).new_pipe(false)
+	local handle, pid
+	handle, pid = (vim.uv or vim.loop).spawn("git", {
+		args = { "status", "--ignored", "--porcelain" },
+		cwd = cwd,
+		stdio = { nil, stdout, nil },
+	}, function(code, signal)
+		if code == 0 then
+			stdout:read_start(function(err, content)
+				if content then
+					callback(content)
+					vim.g.content = content
+				end
+				stdout:close()
+			end)
+		else
+			vim.notify("Git command failed with exit code: " .. code, vim.log.levels.ERROR)
+			stdout:close()
+		end
+	end)
+end
+
+local function escapePattern(str)
+	return str:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+end
+
+function M.updateMiniWithGit(buf_id, gitStatusMap)
+	local MiniFiles = require("mini.files")
+	vim.schedule(function()
+		local nlines = vim.api.nvim_buf_line_count(buf_id)
+		local git_root = vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
+		local escaped_root = escapePattern(git_root)
+		if vim.fn.has("win32") == 1 then
+			escaped_root = escaped_root:gsub("\\", "/")
+		end
+
+		for i = 1, nlines do
+			local entry = MiniFiles.get_fs_entry(buf_id, i)
+			if not entry then
+				break
+			end
+			local relativePath = entry.path:gsub("^" .. escaped_root .. "/", "")
+			local status = gitStatusMap[relativePath]
+
+			if status then
+				local symbol, hlGroup = mapSymbols(status)
+				vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, 0, {
+					-- NOTE: if you want the signs on the right uncomment those and comment
+					-- the 3 lines after
+					-- virt_text = { { symbol, hlGroup } },
+					-- virt_text_pos = "right_align",
+					sign_text = symbol,
+					sign_hl_group = hlGroup,
+					priority = 2,
+				})
+			else
+			end
+		end
+	end)
+end
+
+-- Thanks for the idea of gettings https://github.com/refractalize/oil-git-status.nvim signs for dirs
+local function parseGitStatus(content)
+	local gitStatusMap = {}
+	-- lua match is faster than vim.split (in my experience )
+	for line in content:gmatch("[^\r\n]+") do
+		local status, filePath = string.match(line, "^(..)%s+(.*)")
+		-- Split the file path into parts
+		local parts = {}
+		for part in filePath:gmatch("[^/]+") do
+			table.insert(parts, part)
+		end
+		-- Start with the root directory
+		local currentKey = ""
+		for i, part in ipairs(parts) do
+			if i > 1 then
+				-- Concatenate parts with a separator to create a unique key
+				currentKey = currentKey .. "/" .. part
+			else
+				currentKey = part
+			end
+			-- If it's the last part, it's a file, so add it with its status
+			if i == #parts then
+				gitStatusMap[currentKey] = status
+			else
+				-- If it's not the last part, it's a directory. Check if it exists, if not, add it.
+				if not gitStatusMap[currentKey] then
+					gitStatusMap[currentKey] = status
+				end
+			end
+		end
+	end
+
+	return gitStatusMap
+end
+
+function M.updateGitStatus(buf_id)
+	if vim.fn.system("git rev-parse --show-toplevel 2> /dev/null") == "" then
+		return
+	end
+	local git_root = vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
+	local currentTime = os.time()
+	if gitStatusCache[git_root] and currentTime - gitStatusCache[git_root].time < cacheTimeout then
+		M.updateMiniWithGit(buf_id, gitStatusCache[git_root].statusMap)
+	else
+		fetchGitStatus(git_root, function(content)
+			local gitStatusMap = parseGitStatus(content)
+			gitStatusCache[git_root] = {
+				time = currentTime,
+				statusMap = gitStatusMap,
+			}
+			M.updateMiniWithGit(buf_id, gitStatusMap)
+		end)
+	end
+end
+
+function M.clearCache()
+	gitStatusCache = {}
 end
 
 return M
