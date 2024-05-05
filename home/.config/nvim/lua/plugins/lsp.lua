@@ -72,6 +72,22 @@ return {
 						handlers = handlers,
 					})
 				end,
+				["basedpyright"] = function()
+					lspconfig["basedpyright"].setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+						settings = {
+							basedpyright = {
+								typeCheckingMode = "off",
+							},
+						},
+					})
+				end,
 			})
 		end,
 	},

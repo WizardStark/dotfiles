@@ -51,9 +51,9 @@ if [ -x "$(command -v zoxide)" ]; then
 fi
 
 if [ -d ~/dotfile-shards/ ]; then
-    for f in ~/dotfile-shards/\*; do
-        source $f
-    done
+  for f in ~/dotfile-shards/\*; do
+    source $f
+  done
 fi
 
 export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$1]=1; printf(((NR==1) ?"" : ":") $0) }}')"
