@@ -72,6 +72,13 @@ prefixifier(keymaps)({
 		description = "Backspace in terminal when holding shift",
 	},
 	{
+		mode = { "t" },
+		"<C-BS>",
+		"<BS>",
+		prefix = P.misc,
+		description = "Backspace in terminal when holding control",
+	},
+	{
 		mode = { "n" },
 		"<C-r>",
 		"r",

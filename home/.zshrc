@@ -40,6 +40,7 @@ alias gs='git pull --rebase --autostash'
 alias gst='git status -suall'
 alias gsgp='gs && gp'
 alias gsbl=show_blame
+alias gfc="git add . && gc --amend --no-edit"
 alias nkc="kill_all_but_last nvim"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
@@ -47,6 +48,12 @@ alias nkc="kill_all_but_last nvim"
 
 if [ -x "$(command -v zoxide)" ]; then
   eval "$(zoxide init zsh)"
+fi
+
+if [ -d ~/dotfile-shards/ ]; then
+    for f in ~/dotfile-shards/\*; do
+        source $f
+    done
 fi
 
 export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$1]=1; printf(((NR==1) ?"" : ":") $0) }}')"
