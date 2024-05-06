@@ -1110,12 +1110,22 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<F5>",
 		function()
-			return ":grep " .. vim.fn.expand("<cword>") .. "<CR>"
-			-- require("pickers.spectre").toggle()
+			local search_term = vim.fn.expand("<cword>")
+			local keys = vim.api.nvim_replace_termcodes(
+				":sil grep! "
+					.. search_term
+					.. "\r:cdo s/"
+					.. search_term
+					.. "//g | up<Left><Left><Left><Left><Left><Left><Left><Left>",
+				true,
+				true,
+				true
+			)
+			vim.api.nvim_feedkeys(keys, "n", false)
 		end,
 		opts = { expr = true },
 		prefix = P.code,
-		description = "Grep word under cursor and put results in qflist",
+		description = "Search and replace word under cursor",
 	},
 	{
 		mode = "n",
