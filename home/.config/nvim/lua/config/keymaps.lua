@@ -1116,7 +1116,7 @@ prefixifier(keymaps)({
 					.. search_term
 					.. "\r:cdo s/"
 					.. search_term
-					.. "//g | up<Left><Left><Left><Left><Left><Left><Left><Left>",
+					.. "//g | up<Left><Left><Left><Left><Left><Left><Left>",
 				true,
 				true,
 				true
