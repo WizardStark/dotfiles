@@ -100,6 +100,13 @@ prefixifier(keymaps)({
 		description = "How to save and quit vim",
 	},
 	{
+		mode = { "n", "v" },
+		"<leader>U",
+		vim.cmd.wa,
+		prefix = P.misc,
+		description = "Write all open, modified buffers",
+	},
+	{
 		mode = "n",
 		"<esc>",
 		vim.cmd.up,
@@ -1112,18 +1119,13 @@ prefixifier(keymaps)({
 		function()
 			local search_term = vim.fn.expand("<cword>")
 			local keys = vim.api.nvim_replace_termcodes(
-				":sil grep! "
-					.. search_term
-					.. "\r:cdo s/"
-					.. search_term
-					.. "//g | up<Left><Left><Left><Left><Left><Left><Left>",
+				":sil grep! " .. search_term .. "\r:sil cfdo! %s/" .. search_term .. "//g<Left><Left>",
 				true,
 				true,
 				true
 			)
 			vim.api.nvim_feedkeys(keys, "n", false)
 		end,
-		opts = { expr = true },
 		prefix = P.code,
 		description = "Search and replace word under cursor",
 	},
