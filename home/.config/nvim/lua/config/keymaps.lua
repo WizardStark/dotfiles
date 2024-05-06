@@ -282,6 +282,15 @@ prefixifier(keymaps)({
 		description = "Peek folded lines",
 	},
 	{
+		mode = { "n" },
+		"<leader>o",
+		function()
+			require("telescope.builtin").buffers({ sort_mru = true, ignore_current_buffer = true, cwd_only = true })
+		end,
+		prefix = P.find,
+		description = "Buffers in order of recent access",
+	},
+	{
 		mode = { "n", "v", "o" },
 		"<leader><leader>",
 		function()
