@@ -48,16 +48,16 @@ function M.toggle_minifiles()
 		local git_root = vim.trim(vim.fn.system("git rev-parse --show-toplevel"))
 
 		MiniFiles.open(path)
-		local bufnr = vim.api.nvim_get_current_buf()
-		if gitStatusCache[git_root] then
-			M.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
-		end
+		-- local bufnr = vim.api.nvim_get_current_buf()
+		-- if gitStatusCache[git_root] then
+		-- 	M.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
+		-- end
 
 		MiniFiles.go_out()
-		bufnr = vim.api.nvim_get_current_buf()
-		if gitStatusCache[git_root] then
-			M.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
-		end
+		-- bufnr = vim.api.nvim_get_current_buf()
+		-- if gitStatusCache[git_root] then
+		-- 	M.updateMiniWithGit(bufnr, gitStatusCache[git_root].statusMap)
+		-- end
 
 		MiniFiles.go_in({ close_on_file = false })
 	end
