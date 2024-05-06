@@ -11,6 +11,7 @@ if [[ ! -v OVERRIDE_OMZ_SETUP ]]; then
     ssh-agent)
 
   source $ZSH/oh-my-zsh.sh
+  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 fi
 
 show_blame() {
@@ -43,7 +44,6 @@ alias gsbl=show_blame
 alias gfc="git add . && gc --amend --no-edit"
 alias nkc="kill_all_but_last nvim"
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 [ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
 
 if [ -x "$(command -v zoxide)" ]; then
