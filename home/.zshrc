@@ -51,7 +51,7 @@ if [ -x "$(command -v zoxide)" ]; then
 fi
 
 if [ -d ~/dotfile-shards/ ]; then
-  for f in ~/dotfile-shards/\*; do
+  for f in ~/dotfile-shards/*; do
     source $f
   done
 fi
