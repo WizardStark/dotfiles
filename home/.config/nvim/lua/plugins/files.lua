@@ -164,20 +164,6 @@ return {
 			},
 		},
 	},
-	--grapple
-	{
-		"cbochs/grapple.nvim",
-		lazy = true,
-		dependencies = {
-			"nvim-tree/nvim-web-devicons",
-		},
-		opts = {
-			scope = "git_branch",
-			win_opts = {
-				border = "rounded",
-			},
-		},
-	},
 	--zoxide integration
 	{
 		"thunder-coding/zincoxide",

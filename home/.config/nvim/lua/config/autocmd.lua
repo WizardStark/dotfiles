@@ -160,6 +160,10 @@ prefixifier(autocmds)({
 					-- end
 				end, { buffer = buf_id })
 
+				vim.keymap.set("n", "<esc>", function()
+					MiniFiles.close()
+				end, { buffer = buf_id })
+
 				vim.keymap.set("n", "<CR>", function()
 					MiniFiles.go_in({ close_on_file = true })
 				end, { buffer = buf_id })

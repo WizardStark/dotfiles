@@ -615,29 +615,6 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"<leader>q",
-		function()
-			if vim.bo.ft == "minifiles" then
-				local path = require("mini.files").get_fs_entry().path
-				require("grapple").toggle({ path = path })
-			else
-				require("grapple").toggle()
-			end
-		end,
-		prefix = P.nav,
-		description = "Toggle file in quick access list",
-	},
-	{
-		mode = "n",
-		"<leader>t",
-		function()
-			require("grapple").toggle_tags()
-		end,
-		prefix = P.nav,
-		description = "Open/close quick access list",
-	},
-	{
-		mode = "n",
 		"<leader>-",
 		function()
 			vim.cmd("split")
@@ -782,7 +759,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>xx",
 		function()
-			require("trouble").toggle()
+			require("trouble").toggle({ mode = "quickfix" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window",

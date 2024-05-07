@@ -5,7 +5,7 @@ return {
 		dependencies = {
 			"kevinhwang91/promise-async",
 		},
-		lazy = true,
+		event = "VeryLazy",
 		config = function()
 			local ftMap = {
 				vim = "indent",
@@ -42,7 +42,9 @@ return {
 
 			require("ufo").setup({
 				open_fold_hl_timeout = 150,
+				close_fold_kinds_for_ft = {},
 				close_fold_kinds = {}, --{ "imports", "comment" },
+				enable_get_fold_virt_text = false,
 				preview = {
 					win_config = {
 						border = { "", "─", "", "", "", "─", "", "" },

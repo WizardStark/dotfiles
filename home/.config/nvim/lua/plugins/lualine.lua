@@ -137,10 +137,6 @@ return {
 						{ "b:gitsigns_head", icon = "" },
 						{ "diff", source = diff_source },
 						"diagnostics",
-						{
-							require("grapple").statusline,
-							cond = require("grapple").exists,
-						},
 					},
 					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 					lualine_y = {
@@ -162,10 +158,6 @@ return {
 						{ "b:gitsigns_head", icon = "" },
 						{ "diff", source = diff_source },
 						"diagnostics",
-						{
-							require("grapple").statusline,
-							cond = require("grapple").exists,
-						},
 					},
 					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 					lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
