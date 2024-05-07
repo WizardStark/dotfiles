@@ -3,6 +3,7 @@ local M = {}
 local state = require("workspaces.state")
 local ws = require("workspaces.workspaces")
 local utils = require("workspaces.utils")
+local toggleterms = require("workspaces.toggleterms")
 
 function M.create_mark()
 	local pos = vim.api.nvim_win_get_cursor(0)
@@ -60,9 +61,14 @@ function M.goto_mark(mark_name)
 
 	ws.switch_session(target_session, target_workspace)
 
-	-- local pos = target_mark.pos
+	toggleterms.toggle_visible_terms(true)
+	local toggled_types = require("utils").toggle_special_buffers({})
+
 	vim.cmd("e " .. target_mark.path)
 	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), target_mark.pos)
+
+	require("utils").toggle_special_buffers(toggled_types)
+	toggleterms.toggle_visible_terms(false)
 end
 
 ---@param mark_name string
