@@ -1525,6 +1525,15 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n" },
+		"<leader>q",
+		function()
+			require("workspaces.marks").create_mark()
+		end,
+		prefix = P.work,
+		description = "Pick mark",
+	},
+	{
+		mode = { "n" },
 		"<leader>scs",
 		function()
 			require("workspaces.ui").create_session_input()

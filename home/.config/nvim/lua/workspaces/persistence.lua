@@ -202,7 +202,6 @@ local function load_marks()
 	end
 
 	state.get().marks = marks_data
-	state.get().mark_count = #state.get().marks
 end
 
 function M.load_workspaces()
