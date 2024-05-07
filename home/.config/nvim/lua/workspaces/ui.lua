@@ -4,6 +4,21 @@ local state = require("workspaces.state")
 local marks = require("workspaces.marks")
 local ws = require("workspaces.workspaces")
 
+local function truncate_path(path)
+	local parts = {}
+
+	for part in string.gmatch(path, "([^\\/]+)") do
+		table.insert(parts, part)
+	end
+
+	local len = #parts
+	if len < 3 then
+		return path
+	else
+		return parts[len - 2] .. "/" .. parts[len - 1] .. "/" .. parts[len]
+	end
+end
+
 ---@param on_success fun(name: string, dir: string)
 ---@param on_cancel fun()
 local function input_new_session(on_success, on_cancel)
@@ -120,6 +135,7 @@ local mark_picker = function(opts)
 	local conf = require("telescope.config").values
 	local actions = require("telescope.actions")
 	local action_state = require("telescope.actions.state")
+	local entry_display = require("telescope.pickers.entry_display")
 	local previewer = conf.grep_previewer(opts)
 
 	pickers
@@ -128,16 +144,16 @@ local mark_picker = function(opts)
 			finder = finders.new_table({
 				results = state.get().marks,
 				entry_maker = function(entry)
+					local pos_text = "[" .. tostring(entry.pos[1]) .. "," .. tostring(entry.pos[2]) .. "]"
 					---@cast entry Mark
+
 					local display = entry.workspace_name
 						.. " "
 						.. entry.session_name
 						.. " "
-						.. tostring(entry.pos[1])
-						.. ","
-						.. tostring(entry.pos[2])
+						.. pos_text
 						.. " "
-						.. entry.path
+						.. truncate_path(entry.path)
 
 					return {
 						value = entry,
