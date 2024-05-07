@@ -16,6 +16,7 @@ local M = {}
 ---@field toggleterms SessionTerminal[]
 
 ---@class Mark
+---@field name string
 ---@field workspace_name string
 ---@field session_name string
 ---@field path string
@@ -32,6 +33,7 @@ local M = {}
 ---@class State
 ---@field workspaces Workspace[]
 ---@field marks Mark[]
+---@field mark_count number
 ---@field term_count number
 ---@field current_workspace Workspace
 ---@field last_workspace Workspace | nil
@@ -65,6 +67,7 @@ M.default_workspace_data = {
 local state = {
 	marks = {},
 	workspaces = {},
+	mark_count = 0,
 	term_count = 0,
 	current_workspace = M.default_workspace,
 	last_workspace = nil,

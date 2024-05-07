@@ -190,6 +190,21 @@ function M.persist_workspaces()
 	workspaces_file:write(vim.fn.json_encode(workspace_data), "w")
 end
 
+local function load_marks()
+	local marks_file = Path:new(M.workspaces_path .. Path.path.sep .. "marks.json")
+	local marks_data = nil
+	if marks_file:exists() then
+		marks_data = vim.fn.json_decode(marks_file:read())
+	end
+
+	if not marks_data then
+		return
+	end
+
+	state.get().marks = marks_data
+	state.get().mark_count = #state.get().marks
+end
+
 function M.load_workspaces()
 	local workspaces_file = Path:new(M.workspaces_path .. Path.path.sep .. "workspaces.json")
 	local workspace_data = nil
@@ -281,6 +296,7 @@ function M.load_workspaces()
 	require("utils").toggle_special_buffers(state.get().current_session.toggled_types)
 	bps.apply_breakpoints(session.breakpoints)
 	toggleterms.toggle_visible_terms(false)
+	load_marks()
 end
 
 function M.purge_workspaces()

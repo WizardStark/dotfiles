@@ -1,6 +1,7 @@
 local M = {}
 local utils = require("workspaces.utils")
 local state = require("workspaces.state")
+local marks = require("workspaces.marks")
 local ws = require("workspaces.workspaces")
 
 ---@param on_success fun(name: string, dir: string)
@@ -112,6 +113,54 @@ function M.delete_workspace_input()
 		end
 	end)
 end
+local mark_picker = function(opts)
+	opts = opts or {}
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
+	local previewer = conf.grep_previewer(opts)
+
+	pickers
+		.new(opts, {
+			prompt_title = "Marks",
+			finder = finders.new_table({
+				results = state.get().marks,
+				entry_maker = function(entry)
+					---@cast entry Mark
+					local display = entry.workspace_name
+						.. " "
+						.. entry.session_name
+						.. " "
+						.. tostring(entry.pos[1])
+						.. ","
+						.. tostring(entry.pos[2])
+						.. " "
+						.. entry.path
+
+					return {
+						value = entry,
+						display = display,
+						ordinal = entry.name,
+						path = entry.path,
+						lnum = entry.pos[1],
+					}
+				end,
+			}),
+			previewer = previewer,
+			sorter = conf.generic_sorter(opts),
+			attach_mappings = function(prompt_bufnr)
+				actions.select_default:replace(function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					marks.goto_mark(selection.value.name)
+				end)
+				return true
+			end,
+		})
+		:find()
+end
 
 local workspace_picker = function(opts)
 	opts = opts or {}
@@ -221,6 +270,10 @@ end
 
 function M.pick_session()
 	session_picker()
+end
+
+function M.pick_mark()
+	mark_picker()
 end
 
 return M
