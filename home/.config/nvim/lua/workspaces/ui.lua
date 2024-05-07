@@ -150,12 +150,19 @@ local mark_picker = function(opts)
 			}),
 			previewer = previewer,
 			sorter = conf.generic_sorter(opts),
-			attach_mappings = function(prompt_bufnr)
+			attach_mappings = function(prompt_bufnr, map)
 				actions.select_default:replace(function()
 					actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
 					marks.goto_mark(selection.value.name)
 				end)
+				map("n", "<Del>", function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					marks.delete_mark(selection.value.name)
+					M.pick_mark()
+				end)
+
 				return true
 			end,
 		})

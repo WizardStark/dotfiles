@@ -37,6 +37,7 @@ local function find_mark(mark_name)
 	return nil
 end
 
+---@param mark_name string
 function M.goto_mark(mark_name)
 	local target_mark = find_mark(mark_name)
 	if not target_mark then
@@ -62,6 +63,21 @@ function M.goto_mark(mark_name)
 	-- local pos = target_mark.pos
 	vim.cmd("e " .. target_mark.path)
 	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), target_mark.pos)
+end
+
+---@param mark_name string
+function M.delete_mark(mark_name)
+	if not find_mark(mark_name) then
+		vim.notify(string.format("Mark does not exist"), vim.log.levels.ERROR)
+		return
+	end
+
+	for i, v in ipairs(state.get().marks) do
+		if v.name == mark_name then
+			table.remove(state.get().marks, i)
+			break
+		end
+	end
 end
 
 return M
