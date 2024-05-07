@@ -12,11 +12,14 @@ local function truncate_path(path)
 	end
 
 	local len = #parts
-	if len < 3 then
-		return path
-	else
-		return parts[len - 2] .. "/" .. parts[len - 1] .. "/" .. parts[len]
+	local file = parts[len]
+	local parents = ""
+
+	for i = 1, math.min(len - 1, 2) do
+		parents = parts[len - i] .. "/" .. parents
 	end
+
+	return { file = file, parents = parents:sub(1, -2) }
 end
 
 ---@param on_success fun(name: string, dir: string)
@@ -144,20 +147,31 @@ local mark_picker = function(opts)
 			finder = finders.new_table({
 				results = state.get().marks,
 				entry_maker = function(entry)
-					local pos_text = "[" .. tostring(entry.pos[1]) .. "," .. tostring(entry.pos[2]) .. "]"
-					---@cast entry Mark
+					local pos_text = tostring(entry.pos[1]) .. "," .. tostring(entry.pos[2])
+					local truncated_elements = truncate_path(entry.path)
+					local file_with_pos = truncated_elements.file --.. ":" .. pos_text
 
-					local display = entry.workspace_name
-						.. " "
-						.. entry.session_name
-						.. " "
-						.. pos_text
-						.. " "
-						.. truncate_path(entry.path)
+					---@cast entry Mark
+					local displayer = entry_display.create({
+						separator = " ",
+						items = {
+							{ width = #(entry.workspace_name .. "-" .. entry.session_name) },
+							{ width = #file_with_pos },
+							{ remaining = true },
+						},
+					})
+
+					local make_display = function(et)
+						return displayer({
+							{ entry.workspace_name .. "-" .. entry.session_name, "TelescopeResultsSpecialComment" },
+							file_with_pos,
+							{ truncated_elements.parents, "TelescopeResultsComment" },
+						})
+					end
 
 					return {
 						value = entry,
-						display = display,
+						display = make_display,
 						ordinal = entry.name,
 						path = entry.path,
 						lnum = entry.pos[1],
