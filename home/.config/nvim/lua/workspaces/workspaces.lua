@@ -166,9 +166,11 @@ function M.create_session(name, dir)
 		return
 	end
 
-	if not Path:new(vim.fn.expand(dir)):exists() then
-		vim.notify("That directory does not exist", vim.log.levels.ERROR)
-		return
+	local path = Path:new(vim.fn.expand(dir))
+
+	if not path:exists() then
+		vim.notify("That directory does not exist, creating it", vim.log.levels.INFO)
+		path:mkdir({ parents = true })
 	end
 
 	if utils.find_session(state.get().current_workspace, name) ~= nil then
@@ -231,6 +233,13 @@ function M.create_workspace(name, session_name, dir)
 	if utils.find_workspace(name) ~= nil then
 		vim.notify("An workspace with that name already exists", vim.log.levels.ERROR)
 		return
+	end
+
+	local path = Path:new(vim.fn.expand(dir))
+
+	if not path:exists() then
+		vim.notify("That directory does not exist, creating it", vim.log.levels.INFO)
+		path:mkdir({ parents = true })
 	end
 
 	---@type Workspace
