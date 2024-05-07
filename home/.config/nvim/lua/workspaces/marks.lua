@@ -86,4 +86,29 @@ function M.delete_mark(mark_name)
 	end
 end
 
+---@param mark_name string
+function M.rename_mark(mark_name)
+	if not find_mark(mark_name) then
+		vim.notify(string.format("Mark does not exist"), vim.log.levels.ERROR)
+		return
+	end
+
+	for i, v in ipairs(state.get().marks) do
+		if v.name == mark_name then
+			vim.ui.input({
+				prompt = "Mark name",
+				default = "",
+				kind = "tabline",
+			}, function(input)
+				if input then
+					state.get().marks[i].display_name = input
+				else
+					vim.notify("Rename cancelled")
+				end
+			end)
+			break
+		end
+	end
+end
+
 return M

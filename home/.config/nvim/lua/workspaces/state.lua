@@ -17,6 +17,7 @@ local M = {}
 
 ---@class Mark
 ---@field name string
+---@field display_name string | nil
 ---@field workspace_name string
 ---@field session_name string
 ---@field path string

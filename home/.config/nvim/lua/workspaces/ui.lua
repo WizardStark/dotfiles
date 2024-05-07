@@ -156,6 +156,14 @@ local mark_picker = function(opts)
 						separator = " ",
 						items = {
 							{ width = #(entry.workspace_name .. "-" .. entry.session_name) },
+							{
+								width = function()
+									if entry.display_name then
+										return #entry.display_name
+									end
+									return 0
+								end,
+							},
 							{ width = #file_with_pos },
 							{ remaining = true },
 						},
@@ -164,6 +172,7 @@ local mark_picker = function(opts)
 					local make_display = function(et)
 						return displayer({
 							{ entry.workspace_name .. "-" .. entry.session_name, "TelescopeResultsSpecialComment" },
+							{ entry.display_name, "TelescopeResultsField" },
 							file_with_pos,
 							{ truncated_elements.parents, "TelescopeResultsComment" },
 						})
@@ -191,6 +200,12 @@ local mark_picker = function(opts)
 					local selection = action_state.get_selected_entry()
 					marks.delete_mark(selection.value.name)
 					M.pick_mark()
+				end)
+
+				map("n", "r", function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					marks.rename_mark(selection.value.name)
 				end)
 
 				return true
