@@ -38,6 +38,15 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
+		"WinClosed",
+		function()
+			if vim.g.backdrop_buf then
+				require("utils").close_backdrop_window()
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
 		"FileType",
 		opts = {
 			pattern = "markdown",
@@ -97,6 +106,20 @@ prefixifier(autocmds)({
 		prefix = P.auto,
 	},
 	{
+		name = "UserTelescope",
+		{
+			"User",
+			opts = {
+				pattern = { "TelescopeFindPre" },
+			},
+			function()
+				if not vim.g.backdrop_buf then
+					require("utils").create_backdrop_window()
+				end
+			end,
+		},
+	},
+	{
 		name = "UserMiniFiles",
 		-- {
 		-- 	"User",
@@ -122,22 +145,15 @@ prefixifier(autocmds)({
 		-- 		require("utils").clearCache()
 		-- 	end,
 		-- },
-		-- {
-		-- 	"User",
-		-- 	opts = {
-		-- 		pattern = "MiniFilesExplorerOpen",
-		-- 	},
-		-- 	function()
-		-- 		local bufnr = vim.api.nvim_get_current_buf()
-		-- 		require("utils").updateGitStatus(bufnr)
-		-- 	end,
-		-- },
 		{
 			"User",
 			opts = {
 				pattern = "MiniFilesWindowOpen",
 			},
 			function(args)
+				if not vim.g.backdrop_buf then
+					require("utils").create_backdrop_window()
+				end
 				local win_id = args.data.win_id
 				vim.api.nvim_win_set_config(win_id, { border = "rounded" })
 			end,

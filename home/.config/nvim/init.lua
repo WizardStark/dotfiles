@@ -19,6 +19,8 @@ vim.opt.rtp:prepend(lazypath)
 local configpath = vim.fn.resolve(vim.fn.stdpath("config") .. "/lua")
 vim.g.lclpath = configpath .. "/lcl"
 vim.g.lclfilepath = vim.g.lclpath .. "/options.lua"
+vim.g.backdrop_buf = nil
+vim.g.backdrop_win = nil
 
 if not vim.loop.fs_stat(vim.fn.resolve(vim.fn.stdpath("config") .. "/lua/lcl")) then
 	vim.fn.system(

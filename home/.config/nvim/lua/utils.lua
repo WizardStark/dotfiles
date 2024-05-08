@@ -326,4 +326,44 @@ function M.clearCache()
 	gitStatusCache = {}
 end
 
+function M.wo(win, k, v)
+	if vim.api.nvim_set_option_value then
+		vim.api.nvim_set_option_value(k, v, { scope = "local", win = win })
+	else
+		vim.wo[win][k] = v
+	end
+end
+
+function M.create_backdrop_window()
+	vim.g.backdrop_buf = vim.api.nvim_create_buf(false, true)
+	vim.g.backdrop_win = vim.api.nvim_open_win(vim.g.backdrop_buf, false, {
+		relative = "editor",
+		width = vim.o.columns,
+		height = vim.o.lines,
+		row = 0,
+		col = 0,
+		style = "minimal",
+		focusable = false,
+		zindex = 1,
+	})
+	vim.api.nvim_set_hl(0, "LazyBackdrop", { bg = "#000000", default = true })
+	vim.api.nvim_set_option_value("winhighlight", "Normal:LazyBackdrop", { scope = "local", win = vim.g.backdrop_win })
+	vim.api.nvim_set_option_value("winblend", 60, { scope = "local", win = vim.g.backdrop_win })
+	vim.bo[vim.g.backdrop_buf].buftype = "nofile"
+	vim.bo[vim.g.backdrop_buf].filetype = "backdrop"
+end
+
+function M.close_backdrop_window()
+	local backdrop_buf = vim.g.backdrop_buf
+	local backdrop_win = vim.g.backdrop_win
+	vim.g.backdrop_buf = nil
+	vim.g.backdrop_win = nil
+	if backdrop_win and vim.api.nvim_win_is_valid(backdrop_win) then
+		vim.api.nvim_win_close(backdrop_win, true)
+	end
+	if backdrop_buf and vim.api.nvim_buf_is_valid(backdrop_buf) then
+		vim.api.nvim_buf_delete(backdrop_buf, { force = true })
+	end
+end
+
 return M
