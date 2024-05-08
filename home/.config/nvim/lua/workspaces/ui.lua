@@ -181,7 +181,14 @@ local mark_picker = function(opts)
 					return {
 						value = entry,
 						display = make_display,
-						ordinal = entry.name,
+						ordinal = entry.workspace_name
+							.. "-"
+							.. entry.session_name
+							.. " "
+							.. (entry.display_name or "")
+							.. " "
+							.. file_with_pos
+							.. truncated_elements.parents,
 						path = entry.path,
 						lnum = entry.pos[1],
 					}
