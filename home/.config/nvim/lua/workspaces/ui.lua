@@ -172,7 +172,7 @@ local mark_picker = function(opts)
 					local make_display = function(et)
 						return displayer({
 							{ entry.workspace_name .. "-" .. entry.session_name, "TelescopeResultsSpecialComment" },
-							{ entry.display_name, "TelescopeResultsField" },
+							{ entry.display_name, "Type" },
 							file_with_pos,
 							{ truncated_elements.parents, "TelescopeResultsComment" },
 						})
