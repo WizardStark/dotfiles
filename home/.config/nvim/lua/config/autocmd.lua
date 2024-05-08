@@ -20,6 +20,9 @@ prefixifier(autocmds)({
 				else
 					require("lualine")
 				end
+			else
+				require("workspaces.marks").clear_marks()
+				require("workspaces.marks").display_marks()
 			end
 		end,
 		prefix = P.auto,

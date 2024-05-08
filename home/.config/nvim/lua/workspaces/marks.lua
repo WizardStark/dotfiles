@@ -5,6 +5,9 @@ local ws = require("workspaces.workspaces")
 local utils = require("workspaces.utils")
 local toggleterms = require("workspaces.toggleterms")
 
+local ns = "ws_marks"
+vim.fn.sign_define("WorkspaceMark", { text = "", texthl = "TelescopeResultsField", numhl = "TelescopeResultsField" })
+
 function M.create_mark()
 	local pos = vim.api.nvim_win_get_cursor(0)
 	local pos_string = tostring(pos[1]) .. "-" .. tostring(pos[2])
@@ -24,6 +27,8 @@ function M.create_mark()
 	}
 
 	table.insert(state.get().marks, mark)
+	M.clear_marks()
+	M.display_marks()
 end
 
 ---@param mark_name string
@@ -109,6 +114,32 @@ function M.rename_mark(mark_name)
 			break
 		end
 	end
+end
+
+function M.display_marks()
+	require("telescope")
+	local count = 1
+	local current_workspace = state.get().current_workspace.name
+	local current_session = state.get().current_workspace.current_session_name
+	for _, mark in ipairs(state.get().marks) do
+		if
+			mark.workspace_name == current_workspace
+			and mark.session_name == current_session
+			and mark.path == vim.fn.expand("%:p")
+		then
+			vim.fn.sign_place(
+				count,
+				ns,
+				"WorkspaceMark",
+				vim.api.nvim_get_current_buf(),
+				{ lnum = mark.pos[1], priority = 20 }
+			)
+		end
+	end
+end
+
+function M.clear_marks()
+	vim.fn.sign_unplace(ns, { buffer = vim.api.nvim_get_current_buf() })
 end
 
 return M
