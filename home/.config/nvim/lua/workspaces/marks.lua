@@ -6,7 +6,6 @@ local utils = require("workspaces.utils")
 local toggleterms = require("workspaces.toggleterms")
 
 local ns = "ws_marks"
-vim.fn.sign_define("WorkspaceMark", { text = "", texthl = "TelescopeResultsField", numhl = "TelescopeResultsField" })
 
 function M.create_mark()
 	local pos = vim.api.nvim_win_get_cursor(0)
@@ -34,9 +33,30 @@ end
 ---@param mark_name string
 ---@return Mark | nil
 local function find_mark(mark_name)
-	for _, v in ipairs(state.get().marks) do
-		if v.name == mark_name then
-			return v
+	for _, mark in ipairs(state.get().marks) do
+		if mark.name == mark_name then
+			return mark
+		end
+	end
+
+	return nil
+end
+
+---@param workspace_name string
+---@param session_name string
+---@param path string
+---@param pos number[]
+---@return Mark | nil
+local function find_mark_by_metadata(workspace_name, session_name, path, pos)
+	for _, mark in ipairs(state.get().marks) do
+		if
+			mark.workspace_name == workspace_name
+			and mark.session_name == session_name
+			and mark.path == path
+			and pos[1] == mark.pos[1]
+			and pos[2] == mark.pos[2]
+		then
+			return mark
 		end
 	end
 
@@ -89,6 +109,25 @@ function M.delete_mark(mark_name)
 			break
 		end
 	end
+
+	M.clear_marks()
+	M.display_marks()
+end
+
+function M.toggle_mark()
+	local pos = vim.api.nvim_win_get_cursor(0)
+	local target_mark = find_mark_by_metadata(
+		state.get().current_workspace.name,
+		state.get().current_workspace.current_session_name,
+		vim.fn.expand("%:p"),
+		pos
+	)
+
+	if not target_mark then
+		M.create_mark()
+	else
+		M.delete_mark(target_mark.name)
+	end
 end
 
 ---@param mark_name string
@@ -116,25 +155,40 @@ function M.rename_mark(mark_name)
 	end
 end
 
+---@param num number
+---@return string
+local function get_mark_text(num)
+	if num == 1 then
+		return ""
+	elseif num > 9 then
+		return "󰆙"
+	else
+		return tostring(num) .. ""
+	end
+end
+
 function M.display_marks()
 	require("telescope")
 	local count = 1
 	local current_workspace = state.get().current_workspace.name
 	local current_session = state.get().current_workspace.current_session_name
+	local lines_with_marks = {}
 	for _, mark in ipairs(state.get().marks) do
 		if
 			mark.workspace_name == current_workspace
 			and mark.session_name == current_session
 			and mark.path == vim.fn.expand("%:p")
 		then
-			vim.fn.sign_place(
-				count,
-				ns,
-				"WorkspaceMark",
-				vim.api.nvim_get_current_buf(),
-				{ lnum = mark.pos[1], priority = 20 }
-			)
+			lines_with_marks[mark.pos[1]] = (lines_with_marks[mark.pos[1]] or 0) + 1
 		end
+	end
+
+	for line, num in pairs(lines_with_marks) do
+		vim.fn.sign_define(
+			"WorkspaceMark",
+			{ text = get_mark_text(num), texthl = "TelescopeResultsField", numhl = "TelescopeResultsField" }
+		)
+		vim.fn.sign_place(count, ns, "WorkspaceMark", vim.api.nvim_get_current_buf(), { lnum = line, priority = 20 })
 	end
 end
 
