@@ -759,7 +759,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>xx",
 		function()
-			require("trouble").toggle({ mode = "quickfix" })
+			require("trouble").toggle()
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window",
