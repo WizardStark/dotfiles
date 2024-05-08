@@ -348,7 +348,7 @@ function M.create_backdrop_window()
 	})
 	vim.api.nvim_set_hl(0, "LazyBackdrop", { bg = "#000000", default = true })
 	vim.api.nvim_set_option_value("winhighlight", "Normal:LazyBackdrop", { scope = "local", win = vim.g.backdrop_win })
-	vim.api.nvim_set_option_value("winblend", 60, { scope = "local", win = vim.g.backdrop_win })
+	vim.api.nvim_set_option_value("winblend", 40, { scope = "local", win = vim.g.backdrop_win })
 	vim.bo[vim.g.backdrop_buf].buftype = "nofile"
 	vim.bo[vim.g.backdrop_buf].filetype = "backdrop"
 end
