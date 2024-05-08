@@ -6,6 +6,7 @@ local utils = require("workspaces.utils")
 local toggleterms = require("workspaces.toggleterms")
 
 local ns = "ws_marks"
+vim.fn.sign_define("WorkspaceMark", { text = "", texthl = "TelescopeResultsField", numhl = "TelescopeResultsField" })
 
 function M.create_mark()
 	local pos = vim.api.nvim_win_get_cursor(0)
@@ -54,7 +55,6 @@ local function find_mark_by_metadata(workspace_name, session_name, path, pos)
 			and mark.session_name == session_name
 			and mark.path == path
 			and pos[1] == mark.pos[1]
-			and pos[2] == mark.pos[2]
 		then
 			return mark
 		end
@@ -155,18 +155,6 @@ function M.rename_mark(mark_name)
 	end
 end
 
----@param num number
----@return string
-local function get_mark_text(num)
-	if num == 1 then
-		return ""
-	elseif num > 9 then
-		return "󰆙"
-	else
-		return tostring(num) .. ""
-	end
-end
-
 function M.display_marks()
 	require("telescope")
 	local count = 1
@@ -179,15 +167,11 @@ function M.display_marks()
 			and mark.session_name == current_session
 			and mark.path == vim.fn.expand("%:p")
 		then
-			lines_with_marks[mark.pos[1]] = (lines_with_marks[mark.pos[1]] or 0) + 1
+			table.insert(lines_with_marks, mark.pos[1])
 		end
 	end
 
-	for line, num in pairs(lines_with_marks) do
-		vim.fn.sign_define(
-			"WorkspaceMark",
-			{ text = get_mark_text(num), texthl = "TelescopeResultsField", numhl = "TelescopeResultsField" }
-		)
+	for _, line in ipairs(lines_with_marks) do
 		vim.fn.sign_place(count, ns, "WorkspaceMark", vim.api.nvim_get_current_buf(), { lnum = line, priority = 20 })
 	end
 end
