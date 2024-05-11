@@ -1103,14 +1103,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<F5>",
 		function()
-			local search_term = vim.fn.expand("<cword>")
-			local keys = vim.api.nvim_replace_termcodes(
-				":sil grep! " .. search_term .. "\r:sil cfdo! %s/" .. search_term .. "//g<Left><Left>",
-				true,
-				true,
-				true
-			)
-			vim.api.nvim_feedkeys(keys, "n", false)
+			require("grug-far").grug_far({ prefills = { search = vim.fn.expand("<cword>") } })
 		end,
 		prefix = P.code,
 		description = "Search and replace word under cursor",

@@ -232,4 +232,9 @@ return {
 			mapping = { n = { s = false } },
 		},
 	},
+	{
+		"MagicDuck/grug-far.nvim",
+		lazy = true,
+		opts = {},
+	},
 }
