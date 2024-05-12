@@ -195,6 +195,11 @@ return {
 					["<CR>"] = cmp.mapping.confirm({
 						select = false,
 					}),
+					["<C-a>"] = cmp.mapping.confirm({
+						select = false,
+					}),
+					["<C-t>"] = cmp.mapping(up, { "i", "s" }),
+					["<C-n>"] = cmp.mapping(down, { "i", "s" }),
 					["<Up>"] = cmp.mapping(up, { "i", "s" }),
 					["<Down>"] = cmp.mapping(down, { "i", "s" }),
 				},
