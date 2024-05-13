@@ -1202,6 +1202,16 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<C-->",
+		function()
+			local width = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", width, "left")
+		end,
+		prefix = P.term,
+		description = "Open in left vertical split",
+	},
+	{
+		mode = "n",
 		"<leader>[",
 		function()
 			local width = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
