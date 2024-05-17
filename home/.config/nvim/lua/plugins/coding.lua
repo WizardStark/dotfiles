@@ -289,13 +289,6 @@ return {
 			require("luasnip/loaders/from_vscode").lazy_load()
 		end,
 	},
-	--better commenting
-	{
-		"numToStr/Comment.nvim",
-		lazy = true,
-		opts = {},
-	},
-	--function overview
 	{
 		"stevearc/aerial.nvim",
 		dependencies = {

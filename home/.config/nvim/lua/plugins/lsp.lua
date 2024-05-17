@@ -85,6 +85,13 @@ return {
 							basedpyright = {
 								typeCheckingMode = "off",
 							},
+							python = {
+								analysis = {
+									diagnosticSeverityOverrides = {
+										reportUnusedExpression = "none",
+									},
+								},
+							},
 						},
 					})
 				end,

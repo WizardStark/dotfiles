@@ -148,12 +148,12 @@ return {
 		},
 	},
 	--markdown "rendering"
-	{
-		"lukas-reineke/headlines.nvim",
-		ft = "markdown",
-		dependencies = "nvim-treesitter/nvim-treesitter",
-		opts = {},
-	},
+	-- {
+	-- 	"lukas-reineke/headlines.nvim",
+	-- 	ft = "markdown",
+	-- 	dependencies = "nvim-treesitter/nvim-treesitter",
+	-- 	opts = {},
+	-- },
 	--lsp diagnostics
 	{
 		"folke/trouble.nvim",

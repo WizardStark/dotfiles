@@ -34,6 +34,7 @@ local original_branch = nil
 local prefixifier = require("utils").prefixifier
 local P = require("utils").PREFIXES
 local keymaps = require("legendary").keymaps
+local runner = require("quarto.runner")
 
 prefixifier(keymaps)({
 	{
@@ -818,36 +819,7 @@ prefixifier(keymaps)({
 		prefix = P.diag,
 		description = "Go to previous diagnostic item",
 	},
-	{
-		mode = "n",
-		"<leader>/",
-		function()
-			require("Comment.api").toggle.linewise.current()
-		end,
-		prefix = P.code,
-		description = "Comment current line",
-	},
-	{
-		mode = "x",
-		"<leader>/",
-		function()
-			vim.api.nvim_feedkeys(esc, "nx", false)
-			require("Comment.api").toggle.linewise(vim.fn.visualmode())
-		end,
-		prefix = P.code,
-		description = "Comment selection linewise",
-	},
-	{
-		mode = "x",
-		"<leader>\\",
-		function()
-			vim.api.nvim_feedkeys(esc, "nx", false)
-			require("Comment.api").toggle.blockwise(vim.fn.visualmode())
-		end,
-		prefix = P.code,
-		description = "Comment selection blockwise",
-	},
-	--debugging
+	-- debugging
 	{
 		mode = "n",
 		"<Leader>dd",
@@ -1339,15 +1311,6 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "o", "x" },
-		"gc",
-		function()
-			require("various-textobjs").multiCommentedLines()
-		end,
-		prefix = P.text,
-		description = "Multi commented lines",
-	},
-	{
-		mode = { "o", "x" },
 		"iN",
 		function()
 			require("various-textobjs").notebookCell("inner")
@@ -1642,6 +1605,48 @@ prefixifier(keymaps)({
 		end,
 		prefix = P.misc,
 		description = "Open window to select item to paste from last 10 yanks",
+	},
+
+	{
+		mode = "n",
+		"<leader>me",
+		":MoltenEvaluateOperator<CR>",
+		description = "evaluate operator",
+	},
+	{
+		mode = "n",
+		"<leader>os",
+		":noautocmd MoltenEnterOutput<CR>",
+		description = "open output window",
+	},
+	{ "n", "<leader>mr", ":MoltenReevaluateCell<CR>", { desc = "re-eval cell", silent = true } },
+	{
+		mode = "v",
+		"<leader>r",
+		":<C-u>MoltenEvaluateVisual<CR>gv",
+		description = "execute visual selection",
+	},
+	{ mode = "n", "<leader>oh", ":MoltenHideOutput<CR>", description = "close output window" },
+	{ mode = "n", "<leader>md", ":MoltenDelete<CR>", description = "delete Molten cell" },
+	{
+		mode = "n",
+		"<leader>mx",
+		":MoltenOpenInBrowser<CR>",
+		description = "open output in browser",
+	},
+
+	{ mode = "n", "<leader>rc", runner.run_cell, description = "run cell" },
+	{ mode = "n", "<leader>ra", runner.run_above, description = "run cell and above" },
+	{ mode = "n", "<leader>rA", runner.run_all, description = "run all cells" },
+	{ mode = "n", "<leader>rl", runner.run_line, description = "run line" },
+	{ mode = "v", "<leader>rv", runner.run_range, description = "run visual range" },
+	{
+		mode = "n",
+		"<leader>RA",
+		function()
+			runner.run_all(true)
+		end,
+		description = "run all cells of all languages",
 	},
 })
 
