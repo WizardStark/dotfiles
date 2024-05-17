@@ -8,7 +8,6 @@ return {
 			"quarto-dev/quarto-nvim",
 		},
 		config = function()
-			vim.notify("Initialising Molten")
 			vim.g.molten_output_win_max_height = 40
 			-- vim.g.molten_auto_open_output = false
 			vim.g.molten_wrap_output = true
