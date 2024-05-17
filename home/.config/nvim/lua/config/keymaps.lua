@@ -1605,7 +1605,6 @@ prefixifier(keymaps)({
 		prefix = P.misc,
 		description = "Open window to select item to paste from last 10 yanks",
 	},
-
 	{
 		mode = "n",
 		"<leader>me",
@@ -1633,7 +1632,6 @@ prefixifier(keymaps)({
 		":MoltenOpenInBrowser<CR>",
 		description = "open output in browser",
 	},
-
 	{
 		mode = "n",
 		"<leader>rc",

@@ -61,7 +61,6 @@ return {
 	},
 	--open links
 	{
-
 		"chrishrb/gx.nvim",
 		cmd = { "Browse" },
 		dependencies = { "nvim-lua/plenary.nvim" },
@@ -169,7 +168,7 @@ return {
 		lazy = true,
 		dependencies = "rcarriga/nvim-notify",
 		opts = {
-			slots = { "a", "r", "s", "m", "n", "e" },
+			slots = { "a", "r", "s", "m" },
 		},
 	},
 	--highlight symbol
@@ -189,7 +188,6 @@ return {
 	},
 	--colourize colors
 	{
-
 		"norcalli/nvim-colorizer.lua",
 		cmd = { "ColorizerAttachToBuffer", "ColorizerReloadAllBuffers", "ColorizerDetachFromBuffer", "ColorizerToggle" },
 		opts = {},
@@ -232,6 +230,7 @@ return {
 			mapping = { n = { s = false } },
 		},
 	},
+	-- search and replace
 	{
 		"MagicDuck/grug-far.nvim",
 		lazy = true,
