@@ -2,6 +2,28 @@ local prefixifier = require("utils").prefixifier
 local P = require("utils").PREFIXES
 local autocmds = require("legendary").autocmds
 
+local imb = function(e) -- init molten buffer
+	vim.schedule(function()
+		local kernels = vim.fn.MoltenAvailableKernels()
+		local try_kernel_name = function()
+			local metadata = vim.json.decode(io.open(e.file, "r"):read("a"))["metadata"]
+			return metadata.kernelspec.name
+		end
+		local ok, kernel_name = pcall(try_kernel_name)
+		if not ok or not vim.tbl_contains(kernels, kernel_name) then
+			kernel_name = nil
+			local venv = os.getenv("VIRTUAL_ENV")
+			if venv ~= nil then
+				kernel_name = string.match(venv, "/.+/(.+)")
+			end
+		end
+		if kernel_name ~= nil and vim.tbl_contains(kernels, kernel_name) then
+			vim.cmd(("MoltenInit %s"):format(kernel_name))
+		end
+		vim.cmd("MoltenImportOutput")
+	end)
+end
+
 prefixifier(autocmds)({
 	{
 		"BufEnter",
@@ -264,6 +286,17 @@ prefixifier(autocmds)({
 				local toggled_types = require("utils").toggle_special_buffers({})
 				M.set_session_metadata(current_session, toggled_types)
 				persist.persist_workspaces()
+			end
+		end,
+		prefix = P.auto,
+	},
+	{ "BufAdd", opts = { pattern = { "*.ipynb" } }, imb, prefix = P.auto },
+	{
+		"BufEnter",
+		opts = { pattern = { "*.ipynb" } },
+		function(e)
+			if vim.api.nvim_get_vvar("vim_did_enter") ~= 1 then
+				imb(e)
 			end
 		end,
 		prefix = P.auto,

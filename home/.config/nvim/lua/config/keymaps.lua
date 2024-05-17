@@ -1,5 +1,5 @@
 M = {}
-local esc = vim.api.nvim_replace_termcodes("<ESC>", true, false, true)
+
 local function trigger_dap(dapStart)
 	require("dapui").open({ reset = true })
 	dapStart()
@@ -34,7 +34,6 @@ local original_branch = nil
 local prefixifier = require("utils").prefixifier
 local P = require("utils").PREFIXES
 local keymaps = require("legendary").keymaps
-local runner = require("quarto.runner")
 
 prefixifier(keymaps)({
 	{
@@ -1635,16 +1634,51 @@ prefixifier(keymaps)({
 		description = "open output in browser",
 	},
 
-	{ mode = "n", "<leader>rc", runner.run_cell, description = "run cell" },
-	{ mode = "n", "<leader>ra", runner.run_above, description = "run cell and above" },
-	{ mode = "n", "<leader>rA", runner.run_all, description = "run all cells" },
-	{ mode = "n", "<leader>rl", runner.run_line, description = "run line" },
-	{ mode = "v", "<leader>rv", runner.run_range, description = "run visual range" },
+	{
+		mode = "n",
+		"<leader>rc",
+		function()
+			require("quarto.runner").run_cell()
+		end,
+		description = "run cell",
+	},
+	{
+		mode = "n",
+		"<leader>ra",
+		function()
+			require("quarto.runner").run_above()
+		end,
+		description = "run cell and above",
+	},
+	{
+		mode = "n",
+		"<leader>rA",
+		function()
+			require("quarto.runner").run_all()
+		end,
+		description = "run all cells",
+	},
+	{
+		mode = "n",
+		"<leader>rl",
+		function()
+			require("quarto.runner").run_line()
+		end,
+		description = "run line",
+	},
+	{
+		mode = "v",
+		"<leader>rv",
+		function()
+			require("quarto.runner").run_range()
+		end,
+		description = "run visual range",
+	},
 	{
 		mode = "n",
 		"<leader>RA",
 		function()
-			runner.run_all(true)
+			require("quarto.runner").run_all(true)
 		end,
 		description = "run all cells of all languages",
 	},
