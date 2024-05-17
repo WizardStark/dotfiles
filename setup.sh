@@ -25,7 +25,7 @@ sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1
 mkdir -p ~/.config
 
 (
-  git clone -b v0.9.5 https://github.com/neovim/neovim
+  git clone -b v0.10.0 https://github.com/neovim/neovim
   cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
   sudo make install
   cd ../
