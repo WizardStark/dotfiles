@@ -34,35 +34,70 @@ local function toggle_term(term, override_visible)
 	end
 end
 
+---@param target_term SessionTerminal
+---@return number
+local function get_term_size(target_term)
+	local terms = require("toggleterm.terminal").get_all()
+	local size
+
+	for _, term in ipairs(terms) do
+		if term.id == target_term.global_id then
+			if target_term.term_direction == "horizontal" then
+				size = vim.api.nvim_win_get_height(term.window)
+			else
+				size = vim.api.nvim_win_get_width(term.window)
+			end
+		end
+	end
+
+	return size
+end
+
 ---@param local_id number
----@param direction string
----@param size number
----@param term_pos string
+---@param direction string | nil
+---@param size number | nil
+---@param term_pos string | nil
 function M.toggle_term(local_id, direction, size, term_pos)
 	if vim.g.workspaces_loaded then
 		local toggleterms = state.get().current_session.toggleterms
+		local default_direction = "vertical"
+		local default_size
+		local default_pos
+
+		if direction and direction == "horizontal" then
+			default_size = vim.fn.min({ 20, vim.fn.round(vim.api.nvim_win_get_height(0) * 0.3) })
+			default_pos = "bottom"
+		else
+			default_size = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
+			default_pos = "left"
+		end
 
 		local target_term = find_term(toggleterms, local_id)
+
 		if not target_term then
 			state.get().term_count = state.get().term_count + 1
 
 			---@type SessionTerminal
 			local new_term = {
-				term_direction = direction,
-				size = size,
+				term_direction = direction or default_direction,
+				size = size or default_size,
 				local_id = local_id,
 				global_id = state.get().term_count,
 				visible = false,
-				term_pos = term_pos,
+				term_pos = term_pos or default_pos,
 			}
 
 			target_term = new_term
 			table.insert(toggleterms, target_term)
 		else
 			target_term = target_term[2]
-			target_term.term_pos = term_pos
-			target_term.term_direction = direction
-			target_term.size = size
+			target_term.term_pos = term_pos or target_term.term_pos
+			target_term.term_direction = direction or target_term.term_direction
+			target_term.size = size or target_term.size
+		end
+
+		if target_term.visible then
+			target_term.size = get_term_size(target_term)
 		end
 
 		target_term.visible = not target_term.visible

@@ -247,7 +247,10 @@ function M.load_workspaces()
 			if not session.toggleterms then
 				session.toggleterms = {}
 			else
-				state.get().term_count = state.get().term_count + #session.toggleterms
+				for _, term in ipairs(session.toggleterms) do
+					state.get().term_count = state.get().term_count + 1
+					term.global_id = state.get().term_count
+				end
 			end
 		end
 	end
