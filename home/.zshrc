@@ -7,11 +7,17 @@ if [[ ! -v OVERRIDE_OMZ_SETUP ]]; then
     zsh-autosuggestions
     sudo
     fzf
+    fzf-tab
     per-directory-history
     ssh-agent)
 
   source $ZSH/oh-my-zsh.sh
   [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+  enable-fzf-tab
+
+  zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
+  zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
 fi
 
 show_blame() {
