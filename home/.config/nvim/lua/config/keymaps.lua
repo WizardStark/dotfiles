@@ -1604,7 +1604,12 @@ prefixifier(keymaps)({
 		":noautocmd MoltenEnterOutput<CR>",
 		description = "open output window",
 	},
-	{ "n", "<leader>mr", ":MoltenReevaluateCell<CR>", { desc = "re-eval cell", silent = true } },
+	{
+		mode = "n",
+		"<leader>mr",
+		":MoltenReevaluateCell<CR>",
+		{ desc = "re-eval cell", silent = true },
+	},
 	{
 		mode = "v",
 		"<leader>r",
