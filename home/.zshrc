@@ -1,42 +1,81 @@
-autoload -U +X compinit && compinit
-autoload -U +X bashcompinit && bashcompinit
+if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
+    if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+      source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+    fi
 
-if [[ ! -v OVERRIDE_OMZ_SETUP ]]; then
-  plugins=(git
-    zsh-syntax-highlighting
-    zsh-autosuggestions
-    sudo
-    fzf
-    fzf-tab
-    per-directory-history
-    ssh-agent)
+    ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
-  source $ZSH/oh-my-zsh.sh
-  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+    if [ ! -d "$ZINIT_HOME" ]; then
+       mkdir -p "$(dirname $ZINIT_HOME)"
+       git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+    fi
 
-  enable-fzf-tab
+    source "${ZINIT_HOME}/zinit.zsh"
 
-  zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
-  zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
+    zinit ice depth=1; zinit light romkatv/powerlevel10k
+
+    zinit light zsh-users/zsh-syntax-highlighting
+    zinit light zsh-users/zsh-completions
+    zinit light zsh-users/zsh-autosuggestions
+    zinit light Aloxaf/fzf-tab
+
+    zinit snippet OMZP::git
+    zinit snippet OMZP::sudo
+    zinit snippet OMZP::ssh-agent
+    zinit snippet OMZP::command-not-found
+
+    zstyle :omz:plugins:ssh-agent quiet yes
+    zstyle :omz:plugins:ssh-agent lazy yes
+
+    autoload -Uz compinit
+    for dump in ~/.zcompdump(N.mh+24); do
+      compinit
+    done
+    compinit -C
+
+    zinit cdreplay -q
+
+    [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+    # Keybindings
+    # bindkey -e
+    bindkey '^p' history-search-backward
+    bindkey '^n' history-search-forward
+    bindkey '^[w' kill-region
+
+    # History
+    HISTSIZE=50000
+    HISTFILE=~/.zsh_history
+    SAVEHIST=$HISTSIZE
+    HISTDUP=erase
+    setopt appendhistory
+    setopt sharehistory
+    setopt hist_ignore_space
+    setopt hist_ignore_all_dups
+    setopt hist_save_no_dups
+    setopt hist_ignore_dups
+    setopt hist_find_no_dups
+
+    # Completion styling
+    zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+    zstyle ':completion:*' menu no
+    zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
+    zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
+
+    [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+    if [ -x "$(command -v zoxide)" ]; then
+      eval "$(zoxide init zsh)"
+    fi
 fi
 
 show_blame() {
   git ls-files | while read f; do git blame -w --line-porcelain -- "$f" | grep -I '^author '; done | sort -f | uniq -ic | sort -n
 }
 
-kill_all_but_last() {
-  process="$1"
-  last_pid=$(pgrep -f "$process" | tail -1)
-  for pid in $(pgrep -f "$process"); do
-    if [ "$pid" != "$last_pid" ]; then
-      kill "$pid"
-    fi
-  done
-}
-
 export EDITOR='nvim'
 alias vim="nvim"
 alias cl="printf '\33c\e[3J'"
+alias ls='ls --color'
 alias src='source ~/.zshrc'
 alias erc='vim ~/.zshrc'
 alias pls='sudo $(fc -ln -1)'
@@ -48,13 +87,8 @@ alias gst='git status -suall'
 alias gsgp='gs && gp'
 alias gsbl=show_blame
 alias gfc="git add . && gc --amend --no-edit"
-alias nkc="kill_all_but_last nvim"
 
 [ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
-
-if [ -x "$(command -v zoxide)" ]; then
-  eval "$(zoxide init zsh)"
-fi
 
 if [ -d ~/dotfile-shards/ ]; then
   for f in ~/dotfile-shards/*; do
