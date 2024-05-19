@@ -64,7 +64,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     if [ -x "$(command -v zoxide)" ]; then
-      eval "$(zoxide init zsh)"
+      eval "$(zoxide init --cmd cd zsh)"
     fi
 fi
 
