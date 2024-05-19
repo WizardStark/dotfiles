@@ -10,6 +10,7 @@ local opts = {
 	foldenable = true,
 	termguicolors = true,
 	showmatch = true,
+	inccommand = "split",
 	incsearch = true,
 	hlsearch = false,
 	tabstop = 4,
