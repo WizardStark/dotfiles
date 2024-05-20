@@ -63,9 +63,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls -A --color $realpath'
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-    if [ -x "$(command -v zoxide)" ]; then
-      eval "$(zoxide init --cmd cd zsh)"
-    fi
+    eval "$(zoxide init --cmd cd zsh)"
 fi
 
 show_blame() {

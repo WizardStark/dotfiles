@@ -9,7 +9,6 @@ return {
 					aerial = true,
 					flash = true,
 					gitsigns = true,
-					-- headlines = true,
 					mason = true,
 					neotest = true,
 					noice = true,
