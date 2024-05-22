@@ -1,5 +1,3 @@
-export ZSH="$HOME/.oh-my-zsh"
-export ZSH_THEME="catpuccin"
 export HISTORY_START_WITH_GLOBAL=true
 
 pathmunge() {

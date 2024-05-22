@@ -226,7 +226,7 @@ return {
 		ft = "toggleterm",
 		version = "1.*",
 		opts = {
-			prompt_end = "> ",
+			prompt_end = "╰─",
 			mapping = { n = { s = false } },
 		},
 	},
@@ -234,6 +234,11 @@ return {
 	{
 		"MagicDuck/grug-far.nvim",
 		lazy = true,
+		opts = {},
+	},
+	{
+		"folke/ts-comments.nvim",
+		event = "VeryLazy",
 		opts = {},
 	},
 }
