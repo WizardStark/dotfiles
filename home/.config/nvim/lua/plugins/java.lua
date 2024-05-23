@@ -61,6 +61,16 @@ return {
 					init_options = {
 						bundles = bundles,
 					},
+					settings = {
+						java = {
+							inlayHints = {
+								parameterNames = {
+									enabled = "all",
+									exclusions = { "this" },
+								},
+							},
+						},
+					},
 				}
 			end
 			vim.api.nvim_create_autocmd("Filetype", {

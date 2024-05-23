@@ -385,6 +385,15 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
+		"<leader>i",
+		function()
+			vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+		end,
+		prefix = P.lsp,
+		description = "Toggle inlay hints",
+	},
+	{
+		mode = "n",
 		"<leader>fr",
 		function()
 			require("telescope.builtin").lsp_references()

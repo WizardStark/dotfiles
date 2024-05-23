@@ -70,6 +70,13 @@ return {
 					lspconfig.lua_ls.setup({
 						capabilities = lsp_capabilities,
 						handlers = handlers,
+						settings = {
+							Lua = {
+								hint = {
+									enable = true,
+								},
+							},
+						},
 					})
 				end,
 				["basedpyright"] = function()
@@ -90,6 +97,75 @@ return {
 									diagnosticSeverityOverrides = {
 										reportUnusedExpression = "none",
 									},
+									autoSearchPaths = true,
+									diagnosticMode = "openFilesOnly",
+									useLibraryCodeForTypes = true,
+								},
+							},
+						},
+					})
+				end,
+				["gopls"] = function()
+					lspconfig.gopls.setup({
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+						settings = {
+							gopls = {
+								hints = {
+									rangeVariableTypes = true,
+									parameterNames = true,
+									constantValues = true,
+									assignVariableTypes = true,
+									compositeLiteralFields = true,
+									compositeLiteralTypes = true,
+									functionTypeParameters = true,
+								},
+							},
+						},
+					})
+				end,
+				["tsserver"] = function()
+					lspconfig.tsserver.setup({
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+						settings = {
+							typescript = {
+								inlayHints = {
+									includeInlayParameterNameHints = "all",
+									includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+									includeInlayFunctionParameterTypeHints = true,
+									includeInlayVariableTypeHints = true,
+									includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+									includeInlayPropertyDeclarationTypeHints = true,
+									includeInlayFunctionLikeReturnTypeHints = true,
+									includeInlayEnumMemberValueHints = true,
+								},
+							},
+							javascript = {
+								inlayHints = {
+									includeInlayParameterNameHints = "all",
+									includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+									includeInlayFunctionParameterTypeHints = true,
+									includeInlayVariableTypeHints = true,
+									includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+									includeInlayPropertyDeclarationTypeHints = true,
+									includeInlayFunctionLikeReturnTypeHints = true,
+									includeInlayEnumMemberValueHints = true,
+								},
+							},
+						},
+					})
+				end,
+				["kotlin_language_server"] = function()
+					lspconfig.kotlin_language_server.setup({
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+						settings = {
+							kotlin = {
+								hints = {
+									typeHints = true,
+									parameterHints = true,
+									chaineHints = true,
 								},
 							},
 						},
