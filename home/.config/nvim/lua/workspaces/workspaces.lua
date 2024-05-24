@@ -135,10 +135,16 @@ function M.switch_session(target_session, target_workspace)
 
 	persist.source_nvim_session_file(state.get().current_workspace, target_session)
 
+	local win = vim.api.nvim_get_current_win()
+	local pos = vim.api.nvim_win_get_cursor(win)
+
 	require("utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
 	M.set_session_metadata(target_session, {})
 	toggleterms.toggle_visible_terms(false)
+
+	vim.api.nvim_set_current_win(win)
+	vim.api.nvim_win_set_cursor(win, pos)
 
 	M.setup_lualine()
 	persist.persist_workspaces()

@@ -68,6 +68,11 @@ return {
 						end,
 					})
 					lspconfig.lua_ls.setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
 						capabilities = lsp_capabilities,
 						handlers = handlers,
 						settings = {
@@ -107,6 +112,11 @@ return {
 				end,
 				["gopls"] = function()
 					lspconfig.gopls.setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
 						capabilities = lsp_capabilities,
 						handlers = handlers,
 						settings = {
@@ -126,6 +136,11 @@ return {
 				end,
 				["tsserver"] = function()
 					lspconfig.tsserver.setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
 						capabilities = lsp_capabilities,
 						handlers = handlers,
 						settings = {
@@ -158,6 +173,11 @@ return {
 				end,
 				["kotlin_language_server"] = function()
 					lspconfig.kotlin_language_server.setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
 						capabilities = lsp_capabilities,
 						handlers = handlers,
 						settings = {
