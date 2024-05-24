@@ -91,9 +91,9 @@ function M.toggle_term(local_id, direction, size, term_pos)
 			table.insert(toggleterms, target_term)
 		else
 			target_term = target_term[2]
-			target_term.term_pos = term_pos or target_term.term_pos
-			target_term.term_direction = direction or target_term.term_direction
-			target_term.size = size or target_term.size
+			target_term.term_pos = term_pos or target_term.term_pos or default_pos
+			target_term.term_direction = direction or target_term.term_direction or default_direction
+			target_term.size = size or target_term.size or default_size
 		end
 
 		if target_term.visible then
