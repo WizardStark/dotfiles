@@ -1164,7 +1164,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<C-\\>",
 		function()
-			require("workspaces.toggleterms").toggle_term(vim.v.count, "horizontal", nil, nil)
+			require("workspaces.toggleterms").toggle_term(vim.v.count, "horizontal", nil, "bottom")
 		end,
 		prefix = P.term,
 		description = "Open in horizontal split",

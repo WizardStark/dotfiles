@@ -27,6 +27,7 @@ end
 ---@param term SessionTerminal
 ---@param override_visible boolean
 local function toggle_term(term, override_visible)
+	vim.notify(":" .. term.global_id .. "ToggleTerm direction=" .. term.term_direction .. " size=" .. term.size)
 	vim.cmd(":" .. term.global_id .. "ToggleTerm direction=" .. term.term_direction .. " size=" .. term.size)
 	if term.term_pos == "left" and term.visible and not override_visible then
 		vim.cmd("wincmd H")
