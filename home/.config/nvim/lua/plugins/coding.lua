@@ -30,6 +30,17 @@ return {
 		config = function()
 			local configs = require("nvim-treesitter.configs")
 
+			local disable = function(_, buf)
+				local max_filesize = 500 * 1024 -- 500 KB
+				local filename = vim.api.nvim_buf_get_name(buf)
+				local ok, stats = pcall(vim.loop.fs_stat, filename)
+				if ok and stats then
+					return (stats.size > max_filesize) or (vim.fn.line("$") < 2 and stats.size > max_filesize / 10)
+				end
+
+				return false
+			end
+
 			configs.setup({
 				ensure_installed = { "lua", "python", "java", "javascript", "html" },
 				auto_install = true,
@@ -38,21 +49,15 @@ return {
 				sync_install = false,
 				highlight = {
 					enable = true,
-					disable = function(_, buf)
-						local max_filesize = 500 * 1024 -- 500 KB
-						local filename = vim.api.nvim_buf_get_name(buf)
-						local ok, stats = pcall(vim.loop.fs_stat, filename)
-						if ok and stats then
-							return (stats.size > max_filesize)
-								or (vim.fn.line("$") < 2 and stats.size > max_filesize / 10)
-						end
-
-						return false
-					end,
+					disable = disable,
 				},
-				indent = { enable = true },
+				indent = {
+					enable = true,
+					disable = disable,
+				},
 				textobjects = {
 					enable = true,
+					disable = disable,
 					lookahead = true,
 					swap = {
 						enable = true,
@@ -80,6 +85,7 @@ return {
 				},
 				textsubjects = {
 					enable = true,
+					disable = disable,
 					prev_selection = ",",
 					keymaps = {
 						["."] = "textsubjects-smart",
