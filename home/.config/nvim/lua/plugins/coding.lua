@@ -135,6 +135,7 @@ return {
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-buffer",
 			"hrsh7th/cmp-calc",
+			"hrsh7th/cmp-path",
 			"f3fora/cmp-spell",
 			"onsails/lspkind.nvim",
 			"hrsh7th/cmp-nvim-lsp-signature-help",
@@ -216,6 +217,7 @@ return {
 				sources = cmp.config.sources({
 					{ name = "nvim_lsp" },
 					{ name = "luasnip" },
+					{ name = "path" },
 					{ name = "calc" },
 					{ name = "nvim_lsp_signature_help" },
 					{

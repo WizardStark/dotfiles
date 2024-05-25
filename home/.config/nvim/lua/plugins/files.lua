@@ -110,6 +110,7 @@ return {
 			require("telescope").load_extension("undo")
 			require("telescope").load_extension("notify")
 			require("telescope").load_extension("git_submodules")
+			require("telescope").load_extension("yaml_schema")
 		end,
 	},
 	{

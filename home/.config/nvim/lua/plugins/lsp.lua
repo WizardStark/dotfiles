@@ -16,6 +16,12 @@ return {
 		config = function()
 			local lspconfig = require("lspconfig")
 			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
+
+			lsp_capabilities.textDocument.foldingRange = {
+				dynamicRegistration = false,
+				lineFoldingOnly = true,
+			}
+
 			local mason_lspconfig = require("mason-lspconfig")
 			local border = {
 				{ "╭", "FloatBorder" },
@@ -191,6 +197,28 @@ return {
 						},
 					})
 				end,
+				["jsonls"] = function()
+					lspconfig.jsonls.setup({
+						on_attach = function()
+							if vim.g.extra_lsp_actions ~= nil then
+								vim.g.extra_lsp_actions()
+							end
+						end,
+						capabilities = lsp_capabilities,
+						handlers = handlers,
+						settings = {
+							json = {
+								schemas = require("schemastore").json.schemas(),
+								validate = { enable = true },
+							},
+						},
+					})
+				end,
+				["yamlls"] = function()
+					local cfg = require("yaml-companion").setup({})
+					cfg.capabilities = lsp_capabilities
+					lspconfig.yamlls.setup(cfg)
+				end,
 			})
 		end,
 	},
@@ -228,6 +256,19 @@ return {
 				"jq",
 				"yamlfmt",
 			},
+		},
+	},
+	{
+		"b0o/schemastore.nvim",
+		lazy = true,
+	},
+	{
+		"someone-stole-my-name/yaml-companion.nvim",
+		lazy = true,
+		dependencies = {
+			"neovim/nvim-lspconfig",
+			"nvim-lua/plenary.nvim",
+			"nvim-telescope/telescope.nvim",
 		},
 	},
 }
