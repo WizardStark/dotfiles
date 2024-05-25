@@ -58,10 +58,16 @@ return {
 		"folke/flash.nvim",
 		lazy = true,
 		opts = {
+			jump = {
+				autojump = true,
+			},
 			modes = {
 				search = {
-					enabled = false,
+					enabled = true,
 				},
+			},
+			char = {
+				enabled = false,
 			},
 		},
 	},
