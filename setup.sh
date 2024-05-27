@@ -10,6 +10,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   )
 
   (
+    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+  )
+  (
     sudo mkdir -p /etc/apt/keyrings
     wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
     echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list
@@ -33,7 +36,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Updating Homebrew"
     brew update
   fi
-  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza
+  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide
 fi
 
 mkdir -p ~/.config
