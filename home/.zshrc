@@ -57,10 +57,38 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     setopt hist_find_no_dups
 
     # Completion styling
+    export EZA_COLORS="$(vivid -m 8-bit generate catppuccin-mocha)"
+    fzf_file_or_dir_preview="if [ -d {} ]; then eza -1 -a --color=always {} | head -200; else bat --style=header-filename,grid --color=always --line-range :500 {}; fi"
+    dir_or_file_preview='if [ -d $realpath ]; then eza -1 -a --color=always $realpath | head -200; else bat --style=header-filename,grid --color=always --line-range :500 $realpath; fi'
+    dir_preview='eza --color=always -1 -a --icons=always $realpath'
+
     zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
     zstyle ':completion:*' menu no
-    zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls -A --color $realpath'
-    zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls -A --color $realpath'
+    zstyle ':fzf-tab:complete:cd:*' fzf-preview $dir_preview
+    zstyle ':fzf-tab:complete:bat:*' fzf-preview $dir_or_file_preview 
+    zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview $dir_preview
+
+    export FZF_CTRL_T_OPTS="--preview '$fzf_file_or_dir_preview'"
+    export FZF_ALT_C_OPTS="--preview 'eza --color=always {} | head -200'"
+
+    _fzf_comprun() {
+      local command=$1
+      shift
+
+      case "$command" in
+        export|unset) fzf --preview "eval 'echo ${}'"         "$@" ;;
+        ssh)          fzf --preview 'dig {}'                   "$@" ;;
+        *)            fzf --preview "$fzf_file_or_dir_preview" "$@" ;;
+      esac
+    }
+
+    #Allow matching of . files to allow for smoother fzf-tabbing
+    setopt globdots
+
+    # Allow comments in commandline
+    setopt interactivecomments
+
+    alias ls="eza --color=always --icons=always"
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     eval "$(zoxide init --cmd cd zsh)"
@@ -73,7 +101,6 @@ show_blame() {
 export EDITOR='nvim'
 alias vim="nvim"
 alias cl="printf '\33c\e[3J'"
-alias ls='ls --color'
 alias src='source ~/.zshrc'
 alias erc='vim ~/.zshrc'
 alias pls='sudo $(fc -ln -1)'
