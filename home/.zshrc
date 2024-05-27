@@ -88,7 +88,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     # Allow comments in commandline
     setopt interactivecomments
 
-    alias ls="eza --color=always --icons=always"
+    alias ls="eza --color=always -1 -a --icons=always"
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     eval "$(zoxide init --cmd cd zsh)"
