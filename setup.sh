@@ -4,8 +4,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
 
   (
-    wget "https://github.com/sharkdp/bat/releases/download/v0.24
-.0/bat-musl_0.24.0_amd64.deb"
+    wget "https://github.com/sharkdp/bat/releases/download/v0.24.0/bat-musl_0.24.0_amd64.deb"
     sudo dpkg -i bat-musl_0.24.0_amd64.deb
     rm bat-musl_0.24.0_amd64.deb
   )
