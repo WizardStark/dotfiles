@@ -1,11 +1,13 @@
 #!/bin/bash
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   sudo apt update && sudo apt upgrade -y
-  sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow bat gpg
+  sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
 
   (
-    mkdir -p ~/.local/bin
-    ln -s /usr/bin/batcat ~/.local/bin/bat
+    wget "https://github.com/sharkdp/bat/releases/download/v0.24
+.0/bat-musl_0.24.0_amd64.deb"
+    sudo dpkg -i bat-musl_0.24.0_amd64.deb
+    rm bat-musl_0.24.0_amd64.deb
   )
 
   (
@@ -18,8 +20,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   )
 
   (
-    wget "https://github.com/sharkdp/vivid/releases/download/v0.8.0/vivid_0.8.0_amd64.deb"
-    sudo dpkg -i vivid_0.8.0_amd64.deb
+    wget "https://github.com/sharkdp/vivid/releases/download/v0.9.0/vivid-musl_0.9.0_amd64.deb"
+    sudo dpkg -i vivid-musl_0.9.0_amd64.deb
+    rm vivid-musl_0.9.0_amd64.deb
   )
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
