@@ -27,6 +27,12 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     rm vivid-musl_0.9.0_amd64.deb
   )
 
+  (
+    wget "https://github.com/dandavison/delta/releases/download/0.17.0/git-delta-musl_0.17.0_amd64.deb"
+    sudo dpkg -i git-delta-musl_0.17.0_amd64.deb
+    rm git-delta-musl_0.17.0_amd64.deb
+  )
+
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   if [[ $(command -v brew) == "" ]]; then
     echo "Installing Hombrew"
@@ -36,7 +42,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Updating Homebrew"
     brew update
   fi
-  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide
+  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
 fi
 
 mkdir -p ~/.config
