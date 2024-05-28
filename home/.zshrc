@@ -66,6 +66,11 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     zstyle ':completion:*' menu no
     zstyle ':fzf-tab:complete:cd:*' fzf-preview $dir_preview
     zstyle ':fzf-tab:complete:bat:*' fzf-preview $dir_or_file_preview 
+    zstyle ':fzf-tab:complete:cat:*' fzf-preview $dir_or_file_preview 
+    zstyle ':fzf-tab:complete:eza:*' fzf-preview $dir_or_file_preview 
+    zstyle ':fzf-tab:complete:nvim:*' fzf-preview $dir_or_file_preview 
+    zstyle ':fzf-tab:complete:less:*' fzf-preview $dir_or_file_preview 
+    zstyle ':fzf-tab:complete:head:*' fzf-preview $dir_or_file_preview 
     zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview $dir_preview
 
     export FZF_CTRL_T_OPTS="--preview '$fzf_file_or_dir_preview'"
