@@ -307,6 +307,10 @@ function M.delete_workspace(name)
 		M.switch_session(nil, state.get().workspaces[1])
 	end
 
+	if name == state.get().last_workspace.name then
+		state.get().last_workspace = nil
+	end
+
 	persist.persist_workspaces()
 end
 
