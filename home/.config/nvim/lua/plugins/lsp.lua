@@ -263,11 +263,13 @@ return {
 	{
 		"b0o/schemastore.nvim",
 		lazy = true,
+		ft = { "yaml", "json" },
 	},
 	-- yaml shema telescope interface
 	{
 		"someone-stole-my-name/yaml-companion.nvim",
 		lazy = true,
+		ft = { "yaml", "json" },
 		dependencies = {
 			"neovim/nvim-lspconfig",
 			"nvim-lua/plenary.nvim",

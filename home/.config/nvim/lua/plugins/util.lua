@@ -52,13 +52,6 @@ return {
 			},
 		},
 	},
-	--snippet creation
-	{
-		"chrisgrieser/nvim-scissors",
-		cmd = { "ScissorsEditSnippet", "ScissorsAddNewSnippet" },
-		dependencies = "nvim-telescope/telescope.nvim",
-		opts = {},
-	},
 	--open links
 	{
 		"chrishrb/gx.nvim",
@@ -239,6 +232,7 @@ return {
 		lazy = true,
 		opts = {},
 	},
+	-- allow overriding of commentstrings
 	{
 		"folke/ts-comments.nvim",
 		event = "VeryLazy",

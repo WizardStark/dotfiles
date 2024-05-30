@@ -65,9 +65,9 @@ return {
 				search = {
 					enabled = true,
 				},
-			},
-			char = {
-				enabled = false,
+				char = {
+					enabled = false,
+				},
 			},
 		},
 	},
