@@ -241,6 +241,7 @@ return {
 			notifications = true,
 		},
 	},
+	-- formatter installer
 	{
 		"WhoIsSethDaniel/mason-tool-installer.nvim",
 		lazy = true,
@@ -258,10 +259,12 @@ return {
 			},
 		},
 	},
+	-- helper for using yaml and json schemas
 	{
 		"b0o/schemastore.nvim",
 		lazy = true,
 	},
+	-- yaml shema telescope interface
 	{
 		"someone-stole-my-name/yaml-companion.nvim",
 		lazy = true,
@@ -270,5 +273,27 @@ return {
 			"nvim-lua/plenary.nvim",
 			"nvim-telescope/telescope.nvim",
 		},
+	},
+	-- scala lsp
+	{
+		"scalameta/nvim-metals",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+		},
+		ft = { "scala", "sbt", "java" },
+		opts = function()
+			local metals_config = require("metals").bare_config()
+			return metals_config
+		end,
+		config = function(self, metals_config)
+			local nvim_metals_group = vim.api.nvim_create_augroup("nvim-metals", { clear = true })
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = self.ft,
+				callback = function()
+					require("metals").initialize_or_attach(metals_config)
+				end,
+				group = nvim_metals_group,
+			})
+		end,
 	},
 }
