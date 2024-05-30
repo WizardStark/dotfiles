@@ -767,9 +767,7 @@ prefixifier(keymaps)({
 	{
 		mode = "n",
 		"<leader>xx",
-		function()
-			require("trouble").toggle()
-		end,
+		"<cmd>Trouble diagnostics toggle<cr>",
 		prefix = P.diag,
 		description = "Toggle diagnostics window",
 	},
@@ -1622,7 +1620,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = "n",
-		"<c-p>",
+		"<c-t>",
 		"<Plug>(YankyPreviousEntry)",
 		prefix = P.misc,
 		description = "Cycle to next item in yank history",

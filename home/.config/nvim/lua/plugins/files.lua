@@ -27,8 +27,8 @@ return {
 			require("telescope").setup({
 				defaults = {
 					mappings = {
-						i = { ["<C-t>"] = require("trouble.providers.telescope").open_with_trouble },
-						n = { ["<C-t>"] = require("trouble.providers.telescope").open_with_trouble },
+						i = { ["<C-t>"] = require("trouble.sources.telescope").open },
+						n = { ["<C-t>"] = require("trouble.sources.telescope").open },
 					},
 					layout_strategy = "horizontal",
 					layout_config = {
