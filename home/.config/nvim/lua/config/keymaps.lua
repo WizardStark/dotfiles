@@ -593,7 +593,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n", "i" },
-		"<C-n>",
+		"<M-n>",
 		function()
 			local gitsigns = require("gitsigns")
 			gitsigns.preview_hunk_inline()
@@ -604,7 +604,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n", "i" },
-		"<C-p>",
+		"<M-p>",
 		function()
 			local gitsigns = require("gitsigns")
 			gitsigns.preview_hunk_inline()
@@ -1593,13 +1593,55 @@ prefixifier(keymaps)({
 		description = "Dismiss all notifications",
 	},
 	{
+		mode = { "n", "x" },
+		"p",
+		"<Plug>(YankyPutAfter)",
+		prefix = P.misc,
+		description = "Paste after cursor",
+	},
+	{
+		mode = { "n", "x" },
+		"P",
+		"<Plug>(YankyPutBefore)",
+		prefix = P.misc,
+		description = "Paste before cursor",
+	},
+	{
+		mode = { "n", "x" },
+		"gp",
+		"<Plug>(YankyGPutAfter)",
+		prefix = P.misc,
+		description = "Paste after selection",
+	},
+	{
+		mode = { "n", "x" },
+		"gP",
+		"<Plug>(YankyGPutBefore)",
+		prefix = P.misc,
+		description = "Paste after selection",
+	},
+	{
+		mode = "n",
+		"<c-p>",
+		"<Plug>(YankyPreviousEntry)",
+		prefix = P.misc,
+		description = "Cycle to next item in yank history",
+	},
+	{
+		mode = "n",
+		"<c-n>",
+		"<Plug>(YankyNextEntry)",
+		prefix = P.misc,
+		description = "Cycle to next item in yank history",
+	},
+	{
 		mode = { "n" },
 		"<leader>p",
 		function()
-			vim.cmd("YankBank")
+			require("telescope").extensions.yank_history.yank_history({})
 		end,
 		prefix = P.misc,
-		description = "Open window to select item to paste from last 10 yanks",
+		description = "Open yank history",
 	},
 	{
 		mode = "n",

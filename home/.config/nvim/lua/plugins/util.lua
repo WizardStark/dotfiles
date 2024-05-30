@@ -194,9 +194,12 @@ return {
 	},
 	--yank history
 	{
-		"ptdewey/yankbank-nvim",
-		event = "VeryLazy",
-		opts = {},
+		"gbprod/yanky.nvim",
+		opts = {
+			highlight = {
+				timer = 350,
+			},
+		},
 	},
 	--key display
 	{
