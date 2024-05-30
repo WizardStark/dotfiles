@@ -604,7 +604,7 @@ prefixifier(keymaps)({
 	},
 	{
 		mode = { "n", "i" },
-		"<M-p>",
+		"<M-t>",
 		function()
 			local gitsigns = require("gitsigns")
 			gitsigns.preview_hunk_inline()
