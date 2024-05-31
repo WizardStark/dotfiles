@@ -775,7 +775,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>xw",
 		function()
-			require("trouble").toggle("workspace_diagnostics")
+			require("trouble").toggle("diagnostics")
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
@@ -784,7 +784,7 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>xd",
 		function()
-			require("trouble").toggle("document_diagnostics")
+			require("trouble").toggle("diagnostics_buffer")
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics for current document",
@@ -793,10 +793,37 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>xq",
 		function()
-			require("trouble").toggle("quickfix")
+			require("trouble").toggle("qflist")
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window with quickfix list",
+	},
+	{
+		mode = "n",
+		"<leader>xi",
+		function()
+			require("trouble").toggle("lsp_incoming_calls")
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for calls to this symbol",
+	},
+	{
+		mode = "n",
+		"<leader>xo",
+		function()
+			require("trouble").toggle("lsp_outgoing_calls")
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for calls by this symbol",
+	},
+	{
+		mode = "n",
+		"<leader>xf",
+		function()
+			require("trouble").toggle("telescope")
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for results from telescope",
 	},
 	{
 		mode = "n",
@@ -811,16 +838,16 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>xn",
 		function()
-			require("trouble").next({ skip_groups = true, jump = true })
+			require("trouble").next({ jump = true })
 		end,
 		prefix = P.diag,
 		description = "Go to next diagnostics item",
 	},
 	{
 		mode = "n",
-		"<leader>xp",
+		"<leader>xt",
 		function()
-			require("trouble").previous({ skip_groups = true, jump = true })
+			require("trouble").prev({ jump = true })
 		end,
 		prefix = P.diag,
 		description = "Go to previous diagnostic item",

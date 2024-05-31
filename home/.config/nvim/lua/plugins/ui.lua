@@ -171,7 +171,14 @@ return {
 		"folke/trouble.nvim",
 		lazy = true,
 		dependencies = { "nvim-tree/nvim-web-devicons" },
-		opts = {},
+		opts = {
+			modes = {
+				diagnostics_buffer = {
+					mode = "diagnostics", -- inherit from diagnostics mode
+					filter = { buf = 0 }, -- filter diagnostics to the current buffer
+				},
+			},
+		},
 	},
 	--todo highlighting
 	{

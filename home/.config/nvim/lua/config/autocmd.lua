@@ -258,7 +258,7 @@ prefixifier(autocmds)({
 	{
 		"QuickFixCmdPost",
 		function()
-			require("trouble").toggle("quickfix")
+			require("trouble").open("qflist")
 		end,
 		prefix = P.auto,
 	},
