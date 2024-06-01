@@ -214,11 +214,6 @@ return {
 						},
 					})
 				end,
-				["yamlls"] = function()
-					local cfg = require("yaml-companion").setup({})
-					cfg.capabilities = lsp_capabilities
-					lspconfig.yamlls.setup(cfg)
-				end,
 			})
 		end,
 	},
@@ -275,6 +270,17 @@ return {
 			"nvim-lua/plenary.nvim",
 			"nvim-telescope/telescope.nvim",
 		},
+		config = function()
+			local cfg = require("yaml-companion").setup({})
+			local lspconfig = require("lspconfig")
+			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
+			lsp_capabilities.textDocument.foldingRange = {
+				dynamicRegistration = false,
+				lineFoldingOnly = true,
+			}
+			cfg.capabilities = lsp_capabilities
+			lspconfig.yamlls.setup(cfg)
+		end,
 	},
 	-- scala lsp
 	{
