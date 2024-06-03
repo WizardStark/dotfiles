@@ -1,7 +1,16 @@
 return {
 	--neodev
 	{
-		"folke/neodev.nvim",
+		"folke/lazydev.nvim",
+		ft = "lua",
+		opts = {
+			library = {
+				"luvit-meta/library",
+			},
+		},
+	},
+	{
+		"Bilal2453/luvit-meta",
 		lazy = true,
 	},
 	-- lspconfig
@@ -62,17 +71,6 @@ return {
 				end,
 				["jdtls"] = function() end,
 				["lua_ls"] = function()
-					require("neodev").setup({
-						library = { plugins = { "neotest" }, types = true },
-						override = function(root_dir, library)
-							if root_dir:find("nvim") or root_dir:find("dotfiles") then
-								library.enabled = true
-								library.plugins = true
-								library.types = true
-								library.runtime = true
-							end
-						end,
-					})
 					lspconfig.lua_ls.setup({
 						on_attach = function()
 							if vim.g.extra_lsp_actions ~= nil then
