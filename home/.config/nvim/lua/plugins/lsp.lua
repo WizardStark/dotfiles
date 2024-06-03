@@ -286,7 +286,7 @@ return {
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 		},
-		ft = { "scala", "sbt", "java" },
+		ft = { "scala", "sbt" },
 		opts = function()
 			local metals_config = require("metals").bare_config()
 			return metals_config
