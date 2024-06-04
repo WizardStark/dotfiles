@@ -629,7 +629,21 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>gh",
 		function()
-			require("telescope.builtin").git_commits()
+			require("telescope.builtin").git_commits({
+				previewer = require("telescope.previewers").new_termopen_previewer({
+					get_command = function(entry)
+						return {
+							"git",
+							"-c",
+							"core.pager=delta",
+							"-c",
+							"delta.side-by-side=false",
+							"diff",
+							entry.value .. "^!",
+						}
+					end,
+				}),
+			})
 		end,
 		prefix = P.git,
 		description = "Commit history",
@@ -638,7 +652,20 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>gc",
 		function()
-			require("telescope.builtin").git_bcommits()
+			require("telescope.builtin").git_bcommits({
+				previewer = require("telescope.previewers").new_termopen_previewer({
+					get_command = function(entry)
+						return {
+							"git",
+							"-c",
+							"core.pager=delta",
+							"-c",
+							"delta.side-by-side=false",
+							"diff",
+							entry.value .. "^!",
+						}
+					end,
+				})
 		end,
 		prefix = P.git,
 		description = "Commit history for current buffer",

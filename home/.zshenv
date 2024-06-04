@@ -13,7 +13,6 @@ pathmunge() {
 [ -f ~/.lcl.zshenv ] && source ~/.lcl.zshenv
 
 if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
-
   source ~/.zsh-catpuccin/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh
   export FZF_DEFAULT_OPTS=" \
       --color=bg+:#313244,bg:#0e0e1e,spinner:#f5e0dc,hl:#f38ba8 \
