@@ -665,7 +665,8 @@ prefixifier(keymaps)({
 							entry.value .. "^!",
 						}
 					end,
-				})
+				}),
+			})
 		end,
 		prefix = P.git,
 		description = "Commit history for current buffer",
