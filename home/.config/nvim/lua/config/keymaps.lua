@@ -1645,7 +1645,7 @@ prefixifier(keymaps)({
 			require("workspaces.marks").toggle_mark()
 		end,
 		prefix = P.work,
-		description = "Pick mark",
+		description = "Toggle mark",
 	},
 	{
 		mode = { "n" },
