@@ -184,6 +184,9 @@ return {
 						end,
 						capabilities = lsp_capabilities,
 						handlers = handlers,
+						init_options = {
+							storagePath = require("lspconfig.util").path.join(vim.env.XDG_DATA_HOME, "nvim-data"),
+						},
 						settings = {
 							kotlin = {
 								hints = {
