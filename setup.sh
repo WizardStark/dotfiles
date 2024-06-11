@@ -1,5 +1,19 @@
 #!/bin/bash
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+
+if [[ "$(command -v brew)" != "" || "$OSTYPE" == "darwin"* ]]; then
+  if [[ $(command -v brew) == "" ]]; then
+    echo "Installing Hombrew"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew update
+  else
+    echo "Updating Homebrew"
+    brew update
+  fi
+
+  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
+
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+
   sudo apt update && sudo apt upgrade -y
   sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
 
@@ -32,17 +46,6 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo dpkg -i git-delta-musl_0.17.0_amd64.deb
     rm git-delta-musl_0.17.0_amd64.deb
   )
-
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-  if [[ $(command -v brew) == "" ]]; then
-    echo "Installing Hombrew"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    brew update
-  else
-    echo "Updating Homebrew"
-    brew update
-  fi
-  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
 fi
 
 mkdir -p ~/.config
