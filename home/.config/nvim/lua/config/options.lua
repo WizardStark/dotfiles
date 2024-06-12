@@ -38,6 +38,7 @@ local opts = {
 	sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions",
 	grepprg = "rg --vimgrep",
 	grepformat = "%f:%l:%c:%m",
+	scrollback = 100000,
 	-- from TJ's config
 	formatoptions = opt.formatoptions
 		- "a" -- Auto formatting is BAD.

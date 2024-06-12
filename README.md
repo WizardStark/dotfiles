@@ -28,7 +28,7 @@ chmod +x setup.sh
 If on an Apple Silicon device, after running `nvim` once, also
 run the following to recompile the broken plugin:
 
-```
+```bash
 cd ~/.local/share/nvim/lazy/telescope-fzf-native.nvim &&
 cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release &&
 cmake --build build --config Release &&
