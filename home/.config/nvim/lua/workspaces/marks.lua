@@ -87,12 +87,12 @@ function M.goto_mark(mark_name)
 	ws.switch_session(target_session, target_workspace)
 
 	toggleterms.toggle_visible_terms(true)
-	local toggled_types = require("utils").toggle_special_buffers({})
+	local toggled_types = require("user.utils").toggle_special_buffers({})
 
 	vim.cmd("e " .. target_mark.path)
 	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), target_mark.pos)
 
-	require("utils").toggle_special_buffers(toggled_types)
+	require("user.utils").toggle_special_buffers(toggled_types)
 	toggleterms.toggle_visible_terms(false)
 end
 

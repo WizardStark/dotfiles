@@ -19,7 +19,7 @@ return {
 		"kylechui/nvim-surround",
 		version = "*",
 		event = "VeryLazy",
-		opts = {},
+		config = true,
 	},
 	-- undotree
 	{
@@ -30,29 +30,21 @@ return {
 	{
 		"rmagatti/alternate-toggler",
 		lazy = true,
-		opts = {},
+		config = true,
 	},
 	--overseer tasks
 	{
-		"Zeioth/compiler.nvim",
-		cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
-		dependencies = { "stevearc/overseer.nvim" },
-		opts = {},
-	},
-	--overseer
-	{
-		"stevearc/overseer.nvim",
-		cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
+		"stevearc/stickybuf.nvim",
+		event = "VeryLazy",
 		opts = {
-			task_list = {
-				direction = "bottom",
-				min_height = 25,
-				max_height = 25,
-				default_detail = 1,
-			},
+			get_auto_pin = function(bufnr)
+				if vim.bo[bufnr].filetype == "minifiles" then
+					return "filetype"
+				end
+				return require("stickybuf").should_auto_pin(bufnr)
+			end,
 		},
 	},
-	--open links
 	{
 		"chrishrb/gx.nvim",
 		cmd = { "Browse" },
@@ -74,7 +66,6 @@ return {
 			})
 		end,
 	},
-	--notes
 	{
 
 		"dhananjaylatkar/notes.nvim",
@@ -84,7 +75,6 @@ return {
 			root = vim.fn.expand("$HOME/notes/"),
 		},
 	},
-	--legendary
 	{
 		"mrjones2014/legendary.nvim",
 		priority = 10000,
@@ -99,63 +89,29 @@ return {
 			})
 		end,
 	},
-	--flatten.nvim
 	{
-		"willothy/flatten.nvim",
-		lazy = false,
-		priority = 1001,
-		opts = function()
-			local saved_terminal
-
-			return {
-				window = {
-					open = "smart",
-				},
-				nest_if_no_args = true,
-				callbacks = {
-					should_block = function(argv)
-						return vim.tbl_contains(argv, "-b")
-					end,
-					pre_open = function()
-						local term = require("toggleterm.terminal")
-						local termid = term.get_focused_id()
-						saved_terminal = term.get(termid)
-					end,
-					post_open = function(bufnr, winnr, ft, is_blocking)
-						if is_blocking and saved_terminal then
-							saved_terminal:close()
-						else
-							vim.api.nvim_set_current_win(winnr)
-						end
-					end,
-					block_end = function()
-						vim.schedule(function()
-							if saved_terminal then
-								saved_terminal:open()
-								saved_terminal = nil
-							end
-						end)
-					end,
-				},
-			}
-		end,
+		"thunder-coding/zincoxide",
+		lazy = true,
+		cmd = { "Z", "Zg", "Zt", "Zw" },
+		opts = {
+			zincoxide_cmd = "zoxide",
+			complete = true,
+			behaviour = "tabs",
+		},
 	},
-	--paren-hint
 	{
 		"briangwaltney/paren-hint.nvim",
 		event = "VeryLazy",
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
 		},
-		opts = {},
+		config = true,
 	},
-	--substitution
 	{
 		"gbprod/substitute.nvim",
 		lazy = true,
-		opts = {},
+		config = true,
 	},
-	--better macros
 	{
 		"chrisgrieser/nvim-recorder",
 		lazy = true,
@@ -164,7 +120,6 @@ return {
 			slots = { "a", "r", "s", "m" },
 		},
 	},
-	--highlight symbol
 	{
 		"rrethy/vim-illuminate",
 		event = "VeryLazy",
@@ -179,13 +134,11 @@ return {
 			})
 		end,
 	},
-	--colourize colors
 	{
 		"norcalli/nvim-colorizer.lua",
 		cmd = { "ColorizerAttachToBuffer", "ColorizerReloadAllBuffers", "ColorizerDetachFromBuffer", "ColorizerToggle" },
-		opts = {},
+		config = true,
 	},
-	--yank history
 	{
 		"gbprod/yanky.nvim",
 		opts = {
@@ -194,7 +147,6 @@ return {
 			},
 		},
 	},
-	--key display
 	{
 		"NStefan002/screenkey.nvim",
 		cmd = "Screenkey",
@@ -216,26 +168,14 @@ return {
 			},
 		},
 	},
-	--enable vim motions in terminal buffer
-	{
-		"chomosuke/term-edit.nvim",
-		ft = "toggleterm",
-		version = "1.*",
-		opts = {
-			prompt_end = "╰─",
-			mapping = { n = { s = false } },
-		},
-	},
-	-- search and replace
 	{
 		"MagicDuck/grug-far.nvim",
 		lazy = true,
-		opts = {},
+		config = true,
 	},
-	-- allow overriding of commentstrings
 	{
 		"folke/ts-comments.nvim",
 		event = "VeryLazy",
-		opts = {},
+		config = true,
 	},
 }

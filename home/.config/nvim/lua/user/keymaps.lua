@@ -1,5 +1,3 @@
-M = {}
-
 local function trigger_dap(dapStart)
 	require("dapui").open({ reset = true })
 	dapStart()
@@ -31,9 +29,7 @@ end
 
 local original_branch = nil
 
-local prefixifier = require("utils").prefixifier
-local P = require("utils").PREFIXES
-local keymaps = require("legendary").keymaps
+local P = require("user.utils").PREFIXES
 
 local function visit_yaml_node(node, name, yaml_path, result, file_path, bufnr)
 	local key = ""
@@ -127,7 +123,7 @@ local yaml_symbols = function(opts)
 		:find()
 end
 
-prefixifier(keymaps)({
+local mappings = {
 	{
 		mode = { "n", "v" },
 		"<leader>Q",
@@ -611,7 +607,7 @@ prefixifier(keymaps)({
 		mode = "v",
 		"<leader>gsv",
 		function()
-			require("gitsigns").stage_hunk(require("utils").get_visual_selection_lines())
+			require("gitsigns").stage_hunk(require("user.utils").get_visual_selection_lines())
 		end,
 		prefix = P.git,
 		description = "Git stage visual selection",
@@ -620,7 +616,7 @@ prefixifier(keymaps)({
 		mode = "v",
 		"<leader>grv",
 		function()
-			require("gitsigns").reset_hunk(require("utils").get_visual_selection_lines())
+			require("gitsigns").reset_hunk(require("user.utils").get_visual_selection_lines())
 		end,
 		prefix = P.git,
 		description = "Git reset visual selection",
@@ -881,17 +877,10 @@ prefixifier(keymaps)({
 		mode = "n",
 		"<leader>e",
 		function()
-			require("utils").toggle_minifiles()
+			require("user.utils").toggle_minifiles()
 		end,
 		prefix = P.nav,
 		description = "Open file explorer",
-	},
-	{
-		mode = "n",
-		"<leader>mm",
-		"<cmd>AerialToggle!<CR>",
-		prefix = P.code,
-		description = "Open function minimap",
 	},
 	{
 		mode = "n",
@@ -1877,6 +1866,12 @@ prefixifier(keymaps)({
 		end,
 		description = "run all cells of all languages",
 	},
-})
+}
 
-return M
+return {
+	setup = function()
+		local prefixifier = require("user.utils").prefixifier
+		local keymaps = require("legendary").keymaps
+		prefixifier(keymaps)(mappings)
+	end,
+}

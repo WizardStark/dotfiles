@@ -52,13 +52,36 @@ local opts = {
 		- "2", -- I'm not in gradeschool anymore
 }
 
-require("lcl.options")
-opts = vim.tbl_deep_extend("force", opts, vim.g.overridden_opts or {})
+return {
+	setup = function()
+		require("lcl.options")
 
-for key, value in pairs(opts) do
-	vim.opt[key] = value
-end
+		local catppuccin_opts = {
+			integrations = {
+				flash = true,
+				gitsigns = true,
+				mason = true,
+				neotest = true,
+				noice = true,
+				cmp = true,
+				dap = true,
+				dap_ui = true,
+				diffview = true,
+				notify = true,
+				treesitter = true,
+				ufo = true,
+				overseer = true,
+				lsp_trouble = true,
+			},
+		}
 
-vim.g.colorscheme = "catppuccin-mocha"
+		catppuccin_opts = vim.tbl_deep_extend("force", catppuccin_opts, vim.g.catppuccin_opts or {})
+		require("catppuccin").setup(catppuccin_opts)
+		vim.cmd("colorscheme " .. vim.g.colorscheme)
 
-return {}
+		opts = vim.tbl_deep_extend("force", opts, vim.g.overridden_opts or {})
+		for key, value in pairs(opts) do
+			vim.opt[key] = value
+		end
+	end,
+}

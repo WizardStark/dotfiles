@@ -1,4 +1,5 @@
 -- disable netrw at the very start of your init.lua
+vim.loader.enable()
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 vim.g.mapleader = " "
@@ -16,13 +17,24 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-local configpath = vim.fn.resolve(vim.fn.stdpath("config") .. "/lua")
-vim.g.lclpath = configpath .. "/lcl"
+local shada = vim.o.shada
+vim.o.shada = ""
+vim.api.nvim_create_autocmd("User", {
+	pattern = "VeryLazy",
+	callback = function()
+		vim.o.shada = shada
+		pcall(vim.cmd.rshada, { bang = true })
+	end,
+})
+
+local configpath = vim.fn.stdpath("config") --[[@as string]]
+vim.g.lclpath = configpath .. "/lua/lcl"
 vim.g.lclfilepath = vim.g.lclpath .. "/options.lua"
 vim.g.backdrop_buf = nil
 vim.g.backdrop_win = nil
+vim.g.colorscheme = "catppuccin-mocha"
 
-if not vim.loop.fs_stat(vim.fn.resolve(vim.fn.stdpath("config") .. "/lua/lcl")) then
+if not vim.loop.fs_stat(vim.g.lclpath) then
 	vim.fn.system(
 		"mkdir -p "
 			.. vim.g.lclpath
@@ -34,8 +46,84 @@ if not vim.loop.fs_stat(vim.fn.resolve(vim.fn.stdpath("config") .. "/lua/lcl")) 
 end
 
 require("lazy").setup({
-	spec = { { import = "plugins" }, { import = "lcl" }, { import = "config" } },
-	install = { colorscheme = { "catppuccin-mocha", "habamax" } },
-	ui = { border = "rounded" },
-	profiling = { loader = true, require = true },
+	{ import = "plugins" },
+	{
+		name = "user.init",
+		main = "user",
+		dir = configpath,
+		lazy = false,
+		config = function()
+			require("user")
+		end,
+	},
+	{
+		name = "user.options",
+		main = "user.options",
+		dir = configpath,
+		priority = 100000,
+		event = "VimEnter",
+		config = true,
+	},
+	{
+		name = "user.ui",
+		main = "user.ui",
+		dir = configpath,
+		event = "VeryLazy",
+		config = true,
+	},
+	{
+		name = "user.autocmds",
+		main = "user.autocmds",
+		dir = configpath,
+		event = "VeryLazy",
+		config = true,
+	},
+	{
+		name = "user.keymaps",
+		main = "user.keymaps",
+		dir = configpath,
+		event = "VeryLazy",
+		config = true,
+	},
+	{
+		name = "user.functions",
+		main = "user.functions",
+		dir = configpath,
+		event = "VeryLazy",
+		config = true,
+	},
+}, {
+	install = {
+		colorscheme = { "habamax" },
+	},
+	ui = {
+		border = "rounded",
+	},
+	-- profiling = {
+	-- 	loader = true,
+	-- 	require = true,
+	-- },
+	performance = {
+		cache = {
+			enabled = true,
+			disable_events = { "UiEnter" },
+		},
+		reset_packpath = true,
+		rtp = {
+			reset = true,
+			disabled_plugins = {
+				"gzip",
+				"matchit",
+				"matchparen",
+				"netrwPlugin",
+				"tarPlugin",
+				"tohtml",
+				"tutor",
+				"zipPlugin",
+				"man",
+				"osc52",
+				"spellfile",
+			},
+		},
+	},
 })

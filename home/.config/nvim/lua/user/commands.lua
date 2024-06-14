@@ -1,8 +1,6 @@
-local prefixifier = require("utils").prefixifier
-local P = require("utils").PREFIXES
-local commands = require("legendary").commands
+local P = require("user.utils").PREFIXES
 
-prefixifier(commands)({
+local mappings = {
 	{
 		":Lazy",
 		prefix = P.misc,
@@ -68,5 +66,12 @@ prefixifier(commands)({
 		prefix = P.misc,
 		description = "Force close all buffers except the current one (writes and reopens current buffer)",
 	},
-})
-return {}
+}
+
+return {
+	setup = function()
+		local prefixifier = require("user.utils").prefixifier
+		local commands = require("legendary").commands
+		prefixifier(commands)(mappings)
+	end,
+}

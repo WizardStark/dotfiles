@@ -1,8 +1,6 @@
-local prefixifier = require("utils").prefixifier
-local P = require("utils").PREFIXES
-local funcs = require("legendary").funcs
+local P = require("user.utils").PREFIXES
 
-prefixifier(funcs)({
+local mappings = {
 	{
 		function()
 			vim.cmd.e(vim.g.lclfilepath)
@@ -26,14 +24,14 @@ prefixifier(funcs)({
 	},
 	{
 		function()
-			require("utils").close_non_terminal_buffers(false)
+			require("user.utils").close_non_terminal_buffers(false)
 		end,
 		prefix = P.misc,
 		description = "Force close all non-terminal buffers except the current one",
 	},
 	{
 		function()
-			require("utils").toggle_keys_window()
+			require("user.utils").toggle_keys_window()
 		end,
 		prefix = P.misc,
 		description = "Toggle window that logs keypresses",
@@ -46,5 +44,12 @@ prefixifier(funcs)({
 		prefix = P.code,
 		description = "Run linter",
 	},
-})
-return {}
+}
+
+return {
+	setup = function()
+		local prefixifier = require("user.utils").prefixifier
+		local funcs = require("legendary").funcs
+		prefixifier(funcs)(mappings)
+	end,
+}

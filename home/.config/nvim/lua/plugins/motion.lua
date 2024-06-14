@@ -1,44 +1,4 @@
 return {
-	--other
-	{
-		"rgroli/other.nvim",
-		cmd = { "Other", "OtherClear", "OtherTabNew", "OtherSplit", "OtherVSplit" },
-		config = function()
-			require("other-nvim").setup({
-				mappings = {
-					{
-						pattern = ".*/src/(.*)/(.*)",
-						target = {
-							{ target = ".*/tst/**/%1/%2" },
-							{ target = ".*/tst/**/%1/Test_%2" },
-						},
-					},
-					{
-						pattern = ".*/tst/.*/(.*)/(.*)",
-						target = ".*/src/%1/%2",
-					},
-					{
-						pattern = ".*/tst/.*/(.*)/Test_(.*)",
-						target = ".*/src/%1/%2",
-					},
-				},
-
-				style = {
-					border = "rounded",
-					seperator = "|",
-					newFileIndicator = "(* new *)",
-					width = 0.7,
-					minHeight = 2,
-				},
-			})
-		end,
-	},
-	--tabout
-	{
-		"kawre/neotab.nvim",
-		event = "InsertEnter",
-		opts = {},
-	},
 	--more text objects
 	{
 		"chrisgrieser/nvim-various-textobjs",
@@ -70,5 +30,31 @@ return {
 				},
 			},
 		},
+	},
+	{
+		"s1n7ax/nvim-window-picker",
+		name = "window-picker",
+		event = "VeryLazy",
+		version = "2.*",
+		config = function()
+			require("window-picker").setup({
+				show_prompt = false,
+				hint = "floating-big-letter",
+				filter_rules = {
+					autoselect_one = false,
+					include_current_win = false,
+					bo = {
+						filetype = {
+							"noice",
+						},
+						buftype = {
+							"nofile",
+							"nowrite",
+						},
+					},
+				},
+				selection_chars = "scntk,aeih",
+			})
+		end,
 	},
 }

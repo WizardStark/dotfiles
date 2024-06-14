@@ -111,11 +111,11 @@ function M.switch_session(target_session, target_workspace)
 
 	-- Stop lsp for current session, excluding jdtls
 	-- require("garbage-day.utils").stop_lsp()
-	local toggled_types = require("utils").toggle_special_buffers({})
+	local toggled_types = require("user.utils").toggle_special_buffers({})
 
 	persist.write_nvim_session_file(state.get().current_workspace, state.get().current_session)
 	M.set_session_metadata(state.get().current_session, toggled_types)
-	require("utils").close_non_terminal_buffers()
+	require("user.utils").close_non_terminal_buffers()
 
 	-- Switch to new session and workspace
 	if target_workspace ~= state.get().current_workspace then
@@ -138,7 +138,7 @@ function M.switch_session(target_session, target_workspace)
 	local win = vim.api.nvim_get_current_win()
 	local pos = vim.api.nvim_win_get_cursor(win)
 
-	require("utils").toggle_special_buffers(target_session.toggled_types)
+	require("user.utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
 	M.set_session_metadata(target_session, {})
 	toggleterms.toggle_visible_terms(false)

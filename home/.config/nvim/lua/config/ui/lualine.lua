@@ -114,67 +114,54 @@ local function get_term_name()
 	end
 end
 
-return {
-	--lualine
-	{
-		"nvim-lualine/lualine.nvim",
-		lazy = true,
-		dependencies = { "stevearc/aerial.nvim" },
-		config = function()
-			require("lualine").setup({
-				options = {
-					always_divide_middle = false,
-					theme = "catppuccin",
-				},
-				sections = {
-					lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
-					lualine_b = {
-						{ getWords, cond = is_text_file },
-						{ "filename", path = 1, cond = is_not_toggleterm },
-						"aerial",
-					},
-					lualine_c = {
-						{ "b:gitsigns_head", icon = "" },
-						{ "diff", source = diff_source },
-						"diagnostics",
-					},
-					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
-					lualine_y = {
-						{ "progress", cond = is_not_toggleterm },
-						{ "location", cond = is_not_toggleterm },
-						{ require("recorder").recordingStatus, cond = is_not_toggleterm },
-						{ require("recorder").displaySlots, cond = is_not_toggleterm },
-					},
-					lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
-				},
-				inactive_sections = {
-					lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
-					lualine_b = {
-						{ getWords, cond = is_text_file },
-						{ "filename", path = 1, cond = is_not_toggleterm },
-						"aerial",
-					},
-					lualine_c = {
-						{ "b:gitsigns_head", icon = "" },
-						{ "diff", source = diff_source },
-						"diagnostics",
-					},
-					lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
-					lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
-					lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
-				},
-				tabline = {},
-				inactive_tabline = {},
-				winbar = {},
-				inactive_winbar = {},
-				extensions = {
-					"nvim-dap-ui",
-					"mason",
-					"aerial",
-					"lazy",
-					"trouble",
-				},
-			})
-		end,
+require("lualine").setup({
+	options = {
+		always_divide_middle = false,
+		theme = "catppuccin",
 	},
-}
+	sections = {
+		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
+		lualine_b = {
+			{ getWords, cond = is_text_file },
+			{ "filename", path = 1, cond = is_not_toggleterm },
+		},
+		lualine_c = {
+			{ "b:gitsigns_head", icon = "" },
+			{ "diff", source = diff_source },
+			"diagnostics",
+		},
+		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
+		lualine_y = {
+			{ "progress", cond = is_not_toggleterm },
+			{ "location", cond = is_not_toggleterm },
+			{ require("recorder").recordingStatus, cond = is_not_toggleterm },
+			{ require("recorder").displaySlots, cond = is_not_toggleterm },
+		},
+		lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
+	},
+	inactive_sections = {
+		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
+		lualine_b = {
+			{ getWords, cond = is_text_file },
+			{ "filename", path = 1, cond = is_not_toggleterm },
+		},
+		lualine_c = {
+			{ "b:gitsigns_head", icon = "" },
+			{ "diff", source = diff_source },
+			"diagnostics",
+		},
+		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
+		lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
+		lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
+	},
+	tabline = {},
+	inactive_tabline = {},
+	winbar = {},
+	inactive_winbar = {},
+	extensions = {
+		"nvim-dap-ui",
+		"mason",
+		"lazy",
+		"trouble",
+	},
+})

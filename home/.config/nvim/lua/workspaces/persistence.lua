@@ -295,7 +295,7 @@ function M.load_workspaces()
 	end
 
 	M.source_nvim_session_file(state.get().current_workspace, state.get().current_session)
-	require("utils").toggle_special_buffers(state.get().current_session.toggled_types)
+	require("user.utils").toggle_special_buffers(state.get().current_session.toggled_types)
 	bps.apply_breakpoints(session.breakpoints)
 	toggleterms.toggle_visible_terms(false)
 	load_marks()
