@@ -3,6 +3,7 @@ return {
 	{
 		"nvim-treesitter/nvim-treesitter",
 		build = ":TSUpdate",
+		event = "UiEnter",
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter-textobjects",
 			"RRethy/nvim-treesitter-textsubjects",
@@ -151,7 +152,7 @@ return {
 	},
 	{
 		"neovim/nvim-lspconfig",
-		event = { "BufWinEnter", "BufNewFile" },
+		event = "VeryLazy",
 		dependencies = {
 			"williamboman/mason.nvim",
 			"williamboman/mason-lspconfig.nvim",
@@ -164,36 +165,10 @@ return {
 	},
 	{
 		"zeioth/garbage-day.nvim",
-		event = "BufEnter",
+		event = "VeryLazy",
 		opts = {
 			notifications = true,
 		},
-	},
-	{
-		"b0o/schemastore.nvim",
-		lazy = true,
-		ft = { "yaml", "json" },
-	},
-	{
-		"someone-stole-my-name/yaml-companion.nvim",
-		lazy = true,
-		ft = { "yaml", "json" },
-		dependencies = {
-			"neovim/nvim-lspconfig",
-			"nvim-lua/plenary.nvim",
-			"nvim-telescope/telescope.nvim",
-		},
-		config = function()
-			local cfg = require("yaml-companion").setup({})
-			local lspconfig = require("lspconfig")
-			local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
-			lsp_capabilities.textDocument.foldingRange = {
-				dynamicRegistration = false,
-				lineFoldingOnly = true,
-			}
-			cfg.capabilities = lsp_capabilities
-			lspconfig.yamlls.setup(cfg)
-		end,
 	},
 	{
 		"scalameta/nvim-metals",
@@ -226,8 +201,8 @@ return {
 	},
 	{
 		"mfussenegger/nvim-lint",
-		event = { "BufWritePre" },
-		init = function()
+		event = "VeryLazy",
+		config = function()
 			require("lint").linters_by_ft = {
 				javascript = { "eslint" },
 				javascriptreact = { "eslint" },

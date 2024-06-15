@@ -1,5 +1,28 @@
 return {
 	setup = function()
+		local catppuccin_opts = {
+			integrations = {
+				flash = true,
+				gitsigns = true,
+				mason = true,
+				neotest = true,
+				noice = true,
+				cmp = true,
+				dap = true,
+				dap_ui = true,
+				diffview = true,
+				notify = true,
+				treesitter = true,
+				ufo = true,
+				overseer = true,
+				lsp_trouble = true,
+			},
+		}
+
+		catppuccin_opts = vim.tbl_deep_extend("force", catppuccin_opts, vim.g.catppuccin_opts or {})
+		require("catppuccin").setup(catppuccin_opts)
+		vim.cmd("colorscheme " .. vim.g.colorscheme)
+
 		if not vim.g.workspaces_loaded then
 			if next(vim.fn.argv()) == nil then
 				vim.g.workspaces_loaded = true

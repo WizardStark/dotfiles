@@ -767,6 +767,15 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<A-r>",
+		function()
+			require("smart-splits").start_resize_mode()
+		end,
+		prefix = P.window,
+		description = "Enter resize mode",
+	},
+	{
+		mode = "n",
 		"<A-h>",
 		function()
 			require("smart-splits").resize_left()
@@ -1865,6 +1874,36 @@ local mappings = {
 			require("quarto.runner").run_all(true)
 		end,
 		description = "run all cells of all languages",
+	},
+	{
+		mode = "n",
+		"<leader>bp",
+		function()
+			require("dropbar.api").pick()
+		end,
+		prefix = P.nav,
+		description = "Enter breadcrumb selection",
+	},
+	{
+		mode = "n",
+		"<leader>w",
+		function()
+			local win = require("window-picker").pick_window()
+			if win then
+				vim.api.nvim_set_current_win(win)
+			end
+		end,
+		prefix = P.move,
+		description = "Enter window selection",
+	},
+	{
+		mode = "n",
+		"<leader>ll",
+		function()
+			require("lazy").home()
+		end,
+		prefix = P.misc,
+		description = "Open plugin manager",
 	},
 }
 

@@ -17,7 +17,6 @@ return {
 	-- surround
 	{
 		"kylechui/nvim-surround",
-		version = "*",
 		event = "VeryLazy",
 		config = true,
 	},
@@ -47,7 +46,7 @@ return {
 	},
 	{
 		"chrishrb/gx.nvim",
-		cmd = { "Browse" },
+		cmd = "Browse",
 		dependencies = { "nvim-lua/plenary.nvim" },
 		init = function()
 			vim.g.netrw_nogx = 1
@@ -78,8 +77,7 @@ return {
 	{
 		"mrjones2014/legendary.nvim",
 		priority = 10000,
-		lazy = false,
-		dependencies = { "stevearc/dressing.nvim" },
+		event = "UiEnter",
 		config = function()
 			require("legendary").setup({
 				select_prompt = " Command palette",
@@ -141,6 +139,7 @@ return {
 	},
 	{
 		"gbprod/yanky.nvim",
+		event = "VeryLazy",
 		opts = {
 			highlight = {
 				timer = 350,

@@ -2,6 +2,8 @@ return {
 	{
 		"catppuccin/nvim",
 		name = "catppuccin",
+		priority = true,
+		lazy = true,
 		config = true,
 	},
 	{
@@ -13,15 +15,18 @@ return {
 	},
 	{
 		"Bekaboo/dropbar.nvim",
+		event = "UiEnter",
 		dependencies = {
 			"nvim-telescope/telescope-fzf-native.nvim",
 		},
+		config = function()
+			require("config.ui.dropbar")
+		end,
 	},
-	--ufo
 	{
 		"rcarriga/nvim-notify",
-		event = "VeryLazy",
 		config = true,
+		event = "UiEnter",
 	},
 	{
 		"smjonas/inc-rename.nvim",
@@ -43,29 +48,10 @@ return {
 	{
 		"stevearc/dressing.nvim",
 		event = "UiEnter",
-		opts = {
-			select = {
-				get_config = function(opts)
-					if opts.kind == "legendary.nvim" then
-						return {
-							backend = "telescope",
-							telescope = require("telescope.themes").get_ivy({}),
-						}
-					end
-				end,
-			},
-			input = {
-				get_config = function(opts)
-					if opts.kind == "tabline" then
-						return {
-							relative = "win",
-						}
-					end
-				end,
-			},
-		},
+		config = function()
+			require("config.ui.dressing")
+		end,
 	},
-	--markdown "rendering"
 	{
 		"MeanderingProgrammer/markdown.nvim",
 		ft = "markdown",
@@ -74,27 +60,20 @@ return {
 			require("render-markdown").setup({})
 		end,
 	},
-	--lsp diagnostics
 	{
 		"folke/trouble.nvim",
 		lazy = true,
 		dependencies = { "nvim-tree/nvim-web-devicons" },
-		opts = {
-			modes = {
-				diagnostics_buffer = {
-					mode = "diagnostics", -- inherit from diagnostics mode
-					filter = { buf = 0 }, -- filter diagnostics to the current buffer
-				},
-			},
-		},
+		config = function()
+			require("config.ui.trouble")
+		end,
 	},
-	--todo highlighting
 	{
 		"folke/todo-comments.nvim",
+		event = "UiEnter",
 		dependencies = { "nvim-lua/plenary.nvim" },
-		opts = {},
+		config = true,
 	},
-	--reactive ui lib
 	{
 		"grapp-dev/nui-components.nvim",
 		dependencies = {
@@ -105,18 +84,7 @@ return {
 	{
 		"kwkarlwang/bufresize.nvim",
 		config = function()
-			require("bufresize").setup({
-				register = {
-					trigger_events = { "BufWinEnter", "WinEnter" },
-					keys = {},
-				},
-				resize = {
-					trigger_events = {
-						"VimResized",
-					},
-					increment = 1,
-				},
-			})
+			require("config.ui.bufresize")
 		end,
 	},
 }

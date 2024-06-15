@@ -99,6 +99,9 @@ require("lazy").setup({
 	ui = {
 		border = "rounded",
 	},
+	diff = {
+		cmd = "diffview.nvim",
+	},
 	-- profiling = {
 	-- 	loader = true,
 	-- 	require = true,
