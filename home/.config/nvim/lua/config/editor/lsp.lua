@@ -194,21 +194,4 @@ mason_lspconfig.setup_handlers({
 			},
 		})
 	end,
-	["jsonls"] = function()
-		lspconfig.jsonls.setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
-			capabilities = lsp_capabilities,
-			handlers = handlers,
-			settings = {
-				json = {
-					schemas = require("schemastore").json.schemas(),
-					validate = { enable = true },
-				},
-			},
-		})
-	end,
 })
