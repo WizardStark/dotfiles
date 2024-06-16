@@ -1,4 +1,3 @@
--- disable netrw at the very start of your init.lua
 vim.loader.enable()
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
@@ -17,6 +16,7 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+-- lazy load shada
 local shada = vim.o.shada
 vim.o.shada = ""
 vim.api.nvim_create_autocmd("User", {
@@ -27,12 +27,10 @@ vim.api.nvim_create_autocmd("User", {
 	end,
 })
 
+-- setup local entrypoint
 local configpath = vim.fn.stdpath("config") --[[@as string]]
 vim.g.lclpath = configpath .. "/lua/lcl"
 vim.g.lclfilepath = vim.g.lclpath .. "/options.lua"
-vim.g.backdrop_buf = nil
-vim.g.backdrop_win = nil
-vim.g.colorscheme = "catppuccin-mocha"
 
 if not vim.loop.fs_stat(vim.g.lclpath) then
 	vim.fn.system(
@@ -43,6 +41,26 @@ if not vim.loop.fs_stat(vim.g.lclpath) then
 			.. " && echo M={} return M >> "
 			.. vim.g.lclfilepath
 	)
+end
+
+vim.g.backdrop_buf = nil
+vim.g.backdrop_win = nil
+vim.g.colorscheme = "catppuccin-mocha"
+
+-- setup clipboard for wsl
+if vim.fn.has("wsl") == 1 then
+	vim.g.clipboard = {
+		name = "WslClipboard",
+		copy = {
+			["+"] = "clip.exe",
+			["*"] = "clip.exe",
+		},
+		paste = {
+			["+"] = 'powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+			["*"] = 'powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+		},
+		cache_enabled = 0,
+	}
 end
 
 require("lazy").setup({
@@ -94,7 +112,7 @@ require("lazy").setup({
 	},
 }, {
 	install = {
-		colorscheme = { "habamax" },
+		colorscheme = { "catppuccin-mocha", "habamax" },
 	},
 	ui = {
 		border = "rounded",

@@ -1,9 +1,7 @@
 ## WizardStark's dotfiles
 
 This is a collection of configuration files for the tools that I like to use
-during software development: NeoVim, Tmux, Alacritty and my GMMK Pro.
-
-Very WIP, always as I am constantly tinkering.
+during software development: NeoVim, Tmux (not so much anymore due to Neovide and my homegrown session management), Alacritty.
 
 ## Dotfile management
 
@@ -38,36 +36,7 @@ cd -
 
 ## Notes for tweaking
 
-The most extensive configuration is for NeoVim. The config layout:
-
-```
-├── init.lua
-├── lazy-lock.json
-└── lua
-    ├── config
-    │   ├── autocmd.lua         //events that should happen automatically
-    │   ├── commands.lua
-    │   ├── functions.lua
-    │   ├── keymaps.lua
-    │   └── options.lua         //core editor functionality
-    ├── plugins
-    │   ├── coding.lua          //git, autocompletion and formatting plugins
-    │   ├── colourschemes.lua
-    │   ├── dap.lua             //debugging plugins
-    │   ├── files.lua           //file traversal/manipulation plugins
-    │   ├── java.lua
-    │   ├── jupyter.lua         //plugins for running jupyter notebooks
-    │   ├── lsp.lua             //intellisense
-    │   ├── lualine.lua         //nvim statusline configuration
-    │   ├── motion.lua          //plugins for in-buffer movement
-    │   ├── neotest.lua         //plugins for test running
-    │   ├── ui.lua
-    │   └── util.lua
-    ├── utils.lua               //commonly used lua functions
-    └── workspaces              //custom session management/multiplexing solution
-```
-
-The best sources to consult for understanding the above:
+The best sources to consult for understanding the nvim config:
 
 - [Lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
 - [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette

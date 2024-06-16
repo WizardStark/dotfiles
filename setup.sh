@@ -1,52 +1,15 @@
 #!/bin/bash
 
-if [[ "$(command -v brew)" != "" || "$OSTYPE" == "darwin"* ]]; then
-  if [[ $(command -v brew) == "" ]]; then
-    echo "Installing Hombrew"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    brew update
-  else
-    echo "Updating Homebrew"
-    brew update
-  fi
-
-  brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
-
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-
-  sudo apt update && sudo apt upgrade -y
-  sudo apt-get -y install ninja-build gettext cmake unzip curl wget nodejs npm tmux fd-find ripgrep jq stow
-
-  (
-    wget "https://github.com/sharkdp/bat/releases/download/v0.24.0/bat-musl_0.24.0_amd64.deb"
-    sudo dpkg -i bat-musl_0.24.0_amd64.deb
-    rm bat-musl_0.24.0_amd64.deb
-  )
-
-  (
-    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
-  )
-  (
-    sudo mkdir -p /etc/apt/keyrings
-    wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list
-    sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
-    sudo apt update
-    sudo apt install -y eza
-  )
-
-  (
-    wget "https://github.com/sharkdp/vivid/releases/download/v0.9.0/vivid-musl_0.9.0_amd64.deb"
-    sudo dpkg -i vivid-musl_0.9.0_amd64.deb
-    rm vivid-musl_0.9.0_amd64.deb
-  )
-
-  (
-    wget "https://github.com/dandavison/delta/releases/download/0.17.0/git-delta-musl_0.17.0_amd64.deb"
-    sudo dpkg -i git-delta-musl_0.17.0_amd64.deb
-    rm git-delta-musl_0.17.0_amd64.deb
-  )
+if [[ $(command -v brew) == "" ]]; then
+  echo "Installing Hombrew"
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  brew update
+else
+  echo "Updating Homebrew"
+  brew update
 fi
+
+brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
 
 mkdir -p ~/.config
 
