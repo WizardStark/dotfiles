@@ -197,15 +197,16 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
-		"VimLeavePre",
+		"VimLeave",
 		function()
 			if vim.g.workspaces_loaded then
 				local state = require("workspaces.state")
 				local persist = require("workspaces.persistence")
+				local workspaces = require("workspaces.workspaces")
 				local current_session = state.get().current_session
 				persist.write_nvim_session_file(state.get().current_workspace, current_session)
 				local toggled_types = require("user.utils").toggle_special_buffers({})
-				M.set_session_metadata(current_session, toggled_types)
+				workspaces.set_session_metadata(current_session, toggled_types)
 				persist.persist_workspaces()
 			end
 		end,

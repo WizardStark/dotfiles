@@ -19,7 +19,6 @@ local function save_and_exit()
 			vim.cmd("bd! " .. tostring(bufnr))
 		end
 	end
-
 	vim.cmd.xa()
 end
 
