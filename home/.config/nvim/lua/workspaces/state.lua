@@ -48,7 +48,7 @@ M.default_workspace = {
 	sessions = {
 		{
 			name = "nvim",
-			dir = "~/dotfiles/home/.config/nvim",
+			dir = vim.fn.stdpath("config") --[[@as string]],
 			toggled_types = {},
 			breakpoints = {},
 			toggleterms = {},
