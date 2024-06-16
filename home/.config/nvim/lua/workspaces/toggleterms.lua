@@ -58,19 +58,20 @@ end
 ---@param size number | nil
 ---@param term_pos string | nil
 function M.toggle_term(local_id, direction, size, term_pos)
+	local default_direction = "vertical"
+	local default_size
+	local default_pos
+
+	if direction and direction == "horizontal" then
+		default_size = vim.fn.min({ 20, vim.fn.round(vim.api.nvim_win_get_height(0) * 0.3) })
+		default_pos = "bottom"
+	else
+		default_size = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
+		default_pos = "left"
+	end
+
 	if vim.g.workspaces_loaded then
 		local toggleterms = state.get().current_session.toggleterms
-		local default_direction = "vertical"
-		local default_size
-		local default_pos
-
-		if direction and direction == "horizontal" then
-			default_size = vim.fn.min({ 20, vim.fn.round(vim.api.nvim_win_get_height(0) * 0.3) })
-			default_pos = "bottom"
-		else
-			default_size = vim.fn.min({ 120, vim.fn.round(vim.api.nvim_win_get_width(0) * 0.4) })
-			default_pos = "left"
-		end
 
 		local target_term = find_term(toggleterms, local_id)
 
@@ -105,7 +106,11 @@ function M.toggle_term(local_id, direction, size, term_pos)
 
 		state.get().current_session.toggleterms = toggleterms
 	else
-		vim.cmd(":" .. local_id .. "ToggleTerm direction=" .. direction .. " size=" .. size)
+		vim.cmd(
+			":" .. local_id .. "ToggleTerm direction=" .. direction
+				or default_direction .. " size=" .. size
+				or default_size
+		)
 	end
 end
 
