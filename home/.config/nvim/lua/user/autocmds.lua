@@ -3,6 +3,16 @@ local P = require("user.utils").PREFIXES
 local mappings = {
 	{
 		"BufEnter",
+		function()
+			if vim.g.workspaces_loaded then
+				require("workspaces.marks").clear_marks()
+				require("workspaces.marks").display_marks()
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
+		"BufEnter",
 		opts = {
 			pattern = { "*.zsh-theme", "*.zshrc", "*.zshenv", "*.zprofile" },
 		},
