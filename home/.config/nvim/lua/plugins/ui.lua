@@ -87,4 +87,16 @@ return {
 			require("config.ui.bufresize")
 		end,
 	},
+	{
+		"folke/edgy.nvim",
+		event = "VeryLazy",
+		opts = {},
+	},
+	{
+		"b0o/incline.nvim",
+		event = "VeryLazy",
+		config = function()
+			require("config.ui.incline")
+		end,
+	},
 }

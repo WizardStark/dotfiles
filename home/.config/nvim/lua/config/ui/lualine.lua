@@ -57,17 +57,6 @@ local function is_toggleterm()
 	return vim.bo.filetype == "toggleterm"
 end
 
-local function diff_source()
-	local gitsigns = vim.b.gitsigns_status_dict
-	if gitsigns then
-		return {
-			added = gitsigns.added,
-			modified = gitsigns.changed,
-			removed = gitsigns.removed,
-		}
-	end
-end
-
 local function getWords()
 	local wc = vim.fn.wordcount()
 	if wc["visual_words"] then -- text is selected in visual mode
@@ -123,11 +112,9 @@ require("lualine").setup({
 		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 		lualine_b = {
 			{ getWords, cond = is_text_file },
-			{ "filename", path = 1, cond = is_not_toggleterm },
 		},
 		lualine_c = {
 			{ "b:gitsigns_head", icon = "" },
-			{ "diff", source = diff_source },
 			"diagnostics",
 		},
 		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
@@ -143,11 +130,9 @@ require("lualine").setup({
 		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 		lualine_b = {
 			{ getWords, cond = is_text_file },
-			{ "filename", path = 1, cond = is_not_toggleterm },
 		},
 		lualine_c = {
 			{ "b:gitsigns_head", icon = "" },
-			{ "diff", source = diff_source },
 			"diagnostics",
 		},
 		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
