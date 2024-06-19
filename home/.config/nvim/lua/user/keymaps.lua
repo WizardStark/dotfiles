@@ -1802,7 +1802,7 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>os",
+		"<leader>mo",
 		":noautocmd MoltenEnterOutput<CR>",
 		description = "open output window",
 	},
@@ -1818,7 +1818,7 @@ local mappings = {
 		":<C-u>MoltenEvaluateVisual<CR>gv",
 		description = "execute visual selection",
 	},
-	{ mode = "n", "<leader>oh", ":MoltenHideOutput<CR>", description = "close output window" },
+	{ mode = "n", "<leader>mc", ":MoltenHideOutput<CR>", description = "close output window" },
 	{ mode = "n", "<leader>md", ":MoltenDelete<CR>", description = "delete Molten cell" },
 	{
 		mode = "n",
