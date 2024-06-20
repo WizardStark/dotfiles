@@ -81,7 +81,7 @@ require("lazy").setup({
 		name = "user.ui",
 		main = "user.ui",
 		dir = configpath,
-		event = "VeryLazy",
+		event = "UiEnter",
 		config = true,
 	},
 	{
