@@ -30,16 +30,27 @@ vim.api.nvim_create_autocmd("User", {
 -- setup local entrypoint
 local configpath = vim.fn.stdpath("config") --[[@as string]]
 vim.g.lclpath = configpath .. "/lua/lcl"
-vim.g.lclfilepath = vim.g.lclpath .. "/options.lua"
 
 if not vim.loop.fs_stat(vim.g.lclpath) then
 	vim.fn.system(
 		"mkdir -p "
 			.. vim.g.lclpath
 			.. " && touch "
-			.. vim.g.lclfilepath
+			.. (vim.g.lclpath .. "/options.lua")
 			.. " && echo M={} return M >> "
-			.. vim.g.lclfilepath
+			.. (vim.g.lclpath .. "/options.lua")
+	)
+end
+
+if not vim.loop.fs_stat(vim.g.lclpath .. "/plugins") then
+	vim.notify("in the plugin creation thing")
+	vim.fn.system(
+		"mkdir -p "
+			.. (vim.g.lclpath .. "/plugins")
+			.. " && touch "
+			.. (vim.g.lclpath .. "/plugins/plugins.lua")
+			.. " && echo return {} >> "
+			.. (vim.g.lclpath .. "/plugins/plugins.lua")
 	)
 end
 
@@ -94,6 +105,7 @@ require("lazy").setup({
 		event = "VeryLazy",
 		config = true,
 	},
+	{ import = "lcl.plugins", event = "VeryLazy" },
 }, {
 	install = {
 		colorscheme = { "catppuccin-mocha", "habamax" },

@@ -3,7 +3,7 @@ local P = require("user.utils").PREFIXES
 local mappings = {
 	{
 		function()
-			vim.cmd.e(vim.g.lclfilepath)
+			vim.cmd.e(vim.g.lclpath .. "/options.lua")
 		end,
 		prefix = P.misc,
 		description = "Edit local config",

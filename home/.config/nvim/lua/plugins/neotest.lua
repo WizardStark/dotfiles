@@ -10,6 +10,7 @@ return {
 			"rcasia/neotest-java",
 			"nvim-neotest/neotest-vim-test",
 			"nvim-neotest/nvim-nio",
+			"weilbith/neotest-gradle",
 		},
 		config = function()
 			require("config.neotest")

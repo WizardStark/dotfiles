@@ -15,5 +15,6 @@ require("neotest").setup({
 		require("neotest-vim-test")({
 			ignore_file_types = { "python", "vim", "lua", "go", "java" },
 		}),
+		require("neotest-gradle"),
 	},
 })
