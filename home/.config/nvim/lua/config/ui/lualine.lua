@@ -112,11 +112,10 @@ require("lualine").setup({
 		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 		lualine_b = {
 			{ getWords, cond = is_text_file },
-		},
-		lualine_c = {
 			{ "b:gitsigns_head", icon = "" },
 			"diagnostics",
 		},
+		lualine_c = {},
 		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 		lualine_y = {
 			{ "progress", cond = is_not_toggleterm },
@@ -126,23 +125,6 @@ require("lualine").setup({
 		},
 		lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 	},
-	inactive_sections = {
-		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
-		lualine_b = {
-			{ getWords, cond = is_text_file },
-		},
-		lualine_c = {
-			{ "b:gitsigns_head", icon = "" },
-			"diagnostics",
-		},
-		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
-		lualine_y = { { "progress", cond = is_not_toggleterm }, { "location", cond = is_not_toggleterm } },
-		lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
-	},
-	tabline = {},
-	inactive_tabline = {},
-	winbar = {},
-	inactive_winbar = {},
 	extensions = {
 		"nvim-dap-ui",
 		"mason",
