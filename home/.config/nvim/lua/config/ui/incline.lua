@@ -4,7 +4,6 @@ local edgy_filetypes = {
 	"noice",
 	"trouble",
 	"OverseerList",
-	"Outline",
 }
 
 local edgy_titles = {
@@ -13,7 +12,6 @@ local edgy_titles = {
 	noice = "noice",
 	trouble = "trouble",
 	OverseerList = "overseer",
-	Outline = "outline",
 }
 local function is_edgy_group(props)
 	return vim.tbl_contains(edgy_filetypes, vim.bo[props.buf].filetype)
