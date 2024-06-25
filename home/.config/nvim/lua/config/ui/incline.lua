@@ -35,7 +35,12 @@ require("incline").setup({
 		if is_edgy_group(props) then
 			return get_title(props)
 		else
+			local unhelpfuls = { "init.lua", "index.tsx", "index.ts", "index.js", "index.jsx", "__init__.py" }
 			local filename = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(props.buf), ":t")
+			if require("user.utils").contains(filename, unhelpfuls) then
+				local full_path = vim.api.nvim_buf_get_name(props.buf)
+				filename = vim.fn.fnamemodify(full_path, ":h:t") .. "/" .. vim.fn.fnamemodify(full_path, ":t")
+			end
 			local ft_icon, ft_color = require("nvim-web-devicons").get_icon_color(filename)
 			local modified = vim.bo[props.buf].modified and "bold,italic" or "bold"
 

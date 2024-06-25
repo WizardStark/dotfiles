@@ -67,6 +67,18 @@ function M.get_visual_selection_lines()
 	return { vim.fn.getpos("'<")[2], vim.fn.getpos("'>")[2] }
 end
 
+---@param element any
+---@param table any
+---@return boolean
+function M.contains(element, table)
+	for _, value in pairs(table) do
+		if value == element then
+			return true
+		end
+	end
+	return false
+end
+
 ---Applies prefix to given description
 ---@param prefix Prefix | nil
 ---@param description string | nil
