@@ -89,21 +89,18 @@ return {
 			},
 			"jay-babu/mason-nvim-dap.nvim",
 			"nvim-telescope/telescope-dap.nvim",
-			{
-				"leoluz/nvim-dap-go",
-				dependencies = {
-					"mfussenegger/nvim-dap",
-					"rcarriga/nvim-dap-ui",
-				},
-			},
-			{
-				"mfussenegger/nvim-dap-python",
-				lazy = true,
-			},
 		},
 		config = function()
 			require("config.editor.dap")
 		end,
+	},
+	{
+		"leoluz/nvim-dap-go",
+		lazy = true,
+	},
+	{
+		"mfussenegger/nvim-dap-python",
+		lazy = true,
 	},
 	{
 		"jbyuki/one-small-step-for-vimkind",
