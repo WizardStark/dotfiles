@@ -71,39 +71,44 @@ require("lazy").setup({
 	},
 	{
 		name = "user.options",
-		main = "user.options",
-		dir = configpath,
+		dir = configpath .. "options.lua",
 		priority = 100000,
 		event = "VimEnter",
-		config = true,
+		config = function()
+			require("user.options").setup()
+		end,
 	},
 	{
 		name = "user.ui",
-		main = "user.ui",
-		dir = configpath,
+		dir = configpath .. "ui.lua",
 		event = "UiEnter",
-		config = true,
+		config = function()
+			require("user.ui").setup()
+		end,
 	},
 	{
 		name = "user.autocmds",
-		main = "user.autocmds",
-		dir = configpath,
+		dir = configpath .. "autocmds.lua",
 		event = "VeryLazy",
-		config = true,
+		config = function()
+			require("user.autocmds").setup()
+		end,
 	},
 	{
 		name = "user.keymaps",
-		main = "user.keymaps",
-		dir = configpath,
+		dir = configpath .. "keymaps.lua",
 		event = "VeryLazy",
-		config = true,
+		config = function()
+			require("user.keymaps").setup()
+		end,
 	},
 	{
 		name = "user.functions",
-		main = "user.functions",
-		dir = configpath,
+		dir = configpath .. "functions.lua",
 		event = "VeryLazy",
-		config = true,
+		config = function()
+			require("user.functions").setup()
+		end,
 	},
 	{ import = "lcl.plugins", event = "VeryLazy" },
 }, {

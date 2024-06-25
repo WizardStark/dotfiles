@@ -80,6 +80,7 @@ return {
 		lazy = true,
 		dependencies = {
 			"theHamsta/nvim-dap-virtual-text",
+			"neovim/nvim-lspconfig",
 			{
 				"rcarriga/nvim-dap-ui",
 				dependencies = {
@@ -132,6 +133,7 @@ return {
 		"mfussenegger/nvim-jdtls",
 		dependencies = {
 			"mfussenegger/nvim-dap",
+			"neovim/nvim-lspconfig",
 		},
 		ft = "java",
 		config = function()
