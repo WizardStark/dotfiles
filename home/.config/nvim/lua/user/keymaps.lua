@@ -1913,6 +1913,60 @@ local mappings = {
 		prefix = P.debug,
 		description = "Launch lua debugger server on this nvim instance",
 	},
+	{
+		mode = "n",
+		"<leader>nr",
+		function()
+			require("neotest").run.run(vim.fn.expand("%"))
+		end,
+		prefix = P.test,
+		description = "Run all tests in file",
+	},
+	{
+		mode = "n",
+		"<leader>nt",
+		function()
+			require("neotest").run.run()
+		end,
+		prefix = P.test,
+		description = "Run nearest test",
+	},
+	{
+		mode = "n",
+		"<leader>no",
+		function()
+			require("neotest").output.open()
+		end,
+		prefix = P.test,
+		description = "Show test output",
+	},
+	{
+		mode = "n",
+		"<leader>np",
+		function()
+			require("neotest").output_panel.toggle()
+		end,
+		prefix = P.test,
+		description = "Toggle aggregated output window",
+	},
+	{
+		mode = "n",
+		"<leader>nc",
+		function()
+			require("neotest").output_panel.clear()
+		end,
+		prefix = P.test,
+		description = "Clear aggregated output window",
+	},
+	{
+		mode = "n",
+		"<leader>ns",
+		function()
+			require("neotest").summary.toggle()
+		end,
+		prefix = P.test,
+		description = "Toggle summary tree",
+	},
 }
 
 return {

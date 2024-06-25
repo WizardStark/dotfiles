@@ -17,6 +17,7 @@ M.PREFIXES = {
 	notes = "Notes",
 	task = "Tasks",
 	term = "Terminal",
+	test = "Test",
 	text = "Text object",
 	nogroup = "Ungrouped",
 	window = "Window",
