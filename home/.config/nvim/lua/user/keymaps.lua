@@ -1904,6 +1904,15 @@ local mappings = {
 		prefix = P.misc,
 		description = "Open plugin manager",
 	},
+	{
+		mode = "n",
+		"<leader>ld",
+		function()
+			require("osv").launch({ port = 8086 })
+		end,
+		prefix = P.debug,
+		description = "Launch lua debugger server on this nvim instance",
+	},
 }
 
 return {
