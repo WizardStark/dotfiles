@@ -198,7 +198,7 @@ return {
 	{
 		"nvim-telescope/telescope.nvim",
 		lazy = true,
-		cmd = { "Telescope" },
+		cmd = { "Telescope", "Easypick" },
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"junegunn/fzf.vim",

@@ -65,5 +65,11 @@ vim.api.nvim_create_autocmd("Filetype", {
 		if vim.g.extra_lsp_actions ~= nil then
 			vim.g.extra_lsp_actions()
 		end
+		-- local timer = 2500
+		-- for i = 0, 12, 1 do
+		--   vim.defer_fn(function() test = require('jdtls.dap').setup_dap_main_class_configs()
+		--     end, timer)
+		--   timer = timer + 2500
+		-- end
 	end,
 })
