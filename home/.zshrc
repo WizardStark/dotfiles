@@ -32,8 +32,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
       compinit
     done
     compinit -C
-    autoload -U +X bashcompinit && bashcompinit
-    complete -o nospace -C /usr/local/bin/mc mc
 
     zinit cdreplay -q
 
