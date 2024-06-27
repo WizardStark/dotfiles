@@ -32,6 +32,8 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
       compinit
     done
     compinit -C
+    autoload -U +X bashcompinit && bashcompinit
+    complete -o nospace -C /usr/local/bin/mc mc
 
     zinit cdreplay -q
 
@@ -44,10 +46,11 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     bindkey '^[w' kill-region
 
     # History
-    HISTSIZE=50000
+    HISTSIZE=500000
     HISTFILE=~/.zsh_history
     SAVEHIST=$HISTSIZE
     HISTDUP=erase
+    setopt bang_hist
     setopt appendhistory
     setopt sharehistory
     setopt hist_ignore_space
