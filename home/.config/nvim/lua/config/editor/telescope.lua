@@ -1,8 +1,28 @@
+local focus_preview = function(prompt_bufnr)
+	local action_state = require("telescope.actions.state")
+	local actions = require("telescope.actions")
+	local picker = action_state.get_current_picker(prompt_bufnr)
+	local prompt_win = picker.prompt_win
+	local previewer = picker.previewer
+	local bufnr = previewer.state.bufnr or previewer.state.termopen_bufnr
+	local winid = previewer.state.winid or vim.fn.bufwinid(bufnr)
+	vim.keymap.set("n", "<Tab>", function()
+		vim.cmd(string.format("noautocmd lua vim.api.nvim_set_current_win(%s)", prompt_win))
+	end, { buffer = bufnr })
+	vim.keymap.set("n", "<esc>", function()
+		actions.close(prompt_bufnr)
+	end, { buffer = bufnr })
+	vim.cmd(string.format("noautocmd lua vim.api.nvim_set_current_win(%s)", winid))
+end
+
 require("telescope").setup({
 	defaults = {
 		mappings = {
 			i = { ["<C-t>"] = require("trouble.sources.telescope").open },
-			n = { ["<C-t>"] = require("trouble.sources.telescope").open },
+			n = {
+				["<C-t>"] = require("trouble.sources.telescope").open,
+				["<Tab>"] = focus_preview,
+			},
 		},
 		layout_strategy = "horizontal",
 		layout_config = {
