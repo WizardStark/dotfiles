@@ -658,6 +658,8 @@ local mappings = {
 							"delta.side-by-side=false",
 							"diff",
 							entry.value .. "^!",
+							"--",
+							entry.current_file,
 						}
 					end,
 				}),

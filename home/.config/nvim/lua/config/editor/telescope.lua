@@ -51,6 +51,10 @@ require("telescope").setup({
 				reverse_directories = false,
 			},
 		},
+		set_env = {
+			LESS = "",
+			DELTA_PAGER = "less",
+		},
 	},
 	extensions = {
 		fzf = {
