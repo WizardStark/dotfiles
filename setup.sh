@@ -50,6 +50,8 @@ mkdir -p ~/.config
 
 git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 
+mv home/.zshrc home/.zshrc_old
+git restore home/.zshrc
 stow -v --adopt -t $HOME home
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
