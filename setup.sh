@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [[ $(command -v sudo) == "" ]]; then
+  apt install -y curl
+else
+  sudo apt install -y curl
+fi
+
 if [[ $(command -v brew) == "" ]]; then
   echo "Installing Hombrew"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -15,7 +21,7 @@ else
   brew update
 fi
 
-brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
+brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta zsh
 
 mkdir -p ~/.config
 
