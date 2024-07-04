@@ -12,8 +12,7 @@ if [[ $(command -v brew) == "" ]]; then
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-  fi
-  if [[ "$(command -v brew)" != "" || "$OSTYPE" == "darwin"* ]]; then
+  elif [[ "$(command -v brew)" != "" || "$OSTYPE" == "darwin"* ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
   brew update
