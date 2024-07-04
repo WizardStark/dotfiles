@@ -8,6 +8,7 @@ fi
 
 if [[ $(command -v brew) == "" ]]; then
   echo "Installing Hombrew"
+  export NONINTERACTIVE=1
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
