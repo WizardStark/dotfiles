@@ -90,3 +90,6 @@ style = "Regular"
 
 [window]
 option_as_alt = "Both"
+
+[selection]
+save_to_clipboard = true

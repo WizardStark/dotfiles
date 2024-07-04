@@ -1093,30 +1093,37 @@ local mappings = {
 	{
 		mode = "n",
 		"<leader>rt",
-		[[:CompilerOpen <CR>]],
+		"<cmd>CompilerOpen<CR>",
 		prefix = P.task,
 		description = "Run task",
 	},
 	{
 		mode = "n",
 		"<leader>ro",
-		[[:CompilerToggleResults <CR>]],
+		"<cmd>CompilerToggleResults<cr>",
 		prefix = P.task,
 		description = "Open task output window",
 	},
 	{
 		mode = "n",
 		"<leader>rr",
-		[[:CompilerRedo <CR>]],
+		"<cmd>CompilerRedo<CR>",
 		prefix = P.task,
 		description = "Rerun last task",
 	},
 	{
 		mode = "n",
 		"<leader>rc",
-		[[:CompilerStop <CR>]],
+		"<cmd>CompilerStop<CR>",
 		prefix = P.task,
 		description = "Stop all tasks",
+	},
+	{
+		mode = "n",
+		"<leader>rl",
+		"<cmd>OverseerRun<CR>",
+		prefix = P.task,
+		description = "List user defined tasks",
 	},
 	{
 		mode = { "n", "v" },
@@ -1796,86 +1803,86 @@ local mappings = {
 		prefix = P.misc,
 		description = "Open yank history",
 	},
-	{
-		mode = "n",
-		"<leader>me",
-		":MoltenEvaluateOperator<CR>",
-		description = "evaluate operator",
-	},
-	{
-		mode = "n",
-		"<leader>mo",
-		":noautocmd MoltenEnterOutput<CR>",
-		description = "open output window",
-	},
-	{
-		mode = "n",
-		"<leader>mr",
-		":MoltenReevaluateCell<CR>",
-		{ desc = "re-eval cell", silent = true },
-	},
-	{
-		mode = "v",
-		"<leader>r",
-		":<C-u>MoltenEvaluateVisual<CR>gv",
-		description = "execute visual selection",
-	},
-	{ mode = "n", "<leader>mc", ":MoltenHideOutput<CR>", description = "close output window" },
-	{ mode = "n", "<leader>md", ":MoltenDelete<CR>", description = "delete Molten cell" },
-	{
-		mode = "n",
-		"<leader>mx",
-		":MoltenOpenInBrowser<CR>",
-		description = "open output in browser",
-	},
-	{
-		mode = "n",
-		"<leader>rc",
-		function()
-			require("quarto.runner").run_cell()
-		end,
-		description = "run cell",
-	},
-	{
-		mode = "n",
-		"<leader>ra",
-		function()
-			require("quarto.runner").run_above()
-		end,
-		description = "run cell and above",
-	},
-	{
-		mode = "n",
-		"<leader>rA",
-		function()
-			require("quarto.runner").run_all()
-		end,
-		description = "run all cells",
-	},
-	{
-		mode = "n",
-		"<leader>rl",
-		function()
-			require("quarto.runner").run_line()
-		end,
-		description = "run line",
-	},
-	{
-		mode = "v",
-		"<leader>rv",
-		function()
-			require("quarto.runner").run_range()
-		end,
-		description = "run visual range",
-	},
-	{
-		mode = "n",
-		"<leader>RA",
-		function()
-			require("quarto.runner").run_all(true)
-		end,
-		description = "run all cells of all languages",
-	},
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>me",
+	-- 	":MoltenEvaluateOperator<CR>",
+	-- 	description = "evaluate operator",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>mo",
+	-- 	":noautocmd MoltenEnterOutput<CR>",
+	-- 	description = "open output window",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>mr",
+	-- 	":MoltenReevaluateCell<CR>",
+	-- 	{ desc = "re-eval cell", silent = true },
+	-- },
+	-- {
+	-- 	mode = "v",
+	-- 	"<leader>r",
+	-- 	":<C-u>MoltenEvaluateVisual<CR>gv",
+	-- 	description = "execute visual selection",
+	-- },
+	-- { mode = "n", "<leader>mc", ":MoltenHideOutput<CR>", description = "close output window" },
+	-- { mode = "n", "<leader>md", ":MoltenDelete<CR>", description = "delete Molten cell" },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>mx",
+	-- 	":MoltenOpenInBrowser<CR>",
+	-- 	description = "open output in browser",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>rc",
+	-- 	function()
+	-- 		require("quarto.runner").run_cell()
+	-- 	end,
+	-- 	description = "run cell",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>ra",
+	-- 	function()
+	-- 		require("quarto.runner").run_above()
+	-- 	end,
+	-- 	description = "run cell and above",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>rA",
+	-- 	function()
+	-- 		require("quarto.runner").run_all()
+	-- 	end,
+	-- 	description = "run all cells",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>rl",
+	-- 	function()
+	-- 		require("quarto.runner").run_line()
+	-- 	end,
+	-- 	description = "run line",
+	-- },
+	-- {
+	-- 	mode = "v",
+	-- 	"<leader>rv",
+	-- 	function()
+	-- 		require("quarto.runner").run_range()
+	-- 	end,
+	-- 	description = "run visual range",
+	-- },
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>RA",
+	-- 	function()
+	-- 		require("quarto.runner").run_all(true)
+	-- 	end,
+	-- 	description = "run all cells of all languages",
+	-- },
 	{
 		mode = "n",
 		"<leader>bp",
