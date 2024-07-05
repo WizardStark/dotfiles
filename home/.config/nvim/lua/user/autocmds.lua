@@ -22,6 +22,15 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
+		"BufWritePost",
+		function()
+			vim.schedule(function()
+				vim.cmd("nohlsearch")
+			end)
+		end,
+		prefix = P.auto,
+	},
+	{
 		"WinClosed",
 		function()
 			if vim.g.backdrop_buf then
