@@ -21,7 +21,7 @@ else
   brew update
 fi
 
-brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta zsh
+brew install zsh gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
 
 mkdir -p ~/.config
 
