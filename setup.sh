@@ -21,7 +21,10 @@ else
   brew update
 fi
 
-brew install zsh gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq stow vivid bat eza zoxide git-delta
+brew install zsh
+# TODO: check install order for a system with no dependencies, as some installs fail
+brew install gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delta
+brew install stow
 
 mkdir -p ~/.config
 
