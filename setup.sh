@@ -1,11 +1,5 @@
 #!/bin/bash
 
-if [[ $(command -v sudo) == "" ]]; then
-  apt install -y curl
-else
-  sudo apt install -y curl
-fi
-
 if [[ $(command -v brew) == "" ]]; then
   echo "Installing Hombrew"
   export NONINTERACTIVE=1
@@ -21,10 +15,15 @@ else
   brew update
 fi
 
-brew install zsh
-# TODO: check install order for a system with no dependencies, as some installs fail
-brew install ninja gettext cmake unzip curl wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delta
-brew install stow
+# install neovim dependencies
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # The dependencies break if on ubuntu and installed with brew, so here we use apt
+    sudo apt-get install ninja-build gettext cmake unzip curl build-essential
+else
+    brew install ninja cmake gettext curl unzip
+fi
+
+brew install zsh wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delta stow
 
 mkdir -p ~/.config
 
