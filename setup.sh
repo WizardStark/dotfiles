@@ -58,5 +58,5 @@ git restore home/.zshrc
 
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
-chsh -s $(which zsh)
+sudo chsh -s $(which zsh)
 zsh -l
