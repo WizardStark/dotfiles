@@ -18,7 +18,7 @@ fi
 # install neovim dependencies
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # The dependencies break if on ubuntu and installed with brew, so here we use apt
-    sudo apt-get install ninja-build gettext cmake unzip curl build-essential
+    sudo apt-get install -y ninja-build gettext cmake unzip curl build-essential
 else
     brew install ninja cmake gettext curl unzip
 fi
