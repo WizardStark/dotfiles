@@ -29,7 +29,7 @@ brew install stow
 mkdir -p ~/.config
 
 (
-  git clone -b v0.10.0 https://github.com/neovim/neovim
+  git clone --depth 1 -b v0.10.0 https://github.com/neovim/neovim
   cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
   sudo make install
   cd ../
