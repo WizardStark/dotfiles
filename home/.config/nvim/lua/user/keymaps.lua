@@ -903,7 +903,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xw",
 		function()
-			require("trouble").toggle("diagnostics")
+			require("trouble").toggle({ focus = true, mode = "diagnostics" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
@@ -912,7 +912,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xd",
 		function()
-			require("trouble").toggle("diagnostics_buffer")
+			require("trouble").toggle({ focus = true, mode = "diagnostics_buffer" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics for current document",
@@ -921,7 +921,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xq",
 		function()
-			require("trouble").toggle("qflist")
+			require("trouble").toggle({ focus = true, mode = "qflist" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window with quickfix list",
@@ -930,16 +930,32 @@ local mappings = {
 		mode = "n",
 		"<leader>xi",
 		function()
-			require("trouble").toggle("lsp_incoming_calls")
+			require("trouble").toggle({ focus = true, mode = "lsp_incoming_calls" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for calls to this symbol",
 	},
 	{
 		mode = "n",
+		"<leader>xs",
+		function()
+			require("trouble").toggle({
+				focus = true,
+				win = {
+					position = "right",
+					size = { width = 0.2 },
+				},
+				mode = "lsp_document_symbols",
+			})
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for all symbols in the current buffer",
+	},
+	{
+		mode = "n",
 		"<leader>xo",
 		function()
-			require("trouble").toggle("lsp_outgoing_calls")
+			require("trouble").toggle({ focus = true, mode = "lsp_outgoing_calls" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for calls by this symbol",
@@ -948,7 +964,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xf",
 		function()
-			require("trouble").toggle("telescope")
+			require("trouble").toggle({ focus = true, mode = "telescope" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for results from telescope",
@@ -957,7 +973,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xl",
 		function()
-			require("trouble").toggle("loclist")
+			require("trouble").toggle({ focus = true, mode = "loclist" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for loclist",
@@ -2002,6 +2018,13 @@ local mappings = {
 		end,
 		prefix = P.test,
 		description = "Toggle summary tree",
+	},
+	{
+		mode = "v",
+		"<leader>cs",
+		"<cmd>CodeSnapASCII<cr>",
+		prefix = P.misc,
+		description = "Copy ASCII code snapshot to clipboard",
 	},
 }
 

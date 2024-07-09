@@ -65,7 +65,7 @@ return {
 	-- 	event = "UiEnter",
 	-- 	dependencies = {
 	-- 		"nvim-treesitter/nvim-treesitter",
-	-- 		"nvim-tree/nvim-web-devicons",
+	-- 		"echasnovski/mini.icons",
 	-- 	},
 	-- 	config = function()
 	-- 		require("config.ui.markview")
@@ -74,9 +74,17 @@ return {
 	{
 		"folke/trouble.nvim",
 		lazy = true,
-		dependencies = { "nvim-tree/nvim-web-devicons" },
+		cmd = "Trouble",
 		config = function()
 			require("config.ui.trouble")
+		end,
+	},
+	{
+		"echasnovski/mini.icons",
+		lazy = true,
+		config = function()
+			require("mini.icons").setup()
+			MiniIcons.mock_nvim_web_devicons()
 		end,
 	},
 	{
@@ -101,13 +109,26 @@ return {
 	{
 		"folke/edgy.nvim",
 		event = "VeryLazy",
-		opts = {},
+		config = function()
+			require("config.ui.edgy")
+		end,
 	},
 	{
 		"b0o/incline.nvim",
 		event = "VeryLazy",
+		dependencies = "echasnovski/mini.icons",
 		config = function()
 			require("config.ui.incline")
+		end,
+	},
+	{
+		"mistricky/codesnap.nvim",
+		build = "make",
+		event = "VeryLazy",
+		cmd = { "CodeSnap", "CodeSnapSave", "CodeSnapASCII" },
+		lazy = true,
+		config = function()
+			require("config.ui.codesnap")
 		end,
 	},
 }

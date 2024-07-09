@@ -213,7 +213,7 @@ return {
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"junegunn/fzf.vim",
-			"nvim-tree/nvim-web-devicons",
+			"echasnovski/mini.icons",
 			"debugloop/telescope-undo.nvim",
 			"rcarriga/nvim-notify",
 			"nvim-telescope/telescope-live-grep-args.nvim",

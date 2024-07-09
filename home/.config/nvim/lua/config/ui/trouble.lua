@@ -1,4 +1,5 @@
 require("trouble").setup({
+	auto_preview = false,
 	modes = {
 		diagnostics_buffer = {
 			mode = "diagnostics", -- inherit from diagnostics mode

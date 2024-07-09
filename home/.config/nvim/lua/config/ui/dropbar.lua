@@ -63,11 +63,6 @@ dropbar.setup({
 			preview = "previous",
 		},
 	},
-	icons = {
-		kinds = {
-			use_devicons = true,
-		},
-	},
 	bar = {
 		padding = {
 			left = 0,
