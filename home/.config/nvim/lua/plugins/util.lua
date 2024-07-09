@@ -45,27 +45,6 @@ return {
 		},
 	},
 	{
-		"chrishrb/gx.nvim",
-		cmd = "Browse",
-		dependencies = { "nvim-lua/plenary.nvim" },
-		init = function()
-			vim.g.netrw_nogx = 1
-		end,
-		config = function()
-			local app
-			if vim.fn.has("mac") then
-				app = "open"
-			elseif vim.fn.has("wsl") then
-				app = "wslview"
-			else
-				app = "xdg-open"
-			end
-			require("gx").setup({
-				open_browser_app = app,
-			})
-		end,
-	},
-	{
 
 		"dhananjaylatkar/notes.nvim",
 		cmd = { "NotesNew", "NotesFind", "NotesGrep" },
