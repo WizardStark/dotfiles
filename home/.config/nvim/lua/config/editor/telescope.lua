@@ -119,12 +119,36 @@ require("easypick").setup({
 		{
 			name = "changed_files",
 			command = "git status -suall| awk '{print $2}'",
-			previewer = require("easypick").previewers.file_diff(),
+			previewer = require("telescope.previewers").new_termopen_previewer({
+				get_command = function(entry)
+					return {
+						"git",
+						"-c",
+						"core.pager=delta",
+						"-c",
+						"delta.side-by-side=false",
+						"diff",
+						entry.value,
+					}
+				end,
+			}),
 		},
 		{
 			name = "conflicts",
 			command = "git diff --name-only --diff-filter=U --relative",
-			previewer = require("easypick").previewers.file_diff(),
+			previewer = require("telescope.previewers").new_termopen_previewer({
+				get_command = function(entry)
+					return {
+						"git",
+						"-c",
+						"core.pager=delta",
+						"-c",
+						"delta.side-by-side=false",
+						"diff",
+						entry.value,
+					}
+				end,
+			}),
 		},
 	},
 })
