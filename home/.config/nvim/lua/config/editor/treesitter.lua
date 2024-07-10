@@ -18,6 +18,9 @@ configs.setup({
 		enable = true,
 		disable = disable,
 	},
+	endwise = {
+		enable = true,
+	},
 	textobjects = {
 		enable = true,
 		disable = disable,
