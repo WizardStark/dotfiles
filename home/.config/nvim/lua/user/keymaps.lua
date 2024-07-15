@@ -196,9 +196,14 @@ local mappings = {
 	{
 		mode = "n",
 		"<esc>",
-		vim.cmd.up,
+		function()
+			vim.cmd.up()
+			if vim.snippet.active() then
+				vim.snippet.stop()
+			end
+		end,
 		prefix = P.misc,
-		description = "Write buffer",
+		description = "Write buffer and stop snippet jumps",
 	},
 	{
 		mode = { "n" },
@@ -541,6 +546,15 @@ local mappings = {
 		end,
 		prefix = P.find,
 		description = "Open history of searches",
+	},
+	{
+		mode = "n",
+		"<leader>f?",
+		function()
+			require("telescope.builtin").help_tags()
+		end,
+		prefix = P.find,
+		description = "Help tags",
 	},
 	{
 		mode = "n",

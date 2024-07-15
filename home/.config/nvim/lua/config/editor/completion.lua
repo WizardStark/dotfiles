@@ -1,14 +1,3 @@
-require("luasnip").setup({
-	load_ft_func = require("luasnip_snippets.common.snip_utils").load_ft_func,
-	ft_func = require("luasnip_snippets.common.snip_utils").ft_func,
-	enable_autosnippets = true,
-	history = true,
-	updateevents = "TextChanged,TextChangedI",
-})
-require("luasnip/loaders/from_vscode").lazy_load()
-require("luasnip_snippets.common.snip_utils").setup()
-
-local luasnip = require("luasnip")
 local lspkind = require("lspkind")
 local cmp = require("cmp")
 local window_scroll_bordered = cmp.config.window.bordered({
@@ -19,8 +8,11 @@ local window_scroll_bordered = cmp.config.window.bordered({
 local function tab(fallback)
 	if cmp.visible() then
 		cmp.select_next_item()
-	elseif luasnip.expand_or_jumpable() then
-		luasnip.expand_or_jump()
+	elseif vim.snippet.active({ direction = 1 }) then
+		vim.schedule(function()
+			vim.snippet.jump(1)
+		end)
+		return
 	else
 		fallback()
 	end
@@ -29,8 +21,11 @@ end
 local function shift_tab(fallback)
 	if cmp.visible() then
 		cmp.select_prev_item()
-	elseif luasnip.jumpable(-1) then
-		luasnip.jump(-1)
+	elseif vim.snippet.active({ direction = -1 }) then
+		vim.schedule(function()
+			vim.snippet.jump(-1)
+		end)
+		return
 	else
 		fallback()
 	end
@@ -53,11 +48,6 @@ local function up(fallback)
 end
 
 cmp.setup({
-	snippet = {
-		expand = function(args)
-			luasnip.lsp_expand(args.body)
-		end,
-	},
 	mapping = {
 		["<Tab>"] = cmp.mapping(tab, { "i", "s" }),
 		["<S-Tab>"] = cmp.mapping(shift_tab, { "i", "s" }),
@@ -86,7 +76,7 @@ cmp.setup({
 			name = "lazydev",
 			group_index = 0, -- set group index to 0 to skip loading LuaLS completions
 		},
-		{ name = "luasnip" },
+		{ name = "snippets" },
 		{ name = "path" },
 		{ name = "calc" },
 		{ name = "nvim_lsp_signature_help" },

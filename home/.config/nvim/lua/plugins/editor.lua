@@ -61,18 +61,6 @@ return {
 		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			"hrsh7th/cmp-nvim-lsp",
-			{
-				"mireq/luasnip-snippets",
-				dependencies = {
-					"L3MON4D3/LuaSnip",
-					lazy = true,
-					build = "make install_jsregexp",
-					dependencies = {
-						"rafamadriz/friendly-snippets",
-						"nvim-treesitter/nvim-treesitter",
-					},
-				},
-			},
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-buffer",
 			"hrsh7th/cmp-calc",
@@ -80,7 +68,15 @@ return {
 			"f3fora/cmp-spell",
 			"onsails/lspkind.nvim",
 			"hrsh7th/cmp-nvim-lsp-signature-help",
-			"saadparwaiz1/cmp_luasnip",
+			{
+				"garymjr/nvim-snippets",
+				dependencies = {
+					"rafamadriz/friendly-snippets",
+				},
+				opts = {
+					friendly_snippets = true,
+				},
+			},
 		},
 		config = function()
 			require("config.editor.completion")
