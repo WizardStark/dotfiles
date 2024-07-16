@@ -2146,7 +2146,7 @@ local mappings = {
 			require("telescope").extensions.refactoring.refactors()
 		end,
 		prefix = P.code,
-		description = "Extract block to file",
+		description = "List available refactors",
 	},
 	{
 		mode = "n",
@@ -2157,14 +2157,14 @@ local mappings = {
 	},
 	{
 		mode = { "x", "n" },
-		"<leader>rv",
+		"<leader>rdv",
 		function()
 			require("refactoring").debug.print_var()
 		end,
 	},
 	{
 		mode = "n",
-		"<leader>rc",
+		"<leader>rdc",
 		function()
 			require("refactoring").debug.cleanup({})
 		end,
