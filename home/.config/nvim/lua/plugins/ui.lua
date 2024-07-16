@@ -60,17 +60,6 @@ return {
 			require("render-markdown").setup({})
 		end,
 	},
-	-- {
-	-- 	"OXY2DEV/markview.nvim",
-	-- 	event = "UiEnter",
-	-- 	dependencies = {
-	-- 		"nvim-treesitter/nvim-treesitter",
-	-- 		"echasnovski/mini.icons",
-	-- 	},
-	-- 	config = function()
-	-- 		require("config.ui.markview")
-	-- 	end,
-	-- },
 	{
 		"folke/trouble.nvim",
 		lazy = true,

@@ -54,6 +54,18 @@ return {
 		event = "InsertEnter",
 		config = true,
 	},
+	{
+		"ThePrimeagen/refactoring.nvim",
+		lazy = true,
+		cmd = "Refactor",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-treesitter/nvim-treesitter",
+		},
+		config = function()
+			require("refactoring").setup()
+		end,
+	},
 	-- COMPLETION
 	{
 		"hrsh7th/nvim-cmp",

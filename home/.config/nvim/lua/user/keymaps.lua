@@ -2076,6 +2076,69 @@ local mappings = {
 		prefix = P.misc,
 		description = "Copy ASCII code snapshot to clipboard",
 	},
+	{
+		mode = "x",
+		"<leader>re",
+		function()
+			require("refactoring").refactor("Extract Function")
+		end,
+		prefix = P.code,
+		description = "Extract function",
+	},
+	{
+		mode = "x",
+		"<leader>rff",
+		function()
+			require("refactoring").refactor("Extract Function To File")
+		end,
+		prefix = P.code,
+		description = "Extract function to file",
+	},
+	{
+		mode = "x",
+		"<leader>rv",
+		function()
+			require("refactoring").refactor("Extract Variable")
+		end,
+		prefix = P.code,
+		description = "Extract variable",
+	},
+	{
+		mode = "n",
+		"<leader>rI",
+		function()
+			require("refactoring").refactor("Inline Function")
+		end,
+		prefix = P.code,
+		description = "Inline function",
+	},
+	{
+		mode = { "n", "x" },
+		"<leader>ri",
+		function()
+			require("refactoring").refactor("Inline Variable")
+		end,
+		prefix = P.code,
+		description = "Inline variable",
+	},
+	{
+		mode = "n",
+		"<leader>rb",
+		function()
+			require("refactoring").refactor("Extract Block")
+		end,
+		prefix = P.code,
+		description = "Extract block",
+	},
+	{
+		mode = "n",
+		"<leader>rfb",
+		function()
+			require("refactoring").refactor("Extract Block To File")
+		end,
+		prefix = P.code,
+		description = "Extract block to file",
+	},
 }
 
 return {
