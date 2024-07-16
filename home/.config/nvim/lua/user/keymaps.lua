@@ -744,7 +744,11 @@ local mappings = {
 				original_branch = vim.fn
 					.system("git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'")
 					:gsub("^%s*(.-)%s*$", "%1")
-				vim.fn.system('git stash -m "nvim autostash" && git checkout ' .. commit .. " && git reset HEAD~1")
+				vim.fn.system(
+					'git stash --include-untracked -m "nvim autostash" && git checkout '
+						.. commit
+						.. " && git reset HEAD~1"
+				)
 			else
 				vim.fn.system("git reset --hard HEAD && git checkout " .. commit .. " && git reset HEAD~1")
 			end
