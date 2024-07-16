@@ -1191,7 +1191,7 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>rl",
+		"<leader>ru",
 		"<cmd>OverseerRun<CR>",
 		prefix = P.task,
 		description = "List user defined tasks",
@@ -2138,6 +2138,36 @@ local mappings = {
 		end,
 		prefix = P.code,
 		description = "Extract block to file",
+	},
+	{
+		mode = { "n", "x" },
+		"<leader>rl",
+		function()
+			require("telescope").extensions.refactoring.refactors()
+		end,
+		prefix = P.code,
+		description = "Extract block to file",
+	},
+	{
+		mode = "n",
+		"<leader>rp",
+		function()
+			require("refactoring").debug.printf({ below = false })
+		end,
+	},
+	{
+		mode = { "x", "n" },
+		"<leader>rv",
+		function()
+			require("refactoring").debug.print_var()
+		end,
+	},
+	{
+		mode = "n",
+		"<leader>rc",
+		function()
+			require("refactoring").debug.cleanup({})
+		end,
 	},
 }
 

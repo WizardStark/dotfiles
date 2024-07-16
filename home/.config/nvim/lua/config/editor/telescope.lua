@@ -108,6 +108,7 @@ require("telescope").load_extension("live_grep_args")
 require("telescope").load_extension("undo")
 require("telescope").load_extension("notify")
 require("telescope").load_extension("git_submodules")
+require("telescope").load_extension("refactoring")
 
 require("easypick").setup({
 	pickers = {
