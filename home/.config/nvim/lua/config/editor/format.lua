@@ -16,15 +16,15 @@ require("conform").setup({
 	formatters_by_ft = {
 		lua = { "stylua" },
 		python = { "usort", "black" },
-		java = { "checkstyle" },
+		java = { "google-java-format" },
 		kotlin = { "ktlint" },
-		javascript = { { "prettierd", "prettier" } },
-		javascriptreact = { { "prettierd", "prettier" } },
-		typescript = { { "prettierd", "prettier" } },
-		typescriptreact = { { "prettierd", "prettier" } },
-		markdown = { { "prettierd", "prettier" } },
-		css = { { "prettierd", "prettier" } },
-		scss = { { "prettierd", "prettier" } },
+		javascript = { "prettier" },
+		javascriptreact = { "prettier" },
+		typescript = { "prettier" },
+		typescriptreact = { "prettier" },
+		markdown = { "prettier" },
+		css = { "prettier" },
+		scss = { "prettier" },
 		json = { "jq" },
 		go = { "gofumpt" },
 		bash = { "shfmt" },
@@ -36,15 +36,16 @@ require("conform").setup({
 
 	format_on_save = function(bufnr)
 		return {
-			{
-				lsp_format = "fallback",
-				dry_run = is_allowed_ft(bufnr),
-				timeout_ms = 500,
-			},
+			lsp_format = "fallback",
+			dry_run = not is_allowed_ft(bufnr),
+			timeout_ms = 500,
 		}
 	end,
 
 	formatters = {
+		prettier = {
+			prepend_args = { "--tab-width", "4" },
+		},
 		shfmt = {
 			prepend_args = { "-i", "2" },
 		},
