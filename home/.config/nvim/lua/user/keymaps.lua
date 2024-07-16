@@ -72,6 +72,8 @@ end
 local P = require("user.utils").PREFIXES
 
 local function visit_yaml_node(node, name, yaml_path, result, file_path, bufnr)
+    -- __AUTO_GENERATED_PRINT_VAR_START__
+    print([==[visit_yaml_node local:]==], vim.inspect(local)) -- __AUTO_GENERATED_PRINT_VAR_END__
 	local key = ""
 	if node:type() == "block_mapping_pair" then
 		local field_key = node:field("key")[1]
@@ -2152,7 +2154,7 @@ local mappings = {
 		mode = "n",
 		"<leader>rp",
 		function()
-			require("refactoring").debug.printf({ below = false })
+			require("refactoring").debug.printf({ below = true })
 		end,
 	},
 	{
