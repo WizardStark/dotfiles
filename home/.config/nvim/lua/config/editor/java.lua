@@ -65,6 +65,7 @@ vim.api.nvim_create_autocmd("Filetype", {
 		if vim.g.extra_lsp_actions ~= nil then
 			vim.g.extra_lsp_actions()
 		end
+
 		-- local timer = 5000
 		-- for i = 0, 12, 1 do
 		-- 	vim.defer_fn(function()

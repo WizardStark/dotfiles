@@ -41,10 +41,17 @@ local border = {
 local handlers = {
 	vim.diagnostic.config({
 		float = { border = "rounded" },
+		-- virtual_text = false,
 	}),
 	["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
 	["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
 }
+
+local function on_attach(client, bufnr)
+	if vim.g.extra_lsp_actions ~= nil then
+		vim.g.extra_lsp_actions()
+	end
+end
 
 mason_lspconfig.setup({
 	ensure_installed = {
@@ -56,11 +63,7 @@ mason_lspconfig.setup({
 mason_lspconfig.setup_handlers({
 	function(server_name)
 		lspconfig[server_name].setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
+			on_attach = on_attach,
 			capabilities = lsp_capabilities,
 			handlers = handlers,
 		})
@@ -68,11 +71,7 @@ mason_lspconfig.setup_handlers({
 	["jdtls"] = function() end,
 	["lua_ls"] = function()
 		lspconfig.lua_ls.setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
+			on_attach = on_attach,
 			capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
@@ -86,11 +85,7 @@ mason_lspconfig.setup_handlers({
 	end,
 	["basedpyright"] = function()
 		lspconfig["basedpyright"].setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
+			on_attach = on_attach,
 			capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
@@ -112,11 +107,7 @@ mason_lspconfig.setup_handlers({
 	end,
 	["gopls"] = function()
 		lspconfig.gopls.setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
+			on_attach = on_attach,
 			capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
@@ -136,11 +127,7 @@ mason_lspconfig.setup_handlers({
 	end,
 	["tsserver"] = function()
 		lspconfig.tsserver.setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
+			on_attach = on_attach,
 			capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
@@ -173,11 +160,7 @@ mason_lspconfig.setup_handlers({
 	end,
 	["kotlin_language_server"] = function()
 		lspconfig.kotlin_language_server.setup({
-			on_attach = function()
-				if vim.g.extra_lsp_actions ~= nil then
-					vim.g.extra_lsp_actions()
-				end
-			end,
+			on_attach = on_attach,
 			capabilities = lsp_capabilities,
 			handlers = handlers,
 			init_options = {

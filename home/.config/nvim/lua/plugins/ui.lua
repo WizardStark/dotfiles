@@ -131,4 +131,11 @@ return {
 			require("config.ui.codesnap")
 		end,
 	},
+	{
+		"mistweaverco/kulala.nvim",
+		lazy = true,
+		config = function()
+			require("kulala").setup()
+		end,
+	},
 }
