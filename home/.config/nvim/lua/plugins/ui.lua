@@ -91,6 +91,7 @@ return {
 	},
 	{
 		"kwkarlwang/bufresize.nvim",
+		event = "UiEnter",
 		config = function()
 			require("config.ui.bufresize")
 		end,
