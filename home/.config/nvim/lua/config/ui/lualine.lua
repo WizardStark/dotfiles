@@ -45,7 +45,7 @@ local function clients_lsp()
 			hash[v] = true
 		end
 	end
-	local language_servers = table.concat(unique_client_names, " ∣ ")
+	local language_servers = table.concat(unique_client_names, " │ ")
 	return " " .. language_servers
 end
 
@@ -57,7 +57,7 @@ local function is_toggleterm()
 	return vim.bo.filetype == "toggleterm"
 end
 
-local function getWords()
+local function get_words()
 	local wc = vim.fn.wordcount()
 	if wc["visual_words"] then -- text is selected in visual mode
 		return wc["visual_words"] .. " Words/" .. wc["visual_chars"] .. " Chars (Vis)"
@@ -103,19 +103,34 @@ local function get_term_name()
 	end
 end
 
+local function get_plugin_info()
+	local stats = require("lazy").stats()
+	return "󰚥 " .. stats.loaded .. "/" .. stats.count
+end
+
+local function get_startup_time()
+	local stats = require("lazy").stats()
+	return "󰅕 " .. stats.startuptime .. "ms"
+end
+
+local palette = require("catppuccin.palettes").get_palette("mocha")
+local theme = require("catppuccin.utils.lualine")("mocha")
+theme.normal.c.bg = "NONE"
+theme.normal.c.fg = palette.subtext1
+
 require("lualine").setup({
 	options = {
 		always_divide_middle = false,
-		theme = "catppuccin",
+		theme = theme,
 	},
 	sections = {
 		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 		lualine_b = {
-			{ getWords, cond = is_text_file },
+			{ get_words, cond = is_text_file },
 			{ "b:gitsigns_head", icon = "" },
 			"diagnostics",
 		},
-		lualine_c = {},
+		lualine_c = { { get_plugin_info }, { get_startup_time } },
 		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 		lualine_y = {
 			{ "progress", cond = is_not_toggleterm },
