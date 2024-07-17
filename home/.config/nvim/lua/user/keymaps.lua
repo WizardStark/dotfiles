@@ -2156,7 +2156,7 @@ local mappings = {
 		mode = "n",
 		"<leader>rp",
 		function()
-			require("refactoring").debug.printf({ below = true })
+			require("refactoring").debug.printf({ below = true, show_success_message = false })
 		end,
 		prefix = P.code,
 		description = "Add print statement below current line",
@@ -2165,7 +2165,7 @@ local mappings = {
 		mode = { "x", "n" },
 		"<leader>rdv",
 		function()
-			require("refactoring").debug.print_var()
+			require("refactoring").debug.print_var({ show_success_message = false })
 		end,
 		prefix = P.code,
 		description = "Add print statement with variable value",
@@ -2174,7 +2174,7 @@ local mappings = {
 		mode = "n",
 		"<leader>rdc",
 		function()
-			require("refactoring").debug.cleanup({})
+			require("refactoring").debug.cleanup({ show_success_message = true })
 		end,
 		prefix = P.code,
 		description = "Clean up all automated print statements",
