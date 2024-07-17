@@ -2188,6 +2188,15 @@ local mappings = {
 		prefix = P.lsp,
 		descriptiopStart = "Start",
 	},
+	{
+		mode = "n",
+		"<leader>lr",
+		function()
+			vim.cmd("LspRestart")
+		end,
+		prefix = P.lsp,
+		descriptiopStart = "Restart",
+	},
 }
 
 return {
