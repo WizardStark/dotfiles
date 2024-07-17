@@ -2158,6 +2158,8 @@ local mappings = {
 		function()
 			require("refactoring").debug.printf({ below = true })
 		end,
+		prefix = P.code,
+		description = "Add print statement below current line",
 	},
 	{
 		mode = { "x", "n" },
@@ -2165,6 +2167,8 @@ local mappings = {
 		function()
 			require("refactoring").debug.print_var()
 		end,
+		prefix = P.code,
+		description = "Add print statement with variable value",
 	},
 	{
 		mode = "n",
@@ -2172,6 +2176,8 @@ local mappings = {
 		function()
 			require("refactoring").debug.cleanup({})
 		end,
+		prefix = P.code,
+		description = "Clean up all automated print statements",
 	},
 }
 
