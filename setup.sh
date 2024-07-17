@@ -56,6 +56,10 @@ mv ~/.zshrc ~/.zshrc_old
 stow -v --adopt -t $HOME home
 git restore home/.zshrc
 
+(
+    nvim --headless "+Lazy! sync" +qa
+)
+
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
 sudo chsh -s $(which zsh)
