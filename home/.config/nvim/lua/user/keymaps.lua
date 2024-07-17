@@ -2179,6 +2179,15 @@ local mappings = {
 		prefix = P.code,
 		description = "Clean up all automated print statements",
 	},
+	{
+		mode = "n",
+		"<leader>ls",
+		function()
+			vim.cmd("LspStart")
+		end,
+		prefix = P.lsp,
+		descriptiopStart = "Start",
+	},
 }
 
 return {
