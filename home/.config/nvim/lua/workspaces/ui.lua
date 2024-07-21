@@ -25,28 +25,77 @@ end
 ---@param on_success fun(name: string, dir: string)
 ---@param on_cancel fun()
 local function input_new_session(on_success, on_cancel)
-	vim.ui.input({
-		prompt = "Create: New session name",
-		default = "",
-		kind = "tabline",
-	}, function(name_input)
-		if name_input then
-			vim.ui.input({
-				prompt = "New session directory",
-				default = "",
-				completion = "dir",
-				kind = "tabline",
-			}, function(dir_input)
-				if dir_input then
-					on_success(name_input, dir_input)
-				else
-					on_cancel()
-				end
-			end)
-		else
-			on_cancel()
-		end
-	end)
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 60,
+		height = 1,
+	})
+
+	local session_name = nui.create_signal({ value = "" })
+	local session_dir = nui.create_signal({ value = "" })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function()
+				vim.notify(session_dir.value:get_value())
+				ws.create_session(session_name.value:get_value(), session_dir.value:get_value())
+				renderer:close()
+			end,
+		},
+		nui.paragraph({
+			lines = "Create session",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "Session name",
+			id = "session_name",
+			autofocus = true,
+			flex = 1,
+			max_lines = 1,
+			value = session_name.value,
+			on_change = function(value, _)
+				session_name.value = value
+			end,
+		}),
+		nui.text_input({
+			border_label = "Session directory",
+			id = "session_directory",
+			autofocus = false,
+			flex = 1,
+			max_lines = 1,
+			value = session_dir.value,
+			on_change = function(value, _)
+				session_dir.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
+	-- vim.ui.input({
+	-- 	prompt = "Create: New session name",
+	-- 	default = "",
+	-- 	kind = "tabline",
+	-- }, function(name_input)
+	-- 	if name_input then
+	-- 		vim.ui.input({
+	-- 			prompt = "New session directory",
+	-- 			default = "",
+	-- 			completion = "dir",
+	-- 			kind = "tabline",
+	-- 		}, function(dir_input)
+	-- 			if dir_input then
+	-- 				on_success(name_input, dir_input)
+	-- 			else
+	-- 				on_cancel()
+	-- 			end
+	-- 		end)
+	-- 	else
+	-- 		on_cancel()
+	-- 	end
+	-- end)
 end
 
 function M.create_session_input()
