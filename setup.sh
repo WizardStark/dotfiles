@@ -15,15 +15,18 @@ else
     brew update
 fi
 
-# install neovim dependencies
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo apt install -y zsh
+    # install neovim dependencies
     # The dependencies break if on ubuntu and installed with brew, so here we use apt
     sudo apt-get install -y ninja-build gettext cmake unzip curl build-essential
 else
+    brew install zsh
+    # install neovim dependencies
     brew install ninja cmake gettext curl unzip
 fi
 
-brew install zsh wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delta stow
+brew install wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delta stow
 
 mkdir -p ~/.config
 
@@ -64,3 +67,4 @@ git restore home/.zshrc
 
 sudo chsh -s $(which zsh)
 zsh -l
+echo "Done!"
