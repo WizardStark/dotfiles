@@ -45,7 +45,7 @@ function M.create_session_input()
 	})
 
 	local session_name = nui.create_signal({ value = "" })
-	local session_dir = nui.create_signal({ value = "" })
+	local session_dir = nui.create_signal({ value = "~/" })
 
 	local body = nui.form(
 		{
@@ -199,7 +199,7 @@ function M.create_workspace_input()
 
 	local workspace_name = nui.create_signal({ value = "" })
 	local session_name = nui.create_signal({ value = "" })
-	local session_dir = nui.create_signal({ value = "" })
+	local session_dir = nui.create_signal({ value = "~/" })
 
 	local body = nui.form(
 		{
