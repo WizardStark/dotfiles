@@ -3,6 +3,20 @@ local utils = require("workspaces.utils")
 local state = require("workspaces.state")
 local marks = require("workspaces.marks")
 local ws = require("workspaces.workspaces")
+local Path = require("plenary.path")
+
+local function directory_completion()
+	return {
+		{
+			mode = { "i" },
+			key = "<Tab>",
+			handler = function()
+				local action = vim.api.nvim_replace_termcodes("<C-x><C-f>", true, false, true)
+				vim.api.nvim_feedkeys(action, "i", false)
+			end,
+		},
+	}
+end
 
 local function truncate_path(path)
 	local parts = {}
@@ -22,9 +36,7 @@ local function truncate_path(path)
 	return { file = file, parents = parents:sub(1, -2) }
 end
 
----@param on_success fun(name: string, dir: string)
----@param on_cancel fun()
-local function input_new_session(on_success, on_cancel)
+function M.create_session_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
@@ -39,10 +51,20 @@ local function input_new_session(on_success, on_cancel)
 		{
 			id = "form",
 			submit_key = "<CR>",
-			on_submit = function()
-				vim.notify(session_dir.value:get_value())
-				ws.create_session(session_name.value:get_value(), session_dir.value:get_value())
-				renderer:close()
+			on_submit = function(is_valid)
+				if is_valid then
+					local sessions_dir = Path:new(session_dir.value:get_value())
+
+					if not sessions_dir:is_dir() then
+						vim.notify("Not a valid directory")
+						return
+					end
+
+					ws.create_session(session_name.value:get_value(), session_dir.value:get_value())
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
 			end,
 		},
 		nui.paragraph({
@@ -56,6 +78,7 @@ local function input_new_session(on_success, on_cancel)
 			flex = 1,
 			max_lines = 1,
 			value = session_name.value,
+			validate = nui.validator.min_length(1),
 			on_change = function(value, _)
 				session_name.value = value
 			end,
@@ -67,6 +90,8 @@ local function input_new_session(on_success, on_cancel)
 			flex = 1,
 			max_lines = 1,
 			value = session_dir.value,
+			validate = nui.validator.min_length(1),
+			mappings = directory_completion,
 			on_change = function(value, _)
 				session_dir.value = value
 			end,
@@ -74,112 +99,266 @@ local function input_new_session(on_success, on_cancel)
 	)
 
 	renderer:render(body)
-	-- vim.ui.input({
-	-- 	prompt = "Create: New session name",
-	-- 	default = "",
-	-- 	kind = "tabline",
-	-- }, function(name_input)
-	-- 	if name_input then
-	-- 		vim.ui.input({
-	-- 			prompt = "New session directory",
-	-- 			default = "",
-	-- 			completion = "dir",
-	-- 			kind = "tabline",
-	-- 		}, function(dir_input)
-	-- 			if dir_input then
-	-- 				on_success(name_input, dir_input)
-	-- 			else
-	-- 				on_cancel()
-	-- 			end
-	-- 		end)
-	-- 	else
-	-- 		on_cancel()
-	-- 	end
-	-- end)
-end
-
-function M.create_session_input()
-	input_new_session(function(name, dir)
-		ws.create_session(name, dir)
-	end, function()
-		vim.notify("Creation cancelled")
-	end)
 end
 
 function M.rename_current_session_input()
-	vim.ui.input({
-		prompt = "Rename: New session name",
-		default = state.get().current_workspace.current_session_name,
-		kind = "tabline",
-	}, function(input)
-		if input then
-			ws.rename_current_session(input)
-		else
-			vim.notify("Rename cancelled")
-		end
-	end)
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 60,
+		height = 1,
+	})
+
+	local session_name = nui.create_signal({ value = state.get().current_workspace.current_session_name })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function(is_valid)
+				if is_valid then
+					ws.rename_current_session(session_name.value:get_value())
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
+			end,
+		},
+		nui.paragraph({
+			lines = "Rename current session",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "New session name",
+			id = "session_name",
+			autofocus = true,
+			flex = 1,
+			max_lines = 1,
+			value = session_name.value,
+			validate = nui.validator.min_length(1),
+			on_change = function(value, _)
+				session_name.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
 end
 
 function M.delete_session_input()
-	vim.ui.input({
-		prompt = "Delete session",
-		default = state.get().current_workspace.current_session_name,
-		kind = "tabline",
-	}, function(input)
-		if input then
-			ws.delete_session(input)
-		else
-			vim.notify("Deletion cancelled")
-		end
-	end)
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 60,
+		height = 1,
+	})
+
+	local session_name = nui.create_signal({ value = state.get().current_workspace.current_session_name })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function(is_valid)
+				if is_valid then
+					ws.delete_session(session_name.value:get_value())
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
+			end,
+		},
+		nui.paragraph({
+			lines = "Delete session",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "Session name",
+			id = "session_name",
+			autofocus = true,
+			flex = 1,
+			max_lines = 1,
+			value = session_name.value,
+			validate = nui.validator.min_length(1),
+			on_change = function(value, _)
+				session_name.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
 end
 
 function M.create_workspace_input()
-	vim.ui.input({
-		prompt = "Create: New workspace name",
-		default = "",
-		kind = "tabline",
-	}, function(input)
-		local on_cancel = function()
-			vim.notify("Creation cancelled")
-		end
-		if input then
-			input_new_session(function(session_name, dir)
-				ws.create_workspace(input, session_name, dir)
-			end, on_cancel)
-		else
-			on_cancel()
-		end
-	end)
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 60,
+		height = 1,
+	})
+
+	local workspace_name = nui.create_signal({ value = "" })
+	local session_name = nui.create_signal({ value = "" })
+	local session_dir = nui.create_signal({ value = "" })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function(is_valid)
+				if is_valid then
+					local sessions_dir = Path:new(session_dir.value:get_value())
+
+					if not sessions_dir:is_dir() then
+						vim.notify("Not a valid directory")
+						return
+					end
+
+					ws.create_workspace(
+						workspace_name.value:get_value(),
+						session_name.value:get_value(),
+						session_dir.value:get_value()
+					)
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
+			end,
+		},
+		nui.paragraph({
+			lines = "Create workspace",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "Workspace name",
+			id = "workspace_name",
+			autofocus = true,
+			flex = 1,
+			max_lines = 1,
+			value = workspace_name.value,
+			validate = nui.validator.min_length(1),
+			on_change = function(value, _)
+				workspace_name.value = value
+			end,
+		}),
+		nui.text_input({
+			border_label = "Session name",
+			id = "session_name",
+			autofocus = false,
+			flex = 1,
+			max_lines = 1,
+			value = session_name.value,
+			validate = nui.validator.min_length(1),
+			on_change = function(value, _)
+				session_name.value = value
+			end,
+		}),
+		nui.text_input({
+			border_label = "Session directory",
+			id = "session_directory",
+			autofocus = false,
+			flex = 1,
+			max_lines = 1,
+			value = session_dir.value,
+			validate = nui.validator.min_length(1),
+			mappings = directory_completion,
+			on_change = function(value, _)
+				session_dir.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
 end
 
 function M.rename_current_workspace_input()
-	vim.ui.input({
-		prompt = "Rename: New workspace name",
-		default = state.get().current_workspace.name,
-		kind = "tabline",
-	}, function(input)
-		if input then
-			ws.rename_current_workspace(input)
-		else
-			vim.notify("Rename cancelled")
-		end
-	end)
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 60,
+		height = 1,
+	})
+
+	local workspace_name = nui.create_signal({ value = state.get().current_workspace.name })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function(is_valid)
+				if is_valid then
+					ws.rename_current_workspace(workspace_name.value:get_value())
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
+			end,
+		},
+		nui.paragraph({
+			lines = "Rename current workspace",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "New workspace name",
+			id = "workspace_name",
+			autofocus = true,
+			flex = 1,
+			max_lines = 1,
+			value = workspace_name.value,
+			validate = nui.validator.min_length(1),
+			on_change = function(value, _)
+				workspace_name.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
 end
 
 function M.delete_workspace_input()
-	vim.ui.input({
-		prompt = "Delete workspace",
-		default = state.get().current_workspace.name,
-		kind = "tabline",
-	}, function(input)
-		if input then
-			ws.delete_workspace(input)
-		else
-			vim.notify("Deletion cancelled")
-		end
-	end)
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 60,
+		height = 1,
+	})
+
+	local workspace_name = nui.create_signal({ value = state.get().current_workspace.name })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function(is_valid)
+				if is_valid then
+					ws.delete_workspace(workspace_name.value:get_value())
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
+			end,
+		},
+		nui.paragraph({
+			lines = "Delete workspace",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "Workspace name",
+			id = "workspace_name",
+			autofocus = true,
+			flex = 1,
+			max_lines = 1,
+			value = workspace_name.value,
+			validate = nui.validator.min_length(1),
+			on_change = function(value, _)
+				workspace_name.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
 end
+
 local mark_picker = function(opts)
 	opts = opts or {}
 	local pickers = require("telescope.pickers")
