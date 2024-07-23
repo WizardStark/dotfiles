@@ -30,13 +30,15 @@ brew install wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delt
 
 mkdir -p ~/.config
 
-(
-    git clone --depth 1 -b v0.10.0 https://github.com/neovim/neovim
-    cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
-    sudo make install
-    cd ../
-    rm -rf neovim
-)
+if [[ $(command -v brew) == "" ]]; then
+    (
+        git clone --depth 1 -b v0.10.0 https://github.com/neovim/neovim
+        cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
+        sudo make install
+        cd ../
+        rm -rf neovim
+    )
+fi
 
 (
     git clone https://github.com/catppuccin/zsh-syntax-highlighting.git ~/.zsh-catpuccin
