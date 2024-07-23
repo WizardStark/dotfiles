@@ -122,6 +122,8 @@ require("lualine").setup({
 	options = {
 		always_divide_middle = false,
 		theme = theme,
+		section_separators = { left = "", right = "" },
+		component_separators = { left = "", right = "" },
 	},
 	sections = {
 		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
