@@ -15,6 +15,14 @@ local function directory_completion()
 				vim.api.nvim_feedkeys(action, "i", false)
 			end,
 		},
+		{
+			mode = { "i" },
+			key = "<S-Tab>",
+			handler = function()
+				local action = vim.api.nvim_replace_termcodes("<C-x><C-p>", true, false, true)
+				vim.api.nvim_feedkeys(action, "i", false)
+			end,
+		},
 	}
 end
 
