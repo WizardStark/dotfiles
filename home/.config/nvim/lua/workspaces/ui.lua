@@ -26,6 +26,10 @@ local function directory_completion()
 	}
 end
 
+local function validate_path(path)
+	return
+end
+
 local function truncate_path(path)
 	local parts = {}
 
@@ -61,9 +65,7 @@ function M.create_session_input()
 			submit_key = "<CR>",
 			on_submit = function(is_valid)
 				if is_valid then
-					local sessions_dir = Path:new(session_dir.value:get_value())
-
-					if not sessions_dir:is_dir() then
+					if not Path:new(vim.fn.expand(session_dir.value:get_value())):is_dir() then
 						vim.notify("Not a valid directory")
 						return
 					end
@@ -215,9 +217,7 @@ function M.create_workspace_input()
 			submit_key = "<CR>",
 			on_submit = function(is_valid)
 				if is_valid then
-					local sessions_dir = Path:new(session_dir.value:get_value())
-
-					if not sessions_dir:is_dir() then
+					if not Path:new(vim.fn.expand(session_dir.value:get_value())):is_dir() then
 						vim.notify("Not a valid directory")
 						return
 					end
