@@ -1,13 +1,16 @@
-require("flash").setup({
-	jump = {
-		autojump = true,
-	},
-	modes = {
-		search = {
-			enabled = true,
+require("flash").setup(
+	---@module 'flash'
+	{
+		jump = {
+			autojump = true,
 		},
-		char = {
-			enabled = false,
+		modes = {
+			search = {
+				enabled = true,
+			},
+			char = {
+				enabled = false,
+			},
 		},
-	},
-})
+	}
+)

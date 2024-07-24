@@ -33,80 +33,83 @@ local close = function()
 	menu:close()
 end
 
-dropbar.setup({
-	general = {
-		enable = enable,
-		attach_events = {
-			"BufWinEnter",
-			"BufWritePost",
-			"FileType",
-			"BufEnter",
+dropbar.setup(
+	---@module 'dropbar'
+	{
+		general = {
+			enable = enable,
+			attach_events = {
+				"BufWinEnter",
+				"BufWritePost",
+				"FileType",
+				"BufEnter",
+			},
 		},
-	},
-	sources = {
-		terminal = {
-			name = function(buf)
-				local term = require("toggleterm.terminal").find(function(term)
-					return term.bufnr == buf
-				end)
-				local name
-				if term then
-					name = term.display_name or term.cmd or term.name
-				else
-					name = vim.api.nvim_buf_get_name(buf)
-				end
-				return " " .. name
-			end,
-			name_hl = "Normal",
+		sources = {
+			terminal = {
+				name = function(buf)
+					local term = require("toggleterm.terminal").find(function(term)
+						return term.bufnr == buf
+					end)
+					local name
+					if term then
+						name = term.display_name or term.cmd or term.name
+					else
+						name = vim.api.nvim_buf_get_name(buf)
+					end
+					return " " .. name
+				end,
+				name_hl = "Normal",
+			},
+			path = {
+				preview = "previous",
+			},
 		},
-		path = {
-			preview = "previous",
+		bar = {
+			padding = {
+				left = 0,
+				right = 0,
+			},
+			pick = {
+				pivots = "scntk,aeihbplduoyf",
+			},
 		},
-	},
-	bar = {
-		padding = {
-			left = 0,
-			right = 0,
+		menu = {
+			keymaps = {
+				q = close,
+				["<Esc>"] = close,
+				["h"] = "<C-w>q",
+				["l"] = function()
+					local menu = utils.menu.get_current()
+					if not menu then
+						return
+					end
+					local cursor = vim.api.nvim_win_get_cursor(menu.win)
+					local component = menu.entries[cursor[1]]:first_clickable(cursor[2])
+					if component then
+						menu:click_on(component, nil, 1, "l")
+					end
+				end,
+			},
+			quick_navigation = true,
+			scrollbar = {
+				background = false,
+			},
+			win_configs = {
+				border = "rounded",
+			},
 		},
-		pick = {
-			pivots = "scntk,aeihbplduoyf",
+		fzf = {
+			prompt = "%#GitSignsAdd# ",
+			win_configs = {},
+			keymaps = {
+				["<C-n>"] = function()
+					require("dropbar.api").fuzzy_find_navigate("down")
+				end,
+				["<C-t>"] = function()
+					require("dropbar.api").fuzzy_find_navigate("up")
+				end,
+			},
 		},
-	},
-	menu = {
-		keymaps = {
-			q = close,
-			["<Esc>"] = close,
-			["h"] = "<C-w>q",
-			["l"] = function()
-				local menu = utils.menu.get_current()
-				if not menu then
-					return
-				end
-				local cursor = vim.api.nvim_win_get_cursor(menu.win)
-				local component = menu.entries[cursor[1]]:first_clickable(cursor[2])
-				if component then
-					menu:click_on(component, nil, 1, "l")
-				end
-			end,
-		},
-		quick_navigation = true,
-		scrollbar = {
-			background = false,
-		},
-		win_configs = {
-			border = "rounded",
-		},
-	},
-	fzf = {
-		prompt = "%#GitSignsAdd# ",
-		win_configs = {},
-		keymaps = {
-			["<C-n>"] = function()
-				require("dropbar.api").fuzzy_find_navigate("down")
-			end,
-			["<C-t>"] = function()
-				require("dropbar.api").fuzzy_find_navigate("up")
-			end,
-		},
-	},
-})
+	}
+)

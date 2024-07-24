@@ -119,34 +119,37 @@ local theme = require("catppuccin.utils.lualine")("mocha")
 theme.normal.c.bg = "NONE"
 theme.normal.c.fg = palette.subtext1
 
-require("lualine").setup({
-	options = {
-		always_divide_middle = false,
-		theme = theme,
-		section_separators = { left = "", right = "" },
-		component_separators = { left = "", right = "" },
-	},
-	sections = {
-		lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
-		lualine_b = {
-			{ get_words, cond = is_text_file },
-			{ "b:gitsigns_head", icon = "" },
-			"diagnostics",
+require("lualine").setup(
+	---@module 'lualine'
+	{
+		options = {
+			always_divide_middle = false,
+			theme = theme,
+			section_separators = { left = "", right = "" },
+			component_separators = { left = "", right = "" },
 		},
-		lualine_c = { { get_plugin_info }, { get_startup_time } },
-		lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
-		lualine_y = {
-			{ "progress", cond = is_not_toggleterm },
-			{ "location", cond = is_not_toggleterm },
-			{ require("recorder").recordingStatus, cond = is_not_toggleterm },
-			{ require("recorder").displaySlots, cond = is_not_toggleterm },
+		sections = {
+			lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
+			lualine_b = {
+				{ get_words, cond = is_text_file },
+				{ "b:gitsigns_head", icon = "" },
+				"diagnostics",
+			},
+			lualine_c = { { get_plugin_info }, { get_startup_time } },
+			lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
+			lualine_y = {
+				{ "progress", cond = is_not_toggleterm },
+				{ "location", cond = is_not_toggleterm },
+				{ require("recorder").recordingStatus, cond = is_not_toggleterm },
+				{ require("recorder").displaySlots, cond = is_not_toggleterm },
+			},
+			lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 		},
-		lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
-	},
-	extensions = {
-		"nvim-dap-ui",
-		"mason",
-		"lazy",
-		"trouble",
-	},
-})
+		extensions = {
+			"nvim-dap-ui",
+			"mason",
+			"lazy",
+			"trouble",
+		},
+	}
+)
