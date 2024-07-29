@@ -60,12 +60,41 @@ local presets = {
 	stark = {
 		color_overrides = {
 			all = {
-				green = "#92c48e",
-				text = "#94e2d5",
+				blue = "#89b4fa",
+				flamingo = "#f2cdcd",
+				green = "#a6e3a1",
+				lavender = "#a3aded",
+				maroon = "#eba0ac",
+				mauve = "#ab84d5",
+				overlay0 = "#6c7086",
+				overlay1 = "#7f849c",
+				overlay2 = "#9399b2",
+				peach = "#fab387",
+				pink = "#f5c2e7",
+				red = "#f38ba8",
+				rosewater = "#f5e0dc",
+				sapphire = "#74c7ec",
+				sky = "#89dceb",
+				subtext0 = "#a6adc8",
+				subtext1 = "#bac2de",
+				surface0 = "#313244",
+				surface1 = "#45475a",
+				surface2 = "#585b70",
+				teal = "#94e2d5",
+				text = "#dee7f5",
+				yellow = "#f9e2af",
 				base = "#0e0e1e",
-				mantle = "#181825",
+				mantle = "#0e0e1e",
 				crust = "#1e1e2e",
 			},
+		},
+		highlight_overrides = {
+			all = function(C)
+				return {
+					FloatBorder = { bg = C.mantle, fg = C.subtext0 },
+					Function = { fg = C.blue },
+				}
+			end,
 		},
 	},
 }

@@ -1350,6 +1350,7 @@ local mappings = {
 		"<leader>ca",
 		function()
 			vim.lsp.buf.code_action()
+			-- require("tiny-code-action").code_action()
 		end,
 		prefix = P.code,
 		description = "Show code actions",
@@ -2196,6 +2197,15 @@ local mappings = {
 		end,
 		prefix = P.lsp,
 		descriptiopStart = "Restart",
+	},
+	{
+		mode = "n",
+		"<leader>J",
+		function()
+			vim.fn.setreg('"', vim.fn.getreg('"'):gsub("[\n\r]", " "))
+		end,
+		prefix = P.misc,
+		descriptiopStart = 'Remove linebreaks from contents in " register',
 	},
 }
 

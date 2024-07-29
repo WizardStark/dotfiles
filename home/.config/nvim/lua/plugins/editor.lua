@@ -167,6 +167,18 @@ return {
 		end,
 	},
 	{
+		"rachartier/tiny-code-action.nvim",
+		dependencies = {
+			{ "nvim-lua/plenary.nvim" },
+			{ "nvim-telescope/telescope.nvim" },
+		},
+		lazy = true,
+		event = "LspAttach",
+		config = function()
+			require("config.editor.code_action")
+		end,
+	},
+	{
 		"zeioth/garbage-day.nvim",
 		event = "VeryLazy",
 		opts = {
