@@ -34,10 +34,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-    if [[ "$OSTYPE" == "linux-gnu"* ]] && ! uname -r | grep 'microsoft' > /dev/null; then
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    fi
-
     # Keybindings
     bindkey '^p' history-search-backward
     bindkey '^n' history-search-forward
