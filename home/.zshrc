@@ -21,11 +21,8 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     zinit snippet OMZP::git
     zinit snippet OMZP::sudo
-    zinit snippet OMZP::ssh-agent
     zinit snippet OMZP::command-not-found
-
-    zstyle :omz:plugins:ssh-agent quiet yes
-    zstyle :omz:plugins:ssh-agent lazy yes
+    eval $(ssh-agent) > /dev/null
 
     autoload -Uz compinit
     for dump in ~/.zcompdump(N.mh+24); do
@@ -37,8 +34,11 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
+    if [[ "$OSTYPE" == "linux-gnu"* ]] && ! uname -r | grep 'microsoft' > /dev/null; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    fi
+
     # Keybindings
-    # bindkey -e
     bindkey '^p' history-search-backward
     bindkey '^n' history-search-forward
     bindkey '^[w' kill-region
