@@ -69,6 +69,7 @@ return {
 	-- COMPLETION
 	{
 		"hrsh7th/nvim-cmp",
+		commit = "b356f2c",
 		version = false,
 		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {

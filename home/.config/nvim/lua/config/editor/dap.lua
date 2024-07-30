@@ -89,6 +89,33 @@ dap.configurations.typescriptreact = {
 		webRoot = "${workspaceFolder}",
 	},
 }
+dap.configurations.svelte = {
+	{
+		name = "Launch",
+		type = "chrome",
+		request = "launch",
+		program = "${file}",
+		cwd = vim.fn.getcwd(),
+		sourceMaps = true,
+		protocol = "inspector",
+		runtimeExecutable = "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe",
+		runtimeArgs = { "--remote-debugging-port=9222" },
+		port = 9222,
+		webRoot = "${workspaceFolder}",
+		url = "http://localhost:5173/",
+	},
+	{
+		name = "Attach",
+		type = "chrome",
+		request = "attach",
+		program = "${file}",
+		cwd = vim.fn.getcwd(),
+		sourceMaps = true,
+		protocol = "inspector",
+		port = 9222,
+		webRoot = "${workspaceFolder}",
+	},
+}
 
 require("dap-go").setup()
 
