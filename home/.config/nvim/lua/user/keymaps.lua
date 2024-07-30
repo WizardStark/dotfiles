@@ -1349,8 +1349,7 @@ local mappings = {
 		mode = "n",
 		"<leader>ca",
 		function()
-			vim.lsp.buf.code_action()
-			-- require("tiny-code-action").code_action()
+			require("tiny-code-action").code_action()
 		end,
 		prefix = P.code,
 		description = "Show code actions",

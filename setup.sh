@@ -30,7 +30,7 @@ brew install wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delt
 
 mkdir -p ~/.config
 
-if [[ $(command -v brew) == "" ]]; then
+if [[ $(command -v nvim) == "" ]]; then
     (
         git clone --depth 1 -b v0.10.0 https://github.com/neovim/neovim
         cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
