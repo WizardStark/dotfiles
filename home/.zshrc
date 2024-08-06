@@ -22,7 +22,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     zinit snippet OMZP::git
     zinit snippet OMZP::sudo
     zinit snippet OMZP::command-not-found
-    eval $(ssh-agent) > /dev/null
 
     autoload -Uz compinit
     for dump in ~/.zcompdump(N.mh+24); do
@@ -94,6 +93,13 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     eval "$(zoxide init --cmd cd zsh)"
+
+    if [ -z "$(pgrep ssh-agent)" ] ; then
+        eval $(ssh-agent) > /dev/null 2>&1
+        echo $SSH_AUTH_SOCK > ~/.ssh/.agent_socket
+    else
+        export SSH_AUTH_SOCK=$(cat ~/.ssh/.agent_socket)
+    fi
 fi
 
 show_blame() {
