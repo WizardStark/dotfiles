@@ -1328,7 +1328,7 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<F2>",
+		"<leader>rn",
 		function()
 			return ":IncRename " .. vim.fn.expand("<cword>")
 		end,
@@ -1338,9 +1338,28 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<F5>",
+		"<leader>gf",
 		function()
 			require("grug-far").grug_far({ prefills = { search = vim.fn.expand("<cword>") } })
+		end,
+		prefix = P.code,
+		description = "Search and replace word under cursor",
+	},
+	{
+		mode = "v",
+		"<leader>gf",
+		function()
+			vim.cmd([[normal! vv]])
+			local text = require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+			text = require("user.utils").escape_special_chars(text)
+			text = "(" .. text:gsub("\n%s+", "\n"):gsub("(\n)$", ""):gsub("[\n\r]", "\\n)(.*") .. ")"
+			require("grug-far").grug_far({
+				ignoreVisualSelection = true,
+				prefills = {
+					search = text,
+					flags = "-U",
+				},
+			})
 		end,
 		prefix = P.code,
 		description = "Search and replace word under cursor",

@@ -53,7 +53,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     setopt hist_find_no_dups
 
     # Completion styling
-    export EZA_COLORS="$(vivid -m 8-bit generate catppuccin-mocha)"
     fzf_file_or_dir_preview="if [ -d {} ]; then eza -1 -a --color=always {} | head -200; else bat --style=header-filename,grid --color=always --line-range :500 {}; fi"
     dir_or_file_preview='if [ -d $realpath ]; then eza -1 -a --color=always $realpath | head -200; else bat --style=header-filename,grid --color=always --line-range :500 $realpath; fi'
     dir_preview='eza --color=always -1 -a --icons=always $realpath'

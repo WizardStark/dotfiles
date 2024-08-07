@@ -39,6 +39,38 @@ M.special_windows = {
 	end,
 }
 
+local special_characters = {
+	"^",
+	".",
+	"*",
+	"\\",
+	"!",
+	"-",
+	"+",
+	"=",
+	"%",
+	"<",
+	">",
+	"$",
+	"/",
+	"#",
+	"|",
+	"&",
+	",",
+	"[",
+	"]",
+	"'",
+	":",
+	"(",
+	")",
+	"?",
+	"`",
+	'"',
+	"{",
+	"}",
+	"@",
+}
+
 function M.is_big_file(buf)
 	local max_filesize = 500 * 1024 -- 500 KB
 	local filename = vim.api.nvim_buf_get_name(buf)
@@ -78,6 +110,17 @@ function M.get_visual_selection_lines()
 	return { vim.fn.getpos("'<")[2], vim.fn.getpos("'>")[2] }
 end
 
+function M.region_to_text(region)
+	local text = ""
+	local maxcol = vim.v.maxcol
+	for line, cols in vim.spairs(region) do
+		local endcol = cols[2] == maxcol and -1 or cols[2]
+		local chunk = vim.api.nvim_buf_get_text(0, line, cols[1], line, endcol, {})[1]
+		text = ("%s%s\n"):format(text, chunk)
+	end
+	return text
+end
+
 ---@param element any
 ---@param table any
 ---@return boolean
@@ -88,6 +131,21 @@ function M.contains(element, table)
 		end
 	end
 	return false
+end
+
+---@param text string
+---@return string
+function M.escape_special_chars(text)
+	local res = ""
+	for char in text:gmatch(".") do
+		if M.contains(char, special_characters) then
+			res = res .. "\\" .. char
+		else
+			res = res .. char
+		end
+	end
+
+	return res
 end
 
 ---Applies prefix to given description

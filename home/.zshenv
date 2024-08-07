@@ -27,6 +27,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
       --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
 
     export BAT_THEME="Catppuccin Mocha"
+    export EZA_COLORS="$(vivid generate catppuccin-mocha)"
 fi
 
 pathmunge $HOME/local/bin
