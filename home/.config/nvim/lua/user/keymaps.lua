@@ -1340,7 +1340,12 @@ local mappings = {
 		mode = "n",
 		"<leader>gf",
 		function()
-			require("grug-far").grug_far({ prefills = { search = vim.fn.expand("<cword>") } })
+			require("grug-far").toggle_instance({
+				instanceName = "main_instance",
+				prefills = {
+					search = vim.fn.expand("<cword>"),
+				},
+			})
 		end,
 		prefix = P.code,
 		description = "Search and replace word under cursor",
@@ -1353,7 +1358,8 @@ local mappings = {
 			local text = require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
 			text = require("user.utils").escape_special_chars(text)
 			text = "(" .. text:gsub("\n%s+", "\n"):gsub("(\n)$", ""):gsub("[\n\r]", "\\n)(.*") .. ")"
-			require("grug-far").grug_far({
+			require("grug-far").toggle_instance({
+				instanceName = "main_instance",
 				ignoreVisualSelection = true,
 				prefills = {
 					search = text,
