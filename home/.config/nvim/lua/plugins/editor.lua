@@ -180,13 +180,6 @@ return {
 		end,
 	},
 	{
-		"zeioth/garbage-day.nvim",
-		event = "VeryLazy",
-		opts = {
-			notifications = true,
-		},
-	},
-	{
 		"scalameta/nvim-metals",
 		dependencies = {
 			"nvim-lua/plenary.nvim",

@@ -110,7 +110,6 @@ function M.switch_session(target_session, target_workspace)
 	toggleterms.toggle_visible_terms(true)
 
 	-- Stop lsp for current session, excluding jdtls
-	-- require("garbage-day.utils").stop_lsp()
 	local toggled_types = require("user.utils").toggle_special_buffers({})
 
 	persist.write_nvim_session_file(state.get().current_workspace, state.get().current_session)
