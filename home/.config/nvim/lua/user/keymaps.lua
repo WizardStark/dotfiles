@@ -1357,7 +1357,7 @@ local mappings = {
 			vim.cmd([[normal! vv]])
 			local text = require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
 			text = require("user.utils").escape_special_chars(text)
-			text = "(" .. text:gsub("\n%s+", "\n"):gsub("(\n)$", ""):gsub("[\n\r]", "\\n)(.*") .. ")"
+			text = "(" .. text:gsub("\n%s+", "\n"):gsub("(\n)$", ""):gsub("[\n\r]", ")\n(.*") .. ")"
 			require("grug-far").toggle_instance({
 				instanceName = "main_instance",
 				ignoreVisualSelection = true,
