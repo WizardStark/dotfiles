@@ -1330,9 +1330,8 @@ local mappings = {
 		mode = "n",
 		"<leader>rn",
 		function()
-			return ":IncRename " .. vim.fn.expand("<cword>")
+			require("config.editor.rename").rename({ insert = true })
 		end,
-		opts = { expr = true },
 		prefix = P.code,
 		description = "Rename",
 	},
