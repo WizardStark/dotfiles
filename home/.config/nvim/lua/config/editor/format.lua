@@ -24,6 +24,7 @@ require("conform").setup(
 			javascriptreact = { "prettier" },
 			typescript = { "prettier" },
 			typescriptreact = { "prettier" },
+			svelte = { "prettier" },
 			markdown = { "prettier" },
 			css = { "prettier" },
 			scss = { "prettier" },
