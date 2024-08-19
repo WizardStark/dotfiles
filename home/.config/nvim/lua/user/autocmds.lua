@@ -1,4 +1,5 @@
 local P = require("user.utils").PREFIXES
+local huge_file = ""
 
 local mappings = {
 	{
@@ -230,6 +231,50 @@ local mappings = {
 			end
 		end,
 		prefix = P.auto,
+	},
+	{
+		name = "BigFile",
+		clear = true,
+		{
+			"BufReadPre",
+			opts = {
+				pattern = "*",
+			},
+			function()
+				local relevant_file = vim.fn.expand("<afile>")
+				local ok, stats = pcall(vim.uv.fs_stat, vim.fn.expand(relevant_file))
+				if not ok then
+					return
+				end
+				local ok, linecount = pcall(vim.fn.system, "< " .. vim.fn.expand(relevant_file) .. "head -1000 | wc -l")
+				if not ok then
+					linecount = "1000"
+				end
+				local just_big = (stats.size > 1024 * 1024 * 2)
+				local big_however = (stats.size > 1024 * 1024 * 0.5)
+				local just_a_few_lines = tonumber(linecount:match("%d+")) < 5
+				if just_big or (big_however and just_a_few_lines) then
+					vim.notify("File: " .. relevant_file .. " is greater than 2MB.  Shutting off file detection ")
+					huge_file = relevant_file
+					vim.cmd.filetype("off")
+					vim.cmd.setlocal("noswapfile")
+					vim.cmd.setlocal("undolevels=0")
+					vim.cmd.setlocal("bufhidden=unload")
+				end
+			end,
+		},
+		{
+			"BufReadPost",
+			opts = {
+				pattern = "*",
+			},
+			function()
+				local relevant_file = vim.fn.expand("<afile>")
+				if relevant_file == huge_file then
+					vim.cmd.filetype("on")
+				end
+			end,
+		},
 	},
 }
 
