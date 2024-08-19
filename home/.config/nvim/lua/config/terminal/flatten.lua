@@ -1,4 +1,6 @@
 local saved_terminal
+local terms = require("workspaces.toggleterms")
+local state = require("workspaces.state")
 
 require("flatten").setup(
 	---@module 'flatten'
@@ -11,24 +13,16 @@ require("flatten").setup(
 			should_block = function(argv)
 				return vim.tbl_contains(argv, "-b")
 			end,
-			pre_open = function()
-				local term = require("toggleterm.terminal")
-				local termid = term.get_focused_id()
-				saved_terminal = term.get(termid)
-			end,
 			post_open = function(bufnr, winnr, ft, is_blocking)
-				if is_blocking and saved_terminal then
-					saved_terminal:close()
+				if is_blocking then
+					terms.toggle_visible_terms(true)
 				else
 					vim.api.nvim_set_current_win(winnr)
 				end
 			end,
 			block_end = function()
 				vim.schedule(function()
-					if saved_terminal then
-						saved_terminal:open()
-						saved_terminal = nil
-					end
+					terms.toggle_visible_terms(false)
 				end)
 			end,
 		},

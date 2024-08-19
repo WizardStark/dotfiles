@@ -4,10 +4,22 @@ local state = require("workspaces.state")
 require("toggleterm")
 
 ---@param session_terms SessionTerminal[]
----@param id number
-local function find_term(session_terms, id)
+---@param local_id number
+local function find_term_by_local_id(session_terms, local_id)
 	for i, v in ipairs(session_terms) do
-		if v.local_id == id then
+		if v.local_id == local_id then
+			return { i, v }
+		end
+	end
+
+	return nil
+end
+
+---@param session_terms SessionTerminal[]
+---@param global_id number
+function M.find_term_by_global_id(session_terms, global_id)
+	for i, v in ipairs(session_terms) do
+		if v.global_id == global_id then
 			return { i, v }
 		end
 	end
@@ -17,7 +29,7 @@ end
 
 function M.delete_term(local_id)
 	local toggleterms = state.get().current_session.toggleterms
-	local target_term = find_term(toggleterms, local_id)
+	local target_term = find_term_by_local_id(toggleterms, local_id)
 	if target_term then
 		table.remove(toggleterms, target_term[1])
 		state.get().current_session.toggleterms = toggleterms
@@ -73,7 +85,7 @@ function M.toggle_term(local_id, direction, size, term_pos)
 	if vim.g.workspaces_loaded then
 		local toggleterms = state.get().current_session.toggleterms
 
-		local target_term = find_term(toggleterms, local_id)
+		local target_term = find_term_by_local_id(toggleterms, local_id)
 
 		if not target_term then
 			state.get().term_count = state.get().term_count + 1
