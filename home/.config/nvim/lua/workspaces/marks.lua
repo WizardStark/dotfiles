@@ -93,7 +93,7 @@ function M.goto_mark(mark_name)
 	vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), target_mark.pos)
 
 	require("user.utils").toggle_special_buffers(toggled_types)
-	toggleterms.toggle_visible_terms(false)
+	toggleterms.toggle_visible_terms(true)
 end
 
 ---@param mark_name string

@@ -140,7 +140,7 @@ function M.switch_session(target_session, target_workspace)
 	require("user.utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
 	M.set_session_metadata(target_session, {})
-	toggleterms.toggle_visible_terms(false)
+	toggleterms.toggle_visible_terms(true)
 
 	vim.api.nvim_set_current_win(win)
 	vim.api.nvim_win_set_cursor(win, pos)

@@ -22,7 +22,7 @@ require("flatten").setup(
 			end,
 			block_end = function()
 				vim.schedule(function()
-					terms.toggle_visible_terms(false)
+					terms.toggle_visible_terms(true)
 				end)
 			end,
 		},

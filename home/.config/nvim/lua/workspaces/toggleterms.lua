@@ -36,13 +36,33 @@ function M.delete_term(local_id)
 	end
 end
 
+function M.has_visible_terms()
+	local toggleterms = state.get().current_session.toggleterms
+
+	for _, v in ipairs(toggleterms) do
+		if v.visible then
+			return true
+		end
+	end
+
+	return false
+end
+
 ---@param term SessionTerminal
 ---@param override_visible boolean
 local function toggle_term(term, override_visible)
 	vim.cmd(":" .. term.global_id .. "ToggleTerm direction=" .. term.term_direction .. " size=" .. term.size)
-	if term.term_pos == "left" and term.visible and not override_visible then
+	if
+		not M.has_visible_terms()
+		and term.term_pos == "left"
+		and (not term.visible or (term.visible and override_visible))
+	then
 		vim.cmd("wincmd H")
 		vim.cmd("vert res " .. term.size)
+	end
+
+	if not override_visible then
+		term.visible = not term.visible
 	end
 end
 
@@ -113,7 +133,6 @@ function M.toggle_term(local_id, direction, size, term_pos)
 			target_term.size = get_term_size(target_term)
 		end
 
-		target_term.visible = not target_term.visible
 		toggle_term(target_term, false)
 
 		state.get().current_session.toggleterms = toggleterms
@@ -130,10 +149,16 @@ end
 ---@param override_visible boolean
 function M.toggle_visible_terms(override_visible)
 	local toggleterms = state.get().current_session.toggleterms
+	local has_moved_left = false
 
 	for _, v in ipairs(toggleterms) do
 		if v.visible then
 			toggle_term(v, override_visible)
+			if not has_moved_left and v.term_pos == "left" then
+				vim.cmd("wincmd H")
+				vim.cmd("vert res " .. v.size)
+				has_moved_left = true
+			end
 		end
 	end
 end
