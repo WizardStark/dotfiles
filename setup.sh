@@ -15,7 +15,7 @@ else
     brew update
 fi
 
-if [[ "$OSTYPE" == "linux-gnu"* ]] && ! [[ $(command -v apt) == "" ]]; then
+if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ $(command -v apt) != "" ]]; then
     sudo apt install -y zsh
     # install neovim dependencies
     # The dependencies break if on ubuntu and installed with brew, so here we use apt
