@@ -40,30 +40,12 @@ function M.has_visible_terms()
 	local toggleterms = state.get().current_session.toggleterms
 
 	for _, v in ipairs(toggleterms) do
-		if v.visible then
+		if v.should_display then
 			return true
 		end
 	end
 
 	return false
-end
-
----@param term SessionTerminal
----@param override_visible boolean
-local function toggle_term(term, override_visible)
-	vim.cmd(":" .. term.global_id .. "ToggleTerm direction=" .. term.term_direction .. " size=" .. term.size)
-	if
-		not M.has_visible_terms()
-		and term.term_pos == "left"
-		and (not term.visible or (term.visible and override_visible))
-	then
-		vim.cmd("wincmd H")
-		vim.cmd("vert res " .. term.size)
-	end
-
-	if not override_visible then
-		term.visible = not term.visible
-	end
 end
 
 ---@param target_term SessionTerminal
@@ -83,6 +65,56 @@ local function get_term_size(target_term)
 	end
 
 	return size
+end
+
+function M.get_largest_visible_term_size()
+	local toggleterms = state.get().current_session.toggleterms
+	local max_size = 0
+
+	for _, v in ipairs(toggleterms) do
+		if v.should_display then
+			local ok, window_size = pcall(get_term_size, v)
+			if ok and window_size then
+				max_size = window_size > max_size and window_size or max_size
+			end
+		end
+	end
+
+	return max_size
+end
+
+---@param term SessionTerminal
+---@param override_active boolean
+---@param size number | nil
+local function toggle_term(term, override_active, size)
+	local has_visible_terms = M.has_visible_terms()
+	if not size then
+		if term.should_display then
+			local ok, term_size = pcall(get_term_size, term)
+			if ok and term_size then
+				term.size = term_size
+			end
+		end
+
+		if has_visible_terms then
+			term.size = M.get_largest_visible_term_size()
+		end
+	else
+		term.size = size
+	end
+
+	vim.cmd(term.global_id .. "ToggleTerm direction=" .. term.term_direction .. " size=" .. term.size)
+
+	if not has_visible_terms and term.term_pos == "left" and term.should_display == false then
+		vim.cmd("wincmd H")
+		vim.cmd("vert res " .. term.size)
+	end
+
+	term.should_display = not term.should_display
+
+	if not override_active then
+		term.active = not term.active
+	end
 end
 
 ---@param local_id number
@@ -116,7 +148,8 @@ function M.toggle_term(local_id, direction, size, term_pos)
 				size = size or default_size,
 				local_id = local_id,
 				global_id = state.get().term_count,
-				visible = false,
+				active = false,
+				should_display = false,
 				term_pos = term_pos or default_pos,
 			}
 
@@ -129,11 +162,7 @@ function M.toggle_term(local_id, direction, size, term_pos)
 			target_term.size = size or target_term.size or default_size
 		end
 
-		if target_term.visible then
-			target_term.size = get_term_size(target_term)
-		end
-
-		toggle_term(target_term, false)
+		toggle_term(target_term, false, nil)
 
 		state.get().current_session.toggleterms = toggleterms
 	else
@@ -146,18 +175,48 @@ function M.toggle_term(local_id, direction, size, term_pos)
 end
 
 ---toggle all terms that should be visible
----@param override_visible boolean
-function M.toggle_visible_terms(override_visible)
+---@param override_active boolean
+function M.close_visible_terms(override_active)
 	local toggleterms = state.get().current_session.toggleterms
-	local has_moved_left = false
+	local first_term = true
+	local size
 
 	for _, v in ipairs(toggleterms) do
-		if v.visible then
-			toggle_term(v, override_visible)
-			if not has_moved_left and v.term_pos == "left" then
-				vim.cmd("wincmd H")
-				vim.cmd("vert res " .. v.size)
-				has_moved_left = true
+		if v.active and v.should_display then
+			if first_term then
+				size = get_term_size(v)
+				first_term = false
+			end
+
+			toggle_term(v, override_active, size)
+		end
+	end
+end
+
+---toggle all terms that should be visible
+---@param override_active boolean
+function M.toggle_active_terms(override_active)
+	local toggleterms = state.get().current_session.toggleterms
+	local first_term = true
+	local size
+
+	for _, v in ipairs(toggleterms) do
+		if v.active then
+			if v.should_display then
+				-- going from displayed to hidden
+				toggle_term(v, override_active, nil)
+			else
+				if first_term then
+					toggle_term(v, override_active, nil)
+					size = get_term_size(v)
+					if v.term_pos == "left" then
+						vim.cmd("wincmd H")
+						vim.cmd("vert res " .. v.size)
+					end
+					first_term = false
+				else
+					toggle_term(v, override_active, size)
+				end
 			end
 		end
 	end

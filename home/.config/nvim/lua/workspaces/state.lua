@@ -26,7 +26,8 @@ local M = {}
 ---@class SessionTerminal
 ---@field term_direction string
 ---@field size number
----@field visible boolean
+---@field active boolean
+---@field should_display boolean
 ---@field global_id number
 ---@field local_id number
 ---@field term_pos string

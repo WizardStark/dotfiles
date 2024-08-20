@@ -15,14 +15,14 @@ require("flatten").setup(
 			end,
 			post_open = function(bufnr, winnr, ft, is_blocking)
 				if is_blocking then
-					terms.toggle_visible_terms(true)
+					terms.close_visible_terms(true)
 				else
 					vim.api.nvim_set_current_win(winnr)
 				end
 			end,
 			block_end = function()
 				vim.schedule(function()
-					terms.toggle_visible_terms(true)
+					terms.toggle_active_terms(true)
 				end)
 			end,
 		},

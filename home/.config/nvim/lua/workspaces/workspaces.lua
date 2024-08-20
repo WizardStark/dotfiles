@@ -107,7 +107,7 @@ function M.switch_session(target_session, target_workspace)
 	-- Save current session before switching
 	vim.cmd.wa()
 	-- hide all toggleterms
-	toggleterms.toggle_visible_terms(true)
+	toggleterms.close_visible_terms(true)
 
 	-- Stop lsp for current session, excluding jdtls
 	local toggled_types = require("user.utils").toggle_special_buffers({})
@@ -140,7 +140,7 @@ function M.switch_session(target_session, target_workspace)
 	require("user.utils").toggle_special_buffers(target_session.toggled_types)
 	bps.apply_breakpoints(target_session.breakpoints)
 	M.set_session_metadata(target_session, {})
-	toggleterms.toggle_visible_terms(true)
+	toggleterms.toggle_active_terms(true)
 
 	vim.api.nvim_set_current_win(win)
 	vim.api.nvim_win_set_cursor(win, pos)

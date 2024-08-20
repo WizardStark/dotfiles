@@ -1452,6 +1452,15 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<leader><C-\\>",
+		function()
+			require("workspaces.toggleterms").toggle_active_terms(true)
+		end,
+		prefix = P.term,
+		description = "Toggle all visible terminals",
+	},
+	{
+		mode = "n",
 		"<C-]>",
 		function()
 			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", nil, "right")
@@ -1461,12 +1470,30 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<leader><C-]>",
+		function()
+			require("workspaces.toggleterms").toggle_active_terms(true)
+		end,
+		prefix = P.term,
+		description = "Toggle all visible terminals",
+	},
+	{
+		mode = "n",
 		"<C-->",
 		function()
 			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", nil, "left")
 		end,
 		prefix = P.term,
 		description = "Open in left vertical split",
+	},
+	{
+		mode = "n",
+		"<leader><C-->",
+		function()
+			require("workspaces.toggleterms").toggle_active_terms(true)
+		end,
+		prefix = P.term,
+		description = "Toggle all visible terminals",
 	},
 	{
 		mode = { "o", "x" },

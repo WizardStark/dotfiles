@@ -1,21 +1,11 @@
 [core]
 	editor = /usr/local/bin/nvim
     pager = delta
+[include]
+    path = ~/.config/delta/delta.config
 [interactive]
     diffFilter = delta --color-only
-[delta]
-    navigate = true    # use n and N to move between diff sections
-    side-by-side = true
-    navigate = true    # use n and N to move between diff sections
-    side-by-side = true
-    file-style = "#cdd6f4"
-    hunk-header-style = syntax
-    hunk-header-decoration-style = ul "#cdd6f4"
-    file-decoration-style = box "#cdd6f4"
-    line-numbers-left-style = "#cdd6f4"
-    line-numbers-right-style = "#cdd6f4"
 [merge]
     conflictstyle = diff3
-
 [diff]
     colorMoved = default
