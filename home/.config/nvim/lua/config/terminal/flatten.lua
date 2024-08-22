@@ -1,4 +1,3 @@
---test died dinge
 require("flatten").setup(
 	---@module 'flatten'
 	{
