@@ -1,19 +1,3 @@
-local signs = {
-	DiagnosticSignError = "󰅚 ",
-	DiagnosticSignWarn = "󰀪 ",
-	DiagnosticSignHint = "󰌶 ",
-	DiagnosticSignInfo = " ",
-	DapBreakpoint = "",
-	DapBreakpointCondition = "",
-	DapBreakpointRejected = "",
-	DapLogPoint = ".>",
-	DapStopped = "󰁕",
-}
-
-for type, icon in pairs(signs) do
-	vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
-end
-
 -- LSP clients attached to buffer
 local function clients_lsp()
 	local bufnr = vim.api.nvim_get_current_buf()

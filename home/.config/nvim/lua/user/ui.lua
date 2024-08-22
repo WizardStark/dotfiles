@@ -17,6 +17,22 @@ local catppuccin_opts = {
 	},
 }
 
+local signs = {
+	DiagnosticSignError = "󰅚 ",
+	DiagnosticSignWarn = "󰀪 ",
+	DiagnosticSignHint = "󰌶 ",
+	DiagnosticSignInfo = " ",
+	DapBreakpoint = "",
+	DapBreakpointCondition = "",
+	DapBreakpointRejected = "",
+	DapLogPoint = ".>",
+	DapStopped = "󰁕",
+}
+
+for type, icon in pairs(signs) do
+	vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
+end
+
 local presets = {
 	bush = {
 		color_overrides = {
