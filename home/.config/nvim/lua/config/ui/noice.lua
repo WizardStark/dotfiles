@@ -28,14 +28,6 @@ require("noice").setup(
 		},
 		cmdline = {
 			view = "cmdline_popup",
-			format = {
-				search_down = {
-					view = "cmdline",
-				},
-				search_up = {
-					view = "cmdline",
-				},
-			},
 		},
 		messages = {
 			enabled = true, -- enables the Noice messages UI
@@ -65,10 +57,9 @@ require("noice").setup(
 			backend = "cmp", -- backend to use to show regular cmdline completions
 		},
 		presets = {
-			bottom_search = true, -- use a classic bottom cmdline for search
+			bottom_search = false, -- use a classic bottom cmdline for search
 			command_palette = true, -- position the cmdline and popupmenu together
 			long_message_to_split = true, -- long messages will be sent to a split
-			inc_rename = true, -- enables an input dialog for inc-rename.nvim
 		},
 	}
 )
