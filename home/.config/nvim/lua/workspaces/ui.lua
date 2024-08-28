@@ -52,7 +52,7 @@ function M.create_session_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
-		width = 60,
+		width = 80,
 		height = 1,
 	})
 
@@ -115,7 +115,7 @@ function M.rename_current_session_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
-		width = 60,
+		width = 80,
 		height = 1,
 	})
 
@@ -159,7 +159,7 @@ function M.delete_session_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
-		width = 60,
+		width = 80,
 		height = 1,
 	})
 
@@ -203,7 +203,7 @@ function M.create_workspace_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
-		width = 60,
+		width = 80,
 		height = 1,
 	})
 
@@ -283,7 +283,7 @@ function M.rename_current_workspace_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
-		width = 60,
+		width = 80,
 		height = 1,
 	})
 
@@ -327,7 +327,7 @@ function M.delete_workspace_input()
 	local nui = require("nui-components")
 
 	local renderer = nui.create_renderer({
-		width = 60,
+		width = 80,
 		height = 1,
 	})
 
