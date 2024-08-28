@@ -3,6 +3,10 @@ local M = {}
 local state = require("workspaces.state")
 require("toggleterm")
 
+function M.get_session_terms()
+	return state.get().current_session.toggleterms
+end
+
 ---@param session_terms SessionTerminal[]
 ---@param local_id number
 local function find_term_by_local_id(session_terms, local_id)
@@ -28,7 +32,7 @@ function M.find_term_by_global_id(session_terms, global_id)
 end
 
 function M.delete_term(local_id)
-	local toggleterms = state.get().current_session.toggleterms
+	local toggleterms = M.get_session_terms()
 	local target_term = find_term_by_local_id(toggleterms, local_id)
 	if target_term then
 		table.remove(toggleterms, target_term[1])
@@ -37,7 +41,7 @@ function M.delete_term(local_id)
 end
 
 function M.has_visible_terms()
-	local toggleterms = state.get().current_session.toggleterms
+	local toggleterms = M.get_session_terms()
 
 	for _, v in ipairs(toggleterms) do
 		if v.should_display then
@@ -68,7 +72,7 @@ local function get_term_size(target_term)
 end
 
 function M.get_largest_visible_term_size()
-	local toggleterms = state.get().current_session.toggleterms
+	local toggleterms = M.get_session_terms()
 	local max_size = 0
 
 	for _, v in ipairs(toggleterms) do
@@ -135,7 +139,7 @@ function M.toggle_term(local_id, direction, size, term_pos)
 	end
 
 	if vim.g.workspaces_loaded then
-		local toggleterms = state.get().current_session.toggleterms
+		local toggleterms = M.get_session_terms()
 
 		local target_term = find_term_by_local_id(toggleterms, local_id)
 
@@ -164,6 +168,10 @@ function M.toggle_term(local_id, direction, size, term_pos)
 
 		toggle_term(target_term, false, nil)
 
+		table.sort(toggleterms, function(a, b)
+			return a.local_id < b.local_id
+		end)
+
 		state.get().current_session.toggleterms = toggleterms
 	else
 		vim.cmd(
@@ -177,7 +185,7 @@ end
 ---toggle all terms that should be visible
 ---@param override_active boolean
 function M.close_visible_terms(override_active)
-	local toggleterms = state.get().current_session.toggleterms
+	local toggleterms = M.get_session_terms()
 	local first_term = true
 	local size
 
@@ -196,7 +204,7 @@ end
 ---toggle all terms that should be visible
 ---@param override_active boolean
 function M.toggle_active_terms(override_active)
-	local toggleterms = state.get().current_session.toggleterms
+	local toggleterms = M.get_session_terms()
 	local first_term = true
 	local size
 
@@ -220,10 +228,6 @@ function M.toggle_active_terms(override_active)
 			end
 		end
 	end
-end
-
-function M.get_session_terms()
-	return state.get().current_session.toggleterms
 end
 
 return M
