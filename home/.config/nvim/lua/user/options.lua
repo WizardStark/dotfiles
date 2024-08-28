@@ -62,5 +62,11 @@ return {
 		for key, value in pairs(opts) do
 			vim.opt[key] = value
 		end
+
+		vim.filetype.add({
+			extension = {
+				["http"] = "http",
+			},
+		})
 	end,
 }
