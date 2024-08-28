@@ -242,6 +242,9 @@ local mappings = {
 			if vim.snippet.active() then
 				vim.snippet.stop()
 			end
+			vim.schedule(function()
+				vim.cmd("nohlsearch")
+			end)
 		end,
 		prefix = P.misc,
 		description = "Write buffer and stop snippet jumps",
