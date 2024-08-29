@@ -2267,7 +2267,7 @@ local mappings = {
 			vim.fn.setreg('"', vim.fn.getreg('"'):gsub("[\n\r]", " "))
 		end,
 		prefix = P.misc,
-		descriptiopStart = 'Remove linebreaks from contents in " register',
+		description = 'Remove linebreaks from contents in " register',
 	},
 }
 
