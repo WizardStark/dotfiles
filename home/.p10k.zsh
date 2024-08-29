@@ -953,7 +953,7 @@ typeset -g PR_LIGHT_BLACK="#585b70"
   typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND=180
   # Default context color (no privileges, no SSH).
   typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND=180
-  typeset -g POWERLEVEL9K_CONTEXT_BACKGROUND=${PR_BLUE}
+  typeset -g POWERLEVEL9K_CONTEXT_BACKGROUND=${CONTEXT_BG:=${PR_BLUE}}
 
   # Context format when running with privileges: bold user@hostname.
   # typeset -g POWERLEVEL9K_CONTEXT_ROOT_TEMPLATE='%B%n@%m'
