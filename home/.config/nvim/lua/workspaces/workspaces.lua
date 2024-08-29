@@ -109,7 +109,13 @@ function M.switch_session(target_session, target_workspace)
 	-- hide all toggleterms
 	toggleterms.close_visible_terms(true)
 
-	-- Stop lsp for current session, excluding jdtls
+	local session_dir = Path:new(vim.fn.expand(state.get().current_session.dir))
+
+	if not session_dir:is_dir() then
+		session_dir:mkdir()
+		vim.notify("Created missing directory: " .. session_dir.filename)
+	end
+
 	local toggled_types = require("user.utils").toggle_special_buffers({})
 
 	persist.write_nvim_session_file(state.get().current_workspace, state.get().current_session)

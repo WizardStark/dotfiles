@@ -1770,6 +1770,15 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
+		"<leader>scd",
+		function()
+			require("workspaces.ui").change_current_session_directory_input()
+		end,
+		prefix = P.work,
+		description = "Change session directory",
+	},
+	{
+		mode = { "n" },
 		"\\",
 		function()
 			require("workspaces.workspaces").switch_session_by_index(vim.v.count1)

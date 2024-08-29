@@ -26,10 +26,6 @@ local function directory_completion()
 	}
 end
 
-local function validate_path(path)
-	return
-end
-
 local function truncate_path(path)
 	local parts = {}
 
@@ -148,6 +144,56 @@ function M.rename_current_session_input()
 			validate = nui.validator.min_length(1),
 			on_change = function(value, _)
 				session_name.value = value
+			end,
+		})
+	)
+
+	renderer:render(body)
+end
+
+function M.change_current_session_directory_input()
+	local nui = require("nui-components")
+
+	local renderer = nui.create_renderer({
+		width = 80,
+		height = 1,
+	})
+
+	local session_dir = nui.create_signal({ value = state.get().current_session.dir })
+
+	local body = nui.form(
+		{
+			id = "form",
+			submit_key = "<CR>",
+			on_submit = function(is_valid)
+				if is_valid then
+					if not Path:new(vim.fn.expand(session_dir.value:get_value())):is_dir() then
+						vim.notify("Not a valid directory")
+						return
+					end
+
+					state.get().current_session.dir = session_dir.value:get_value()
+					renderer:close()
+				else
+					vim.notify("Please fill in all fields")
+				end
+			end,
+		},
+		nui.paragraph({
+			lines = "Change current session directory",
+			align = "center",
+		}),
+		nui.text_input({
+			border_label = "New session directory",
+			id = "session_directory",
+			autofocus = false,
+			flex = 1,
+			max_lines = 1,
+			value = session_dir.value,
+			validate = nui.validator.min_length(1),
+			mappings = directory_completion,
+			on_change = function(value, _)
+				session_dir.value = value
 			end,
 		})
 	)
