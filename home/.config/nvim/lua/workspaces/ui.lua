@@ -186,7 +186,7 @@ function M.change_current_session_directory_input()
 		nui.text_input({
 			border_label = "New session directory",
 			id = "session_directory",
-			autofocus = false,
+			autofocus = true,
 			flex = 1,
 			max_lines = 1,
 			value = session_dir.value,
