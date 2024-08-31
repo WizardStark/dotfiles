@@ -68,7 +68,7 @@ return {
 	},
 	{
 		"SCJangra/table-nvim",
-		ft = "markdown",
+		ft = { "markdown", "tex" },
 		opts = {
 			padd_column_separators = true,
 			mappings = {
