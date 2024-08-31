@@ -66,6 +66,23 @@ return {
 			require("refactoring").setup()
 		end,
 	},
+	{
+		"SCJangra/table-nvim",
+		ft = "markdown",
+		opts = {
+			padd_column_separators = true,
+			mappings = {
+				next = "<TAB>", -- Go to next cell.
+				prev = "<S-TAB>", -- Go to previous cell.
+				insert_row_up = "<M-S-k>", -- Insert a row above the current row.
+				insert_row_down = "<M-S-j>", -- Insert a row below the current row.
+				insert_column_left = "<M-S-h>", -- Insert a column to the left of current column.
+				insert_column_right = "<M-S-l>", -- Insert a column to the right of current column.
+				insert_table = "<M-S-t>", -- Insert a new table.
+				insert_table_alt = "<M-S-t>", -- Insert a new table that is not surrounded by pipes.
+			},
+		},
+	},
 	-- COMPLETION
 	{
 		"hrsh7th/nvim-cmp",
