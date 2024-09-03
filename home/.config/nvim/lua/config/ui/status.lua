@@ -149,14 +149,16 @@ require("bars").setup(
 				{
 					type = "custom",
 
-					value = {
-						corner_left = nil,
-						corner_right = nil,
-						value = "Test",
+					value = function(len)
+						return {
+							corner_left = nil,
+							corner_right = nil,
+							value = { "Test", "CmdViolet" },
 
-						padding_left = nil,
-						padding_right = nil,
-					},
+							padding_left = nil,
+							padding_right = nil,
+						}
+					end,
 				},
 			},
 		},

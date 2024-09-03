@@ -20,16 +20,16 @@ return {
 	-- 		require("config.ui.lualine")
 	-- 	end,
 	-- },
-	{
-		"Bekaboo/dropbar.nvim",
-		event = "UiEnter",
-		dependencies = {
-			"nvim-telescope/telescope-fzf-native.nvim",
-		},
-		config = function()
-			require("config.ui.dropbar")
-		end,
-	},
+	-- {
+	-- 	"Bekaboo/dropbar.nvim",
+	-- 	event = "UiEnter",
+	-- 	dependencies = {
+	-- 		"nvim-telescope/telescope-fzf-native.nvim",
+	-- 	},
+	-- 	config = function()
+	-- 		require("config.ui.dropbar")
+	-- 	end,
+	-- },
 	{
 		"rcarriga/nvim-notify",
 		config = true,
@@ -111,14 +111,14 @@ return {
 			require("config.ui.edgy")
 		end,
 	},
-	{
-		"b0o/incline.nvim",
-		event = "VeryLazy",
-		dependencies = "echasnovski/mini.icons",
-		config = function()
-			require("config.ui.incline")
-		end,
-	},
+	-- {
+	-- 	"b0o/incline.nvim",
+	-- 	event = "VeryLazy",
+	-- 	dependencies = "echasnovski/mini.icons",
+	-- 	config = function()
+	-- 		require("config.ui.incline")
+	-- 	end,
+	-- },
 	{
 		"mistricky/codesnap.nvim",
 		build = "make",
