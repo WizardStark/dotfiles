@@ -128,7 +128,7 @@ return {
 		vim.cmd("colorscheme " .. vim.g.colorscheme)
 
 		if vim.g.workspaces_disabled or next(vim.fn.argv()) ~= nil then
-			require("lualine")
+			-- require("lualine")
 		else
 			vim.g.workspaces_loaded = true
 			local is_floating_win = vim.api.nvim_win_get_config(0).relative ~= ""

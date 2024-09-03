@@ -38,16 +38,16 @@ function M.setup_lualine()
 		}
 	end
 
-	require("lualine").setup({
-		tabline = {
-			lualine_a = {
-				function()
-					return current_workspace.name
-				end,
-			},
-			lualine_b = tabs,
-		},
-	})
+	-- require("lualine").setup({
+	-- 	tabline = {
+	-- 		lualine_a = {
+	-- 			function()
+	-- 				return current_workspace.name
+	-- 			end,
+	-- 		},
+	-- 		lualine_b = tabs,
+	-- 	},
+	-- })
 end
 
 ---Sets session metadata such as last file and line num

@@ -7,12 +7,19 @@ return {
 		config = true,
 	},
 	{
-		"nvim-lualine/lualine.nvim",
-		lazy = true,
+		"OXY2DEV/bars-N-lines.nvim",
+		lazy = false,
 		config = function()
-			require("config.ui.lualine")
+			require("config.ui.status")
 		end,
 	},
+	-- {
+	-- 	"nvim-lualine/lualine.nvim",
+	-- 	lazy = true,
+	-- 	config = function()
+	-- 		require("config.ui.lualine")
+	-- 	end,
+	-- },
 	{
 		"Bekaboo/dropbar.nvim",
 		event = "UiEnter",
