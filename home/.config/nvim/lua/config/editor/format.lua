@@ -27,6 +27,7 @@ require("conform").setup(
 			svelte = { "prettier" },
 			markdown = { "prettier" },
 			css = { "prettier" },
+			c = { "clang-format" },
 			scss = { "prettier" },
 			json = { "jq" },
 			go = { "gofumpt" },
