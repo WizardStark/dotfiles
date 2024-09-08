@@ -148,7 +148,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
       SEND_STRING(SS_TAP(X_Q) SS_TAP(X_U));
     }
     break;
-  case MCRO_XPL: if (record->event.pressed) {
+  case MCRO_XPL:
+    if (record->event.pressed) {
       SEND_STRING(SS_TAP(X_X) SS_TAP(X_P) SS_TAP(X_L));
     }
     break;
@@ -181,7 +182,7 @@ void on_smtd_action(uint16_t keycode, smtd_action action, uint8_t tap_count) {
     SMTD_MTE(CKC_A, KC_A, KC_RSFT, 2, true)
     SMTD_MTE(CKC_E, KC_E, KC_LCTL, 2, true)
     SMTD_MTE(CKC_I, KC_I, KC_LALT, 2, true)
-    SMTD_MT(CKC_G, KC_G, KC_HYPR, 2, true)
+    SMTD_MT(CKC_G, KC_G, KC_HYPR, 2, false)
     SMTD_LT(CKC_R, KC_R, NAV, 2, true)
     SMTD_MT(CKC_SLSH, KC_SLSH, KC_LGUI, 2)
     SMTD_MT(CKC_DOT, KC_DOT, KC_HYPR, 2)
