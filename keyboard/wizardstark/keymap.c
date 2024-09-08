@@ -1,4 +1,5 @@
 #include QMK_KEYBOARD_H
+#include "qmk-vim/src/vim.h"
 #include "rgb.h"
 #include "version.h"
 #define MOON_LED_LEVEL LED_LEVEL
@@ -15,14 +16,16 @@ enum custom_keycodes {
   MCRO_XPL,
   MCRO_TION,
   MCRO_MPL,
+  TOG_VIM,
+  VIM_MAC,
   SMTD_KEYCODES_BEGIN,
   CKC_M,
-  CKC_C,
+  CKC_S,
+  CKC_H,
   CKC_N,
   CKC_T,
   CKC_A,
   CKC_E,
-  CKC_I,
   CKC_SLSH,
   CKC_R,
   CKC_G,
@@ -37,7 +40,7 @@ enum custom_keycodes {
   SMTD_KEYCODES_END,
 };
 
-#include "sm_td.h"
+#include "sm_td/sm_td.h"
 
 enum layers { BASE, SYM, NAV, GAME, MOUSE };
 
@@ -46,9 +49,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   [BASE] = LAYOUT_voyager(
     KC_LGUI,        KC_1,           KC_2,           KC_3,           KC_4,           KC_5,                                           KC_6,           KC_7,           KC_8,           KC_9,           KC_0,           KC_DEL,
     KC_TAB,         KC_X,           KC_W,           CKC_M,          CKC_G,          KC_J,                                           KC_Z,           CKC_DOT,        CKC_SLSH,       KC_Q,           KC_QUOT,        KC_MINS,
-    KC_ESC,         KC_S,           CKC_C,          CKC_N,          CKC_T,          KC_K,                                           KC_COMM,        CKC_A,          CKC_E,          CKC_I,          KC_H,           KC_SCLN,
+    KC_ESC,         CKC_S,          KC_C,           CKC_N,          CKC_T,          KC_K,                                           KC_COMM,        CKC_A,          CKC_E,          KC_I,           CKC_H,          KC_SCLN,
     KC_LALT,        KC_B,           KC_P,           KC_L,           KC_D,           KC_V,                                           KC_GRV,         KC_U,           KC_O,           KC_Y,           KC_F,           KC_ENT,
-                                                                    CKC_SPC,        KC_BSPC,                                       KC_ENT,         CKC_R
+                                                                    CKC_SPC,        KC_BSPC,                                        KC_ENT,         CKC_R
   ),
   [SYM] = LAYOUT_voyager(
     KC_F1,          KC_F2,          KC_F3,          KC_F4,          KC_F5,          KC_F6,                                          KC_F7,          KC_F8,          KC_F9,          KC_F10,         KC_F11,         KC_F12,
@@ -58,9 +61,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                                                     _______,        _______,                                        KC_ENT,         MO(NAV)
   ),
   [NAV] = LAYOUT_voyager(
-    _______,        _______,        KC_BRID,        KC_BRIU,        _______,        _______,                                        _______,        KC_HOME,        KC_PGDN,        KC_PGUP,        KC_END,         TO(GAME),
-    KC_VOLD,        KC_VOLU,        KC_7,           KC_8,           KC_9,           KC_MSTP,                                        _______,        KC_UNDS,        LCTL(KC_D),     LCTL(KC_U),     KC_DLR,         _______,
-    KC_MPRV,        KC_MNXT,        KC_4,           KC_5,           KC_6,           KC_MPLY,                                        _______,        KC_H,           KC_J,           KC_K,           KC_L,           _______,
+    _______,        _______,        KC_BRID,        KC_BRIU,        _______,        _______,                                        _______,        KC_HOME,        KC_PGDN,        KC_PGUP,        KC_END,         _______,
+    KC_VOLD,        KC_VOLU,        KC_7,           KC_8,           KC_9,           KC_MSTP,                                        VIM_MAC,        KC_UNDS,        LCTL(KC_D),     LCTL(KC_U),     KC_DLR,         _______,
+    KC_MPRV,        KC_MNXT,        KC_4,           KC_5,           KC_6,           KC_MPLY,                                        TOG_VIM,        KC_H,           KC_J,           KC_K,           KC_L,           _______,
     KC_MUTE,        KC_0,           KC_1,           KC_2,           KC_3,           KC_BSLS,                                        _______,        KC_LEFT,        KC_DOWN,        KC_UP,          KC_RIGHT,       _______,
                                                                     _______,        _______,                                        _______,        _______
   ),
@@ -76,29 +79,40 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______,        _______,        _______,        _______,        _______,        _______,                                        _______,        LALT(KC_LEFT),  KC_MS_WH_DOWN,  KC_MS_WH_UP,    LALT(KC_RIGHT), _______,
     _______,        KC_LCTL,        KC_MS_ACCEL0,   KC_MS_ACCEL1,   KC_MS_ACCEL2,   _______,                                        _______,        KC_MS_LEFT,     KC_MS_DOWN,     KC_MS_UP,       KC_MS_RIGHT,    _______,
     _______,        TO(BASE),       _______,        _______,        _______,        _______,                                        _______,        _______,        _______,        _______,        _______,        _______,
-                                                                    KC_MS_BTN2,     _______,                                        KC_MS_BTN3,     KC_MS_BTN1
+                                                                  KC_MS_BTN2,     _______,                                        KC_MS_BTN3,     KC_MS_BTN1
   ),
 };
 // clang-format on
 
+#ifdef STATUS_LED_1
+void vim_mode_active(bool active) { STATUS_LED_1(active); }
+#endif
+
+#ifdef STATUS_LED_3
+void vim_mac_mode_active(bool active) { STATUS_LED_3(active); }
+#endif
+
+bool IS_MAC = false;
+
 const uint16_t PROGMEM combo_SPCR[] = {CKC_SPC, CKC_R, COMBO_END};
 const uint16_t PROGMEM combo_COMK[] = {KC_COMM, KC_K, COMBO_END};
-const uint16_t PROGMEM combo_AH[] = {CKC_A, KC_H, COMBO_END};
-const uint16_t PROGMEM combo_UH[] = {KC_U, KC_H, COMBO_END};
-const uint16_t PROGMEM combo_EH[] = {CKC_E, KC_H, COMBO_END};
-const uint16_t PROGMEM combo_OH[] = {KC_O, KC_H, COMBO_END};
+const uint16_t PROGMEM combo_AH[] = {CKC_A, CKC_H, COMBO_END};
+const uint16_t PROGMEM combo_UH[] = {KC_U, CKC_H, COMBO_END};
+const uint16_t PROGMEM combo_EH[] = {CKC_E, CKC_H, COMBO_END};
+const uint16_t PROGMEM combo_OH[] = {KC_O, CKC_H, COMBO_END};
 const uint16_t PROGMEM combo_GM[] = {CKC_G, KC_M, COMBO_END};
-const uint16_t PROGMEM combo_NC[] = {CKC_N, CKC_C, COMBO_END};
+const uint16_t PROGMEM combo_NC[] = {CKC_N, KC_C, COMBO_END};
 const uint16_t PROGMEM combo_XW[] = {KC_X, KC_W, COMBO_END};
 const uint16_t PROGMEM combo_TN[] = {CKC_T, CKC_N, COMBO_END};
 const uint16_t PROGMEM combo_WM[] = {KC_W, CKC_M, COMBO_END};
-const uint16_t PROGMEM combo_MC[] = {CKC_M, CKC_C, COMBO_END};
+const uint16_t PROGMEM combo_MC[] = {CKC_M, KC_C, COMBO_END};
 const uint16_t PROGMEM combo_TA[] = {CKC_T, CKC_A, COMBO_END};
+const uint16_t PROGMEM combo_RDEL[] = {CKC_R, KC_DEL, COMBO_END};
 
 // clang-format off
 combo_t key_combos[COMBO_COUNT] = {
     COMBO(combo_SPCR, KC_ENT),
-    COMBO(combo_COMK, TO(4)),
+    COMBO(combo_COMK, TO(MOUSE)),
     COMBO(combo_AH, MCRO_AU),
     COMBO(combo_UH, MCRO_UA),
     COMBO(combo_EH, MCRO_EO),
@@ -110,6 +124,7 @@ combo_t key_combos[COMBO_COUNT] = {
     COMBO(combo_WM, KC_Z),
     COMBO(combo_MC, MCRO_MPL),
     COMBO(combo_TA, CW_TOGG),
+    COMBO(combo_RDEL, TO(GAME)),
 };
 // clang-format on
 
@@ -117,6 +132,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   if (!process_smtd(keycode, record)) {
     return false;
   }
+
+  if (!process_vim_mode(keycode, record)) {
+    return false;
+  }
+
   switch (keycode) {
   case MCRO_AU:
     if (record->event.pressed) {
@@ -163,10 +183,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
       SEND_STRING(SS_TAP(X_M) SS_TAP(X_P) SS_TAP(X_L));
     }
     break;
-
   case RGB_SLD:
     if (record->event.pressed) {
       rgblight_mode(1);
+    }
+  case TOG_VIM:
+    if (record->event.pressed) {
+      toggle_vim_mode();
+      if (!IS_MAC) {
+        disable_vim_for_mac();
+      }
+      vim_mode_active(vim_mode_enabled());
+    }
+  case VIM_MAC:
+    if (record->event.pressed) {
+      if (IS_MAC) {
+        disable_vim_for_mac();
+      } else {
+        enable_vim_for_mac();
+      }
+      IS_MAC = !IS_MAC;
+      vim_mac_mode_active(vim_mode_enabled() && vim_for_mac_enabled());
     }
     return false;
   }
@@ -176,16 +213,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 void on_smtd_action(uint16_t keycode, smtd_action action, uint8_t tap_count) {
   switch (keycode) {
     SMTD_MT(CKC_M, KC_M, KC_LGUI, 2, true)
-    SMTD_MTE(CKC_C, KC_C, KC_LALT, 2, true)
+    SMTD_MT(CKC_S, KC_S, KC_LALT, 2, true)
     SMTD_MTE(CKC_N, KC_N, KC_LCTL, 2, true)
     SMTD_MTE(CKC_T, KC_T, KC_LSFT, 2, true)
     SMTD_MTE(CKC_A, KC_A, KC_RSFT, 2, true)
     SMTD_MTE(CKC_E, KC_E, KC_LCTL, 2, true)
-    SMTD_MTE(CKC_I, KC_I, KC_LALT, 2, true)
-    SMTD_MT(CKC_G, KC_G, KC_HYPR, 2, false)
+    SMTD_MT(CKC_H, KC_H, KC_LALT, 2, true)
     SMTD_LT(CKC_R, KC_R, NAV, 2, true)
     SMTD_MT(CKC_SLSH, KC_SLSH, KC_LGUI, 2)
-    SMTD_MT(CKC_DOT, KC_DOT, KC_HYPR, 2)
     SMTD_LT(CKC_SPC, KC_SPC, SYM, 2, true)
     SMTD_MTE(CKC_MINS, KC_MINS, KC_LALT, 2, true)
     SMTD_MTE(CKC_PLUS, KC_PLUS, KC_LCTL, 2, true)
@@ -193,5 +228,81 @@ void on_smtd_action(uint16_t keycode, smtd_action action, uint8_t tap_count) {
     SMTD_MTE(CKC_COLN, KC_COLN, KC_RSFT, 2, true)
     SMTD_MTE(CKC_LPRN, KC_LPRN, KC_LCTL, 2, true)
     SMTD_MTE(CKC_RPRN, KC_RPRN, KC_LALT, 2, true)
+
+  case CKC_G: {
+    switch (action) {
+    case SMTD_ACTION_TOUCH:
+      break;
+
+    case SMTD_ACTION_TAP:
+      SMTD_TAP_16(true ,KC_G);
+      break;
+
+    case SMTD_ACTION_HOLD:
+      switch (tap_count) {
+      case 0:
+      case 1:
+        register_mods(MOD_BIT(KC_LCTL) | MOD_BIT(KC_LALT) | MOD_BIT(KC_LGUI) |
+                      MOD_BIT(KC_LSFT));
+        break;
+      default:
+        SMTD_REGISTER_16(true, KC_G);
+        break;
+      }
+      break;
+
+    case SMTD_ACTION_RELEASE:
+      switch (tap_count) {
+      case 0:
+      case 1:
+        unregister_mods(MOD_BIT(KC_LCTL) | MOD_BIT(KC_LALT) | MOD_BIT(KC_LGUI) |
+                        MOD_BIT(KC_LSFT));
+        break;
+      default:
+        SMTD_UNREGISTER_16(true, KC_G);
+        break;
+      }
+      break;
+    }
+    break;
+  }
+
+  case CKC_DOT: {
+    switch (action) {
+    case SMTD_ACTION_TOUCH:
+      break;
+
+    case SMTD_ACTION_TAP:
+      tap_code16(KC_DOT);
+      break;
+
+    case SMTD_ACTION_HOLD:
+      switch (tap_count) {
+      case 0:
+      case 1:
+        register_mods(MOD_BIT(KC_LCTL) | MOD_BIT(KC_LALT) | MOD_BIT(KC_LGUI) |
+                      MOD_BIT(KC_LSFT));
+        break;
+      default:
+        register_code16(KC_DOT);
+        break;
+      }
+      break;
+
+    case SMTD_ACTION_RELEASE:
+      switch (tap_count) {
+      case 0:
+      case 1:
+        unregister_mods(MOD_BIT(KC_LCTL) | MOD_BIT(KC_LALT) | MOD_BIT(KC_LGUI) |
+                        MOD_BIT(KC_LSFT));
+        break;
+      default:
+        unregister_code16(KC_DOT);
+        break;
+      }
+      break;
+    }
+    break;
+  }
   }
 }

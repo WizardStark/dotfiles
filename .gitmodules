@@ -1,0 +1,6 @@
+[submodule "keyboard/wizardstark/sm_td"]
+	path = keyboard/wizardstark/sm_td
+	url = https://github.com/stasmarkin/sm_td.git
+[submodule "keyboard/wizardstark/qmk-vim"]
+	path = keyboard/wizardstark/qmk-vim
+	url = https://github.com/andrewjrae/qmk-vim.git
