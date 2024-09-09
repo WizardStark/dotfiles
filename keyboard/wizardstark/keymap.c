@@ -3,10 +3,9 @@
 #include "rgb.h"
 #include "version.h"
 #define MOON_LED_LEVEL LED_LEVEL
-#define ML_SAFE_RANGE SAFE_RANGE
 
 enum custom_keycodes {
-  RGB_SLD = ML_SAFE_RANGE,
+  RGB_SLD = SAFE_RANGE,
   MCRO_AU,
   MCRO_UA,
   MCRO_EO,
@@ -137,50 +136,132 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return false;
   }
 
+  bool caps_word_active = is_caps_word_on();
+
   switch (keycode) {
   case MCRO_AU:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_A) SS_TAP(X_U));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_A);
+        tap_code16(KC_U);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_A);
+        tap_code16(KC_U);
+      }
     }
     break;
   case MCRO_UA:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_U) SS_TAP(X_A));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_U);
+        tap_code16(KC_A);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_U);
+        tap_code16(KC_A);
+      }
     }
     break;
   case MCRO_EO:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_E) SS_TAP(X_O));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_E);
+        tap_code16(KC_O);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_E);
+        tap_code16(KC_O);
+      }
     }
     break;
   case MCRO_OE:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_O) SS_TAP(X_E));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_O);
+        tap_code16(KC_E);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_O);
+        tap_code16(KC_E);
+      }
     }
     break;
   case MCRO_GL:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_G) SS_TAP(X_L));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_G);
+        tap_code16(KC_L);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_G);
+        tap_code16(KC_L);
+      }
     }
     break;
   case MCRO_QU:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_Q) SS_TAP(X_U));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_Q);
+        tap_code16(KC_U);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_Q);
+        tap_code16(KC_U);
+      }
     }
     break;
   case MCRO_XPL:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_X) SS_TAP(X_P) SS_TAP(X_L));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_X);
+        tap_code16(KC_P);
+        tap_code16(KC_L);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_X);
+        tap_code16(KC_P);
+        tap_code16(KC_L);
+      }
     }
     break;
   case MCRO_TION:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_T) SS_TAP(X_I) SS_TAP(X_O) SS_TAP(X_N));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_T);
+        tap_code16(KC_I);
+        tap_code16(KC_O);
+        tap_code16(KC_N);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_T);
+        tap_code16(KC_I);
+        tap_code16(KC_O);
+        tap_code16(KC_N);
+      }
     }
     break;
   case MCRO_MPL:
     if (record->event.pressed) {
-      SEND_STRING(SS_TAP(X_M) SS_TAP(X_P) SS_TAP(X_L));
+      if (caps_word_active) {
+        register_mods(MOD_BIT(KC_LSFT));
+        tap_code16(KC_M);
+        tap_code16(KC_P);
+        tap_code16(KC_L);
+        unregister_mods(MOD_BIT(KC_LSFT));
+      } else {
+        tap_code16(KC_M);
+        tap_code16(KC_P);
+        tap_code16(KC_L);
+      }
     }
     break;
   case RGB_SLD:
@@ -212,30 +293,30 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
 bool caps_word_press_user(uint16_t keycode) {
   switch (keycode) {
-    // Keycodes that continue Caps Word, with shift applied.
-    case KC_A ... KC_Z:
-    case KC_MINS:
-    case MCRO_AU:
-    case MCRO_UA:
-    case MCRO_EO:
-    case MCRO_OE:
-    case MCRO_GL:
-    case MCRO_QU:
-    case MCRO_XPL:
-    case MCRO_TION:
-    case MCRO_MPL:
-      add_weak_mods(MOD_BIT(KC_LSFT));
-      return true;
+  // Keycodes that continue Caps Word, with shift applied.
+  case KC_A ... KC_Z:
+  case KC_MINS:
+  case MCRO_AU:
+  case MCRO_UA:
+  case MCRO_EO:
+  case MCRO_OE:
+  case MCRO_GL:
+  case MCRO_QU:
+  case MCRO_XPL:
+  case MCRO_TION:
+  case MCRO_MPL:
+    add_weak_mods(MOD_BIT(KC_LSFT));
+    return true;
 
-    // Keycodes that continue Caps Word, without shifting.
-    case KC_1 ... KC_0:
-    case KC_BSPC:
-    case KC_DEL:
-    case KC_UNDS:
-      return true;
+  // Keycodes that continue Caps Word, without shifting.
+  case KC_1 ... KC_0:
+  case KC_BSPC:
+  case KC_DEL:
+  case KC_UNDS:
+    return true;
 
-    default:
-      return false;
+  default:
+    return false;
   }
 }
 
