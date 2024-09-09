@@ -100,7 +100,7 @@ const uint16_t PROGMEM combo_AH[] = {CKC_A, CKC_H, COMBO_END};
 const uint16_t PROGMEM combo_UH[] = {KC_U, CKC_H, COMBO_END};
 const uint16_t PROGMEM combo_EH[] = {CKC_E, CKC_H, COMBO_END};
 const uint16_t PROGMEM combo_OH[] = {KC_O, CKC_H, COMBO_END};
-const uint16_t PROGMEM combo_GM[] = {CKC_G, KC_M, COMBO_END};
+const uint16_t PROGMEM combo_GM[] = {CKC_G, CKC_M, COMBO_END};
 const uint16_t PROGMEM combo_NC[] = {CKC_N, KC_C, COMBO_END};
 const uint16_t PROGMEM combo_XW[] = {KC_X, KC_W, COMBO_END};
 const uint16_t PROGMEM combo_TN[] = {CKC_T, CKC_N, COMBO_END};
@@ -210,14 +210,43 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   return true;
 }
 
+bool caps_word_press_user(uint16_t keycode) {
+  switch (keycode) {
+    // Keycodes that continue Caps Word, with shift applied.
+    case KC_A ... KC_Z:
+    case KC_MINS:
+    case MCRO_AU:
+    case MCRO_UA:
+    case MCRO_EO:
+    case MCRO_OE:
+    case MCRO_GL:
+    case MCRO_QU:
+    case MCRO_XPL:
+    case MCRO_TION:
+    case MCRO_MPL:
+      add_weak_mods(MOD_BIT(KC_LSFT));
+      return true;
+
+    // Keycodes that continue Caps Word, without shifting.
+    case KC_1 ... KC_0:
+    case KC_BSPC:
+    case KC_DEL:
+    case KC_UNDS:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 void on_smtd_action(uint16_t keycode, smtd_action action, uint8_t tap_count) {
   switch (keycode) {
     SMTD_MT(CKC_M, KC_M, KC_LGUI, 2, true)
     SMTD_MT(CKC_S, KC_S, KC_LALT, 2, true)
-    SMTD_MTE(CKC_N, KC_N, KC_LCTL, 2, true)
+    SMTD_MT(CKC_N, KC_N, KC_LCTL, 2, true)
     SMTD_MTE(CKC_T, KC_T, KC_LSFT, 2, true)
     SMTD_MTE(CKC_A, KC_A, KC_RSFT, 2, true)
-    SMTD_MTE(CKC_E, KC_E, KC_LCTL, 2, true)
+    SMTD_MT(CKC_E, KC_E, KC_LCTL, 2, true)
     SMTD_MT(CKC_H, KC_H, KC_LALT, 2, true)
     SMTD_LT(CKC_R, KC_R, NAV, 2, true)
     SMTD_MT(CKC_SLSH, KC_SLSH, KC_LGUI, 2)
@@ -235,7 +264,7 @@ void on_smtd_action(uint16_t keycode, smtd_action action, uint8_t tap_count) {
       break;
 
     case SMTD_ACTION_TAP:
-      SMTD_TAP_16(true ,KC_G);
+      SMTD_TAP_16(true, KC_G);
       break;
 
     case SMTD_ACTION_HOLD:
