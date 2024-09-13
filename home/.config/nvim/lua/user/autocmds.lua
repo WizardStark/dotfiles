@@ -100,6 +100,10 @@ local mappings = {
 				if not vim.g.backdrop_buf then
 					require("user.utils").create_backdrop_window()
 				end
+
+				if require("mini.files").get_explorer_state() then
+					require("mini.files").close()
+				end
 			end,
 		},
 	},
