@@ -116,8 +116,8 @@ path.combo {
 }
 /* End Tabler Icons Cleanup */
 </style>
-<g transform="translate(30, 0)" class="layer-L0">
-<text x="0" y="28" class="label" id="L0">L0:</text>
+<g transform="translate(30, 0)" class="layer-BASE">
+<text x="0" y="28" class="label" id="BASE">BASE:</text>
 <g transform="translate(0, 56)">
 <g transform="translate(28, 50)" class="key keypos-0">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
@@ -324,8 +324,9 @@ path.combo {
 <g transform="translate(309, 290) rotate(30.0)" class="key keypos-48">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
 <text x="0" y="0" class="key tap">SPC</text>
-<text x="0" y="24" class="key hold">SYM</text>
-</g>
+<a href="#SYM">
+<text x="0" y="24" class="key hold layer-activator">SYM</text>
+</a></g>
 <g transform="translate(349, 333) rotate(30.0)" class="key keypos-49">
 <rect rx="6" ry="6" x="-26" y="-37" width="52" height="74" class="key"/>
 <text x="0" y="0" class="key tap">BSPC</text>
@@ -337,12 +338,13 @@ path.combo {
 <g transform="translate(559, 290) rotate(-30.0)" class="key keypos-51">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
 <text x="0" y="0" class="key tap">R</text>
-<text x="0" y="24" class="key hold">NAV</text>
+<a href="#NAV">
+<text x="0" y="24" class="key hold layer-activator">NAV</text>
+</a></g>
 </g>
 </g>
-</g>
-<g transform="translate(30, 437)" class="layer-L1">
-<text x="0" y="28" class="label" id="L1">L1:</text>
+<g transform="translate(30, 437)" class="layer-SYM">
+<text x="0" y="28" class="label" id="SYM">SYM:</text>
 <g transform="translate(0, 56)">
 <g transform="translate(28, 50)" class="key keypos-0">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key"/>
@@ -560,8 +562,8 @@ path.combo {
 </g>
 </g>
 </g>
-<g transform="translate(30, 874)" class="layer-L2">
-<text x="0" y="28" class="label" id="L2">L2:</text>
+<g transform="translate(30, 874)" class="layer-NAV">
+<text x="0" y="28" class="label" id="NAV">NAV:</text>
 <g transform="translate(0, 56)">
 <g transform="translate(28, 50)" class="key trans keypos-0">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key trans"/>
@@ -781,8 +783,8 @@ path.combo {
 </g>
 </g>
 </g>
-<g transform="translate(30, 1311)" class="layer-L3">
-<text x="0" y="28" class="label" id="L3">L3:</text>
+<g transform="translate(30, 1311)" class="layer-GAME">
+<text x="0" y="28" class="label" id="GAME">GAME:</text>
 <g transform="translate(0, 56)">
 <g transform="translate(28, 50)" class="key trans keypos-0">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key trans"/>
@@ -996,8 +998,8 @@ path.combo {
 </g>
 </g>
 </g>
-<g transform="translate(30, 1748)" class="layer-L4">
-<text x="0" y="28" class="label" id="L4">L4:</text>
+<g transform="translate(30, 1748)" class="layer-MOUSE">
+<text x="0" y="28" class="label" id="MOUSE">MOUSE:</text>
 <g transform="translate(0, 56)">
 <g transform="translate(28, 50)" class="key trans keypos-0">
 <rect rx="6" ry="6" x="-26" y="-26" width="52" height="52" class="key trans"/>
