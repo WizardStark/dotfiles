@@ -42,7 +42,6 @@ The best sources to consult for understanding the nvim config:
 - [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette
 
 ## Usage
-
 The most important keybinds are `<space><space>` in NeoVim for the command palette,
 wherein you can fuzzy find your way through most available commands, and `<C-a>?` for
 a list of tmux binds - this is much less nice to use as I have not found a way to add

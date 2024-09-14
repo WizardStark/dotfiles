@@ -156,4 +156,11 @@ return {
 		event = "VeryLazy",
 		config = true,
 	},
+	{
+		"epilande/checkbox-cycle.nvim",
+		ft = "markdown",
+		opts = {
+			states = { "[ ]", "[/]", "[x]", "[~]" },
+		},
+	},
 }

@@ -2249,7 +2249,7 @@ local mappings = {
 			vim.cmd("LspStart")
 		end,
 		prefix = P.lsp,
-		descriptiopStart = "Start",
+		description = "Start",
 	},
 	{
 		mode = "n",
@@ -2258,7 +2258,7 @@ local mappings = {
 			vim.cmd("LspRestart")
 		end,
 		prefix = P.lsp,
-		descriptiopStart = "Restart",
+		description = "Restart",
 	},
 	{
 		mode = "n",
@@ -2268,6 +2268,24 @@ local mappings = {
 		end,
 		prefix = P.misc,
 		description = 'Remove linebreaks from contents in " register',
+	},
+	{
+		mode = { "n", "v" },
+		"<leader><CR>",
+		function()
+			vim.cmd("CheckboxCycleNext")
+		end,
+		prefix = P.misc,
+		description = "Next checkbox state",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader><S-CR>",
+		function()
+			vim.cmd("CheckboxCyclePrev")
+		end,
+		prefix = P.misc,
+		description = "Previous checkbox state",
 	},
 }
 
