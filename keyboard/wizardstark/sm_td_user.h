@@ -14,12 +14,12 @@ void on_smtd_action(uint16_t keycode, smtd_action action, uint8_t tap_count) {
     SMTD_LT(CKC_R, KC_R, NAV, 2, true)
     SMTD_MT(CKC_SLSH, KC_SLSH, KC_LGUI, 2)
     SMTD_LT(CKC_SPC, KC_SPC, SYM, 2, true)
-    SMTD_MTE(CKC_MINS, KC_MINS, KC_LALT, 2, true)
-    SMTD_MTE(CKC_PLUS, KC_PLUS, KC_LCTL, 2, true)
+    SMTD_MT(CKC_EXLM, KC_EXLM, KC_LALT, 2, true)
+    SMTD_MT(CKC_PLUS, KC_PLUS, KC_LCTL, 2, true)
     SMTD_MTE(CKC_EQL, KC_EQL, KC_LSFT, 2, true)
     SMTD_MTE(CKC_COLN, KC_COLN, KC_RSFT, 2, true)
-    SMTD_MTE(CKC_LPRN, KC_LPRN, KC_LCTL, 2, true)
-    SMTD_MTE(CKC_RPRN, KC_RPRN, KC_LALT, 2, true)
+    SMTD_MT(CKC_LPRN, KC_LPRN, KC_LCTL, 2, true)
+    SMTD_MT(CKC_QUES, KC_QUES, KC_LALT, 2, true)
 
   case CKC_G: {
     switch (action) {

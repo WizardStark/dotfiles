@@ -26,3 +26,5 @@
 #define VIM_DOT_RET
 #define VIM_W_BEGINNING_OF_WORD
 #define VIM_FOR_ALL
+
+#define SMTD_GLOBAL_RELEASE_TERM 35
