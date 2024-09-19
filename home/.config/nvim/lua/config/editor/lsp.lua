@@ -60,6 +60,7 @@ mason_lspconfig.setup({
 		"jdtls",
 	},
 })
+
 mason_lspconfig.setup_handlers({
 	function(server_name)
 		lspconfig[server_name].setup({
@@ -178,3 +179,6 @@ mason_lspconfig.setup_handlers({
 		})
 	end,
 })
+
+--as we lazy load this we need to trigger the ft event manually after everything is set up
+vim.cmd("doautocmd FileType")
