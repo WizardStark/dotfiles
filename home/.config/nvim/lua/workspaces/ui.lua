@@ -422,59 +422,60 @@ local mark_picker = function(opts)
 	local action_state = require("telescope.actions.state")
 	local entry_display = require("telescope.pickers.entry_display")
 	local previewer = conf.grep_previewer(opts)
+	local function entry_maker(entry)
+		local pos_text = tostring(entry.pos[1]) .. "," .. tostring(entry.pos[2])
+		local truncated_elements = truncate_path(entry.path)
+		local file_with_pos = truncated_elements.file --.. ":" .. pos_text
+
+		---@cast entry Mark
+		local displayer = entry_display.create({
+			separator = " ",
+			items = {
+				{ width = #(entry.workspace_name .. "-" .. entry.session_name) },
+				{
+					width = function()
+						if entry.display_name then
+							return #entry.display_name
+						end
+						return 0
+					end,
+				},
+				{ width = #file_with_pos },
+				{ remaining = true },
+			},
+		})
+
+		local make_display = function(et)
+			return displayer({
+				{ entry.workspace_name .. "-" .. entry.session_name, "TelescopeResultsSpecialComment" },
+				{ entry.display_name, "Type" },
+				file_with_pos,
+				{ truncated_elements.parents, "TelescopeResultsComment" },
+			})
+		end
+
+		return {
+			value = entry,
+			display = make_display,
+			ordinal = entry.workspace_name
+				.. "-"
+				.. entry.session_name
+				.. " "
+				.. (entry.display_name or "")
+				.. " "
+				.. file_with_pos
+				.. truncated_elements.parents,
+			path = entry.path,
+			lnum = entry.pos[1],
+		}
+	end
 
 	pickers
 		.new(opts, {
 			prompt_title = "Marks",
 			finder = finders.new_table({
 				results = state.get().marks,
-				entry_maker = function(entry)
-					local pos_text = tostring(entry.pos[1]) .. "," .. tostring(entry.pos[2])
-					local truncated_elements = truncate_path(entry.path)
-					local file_with_pos = truncated_elements.file --.. ":" .. pos_text
-
-					---@cast entry Mark
-					local displayer = entry_display.create({
-						separator = " ",
-						items = {
-							{ width = #(entry.workspace_name .. "-" .. entry.session_name) },
-							{
-								width = function()
-									if entry.display_name then
-										return #entry.display_name
-									end
-									return 0
-								end,
-							},
-							{ width = #file_with_pos },
-							{ remaining = true },
-						},
-					})
-
-					local make_display = function(et)
-						return displayer({
-							{ entry.workspace_name .. "-" .. entry.session_name, "TelescopeResultsSpecialComment" },
-							{ entry.display_name, "Type" },
-							file_with_pos,
-							{ truncated_elements.parents, "TelescopeResultsComment" },
-						})
-					end
-
-					return {
-						value = entry,
-						display = make_display,
-						ordinal = entry.workspace_name
-							.. "-"
-							.. entry.session_name
-							.. " "
-							.. (entry.display_name or "")
-							.. " "
-							.. file_with_pos
-							.. truncated_elements.parents,
-						path = entry.path,
-						lnum = entry.pos[1],
-					}
-				end,
+				entry_maker = entry_maker,
 			}),
 			previewer = previewer,
 			sorter = conf.generic_sorter(opts),
@@ -485,10 +486,18 @@ local mark_picker = function(opts)
 					marks.goto_mark(selection.value.name)
 				end)
 				map("n", "<Del>", function()
-					actions.close(prompt_bufnr)
+					-- actions.close(prompt_bufnr)
 					local selection = action_state.get_selected_entry()
 					marks.delete_mark(selection.value.name)
-					M.pick_mark()
+
+					local current_picker = action_state.get_current_picker(prompt_bufnr)
+					current_picker:refresh(
+						finders.new_table({
+							results = state.get().marks,
+							entry_maker = entry_maker,
+						}),
+						{}
+					)
 				end)
 
 				map("n", "r", function()
