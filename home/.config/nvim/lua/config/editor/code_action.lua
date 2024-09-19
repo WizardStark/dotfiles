@@ -6,6 +6,7 @@ require("tiny-code-action").setup(
 			delta = {
 				args = {
 					"--config=" .. os.getenv("HOME") .. "/.config/delta/delta.config",
+					"--width=" .. vim.fn.round(0.69 * vim.o.columns),
 				},
 			},
 		},
