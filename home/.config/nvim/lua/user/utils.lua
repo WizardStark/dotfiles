@@ -95,6 +95,7 @@ end
 local maxlen = get_longest_prefix_length()
 
 function M.get_visual_selection_lines()
+	vim.cmd([[normal! vv]])
 	local startpos = vim.fn.getpos("'<")[2]
 	local endpos = vim.fn.getpos("'>")[2]
 	if startpos > endpos then
