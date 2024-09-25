@@ -36,7 +36,6 @@ return {
 	},
 	{
 		"folke/noice.nvim",
-		version = "4.4.7",
 		event = "UiEnter",
 		dependencies = {
 			"MunifTanjim/nui.nvim",
