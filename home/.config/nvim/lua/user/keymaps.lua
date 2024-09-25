@@ -670,6 +670,15 @@ local mappings = {
 		description = "Git stage visual selection",
 	},
 	{
+		mode = "n",
+		"<leader>grh",
+		function()
+			require("gitsigns").reset_hunk()
+		end,
+		prefix = P.git,
+		description = "Git reset hunk containing current line",
+	},
+	{
 		mode = "v",
 		"<leader>grv",
 		function()
