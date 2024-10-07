@@ -2282,7 +2282,7 @@ local mappings = {
 		mode = { "n", "v" },
 		"<leader><CR>",
 		function()
-			vim.cmd("CheckboxCycleNext")
+			vim.cmd("CheckboxPrev")
 		end,
 		prefix = P.misc,
 		description = "Next checkbox state",
@@ -2291,10 +2291,46 @@ local mappings = {
 		mode = { "n", "v" },
 		"<leader><S-CR>",
 		function()
-			vim.cmd("CheckboxCyclePrev")
+			vim.cmd("CheckboxPrev")
 		end,
 		prefix = P.misc,
 		description = "Previous checkbox state",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader>ct",
+		function()
+			vim.cmd("CheckboxToggle")
+		end,
+		prefix = P.misc,
+		description = "Toggle if line is a checkbox",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader>mcc",
+		function()
+			vim.cmd("CodeCreate")
+		end,
+		prefix = P.misc,
+		description = "Create code block in markdown",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader>mce",
+		function()
+			vim.cmd("CodeEdit")
+		end,
+		prefix = P.misc,
+		description = "Edit markdown code block",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader>ms",
+		function()
+			vim.cmd({ cmd = "Markview", args = { "splitToggle" } })
+		end,
+		prefix = P.misc,
+		description = "Toggle previewing markdown in a split",
 	},
 }
 

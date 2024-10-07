@@ -53,11 +53,14 @@ return {
 		end,
 	},
 	{
-		"MeanderingProgrammer/markdown.nvim",
-		ft = "markdown",
-		dependencies = { "nvim-treesitter/nvim-treesitter" },
+		"OXY2DEV/markview.nvim",
+		ft = { "markdown", "tex" },
+		dependencies = {
+			"nvim-treesitter/nvim-treesitter",
+			"echasnovski/mini.icons",
+		},
 		config = function()
-			require("render-markdown").setup({})
+			require("config.ui.markview")
 		end,
 	},
 	{
