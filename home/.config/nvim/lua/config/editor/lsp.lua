@@ -1,5 +1,5 @@
 local lspconfig = require("lspconfig")
-local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
+-- local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 require("mason").setup({
 	ui = { border = "rounded" },
@@ -22,10 +22,10 @@ require("mason-tool-installer").setup({
 	},
 })
 
-lsp_capabilities.textDocument.foldingRange = {
-	dynamicRegistration = false,
-	lineFoldingOnly = true,
-}
+-- lsp_capabilities.textDocument.foldingRange = {
+-- 	dynamicRegistration = false,
+-- 	lineFoldingOnly = true,
+-- }
 
 local mason_lspconfig = require("mason-lspconfig")
 local border = {
@@ -65,7 +65,7 @@ mason_lspconfig.setup_handlers({
 	function(server_name)
 		lspconfig[server_name].setup({
 			on_attach = on_attach,
-			capabilities = lsp_capabilities,
+			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 		})
 	end,
@@ -73,7 +73,7 @@ mason_lspconfig.setup_handlers({
 	["lua_ls"] = function()
 		lspconfig.lua_ls.setup({
 			on_attach = on_attach,
-			capabilities = lsp_capabilities,
+			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
 				Lua = {
@@ -87,7 +87,7 @@ mason_lspconfig.setup_handlers({
 	["basedpyright"] = function()
 		lspconfig["basedpyright"].setup({
 			on_attach = on_attach,
-			capabilities = lsp_capabilities,
+			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
 				basedpyright = {
@@ -109,7 +109,7 @@ mason_lspconfig.setup_handlers({
 	["gopls"] = function()
 		lspconfig.gopls.setup({
 			on_attach = on_attach,
-			capabilities = lsp_capabilities,
+			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
 				gopls = {
@@ -129,7 +129,7 @@ mason_lspconfig.setup_handlers({
 	["ts_ls"] = function()
 		lspconfig.ts_ls.setup({
 			on_attach = on_attach,
-			capabilities = lsp_capabilities,
+			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			settings = {
 				typescript = {
@@ -162,7 +162,7 @@ mason_lspconfig.setup_handlers({
 	["kotlin_language_server"] = function()
 		lspconfig.kotlin_language_server.setup({
 			on_attach = on_attach,
-			capabilities = lsp_capabilities,
+			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			init_options = {
 				storagePath = require("lspconfig.util").path.join(vim.env.XDG_DATA_HOME, "nvim-data"),
@@ -178,6 +178,10 @@ mason_lspconfig.setup_handlers({
 			},
 		})
 	end,
+})
+
+lspconfig.kulala_ls.setup({
+	-- capabilities = lsp_capabilities,
 })
 
 --as we lazy load this we need to trigger the ft event manually after everything is set up

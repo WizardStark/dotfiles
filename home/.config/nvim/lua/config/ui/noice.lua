@@ -47,14 +47,14 @@ require("noice").setup(
 			override = {
 				["vim.lsp.util.convert_input_to_markdown_lines"] = true,
 				["vim.lsp.util.stylize_markdown"] = true,
-				["cmp.entry.get_documentation"] = false,
+				-- ["cmp.entry.get_documentation"] = false,
 			},
 			signature = {
 				enabled = false,
 			},
 		},
 		popupmenu = {
-			backend = "cmp", -- backend to use to show regular cmdline completions
+			-- backend = "cmp", -- backend to use to show regular cmdline completions
 		},
 		presets = {
 			bottom_search = false, -- use a classic bottom cmdline for search

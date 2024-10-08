@@ -156,4 +156,10 @@ return {
 		event = "VeryLazy",
 		config = true,
 	},
+	{
+		"echasnovski/mini.splitjoin",
+		lazy = false,
+		version = false,
+		opts = {},
+	},
 }
