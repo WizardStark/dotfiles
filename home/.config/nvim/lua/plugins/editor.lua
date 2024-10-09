@@ -79,40 +79,28 @@ return {
 		},
 	},
 	-- COMPLETION
-	-- {
-	-- 	"hrsh7th/nvim-cmp",
-	-- 	commit = "b356f2c",
-	-- 	version = false,
-	-- 	event = { "InsertEnter", "CmdlineEnter" },
-	-- 	dependencies = {
-	-- 		"hrsh7th/cmp-nvim-lsp",
-	-- 		"hrsh7th/cmp-cmdline",
-	-- 		"hrsh7th/cmp-buffer",
-	-- 		"hrsh7th/cmp-calc",
-	-- 		"hrsh7th/cmp-path",
-	-- 		"f3fora/cmp-spell",
-	-- 		"onsails/lspkind.nvim",
-	-- 		"hrsh7th/cmp-nvim-lsp-signature-help",
-	-- 		{
-	-- 			"garymjr/nvim-snippets",
-	-- 			dependencies = {
-	-- 				"rafamadriz/friendly-snippets",
-	-- 			},
-	-- 			opts = {
-	-- 				friendly_snippets = true,
-	-- 			},
-	-- 		},
-	-- 	},
-	-- 	config = function()
-	-- 		require("config.editor.completion")
-	-- 	end,
-	-- },
+	{
+		"hrsh7th/nvim-cmp",
+		commit = "b356f2c",
+		version = false,
+		event = { "InsertEnter", "CmdlineEnter" },
+		dependencies = {
+			"hrsh7th/cmp-cmdline",
+			"hrsh7th/cmp-buffer",
+			"hrsh7th/cmp-path",
+		},
+		config = function()
+			require("config.editor.completion")
+		end,
+	},
 	{
 		"saghen/blink.cmp",
 		lazy = false,
 		dependencies = "rafamadriz/friendly-snippets",
 		version = "v0.*",
-		opts = require("config.editor.blink_cmp"),
+		config = function()
+			require("config.editor.blink_cmp")
+		end,
 	},
 	-- DAP
 	{
