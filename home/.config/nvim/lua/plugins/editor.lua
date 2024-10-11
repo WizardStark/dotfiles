@@ -74,7 +74,12 @@ return {
 				insert_column_left = "<M-S-h>", -- Insert a column to the left of current column.
 				insert_column_right = "<M-S-l>", -- Insert a column to the right of current column.
 				insert_table = "<M-S-t>", -- Insert a new table.
-				insert_table_alt = "<M-S-t>", -- Insert a new table that is not surrounded by pipes.
+				insert_table_alt = "<C-M-S-t>", -- Insert a new table that is not surrounded by pipes.
+				move_row_up = "<M-S-u>", -- Move the current row down.
+				move_row_down = "<M-S-d>", -- Move the current row down.
+				move_column_left = "<A-S-y>", -- Move the current column to the left.
+				move_column_right = "<A-S-f>", -- Move the current column to the right.
+				delete_column = "<A-d>",
 			},
 		},
 	},
@@ -168,7 +173,6 @@ return {
 			"williamboman/mason.nvim",
 			"williamboman/mason-lspconfig.nvim",
 			"WhoIsSethDaniel/mason-tool-installer.nvim",
-			-- "hrsh7th/cmp-nvim-lsp",
 		},
 		config = function()
 			require("config.editor.lsp")
