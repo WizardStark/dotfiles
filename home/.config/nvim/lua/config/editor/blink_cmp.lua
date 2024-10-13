@@ -1,3 +1,25 @@
+---@param ctx blink.cmp.CompletionRenderContext
+---@return blink.cmp.Component
+local function render_item(ctx)
+	local map = {
+		["blink.cmp.sources.lsp"] = "[]",
+		["blink.cmp.sources.path"] = "[󰉋]",
+		["blink.cmp.sources.snippets"] = "[]",
+	}
+	return {
+		{ " " .. ctx.kind_icon, hl_group = "BlinkCmpKind" .. ctx.kind },
+		{
+			" " .. ctx.item.label,
+			fill = true,
+			-- hl_group = ctx.deprecated and "BlinkCmpLabelDeprecated" or "BlinkCmpLabel",
+		},
+		{
+			string.format("%6s ", map[ctx.item.source] or "UNKNOWN"),
+			hl_group = "BlinkCmpSource",
+		},
+	}
+end
+
 require("blink.cmp").setup({
 	highlight = {
 		use_nvim_cmp_as_default = true,
@@ -22,14 +44,14 @@ require("blink.cmp").setup({
 	},
 	windows = {
 		autocomplete = {
-			min_width = 30,
+			min_width = 20,
 			max_width = 60,
 			max_height = 10,
 			border = "rounded",
 			winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:BlinkCmpMenuSelection,Search:None",
 			scrolloff = 2,
 			direction_priority = { "s", "n" },
-			draw = "simple",
+			draw = render_item,
 		},
 		documentation = {
 			min_width = 10,
@@ -52,5 +74,8 @@ require("blink.cmp").setup({
 			border = "rounded",
 			winhighlight = "Normal:BlinkCmpSignatureHelp,FloatBorder:BlinkCmpSignatureHelpBorder",
 		},
+	},
+	kind_icons = {
+		Snippet = "",
 	},
 })
