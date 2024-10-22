@@ -1,6 +1,54 @@
+local function get_lsp_completion_context(completion)
+	local ok, source_name = pcall(function()
+		return vim.lsp.get_client_by_id(completion.client_id).name
+	end)
+
+	if not ok then
+		return nil
+	end
+
+	if source_name == "basedpyright" and completion.labelDetails ~= nil then
+		return completion.labelDetails.description
+	elseif source_name == "clangd" then
+		local doc = completion.documentation
+		if doc == nil then
+			return
+		end
+
+		local import_str = doc.value
+		import_str = import_str:gsub("[\n]+", "")
+
+		local str
+		str = import_str:match("<(.-)>")
+		if str then
+			return "<" .. str .. ">"
+		end
+
+		str = import_str:match("[\"'](.-)[\"']")
+		if str then
+			return '"' .. str .. '"'
+		end
+
+		return nil
+	elseif source_name == "jdtls" then
+		return nil
+	else
+		return completion.detail
+	end
+end
+
 ---@param ctx blink.cmp.CompletionRenderContext
 ---@return blink.cmp.Component
 local function render_item(ctx)
+	local cmp_ctx
+	if ctx.item.source == "LSP" then
+		cmp_ctx = get_lsp_completion_context(ctx.item)
+
+		if cmp_ctx == nil then
+			cmp_ctx = ""
+		end
+	end
+
 	local map = {
 		["blink.cmp.sources.lsp"] = "[]",
 		["blink.cmp.sources.path"] = "[󰉋]",
@@ -14,8 +62,11 @@ local function render_item(ctx)
 			-- hl_group = ctx.deprecated and "BlinkCmpLabelDeprecated" or "BlinkCmpLabel",
 		},
 		{
-			string.format("%6s ", map[ctx.item.source] or "UNKNOWN"),
+			string.format("%6s ", map[ctx.item.source] or ""),
 			hl_group = "BlinkCmpSource",
+		},
+		{
+			cmp_ctx,
 		},
 	}
 end
@@ -52,6 +103,7 @@ require("blink.cmp").setup({
 			scrolloff = 2,
 			direction_priority = { "s", "n" },
 			draw = render_item,
+			selection = "preselect",
 		},
 		documentation = {
 			min_width = 10,
