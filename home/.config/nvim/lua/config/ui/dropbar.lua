@@ -36,15 +36,6 @@ end
 dropbar.setup(
 	---@module 'dropbar'
 	{
-		general = {
-			enable = enable,
-			attach_events = {
-				"BufWinEnter",
-				"BufWritePost",
-				"FileType",
-				"BufEnter",
-			},
-		},
 		sources = {
 			terminal = {
 				name = function(buf)
@@ -72,6 +63,13 @@ dropbar.setup(
 			},
 			pick = {
 				pivots = "scntk,aeihbplduoyf",
+			},
+			enable = enable,
+			attach_events = {
+				"BufWinEnter",
+				"BufWritePost",
+				"FileType",
+				"BufEnter",
 			},
 		},
 		menu = {

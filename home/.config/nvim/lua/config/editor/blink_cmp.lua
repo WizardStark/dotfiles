@@ -41,7 +41,7 @@ end
 ---@return blink.cmp.Component
 local function render_item(ctx)
 	local cmp_ctx
-	if ctx.item.source == "LSP" then
+	if ctx.item.source_id == "lsp" then
 		cmp_ctx = get_lsp_completion_context(ctx.item)
 
 		if cmp_ctx == nil then
@@ -50,9 +50,9 @@ local function render_item(ctx)
 	end
 
 	local map = {
-		["blink.cmp.sources.lsp"] = "[]",
-		["blink.cmp.sources.path"] = "[󰉋]",
-		["blink.cmp.sources.snippets"] = "[]",
+		["lsp"] = "[]",
+		["path"] = "[󰉋]",
+		["snippets"] = "[]",
 	}
 	return {
 		{ " " .. ctx.kind_icon, hl_group = "BlinkCmpKind" .. ctx.kind },
@@ -62,7 +62,7 @@ local function render_item(ctx)
 			-- hl_group = ctx.deprecated and "BlinkCmpLabelDeprecated" or "BlinkCmpLabel",
 		},
 		{
-			string.format("%6s ", map[ctx.item.source] or ""),
+			string.format("%6s ", map[ctx.item.source_id] or ""),
 			hl_group = "BlinkCmpSource",
 		},
 		{
