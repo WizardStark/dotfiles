@@ -71,6 +71,7 @@ require("telescope").setup(
 			find_files = {
 				follow = true,
 				hidden = true,
+				file_ignore_patterns = { "build/", ".idea/", "logs/", "env/" },
 			},
 			git_commits = {
 				mappings = {

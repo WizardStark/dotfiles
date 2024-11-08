@@ -2332,6 +2332,24 @@ local mappings = {
 		prefix = P.misc,
 		description = "Toggle previewing markdown in a split",
 	},
+	{
+		mode = { "n" },
+		"]]",
+		function()
+			require("snacks").words.jump(vim.v.count1)
+		end,
+		prefix = P.misc,
+		description = "Next reference",
+	},
+	{
+		mode = { "n" },
+		"[[",
+		function()
+			require("snacks").words.jump(-vim.v.count1)
+		end,
+		prefix = P.misc,
+		description = "Previous reference",
+	},
 }
 
 return {

@@ -24,11 +24,6 @@ return {
 		end,
 	},
 	{
-		"rcarriga/nvim-notify",
-		config = true,
-		event = "UiEnter",
-	},
-	{
 		"smjonas/inc-rename.nvim",
 		lazy = true,
 		cmd = { "IncRename" },
@@ -39,7 +34,6 @@ return {
 		event = "UiEnter",
 		dependencies = {
 			"MunifTanjim/nui.nvim",
-			"rcarriga/nvim-notify",
 		},
 		config = function()
 			require("config.ui.noice")

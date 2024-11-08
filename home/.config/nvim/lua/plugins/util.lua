@@ -98,20 +98,6 @@ return {
 		},
 	},
 	{
-		"rrethy/vim-illuminate",
-		event = "VeryLazy",
-		config = function()
-			require("illuminate").configure({
-				delay = 20,
-				large_file_cutoff = 10000,
-				min_count_to_highlight = 2,
-				filetypes_denylist = {
-					"minifiles",
-				},
-			})
-		end,
-	},
-	{
 		"norcalli/nvim-colorizer.lua",
 		cmd = { "ColorizerAttachToBuffer", "ColorizerReloadAllBuffers", "ColorizerDetachFromBuffer", "ColorizerToggle" },
 		config = true,
@@ -161,5 +147,16 @@ return {
 		lazy = false,
 		version = false,
 		opts = {},
+	},
+	{
+		"folke/snacks.nvim",
+		priority = 1000,
+		lazy = false,
+		opts = {
+			notifier = { enabled = true, timeout = 3000 },
+			words = {
+				enabled = true,
+			},
+		},
 	},
 }

@@ -180,9 +180,9 @@ mason_lspconfig.setup_handlers({
 	end,
 })
 
-lspconfig.kulala_ls.setup({
-	-- capabilities = lsp_capabilities,
-})
+-- lspconfig.kulala_ls.setup({
+-- 	-- capabilities = lsp_capabilities,
+-- })
 
 --as we lazy load this we need to trigger the ft event manually after everything is set up
 vim.cmd("doautocmd FileType")

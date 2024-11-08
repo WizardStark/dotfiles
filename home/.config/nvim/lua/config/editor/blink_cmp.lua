@@ -77,21 +77,28 @@ require("blink.cmp").setup({
 	},
 	nerd_font_variant = "mono",
 	accept = { auto_brackets = { enabled = true } },
-	trigger = { signature_help = { enabled = true } },
+	trigger = {
+		keyword_range = "full",
+		signature_help = { enabled = true },
+	},
 	keymap = {
-		show = "<C-space>",
-		hide = "<C-e>",
-		accept = "<CR>",
-		select_prev = { "<Up>", "<S-Tab>" },
-		select_next = { "<Down>", "<Tab>" },
-
-		show_documentation = { "< C-S-d >" },
-		hide_documentation = { "< C-S-h >" },
-		scroll_documentation_up = "<C-b>",
-		scroll_documentation_down = "<C-f>",
-
-		snippet_forward = "<Tab>",
-		snippet_backward = "<S-Tab>",
+		preset = "enter",
+		["<Tab>"] = {
+			function(cmp)
+				if cmp.is_in_snippet() then
+					return cmp.accept()
+				else
+					return require("blink.cmp").select_next()
+				end
+			end,
+			"snippet_forward",
+			"fallback",
+		},
+		["<S-Tab>"] = {
+			"select_prev",
+			"snippet_forward",
+			"fallback",
+		},
 	},
 	windows = {
 		autocomplete = {
@@ -103,7 +110,7 @@ require("blink.cmp").setup({
 			scrolloff = 2,
 			direction_priority = { "s", "n" },
 			draw = render_item,
-			selection = "preselect",
+			selection = "auto_insert",
 		},
 		documentation = {
 			min_width = 10,

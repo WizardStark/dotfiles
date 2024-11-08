@@ -126,6 +126,16 @@ local mappings = {
 		{
 			"User",
 			opts = {
+				pattern = "MiniFilesActionRename",
+			},
+			function(event)
+				require('snacks').rename.on_rename_file(event.data.from, event.data.to)
+			end,
+			prefix = P.auto,
+		},
+		{
+			"User",
+			opts = {
 				pattern = "MiniFilesBufferCreate",
 			},
 			function(args)
