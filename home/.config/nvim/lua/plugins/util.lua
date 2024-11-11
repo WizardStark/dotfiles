@@ -158,6 +158,7 @@ return {
 			notifier = { enabled = true, timeout = 3000 },
 			words = {
 				enabled = true,
+				debounce = 30,
 			},
 		},
 	},
