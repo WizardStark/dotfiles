@@ -144,9 +144,11 @@ return {
 	},
 	{
 		"echasnovski/mini.splitjoin",
-		lazy = false,
+		lazy = true,
 		version = false,
-		opts = {},
+		opts = {
+			mappings = { toggle = "" },
+		},
 	},
 	{
 		"folke/snacks.nvim",

@@ -23,5 +23,8 @@ return {
 		version = "*",
 		event = "VeryLazy",
 		config = true,
+		opts = {
+			default_mappings = false,
+		},
 	},
 }

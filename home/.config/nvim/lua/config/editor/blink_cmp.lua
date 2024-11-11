@@ -100,6 +100,13 @@ require("blink.cmp").setup({
 			"fallback",
 		},
 	},
+	completion = {
+		enabled_providers = { "lsp", "path", "snippets", "buffer", "lazydev" },
+	},
+	providers = {
+		lsp = { fallback_for = { "lazydev" } },
+		lazydev = { name = "LazyDev", module = "lazydev.integrations.blink" },
+	},
 	windows = {
 		autocomplete = {
 			min_width = 20,

@@ -3,7 +3,7 @@ vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 local allowed_filetypes = {
 	"lua",
 	"go",
-	-- "sh",
+	"sh",
 	"zsh",
 }
 

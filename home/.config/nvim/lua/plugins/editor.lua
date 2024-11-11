@@ -88,7 +88,7 @@ return {
 		"hrsh7th/nvim-cmp",
 		commit = "b356f2c",
 		version = false,
-		event = { "InsertEnter", "CmdlineEnter" },
+		event = { "CmdlineEnter" },
 		dependencies = {
 			"hrsh7th/cmp-cmdline",
 			"hrsh7th/cmp-buffer",
@@ -100,7 +100,7 @@ return {
 	},
 	{
 		"saghen/blink.cmp",
-		lazy = false,
+		event = { "InsertEnter" },
 		dependencies = "rafamadriz/friendly-snippets",
 		version = "v0.*",
 		config = function()
