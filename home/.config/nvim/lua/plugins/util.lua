@@ -160,6 +160,13 @@ return {
 				enabled = true,
 				debounce = 30,
 			},
+			rename = { enabled = true },
+			statuscolumn = { enabled = true },
+			debug = { enabled = true },
+			quickfile = {
+				enabled = true,
+				exclude = { "latex" },
+			},
 		},
 	},
 }
