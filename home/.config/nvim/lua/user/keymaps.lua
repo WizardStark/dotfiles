@@ -279,6 +279,22 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"j",
+		"v:count ? 'j' : 'gj'",
+		opts = { expr = true },
+		prefix = P.misc,
+		description = "Join lines while maintaining cursor position",
+	},
+	{
+		mode = "n",
+		"k",
+		"v:count ? 'k' : 'gk'",
+		opts = { expr = true },
+		prefix = P.misc,
+		description = "Join lines while maintaining cursor position",
+	},
+	{
+		mode = "n",
 		"<C-d>",
 		"<C-d>zz",
 		prefix = P.move,
