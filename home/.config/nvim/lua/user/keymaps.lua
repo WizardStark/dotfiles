@@ -283,7 +283,7 @@ local mappings = {
 		"v:count ? 'j' : 'gj'",
 		opts = { expr = true },
 		prefix = P.misc,
-		description = "Join lines while maintaining cursor position",
+		description = "Move down one line",
 	},
 	{
 		mode = "n",
@@ -291,7 +291,7 @@ local mappings = {
 		"v:count ? 'k' : 'gk'",
 		opts = { expr = true },
 		prefix = P.misc,
-		description = "Join lines while maintaining cursor position",
+		description = "Move up one line",
 	},
 	{
 		mode = "n",
