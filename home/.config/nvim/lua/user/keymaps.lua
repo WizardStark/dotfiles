@@ -2426,6 +2426,15 @@ local mappings = {
 		prefix = P.misc,
 		description = "Enable markdown rendering",
 	},
+	{
+		mode = { "n" },
+		"<leader>nh",
+		function()
+			Snacks.notifier.show_history()
+		end,
+		prefix = P.misc,
+		description = "Show notification history",
+	},
 }
 
 return {
