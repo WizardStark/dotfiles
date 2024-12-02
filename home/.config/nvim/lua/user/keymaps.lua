@@ -1932,7 +1932,7 @@ local mappings = {
 		mode = { "n", "v" },
 		"<leader><BS>",
 		function()
-			require("notify").dismiss({ pending = true, silent = true })
+			Snacks.notifier.hide()
 		end,
 		prefix = P.misc,
 		description = "Dismiss all notifications",
@@ -2415,7 +2415,13 @@ local mappings = {
 		mode = { "n" },
 		"<leader>mt",
 		function()
-			vim.cmd("Markview toggle")
+			local wc_out = vim.fn.system("wc -L " .. vim.fn.expand("%:p"))
+			local longest_line = tonumber(string.sub(wc_out, wc_out:find("%d+")))
+			if longest_line < vim.o.columns then
+				vim.cmd("Markview toggle")
+			else
+				vim.notify("File contains lines longer than the viewport, aborting rendering")
+			end
 		end,
 		prefix = P.misc,
 		description = "Enable markdown rendering",
