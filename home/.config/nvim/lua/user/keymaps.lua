@@ -2415,7 +2415,7 @@ local mappings = {
 		mode = { "n" },
 		"<leader>mt",
 		function()
-			vim.cmd("Markview enable")
+			vim.cmd("Markview toggle")
 		end,
 		prefix = P.misc,
 		description = "Enable markdown rendering",
