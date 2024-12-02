@@ -23,6 +23,19 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
+		"BufWinEnter",
+		function()
+			if vim.bo.bt == "terminal" then
+				vim.opt_local.number = false
+				vim.opt_local.relativenumber = false
+			end
+			if vim.bo.ft == "help" then
+				vim.cmd("wincmd L")
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
 		"WinClosed",
 		function()
 			if vim.g.backdrop_buf then
@@ -48,19 +61,6 @@ local mappings = {
 		},
 		function()
 			vim.cmd("!bibtex main")
-		end,
-		prefix = P.auto,
-	},
-	{
-		"BufWinEnter",
-		function()
-			if vim.bo.bt == "terminal" then
-				vim.opt_local.number = false
-				vim.opt_local.relativenumber = false
-			end
-			if vim.bo.ft == "help" then
-				vim.cmd("wincmd L")
-			end
 		end,
 		prefix = P.auto,
 	},
@@ -129,7 +129,7 @@ local mappings = {
 				pattern = "MiniFilesActionRename",
 			},
 			function(event)
-				require('snacks').rename.on_rename_file(event.data.from, event.data.to)
+				require("snacks").rename.on_rename_file(event.data.from, event.data.to)
 			end,
 			prefix = P.auto,
 		},

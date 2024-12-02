@@ -2411,6 +2411,15 @@ local mappings = {
 		prefix = P.misc,
 		description = "Split/Join arguments",
 	},
+	{
+		mode = { "n" },
+		"<leader>mt",
+		function()
+			vim.cmd("Markview enable")
+		end,
+		prefix = P.misc,
+		description = "Enable markdown rendering",
+	},
 }
 
 return {

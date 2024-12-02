@@ -23,6 +23,7 @@ require("markview.extras.editor").setup({
 })
 
 require("markview").setup({
+	initial_state = false,
 	latex = {
 		enable = true,
 		brackets = {
