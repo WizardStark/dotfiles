@@ -10,6 +10,9 @@ pathmunge() {
     fi
 }
 
+pathmunge /home/linuxbrew/.linuxbrew/bin
+pathmunge /home/linuxbrew/.linuxbrew/sbin
+
 if [[ "$OSTYPE" == "linux-gnu"* ]] && ! uname -r | grep 'microsoft' >/dev/null; then
     # if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
