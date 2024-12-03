@@ -2367,42 +2367,6 @@ local mappings = {
 		description = "Previous reference",
 	},
 	{
-		mode = { "n", "v" },
-		"co",
-		function()
-			require("git-conflict").choose("ours")
-		end,
-		prefix = P.git,
-		description = "Choose local change for git conflict",
-	},
-	{
-		mode = { "n", "v" },
-		"ct",
-		function()
-			require("git-conflict").choose("theirs")
-		end,
-		prefix = P.git,
-		description = "Choose local change for git conflict",
-	},
-	{
-		mode = { "n", "v" },
-		"]c",
-		function()
-			require("git-conflict").find_next("ours")
-		end,
-		prefix = P.git,
-		description = "Find next git conflict",
-	},
-	{
-		mode = { "n", "v" },
-		"[c",
-		function()
-			require("git-conflict").find_prev("ours")
-		end,
-		prefix = P.git,
-		description = "Find previous git conflict",
-	},
-	{
 		mode = { "n" },
 		"gS",
 		function()

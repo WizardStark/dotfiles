@@ -18,13 +18,4 @@ return {
 		cmd = { "DiffviewOpen", "DiffviewClose" },
 		config = true,
 	},
-	{
-		"akinsho/git-conflict.nvim",
-		version = "*",
-		event = "VeryLazy",
-		config = true,
-		opts = {
-			default_mappings = false,
-		},
-	},
 }
