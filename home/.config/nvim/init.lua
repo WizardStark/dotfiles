@@ -149,5 +149,6 @@ require("lazy").setup({
 			},
 		},
 	},
+	checker = { enabled = false},
 	-- debug = true,
 })
