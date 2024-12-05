@@ -11,7 +11,8 @@ if not vim.loop.fs_stat(lazypath) then
 		"clone",
 		"--filter=blob:none",
 		"https://github.com/folke/lazy.nvim.git",
-		"--branch=stable",
+		"--branch=v11.14.2",
+		-- "--branch=stable",
 		lazypath,
 	})
 end
@@ -64,7 +65,7 @@ require("lazy").setup({
 	{
 		name = "user.init",
 		main = "user",
-		dir = configpath,
+		dir = configpath .. "/lua/user",
 		lazy = false,
 		config = function()
 			require("user")
@@ -72,7 +73,7 @@ require("lazy").setup({
 	},
 	{
 		name = "user.options",
-		dir = configpath .. "options.lua",
+		dir = configpath .. "/lua/user/options.lua",
 		priority = 100000,
 		event = "VimEnter",
 		config = function()
@@ -81,7 +82,7 @@ require("lazy").setup({
 	},
 	{
 		name = "user.ui",
-		dir = configpath .. "ui.lua",
+		dir = configpath .. "/lua/user/ui.lua",
 		event = "UiEnter",
 		config = function()
 			require("user.ui").setup()
@@ -89,7 +90,7 @@ require("lazy").setup({
 	},
 	{
 		name = "user.autocmds",
-		dir = configpath .. "autocmds.lua",
+		dir = configpath .. "/lua/user/autocmds.lua",
 		event = "VeryLazy",
 		config = function()
 			require("user.autocmds").setup()
@@ -97,7 +98,7 @@ require("lazy").setup({
 	},
 	{
 		name = "user.keymaps",
-		dir = configpath .. "keymaps.lua",
+		dir = configpath .. "/lua/user/keymaps.lua",
 		event = "VeryLazy",
 		config = function()
 			require("user.keymaps").setup()
@@ -105,7 +106,7 @@ require("lazy").setup({
 	},
 	{
 		name = "user.functions",
-		dir = configpath .. "functions.lua",
+		dir = configpath .. "/lua/user/functions.lua",
 		event = "VeryLazy",
 		config = function()
 			require("user.functions").setup()
