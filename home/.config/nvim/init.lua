@@ -11,8 +11,7 @@ if not vim.loop.fs_stat(lazypath) then
 		"clone",
 		"--filter=blob:none",
 		"https://github.com/folke/lazy.nvim.git",
-		"--branch=v11.14.2",
-		-- "--branch=stable",
+		"--branch=stable",
 		lazypath,
 	})
 end
@@ -68,48 +67,8 @@ require("lazy").setup({
 		dir = configpath .. "/lua/user",
 		lazy = false,
 		config = function()
-			require("user")
-		end,
-	},
-	{
-		name = "user.options",
-		dir = configpath .. "/lua/user/options.lua",
-		priority = 100000,
-		event = "VimEnter",
-		config = function()
+			require("user.init").setup()
 			require("user.options").setup()
-		end,
-	},
-	{
-		name = "user.ui",
-		dir = configpath .. "/lua/user/ui.lua",
-		event = "UiEnter",
-		config = function()
-			require("user.ui").setup()
-		end,
-	},
-	{
-		name = "user.autocmds",
-		dir = configpath .. "/lua/user/autocmds.lua",
-		event = "VeryLazy",
-		config = function()
-			require("user.autocmds").setup()
-		end,
-	},
-	{
-		name = "user.keymaps",
-		dir = configpath .. "/lua/user/keymaps.lua",
-		event = "VeryLazy",
-		config = function()
-			require("user.keymaps").setup()
-		end,
-	},
-	{
-		name = "user.functions",
-		dir = configpath .. "/lua/user/functions.lua",
-		event = "VeryLazy",
-		config = function()
-			require("user.functions").setup()
 		end,
 	},
 	{ import = "lcl.plugins", event = "VeryLazy" },
@@ -149,6 +108,6 @@ require("lazy").setup({
 			},
 		},
 	},
-	checker = { enabled = false},
+	checker = { enabled = false },
 	-- debug = true,
 })
