@@ -1,12 +1,3 @@
-local function load_module(fun, event)
-	vim.api.nvim_create_autocmd("User", {
-		pattern = event,
-		callback = function()
-			pcall(fun)
-		end,
-	})
-end
-
 return {
 	setup = function()
 		vim.api.nvim_create_autocmd("UiEnter", {
