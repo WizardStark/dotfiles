@@ -1,9 +1,19 @@
 require("trouble").setup(
 	---@module 'trouble'
 	{
-		auto_preview = false,
+		auto_preview = true,
 		auto_refresh = false,
 		focus = true,
+		preview = {
+			type = "float",
+			relative = "editor",
+			border = "rounded",
+			title = "Preview",
+			title_pos = "center",
+			position = { 0.5, 0.5 },
+			size = { width = 0.8, height = 0.45 },
+			zindex = 200,
+		},
 		modes = {
 			lsp_references = {
 				params = {
