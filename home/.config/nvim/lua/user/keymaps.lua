@@ -990,7 +990,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xw",
 		function()
-			require("trouble").toggle({ focus = true, mode = "diagnostics" })
+			require("trouble").toggle({ focus = true, mode = "wsdiags" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
