@@ -101,7 +101,10 @@ return {
 	{
 		"saghen/blink.cmp",
 		event = { "InsertEnter" },
-		dependencies = "rafamadriz/friendly-snippets",
+		dependencies = {
+			"rafamadriz/friendly-snippets",
+			"mikavilpas/blink-ripgrep.nvim",
+		},
 		version = "v0.*",
 		config = function()
 			require("config.editor.blink_cmp")

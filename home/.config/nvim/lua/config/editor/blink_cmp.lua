@@ -26,11 +26,30 @@ require("blink.cmp").setup({
 	},
 	sources = {
 		completion = {
-			enabled_providers = { "lsp", "path", "snippets", "buffer", "lazydev" },
+			enabled_providers = {
+				"lsp",
+				"path",
+				"snippets",
+				"buffer",
+				"lazydev",
+				"ripgrep",
+			},
 		},
 		providers = {
 			lsp = { fallback_for = { "lazydev" } },
 			lazydev = { name = "LazyDev", module = "lazydev.integrations.blink" },
+			ripgrep = {
+				module = "blink-ripgrep",
+				name = "Ripgrep",
+				-- the options below are optional, some default values are shown
+				---@module "blink-ripgrep"
+				---@type blink-ripgrep.Options
+				opts = {
+					prefix_min_len = 3,
+					context_size = 5,
+					max_filesize = "1M",
+				},
+			},
 		},
 	},
 	appearance = {
