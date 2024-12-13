@@ -830,7 +830,7 @@ local mappings = {
 		mode = "n",
 		"<leader>gb",
 		function()
-			require("gitsigns").blame_line({ full = true })
+			Snacks.git.blame_line()
 		end,
 		prefix = P.git,
 		description = "Full commit message of last commit to change line",

@@ -1,19 +1,4 @@
 return {
-	--indent blankline
-	{
-		"lukas-reineke/indent-blankline.nvim",
-		event = "VeryLazy",
-		main = "ibl",
-		opts = {
-			indent = {
-				char = "│",
-			},
-			scope = {
-				show_start = false,
-				show_end = false,
-			},
-		},
-	},
 	-- surround
 	{
 		"kylechui/nvim-surround",
@@ -160,6 +145,13 @@ return {
 				enabled = true,
 				debounce = 30,
 			},
+			indent = {
+				enabled = true,
+				only_scope = true,
+				animate = {
+					enabled = false,
+				},
+			},
 			rename = { enabled = true },
 			statuscolumn = { enabled = true },
 			debug = { enabled = true },
@@ -167,6 +159,7 @@ return {
 				enabled = true,
 				exclude = { "latex" },
 			},
+			git = { enabled = true },
 		},
 	},
 }

@@ -139,5 +139,7 @@ return {
 			require("workspaces.workspaces").setup_lualine()
 			vim.cmd.stopinsert()
 		end
+
+		Snacks.indent.enable()
 	end,
 }
