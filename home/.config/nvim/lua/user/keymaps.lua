@@ -810,7 +810,7 @@ local mappings = {
 		function()
 			local gitsigns = require("gitsigns")
 			gitsigns.preview_hunk_inline()
-			gitsigns.next_hunk()
+			gitsigns.nav_hunk("next")
 		end,
 		prefix = P.git,
 		description = "Go to next change/hunk",

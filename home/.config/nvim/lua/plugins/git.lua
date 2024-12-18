@@ -14,6 +14,19 @@ return {
 		},
 	},
 	{
+		"echasnovski/mini.diff",
+		version = false,
+		opts = {
+			view = {
+				signs = {
+					add = "┃",
+					change = "┃",
+					delete = "_",
+				},
+			},
+		},
+	},
+	{
 		"sindrets/diffview.nvim",
 		cmd = { "DiffviewOpen", "DiffviewClose" },
 		config = true,
