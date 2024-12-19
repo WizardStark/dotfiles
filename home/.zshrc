@@ -90,7 +90,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     alias ls="eza --color=always -1 -a --icons=always"
 
-    [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     eval "$(zoxide init --cmd cd zsh)"
 
     if [ -z "$(pgrep ssh-agent)" ] ; then

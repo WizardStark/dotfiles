@@ -30,6 +30,8 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     export EZA_COLORS="$(vivid generate catppuccin-mocha)"
 fi
 
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
 pathmunge $HOME/local/bin
 pathmunge $HOME/.local/bin
 pathmunge $HOME/local/lib

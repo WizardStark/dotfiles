@@ -254,6 +254,20 @@ return {
 		end,
 	},
 	{
+		"ibhagwan/fzf-lua",
+		dependencies = {
+			"echasnovski/mini.icons",
+		},
+		opts = {
+			"telescope",
+			winopts = {
+				preview = {
+					-- default = "bat",
+				},
+			},
+		},
+	},
+	{
 		"echasnovski/mini.files",
 		lazy = true,
 		version = false,

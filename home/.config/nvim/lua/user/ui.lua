@@ -1,7 +1,7 @@
 local catppuccin_opts = {
 	integrations = {
 		flash = true,
-		gitsigns = true,
+		fzf = true,
 		mason = true,
 		neotest = true,
 		noice = true,
