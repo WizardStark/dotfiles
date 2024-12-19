@@ -39,13 +39,13 @@ return {
 			require("config.ui.noice")
 		end,
 	},
-	{
-		"stevearc/dressing.nvim",
-		event = "UiEnter",
-		config = function()
-			require("config.ui.dressing")
-		end,
-	},
+	-- {
+	-- 	"stevearc/dressing.nvim",
+	-- 	event = "UiEnter",
+	-- 	config = function()
+	-- 		require("config.ui.dressing")
+	-- 	end,
+	-- },
 	{
 		"OXY2DEV/markview.nvim",
 		ft = { "markdown", "tex" },

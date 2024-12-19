@@ -244,7 +244,7 @@ return {
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"junegunn/fzf.vim",
-			"echasnovski/mini.icons",
+			"echas_ovski/mini.icons",
 			"debugloop/telescope-undo.nvim",
 			"rcarriga/nvim-notify",
 			"nvim-telescope/telescope-live-grep-args.nvim",
@@ -267,14 +267,17 @@ return {
 		dependencies = {
 			"echasnovski/mini.icons",
 		},
-		opts = {
-			"telescope",
-			winopts = {
-				preview = {
-					-- default = "bat",
+		config = function()
+			require("fzf-lua").setup({
+				"telescope",
+				winopts = {
+					preview = {
+						-- default = "bat",
+					},
 				},
-			},
-		},
+			})
+			require("fzf-lua").register_ui_select()
+		end,
 	},
 	{
 		"echasnovski/mini.files",
