@@ -638,16 +638,6 @@ local mappings = {
 		description = "Reset selection/object",
 	},
 	{
-		mode = { "n", "x" },
-		"gr",
-		opts = { expr = true },
-		function()
-			return require("mini.diff").operator("reset")
-		end,
-		prefix = P.git,
-		description = "Reset selection/object",
-	},
-	{
 		mode = { "n", "i" },
 		"<M-n>",
 		function()
