@@ -1,28 +1,30 @@
 return {
 	{
-		"lewis6991/gitsigns.nvim",
-		event = "VeryLazy",
-		opts = {
-			current_line_blame = true,
-			current_line_blame_opts = {
-				virt_text_pos = "right_align",
-				delay = 500,
-			},
-			preview_config = {
-				border = "rounded",
-			},
-		},
-	},
-	{
 		"echasnovski/mini.diff",
 		version = false,
 		opts = {
 			view = {
+				style = "sign",
 				signs = {
 					add = "┃",
 					change = "┃",
 					delete = "_",
 				},
+			},
+			delay = {
+				text_change = 50,
+			},
+			mappings = {
+				apply = "",
+				reset = "",
+				textobject = "",
+				goto_first = "",
+				goto_prev = "",
+				goto_next = "",
+				goto_last = "",
+			},
+			options = {
+				wrap_goto = true,
 			},
 		},
 	},

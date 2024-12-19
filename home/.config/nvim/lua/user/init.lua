@@ -12,6 +12,7 @@ return {
 				require("user.commands").setup()
 				require("user.functions").setup()
 				require("user.keymaps").setup()
+				require("mini.diff").enable(0)
 			end,
 		})
 	end,

@@ -28,47 +28,6 @@ end
 
 local original_branch = nil
 
-local function format_changed_lines()
-	local ignore_filetypes = { "lua" }
-	if vim.tbl_contains(ignore_filetypes, vim.bo.filetype) then
-		vim.notify("range formatting for " .. vim.bo.filetype .. " not working properly.")
-		return
-	end
-
-	local hunks = require("gitsigns").get_hunks()
-	if hunks == nil then
-		return
-	end
-
-	local format = require("conform").format
-
-	local function format_range()
-		if next(hunks) == nil then
-			vim.notify("done formatting git hunks", "info", { title = "formatting" })
-			return
-		end
-		local hunk = nil
-		while next(hunks) ~= nil and (hunk == nil or hunk.type == "delete") do
-			hunk = table.remove(hunks)
-		end
-
-		if hunk ~= nil and hunk.type ~= "delete" then
-			local start = hunk.added.start
-			local last = start + hunk.added.count
-			-- nvim_buf_get_lines uses zero-based indexing -> subtract from last
-			local last_hunk_line = vim.api.nvim_buf_get_lines(0, last - 2, last - 1, true)[1]
-			local range = { start = { start, 0 }, ["end"] = { last - 1, last_hunk_line:len() } }
-			format({ range = range, async = true, lsp_fallback = true }, function()
-				vim.defer_fn(function()
-					format_range()
-				end, 1)
-			end)
-		end
-	end
-
-	format_range()
-end
-
 local P = require("user.utils").PREFIXES
 
 local function visit_yaml_node(node, name, yaml_path, result, file_path, bufnr)
@@ -650,58 +609,79 @@ local mappings = {
 		description = "Close Git diffview",
 	},
 	{
-		mode = "n",
-		"<leader>gsb",
+		mode = { "o", "v" },
+		"gh",
 		function()
-			require("gitsigns").stage_buffer()
+			require("mini.diff").textobject()
+		end,
+		prefix = P.text,
+		description = "Git hunk",
+	},
+	{
+		mode = { "n", "x" },
+		"gs",
+		opts = { expr = true },
+		function()
+			return require("mini.diff").operator("apply")
 		end,
 		prefix = P.git,
-		description = "Git stage buffer",
+		description = "Stage selection/object",
+	},
+	{
+		mode = { "n", "x" },
+		"gr",
+		opts = { expr = true },
+		function()
+			return require("mini.diff").operator("reset")
+		end,
+		prefix = P.git,
+		description = "Reset selection/object",
+	},
+	{
+		mode = { "n", "x" },
+		"gr",
+		opts = { expr = true },
+		function()
+			return require("mini.diff").operator("reset")
+		end,
+		prefix = P.git,
+		description = "Reset selection/object",
+	},
+	{
+		mode = { "n", "i" },
+		"<M-n>",
+		function()
+			require("mini.diff").goto_hunk("next")
+		end,
+		prefix = P.git,
+		description = "Go to next change/hunk",
+	},
+	{
+		mode = { "n", "i" },
+		"<M-t>",
+		function()
+			require("mini.diff").goto_hunk("prev")
+		end,
+		prefix = P.git,
+		description = "Go to previous change/hunk",
+	},
+	{
+		mode = { "n" },
+		"<leader>go",
+		function()
+			require("mini.diff").toggle_overlay(0)
+		end,
+		prefix = P.git,
+		description = "Toggle diff overlay",
 	},
 	{
 		mode = "n",
-		"<leader>grb",
+		"<leader>gb",
 		function()
-			require("gitsigns").reset_buffer()
+			Snacks.git.blame_line()
 		end,
 		prefix = P.git,
-		description = "Git reset buffer",
-	},
-	{
-		mode = "n",
-		"<leader>guh",
-		function()
-			require("gitsigns").undo_stage_hunk()
-		end,
-		prefix = P.git,
-		description = "Git undo last stage hunk",
-	},
-	{
-		mode = "v",
-		"<leader>gsv",
-		function()
-			require("gitsigns").stage_hunk(require("user.utils").get_visual_selection_lines())
-		end,
-		prefix = P.git,
-		description = "Git stage visual selection",
-	},
-	{
-		mode = "n",
-		"<leader>grh",
-		function()
-			require("gitsigns").reset_hunk()
-		end,
-		prefix = P.git,
-		description = "Git reset hunk containing current line",
-	},
-	{
-		mode = "v",
-		"<leader>grv",
-		function()
-			require("gitsigns").reset_hunk(require("user.utils").get_visual_selection_lines())
-		end,
-		prefix = P.git,
-		description = "Git reset visual selection",
+		description = "Full commit message of last commit to change line",
 	},
 	{
 		mode = "n",
@@ -803,37 +783,6 @@ local mappings = {
 		end,
 		prefix = P.git,
 		description = "Stop browsing source at commit",
-	},
-	{
-		mode = { "n", "i" },
-		"<M-n>",
-		function()
-			local gitsigns = require("gitsigns")
-			gitsigns.preview_hunk_inline()
-			gitsigns.nav_hunk("next")
-		end,
-		prefix = P.git,
-		description = "Go to next change/hunk",
-	},
-	{
-		mode = { "n", "i" },
-		"<M-t>",
-		function()
-			local gitsigns = require("gitsigns")
-			gitsigns.preview_hunk_inline()
-			gitsigns.prev_hunk()
-		end,
-		prefix = P.git,
-		description = "Go to previous change/hunk",
-	},
-	{
-		mode = "n",
-		"<leader>gb",
-		function()
-			Snacks.git.blame_line()
-		end,
-		prefix = P.git,
-		description = "Full commit message of last commit to change line",
 	},
 	{
 		mode = "n",
@@ -1270,15 +1219,6 @@ local mappings = {
 		end,
 		prefix = P.code,
 		description = "Format current buffer",
-	},
-	{
-		mode = { "n", "v" },
-		"<leader>fn",
-		function()
-			format_changed_lines()
-		end,
-		prefix = P.misc,
-		description = "Format changed lines",
 	},
 	--latex
 	{
