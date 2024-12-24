@@ -25,6 +25,7 @@ require("blink.cmp").setup({
 		},
 	},
 	sources = {
+<<<<<<< HEAD
 
 		default = {
 			"lsp",
@@ -33,13 +34,43 @@ require("blink.cmp").setup({
 			"buffer",
 			"lazydev",
 			"ripgrep",
+||||||| parent of 06163f7 (Update blink.cmp config to version 0.8.2)
+		completion = {
+			enabled_providers = {
+				"lsp",
+				"path",
+				"snippets",
+				"buffer",
+				"lazydev",
+				"ripgrep",
+			},
+=======
+		default = {
+			"lazydev",
+			"lsp",
+			"path",
+			"snippets",
+			"buffer",
+			"ripgrep",
+>>>>>>> 06163f7 (Update blink.cmp config to version 0.8.2)
 		},
 		providers = {
+<<<<<<< HEAD
 			lazydev = {
 				name = "LazyDev",
 				module = "lazydev.integrations.blink",
 				fallbacks = { "lsp" },
 			},
+||||||| parent of 06163f7 (Update blink.cmp config to version 0.8.2)
+			lsp = { fallback_for = { "lazydev" } },
+			lazydev = { name = "LazyDev", module = "lazydev.integrations.blink" },
+=======
+			lazydev = {
+				name = "LazyDev",
+				module = "lazydev.integrations.blink",
+				score_offset = 100,
+			},
+>>>>>>> 06163f7 (Update blink.cmp config to version 0.8.2)
 			ripgrep = {
 				module = "blink-ripgrep",
 				name = "Ripgrep",
@@ -79,13 +110,26 @@ require("blink.cmp").setup({
 			border = "rounded",
 			winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:BlinkCmpMenuSelection,Search:None",
 			draw = {
+<<<<<<< HEAD
 				columns = { { "kind_icon" }, { "label", gap = 1 }, { "source" } },
+||||||| parent of 06163f7 (Update blink.cmp config to version 0.8.2)
+				columns = { { "kind_icon" }, { "label", "label_description", gap = 1 }, { "source" } },
+=======
+				columns = { { "kind_icon" }, { "label", "label_description", gap = 1 }, { "source_custom" } },
+>>>>>>> 06163f7 (Update blink.cmp config to version 0.8.2)
 				components = {
+<<<<<<< HEAD
 					label = {
 						text = require("colorful-menu").blink_components_text,
 						highlight = require("colorful-menu").blink_components_highlight,
 					},
 					source = {
+||||||| parent of 06163f7 (Update blink.cmp config to version 0.8.2)
+					source = {
+						ellipses = false,
+=======
+					source_custom = {
+>>>>>>> 06163f7 (Update blink.cmp config to version 0.8.2)
 						text = function(ctx)
 							local map = {
 								["lsp"] = "[]",

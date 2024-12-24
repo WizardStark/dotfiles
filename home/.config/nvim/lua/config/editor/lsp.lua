@@ -165,7 +165,13 @@ mason_lspconfig.setup_handlers({
 			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			init_options = {
+<<<<<<< HEAD
 				storagePath = table.concat({ vim.fn.stdpath("data") }, "nvim-data"),
+||||||| parent of 06163f7 (Update blink.cmp config to version 0.8.2)
+				storagePath = require("lspconfig.util").path.join(vim.env.XDG_DATA_HOME, "nvim-data"),
+=======
+				storagePath = vim.fn.stdpath("data") .. "/nvim-data",
+>>>>>>> 06163f7 (Update blink.cmp config to version 0.8.2)
 			},
 			settings = {
 				kotlin = {
