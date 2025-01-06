@@ -125,4 +125,9 @@ return {
 			require("kulala").setup()
 		end,
 	},
+	{
+		"xzbdmw/colorful-menu.nvim",
+		event = { "InsertEnter", "CmdlineEnter" },
+		opts = {},
+	},
 }

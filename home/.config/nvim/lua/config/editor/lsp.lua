@@ -165,7 +165,7 @@ mason_lspconfig.setup_handlers({
 			-- capabilities = lsp_capabilities,
 			handlers = handlers,
 			init_options = {
-				storagePath = require("lspconfig.util").path.join(vim.env.XDG_DATA_HOME, "nvim-data"),
+				storagePath = table.concat({ vim.fn.stdpath("data") }, "nvim-data"),
 			},
 			settings = {
 				kotlin = {
