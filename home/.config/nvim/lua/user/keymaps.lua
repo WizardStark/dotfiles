@@ -2329,6 +2329,62 @@ local mappings = {
 		prefix = P.misc,
 		description = "Show notification history",
 	},
+	{
+		mode = { "n", "v" },
+		"<C-S-j>",
+		"<cmd>Treewalker Down<cr>",
+		prefix = P.misc,
+		description = "Move down treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-S-k>",
+		"<cmd>Treewalker Up<cr>",
+		prefix = P.misc,
+		description = "Move up treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-S-h>",
+		"<cmd>Treewalker Left<cr>",
+		prefix = P.misc,
+		description = "Move left treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-S-l>",
+		"<cmd>Treewalker Right<cr>",
+		prefix = P.misc,
+		description = "Move right treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-M-S-j>",
+		"<cmd>Treewalker SwapDown<cr>",
+		prefix = P.misc,
+		description = "Move down treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-M-S-k>",
+		"<cmd>Treewalker SwapUp<cr>",
+		prefix = P.misc,
+		description = "Move up treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-M-S-h>",
+		"<cmd>Treewalker SwapLeft<cr>",
+		prefix = P.misc,
+		description = "Move left treesitter node",
+	},
+	{
+		mode = { "n", "v" },
+		"<C-M-S-l>",
+		"<cmd>Treewalker SwapRight<cr>",
+		prefix = P.misc,
+		description = "Move right treesitter node",
+	},
 }
 
 return {

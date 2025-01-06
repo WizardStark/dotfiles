@@ -14,6 +14,15 @@ return {
 		end,
 	},
 	{
+		"aaronik/treewalker.nvim",
+		event = "VeryLazy",
+		opts = {
+			highlight = true,
+			highlight_duration = 250,
+			highlight_group = "CursorLine",
+		},
+	},
+	{
 		"kevinhwang91/nvim-ufo",
 		dependencies = {
 			"kevinhwang91/promise-async",
