@@ -25,29 +25,6 @@ configs.setup({
 		enable = true,
 		disable = disable,
 		lookahead = true,
-		swap = {
-			enable = true,
-			swap_next = {
-				["<leader>na"] = "@parameter.inner",
-				["<leader>nm"] = "@function.outer",
-			},
-			swap_previous = {
-				["<leader>pa"] = "@parameter.inner",
-				["<leader>pm"] = "@function.outer",
-			},
-		},
-		move = {
-			enable = true,
-			set_jumps = true,
-			goto_next_start = {
-				["]f"] = { query = "@call.outer", desc = "Next function call start" },
-				["]m"] = { query = "@function.outer", desc = "Next method/function def start" },
-			},
-			goto_previous_start = {
-				["[f"] = { query = "@call.outer", desc = "Prev function call start" },
-				["[m"] = { query = "@function.outer", desc = "Prev method/function def start" },
-			},
-		},
 	},
 	textsubjects = {
 		enable = true,
