@@ -25,19 +25,21 @@ require("blink.cmp").setup({
 		},
 	},
 	sources = {
-		completion = {
-			enabled_providers = {
-				"lsp",
-				"path",
-				"snippets",
-				"buffer",
-				"lazydev",
-				"ripgrep",
-			},
+
+		default = {
+			"lsp",
+			"path",
+			"snippets",
+			"buffer",
+			"lazydev",
+			"ripgrep",
 		},
 		providers = {
-			lsp = { fallback_for = { "lazydev" } },
-			lazydev = { name = "LazyDev", module = "lazydev.integrations.blink" },
+			lazydev = {
+				name = "LazyDev",
+				module = "lazydev.integrations.blink",
+				fallbacks = { "lsp" },
+			},
 			ripgrep = {
 				module = "blink-ripgrep",
 				name = "Ripgrep",
@@ -77,10 +79,13 @@ require("blink.cmp").setup({
 			border = "rounded",
 			winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:BlinkCmpMenuSelection,Search:None",
 			draw = {
-				columns = { { "kind_icon" }, { "label", "label_description", gap = 1 }, { "source" } },
+				columns = { { "kind_icon" }, { "label", gap = 1 }, { "source" } },
 				components = {
+					label = {
+						text = require("colorful-menu").blink_components_text,
+						highlight = require("colorful-menu").blink_components_highlight,
+					},
 					source = {
-						ellipses = false,
 						text = function(ctx)
 							local map = {
 								["lsp"] = "[]",

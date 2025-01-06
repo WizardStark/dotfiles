@@ -3,7 +3,9 @@ return {
 		"chrisgrieser/nvim-various-textobjs",
 		lazy = true,
 		opts = {
-			useDefaultKeymaps = false,
+			keymaps = {
+				useDefaults = false,
+			},
 		},
 	},
 	{
