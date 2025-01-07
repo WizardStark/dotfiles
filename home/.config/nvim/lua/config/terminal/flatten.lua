@@ -12,8 +12,6 @@ require("flatten").setup(
 			post_open = function(bufnr, winnr, ft, is_blocking)
 				if is_blocking then
 					require("workspaces.toggleterms").close_visible_terms(true)
-				else
-					vim.api.nvim_set_current_win(winnr)
 				end
 			end,
 			block_end = function()
