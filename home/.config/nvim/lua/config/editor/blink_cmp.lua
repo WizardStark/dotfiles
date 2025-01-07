@@ -52,7 +52,12 @@ require("blink.cmp").setup({
 			"snippets",
 			"buffer",
 			"ripgrep",
+<<<<<<< HEAD
 >>>>>>> 06163f7 (Update blink.cmp config to version 0.8.2)
+||||||| parent of 3936d55 (WIP fzflua port)
+=======
+			"cmp_yanky",
+>>>>>>> 3936d55 (WIP fzflua port)
 		},
 		providers = {
 <<<<<<< HEAD
@@ -78,10 +83,14 @@ require("blink.cmp").setup({
 				---@module "blink-ripgrep"
 				---@type blink-ripgrep.Options
 				opts = {
-					prefix_min_len = 3,
+					prefix_min_len = 4,
 					context_size = 5,
 					max_filesize = "1M",
 				},
+			},
+			cmp_yanky = {
+				name = "cmp_yanky",
+				module = "blink.compat.source",
 			},
 		},
 	},

@@ -108,11 +108,18 @@ return {
 	-- 	end,
 	-- },
 	{
+		"saghen/blink.compat",
+		version = "*",
+		lazy = true,
+		opts = {},
+	},
+	{
 		"saghen/blink.cmp",
 		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			"rafamadriz/friendly-snippets",
 			"mikavilpas/blink-ripgrep.nvim",
+			"chrisgrieser/cmp_yanky",
 		},
 		version = "v0.*",
 		config = function()
@@ -270,10 +277,14 @@ return {
 		config = function()
 			require("fzf-lua").setup({
 				"telescope",
+				fzf_colors = true,
 				winopts = {
-					preview = {
-						-- default = "bat",
+					treesitter = {
+						enabled = true,
 					},
+				},
+				files = {
+					formatter = "path.filename_first",
 				},
 			})
 			require("fzf-lua").register_ui_select()
