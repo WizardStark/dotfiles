@@ -25,7 +25,6 @@ require("blink.cmp").setup({
 		},
 	},
 	sources = {
-
 		default = {
 			"lsp",
 			"path",
@@ -64,7 +63,10 @@ require("blink.cmp").setup({
 			range = "full",
 		},
 		list = {
-			selection = "auto_insert",
+			selection = {
+				preselect = false,
+				auto_insert = true,
+			},
 		},
 		accept = {
 			auto_brackets = {

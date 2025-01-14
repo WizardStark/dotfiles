@@ -94,20 +94,6 @@ return {
 	},
 	-- COMPLETION
 	{
-		"hrsh7th/nvim-cmp",
-		commit = "b356f2c",
-		version = false,
-		event = { "CmdlineEnter" },
-		dependencies = {
-			"hrsh7th/cmp-cmdline",
-			"hrsh7th/cmp-buffer",
-			"hrsh7th/cmp-path",
-		},
-		config = function()
-			require("config.editor.completion")
-		end,
-	},
-	{
 		"saghen/blink.cmp",
 		event = { "InsertEnter" },
 		dependencies = {
