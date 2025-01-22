@@ -139,27 +139,8 @@ return {
 		"folke/snacks.nvim",
 		priority = 1000,
 		lazy = false,
-		opts = {
-			notifier = { enabled = true, timeout = 3000 },
-			words = {
-				enabled = true,
-				debounce = 30,
-			},
-			indent = {
-				enabled = true,
-				only_scope = true,
-				animate = {
-					enabled = false,
-				},
-			},
-			rename = { enabled = true },
-			statuscolumn = { enabled = true },
-			debug = { enabled = true },
-			quickfile = {
-				enabled = true,
-				exclude = { "latex" },
-			},
-			git = { enabled = true },
-		},
+		config = function()
+			require("config.editor.snacks")
+		end,
 	},
 }

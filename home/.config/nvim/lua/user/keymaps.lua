@@ -30,98 +30,6 @@ local original_branch = nil
 
 local P = require("user.utils").PREFIXES
 
-local function visit_yaml_node(node, name, yaml_path, result, file_path, bufnr)
-	local key = ""
-	if node:type() == "block_mapping_pair" then
-		local field_key = node:field("key")[1]
-		key = vim.treesitter.get_node_text(field_key, bufnr)
-	end
-
-	if key ~= nil and string.len(key) > 0 then
-		table.insert(yaml_path, key)
-		local line, col = node:start()
-		table.insert(result, {
-			lnum = line + 1,
-			col = col + 1,
-			bufnr = bufnr,
-			filename = file_path,
-			text = table.concat(yaml_path, "."),
-		})
-	end
-
-	for node, name in node:iter_children() do
-		visit_yaml_node(node, name, yaml_path, result, file_path, bufnr)
-	end
-
-	if key ~= nil and string.len(key) > 0 then
-		table.remove(yaml_path, table.maxn(yaml_path))
-	end
-end
-
-local function gen_from_yaml_nodes(opts)
-	local entry_display = require("telescope.pickers.entry_display")
-	local make_entry = require("telescope.make_entry")
-	local displayer = entry_display.create({
-		separator = " │ ",
-		items = {
-			{ width = 5 },
-			{ remaining = true },
-		},
-	})
-
-	local make_display = function(entry)
-		return displayer({
-			{ entry.lnum, "TelescopeResultsSpecialComment" },
-			{
-				entry.text,
-				function()
-					return {}
-				end,
-			},
-		})
-	end
-
-	return function(entry)
-		return make_entry.set_default_entry_mt({
-			ordinal = entry.text,
-			display = make_display,
-			filename = entry.filename,
-			lnum = entry.lnum,
-			text = entry.text,
-			col = entry.col,
-		}, opts)
-	end
-end
-
-local yaml_symbols = function(opts)
-	local pickers = require("telescope.pickers")
-	local conf = require("telescope.config").values
-	local finders = require("telescope.finders")
-	local yaml_path = {}
-	local result = {}
-	local bufnr = vim.api.nvim_get_current_buf()
-	local ft = vim.api.nvim_get_option_value("ft", { buf = bufnr })
-	local tree = vim.treesitter.get_parser(bufnr, ft):parse()[1]
-	local file_path = vim.api.nvim_buf_get_name(bufnr)
-	local root = tree:root()
-	for node, name in root:iter_children() do
-		visit_yaml_node(node, name, yaml_path, result, file_path, bufnr)
-	end
-
-	-- return result
-	pickers
-		.new(opts, {
-			prompt_title = "YAML symbols",
-			finder = finders.new_table({
-				results = result,
-				entry_maker = opts.entry_maker or gen_from_yaml_nodes(opts),
-			}),
-			sorter = conf.generic_sorter(opts),
-			previewer = conf.grep_previewer(opts),
-		})
-		:find()
-end
-
 local mappings = {
 	{
 		mode = { "n", "v" },
@@ -396,7 +304,7 @@ local mappings = {
 		mode = { "n" },
 		"<leader>o",
 		function()
-			require("telescope.builtin").buffers({ sort_mru = true, ignore_current_buffer = true, cwd_only = true })
+			Snacks.picker.recent({ filter = { paths = { [vim.fn.getcwd()] = true } } })
 		end,
 		prefix = P.find,
 		description = "Buffers in order of recent access",
@@ -412,15 +320,6 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>fy",
-		function()
-			yaml_symbols({})
-		end,
-		prefix = P.find,
-		description = "Yaml symbols in current buffer",
-	},
-	{
-		mode = "n",
 		"<leader>ft",
 		"<cmd>TodoTelescope<CR>",
 		prefix = P.find,
@@ -430,7 +329,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fg",
 		function()
-			require("telescope").extensions.live_grep_args.live_grep_args()
+			Snacks.picker.grep()
 		end,
 		prefix = P.find,
 		description = "Grep in cwd",
@@ -439,57 +338,43 @@ local mappings = {
 		mode = "n",
 		"<leader>fd",
 		function()
-			vim.cmd("Easypick changed_files")
+			Snacks.picker.git_status()
 		end,
 		prefix = P.find,
-		description = "Grep in cwd",
+		description = "Changed files",
 	},
 	{
-		mode = "n",
+		mode = { "n", "x" },
 		"<leader>fw",
 		function()
-			require("telescope-live-grep-args.shortcuts").grep_word_under_cursor()
+			Snacks.picker.grep_word()
 		end,
 		prefix = P.find,
 		description = "Word in cwd",
 	},
 	{
 		mode = "n",
-		"<leader>fa",
+		"<leader>f/",
 		function()
-			require("telescope.builtin").grep_string({
-				only_sort_text = true,
-				word_match = "-w",
-				search = "",
-				prompt_title = "Fuzzy in cwd",
-			})
+			Snacks.picker.lines()
 		end,
-		prefix = P.find,
-		description = "Fuzzy over all lines in cwd",
+		prefix = P.misc,
+		description = "Fuzzy find in cwd",
 	},
 	{
 		mode = "n",
-		"<leader>fq",
+		"<leader>f:",
 		function()
-			require("telescope.builtin").command_history()
+			Snacks.picker.command_history()
 		end,
 		prefix = P.misc,
 		description = "Show command history",
 	},
 	{
-		mode = "v",
-		"<leader>fv",
-		function()
-			require("telescope-live-grep-args.shortcuts").grep_visual_selection()
-		end,
-		prefix = P.find,
-		description = "Grep visual selection in cwd",
-	},
-	{
 		mode = "n",
 		"<leader>ff",
 		function()
-			require("telescope.builtin").find_files()
+			Snacks.picker.files()
 		end,
 		prefix = P.find,
 		description = "Files by filename in cwd",
@@ -498,7 +383,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fu",
 		function()
-			require("telescope").extensions.undo.undo()
+			Snacks.picker.undo()
 		end,
 		prefix = P.misc,
 		description = "Show change history (undotree)",
@@ -516,7 +401,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fr",
 		function()
-			require("telescope.builtin").lsp_references()
+			Snacks.picker.lsp_references()
 		end,
 		prefix = P.find,
 		description = "References to symbol under cursor",
@@ -525,7 +410,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fs",
 		function()
-			require("telescope.builtin").lsp_document_symbols()
+			Snacks.picker.lsp_symbols()
 		end,
 		prefix = P.misc,
 		description = "List all symbols in current buffer",
@@ -552,7 +437,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fi",
 		function()
-			require("telescope.builtin").lsp_implementations()
+			Snacks.picker.lsp_implementations()
 		end,
 		prefix = P.find,
 		description = "Implementations of symbol under cursor",
@@ -561,28 +446,28 @@ local mappings = {
 		mode = "n",
 		"<leader>fh",
 		function()
-			require("telescope.builtin").pickers()
+			Snacks.picker.resume()
 		end,
 		prefix = P.find,
-		description = "Open history of searches",
+		description = "Open last picker",
+	},
+	{
+		mode = "n",
+		"<leader>fp",
+		function()
+			Snacks.picker()
+		end,
+		prefix = P.find,
+		description = "Open list of pickers",
 	},
 	{
 		mode = "n",
 		"<leader>f?",
 		function()
-			require("telescope.builtin").help_tags()
+			Snacks.picker.help()
 		end,
 		prefix = P.find,
 		description = "Help tags",
-	},
-	{
-		mode = "n",
-		"<leader>f/",
-		function()
-			require("telescope.builtin").current_buffer_fuzzy_find()
-		end,
-		prefix = P.find,
-		description = "Fuzzy search in current buffer",
 	},
 	{
 		mode = "n",
@@ -677,21 +562,7 @@ local mappings = {
 		mode = "n",
 		"<leader>gh",
 		function()
-			require("telescope.builtin").git_commits({
-				previewer = require("telescope.previewers").new_termopen_previewer({
-					get_command = function(entry)
-						return {
-							"git",
-							"-c",
-							"core.pager=delta",
-							"-c",
-							"delta.side-by-side=false",
-							"diff",
-							entry.value .. "^!",
-						}
-					end,
-				}),
-			})
+			Snacks.picker.git_log()
 		end,
 		prefix = P.git,
 		description = "Commit history",
@@ -700,23 +571,7 @@ local mappings = {
 		mode = "n",
 		"<leader>gc",
 		function()
-			require("telescope.builtin").git_bcommits({
-				previewer = require("telescope.previewers").new_termopen_previewer({
-					get_command = function(entry)
-						return {
-							"git",
-							"-c",
-							"core.pager=delta",
-							"-c",
-							"delta.side-by-side=false",
-							"diff",
-							entry.value .. "^!",
-							"--",
-							entry.current_file,
-						}
-					end,
-				}),
-			})
+			Snacks.picker.git_log({ current_file = true })
 		end,
 		prefix = P.git,
 		description = "Commit history for current buffer",
@@ -725,7 +580,7 @@ local mappings = {
 		mode = { "i" },
 		"<C-r>",
 		function()
-			require("telescope.builtin").registers()
+			Snacks.picker.registers()
 		end,
 		prefix = P.misc,
 		description = "Show registers",
