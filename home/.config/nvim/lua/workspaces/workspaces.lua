@@ -9,6 +9,16 @@ local toggleterms = require("workspaces.toggleterms")
 
 local _, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
 
+local function save_named_buffers()
+	local buflist = vim.api.nvim_list_bufs()
+	for _, bufnr in ipairs(buflist) do
+		if vim.api.nvim_buf_get_name(bufnr) == nil then
+			vim.cmd("bd! " .. tostring(bufnr))
+		end
+	end
+	vim.cmd.wa()
+end
+
 -- This function needs to be called whenever the tabs change
 function M.setup_lualine()
 	local tabs = {}
@@ -105,7 +115,7 @@ function M.switch_session(target_session, target_workspace)
 	end
 
 	-- Save current session before switching
-	vim.cmd.wa()
+	pcall(save_named_buffers)
 	-- hide all toggleterms
 	toggleterms.close_visible_terms(true)
 
