@@ -16,9 +16,6 @@ return {
 	{
 		"Bekaboo/dropbar.nvim",
 		event = "UiEnter",
-		dependencies = {
-			"nvim-telescope/telescope-fzf-native.nvim",
-		},
 		config = function()
 			require("config.ui.dropbar")
 		end,
@@ -37,13 +34,6 @@ return {
 		},
 		config = function()
 			require("config.ui.noice")
-		end,
-	},
-	{
-		"stevearc/dressing.nvim",
-		event = "UiEnter",
-		config = function()
-			require("config.ui.dressing")
 		end,
 	},
 	{

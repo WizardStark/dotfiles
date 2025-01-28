@@ -90,24 +90,6 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
-		name = "UserTelescope",
-		{
-			"User",
-			opts = {
-				pattern = { "TelescopeFindPre" },
-			},
-			function()
-				if not vim.g.backdrop_buf then
-					require("user.utils").create_backdrop_window()
-				end
-
-				if require("mini.files").get_explorer_state() then
-					require("mini.files").close()
-				end
-			end,
-		},
-	},
-	{
 		name = "UserMiniFiles",
 		{
 			"User",

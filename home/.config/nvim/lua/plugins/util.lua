@@ -33,7 +33,6 @@ return {
 
 		"dhananjaylatkar/notes.nvim",
 		cmd = { "NotesNew", "NotesFind", "NotesGrep" },
-		dependencies = { "nvim-telescope/telescope.nvim" },
 		opts = {
 			root = vim.fn.expand("$HOME/notes/"),
 		},

@@ -4,6 +4,7 @@ local state = require("workspaces.state")
 local marks = require("workspaces.marks")
 local ws = require("workspaces.workspaces")
 local Path = require("plenary.path")
+local Snacks = require("snacks")
 
 local function directory_completion()
 	return {
@@ -413,209 +414,201 @@ function M.delete_workspace_input()
 	renderer:render(body)
 end
 
-local mark_picker = function(opts)
-	opts = opts or {}
-	local pickers = require("telescope.pickers")
-	local finders = require("telescope.finders")
-	local conf = require("telescope.config").values
-	local actions = require("telescope.actions")
-	local action_state = require("telescope.actions.state")
-	local entry_display = require("telescope.pickers.entry_display")
-	local previewer = conf.grep_previewer(opts)
-	local function entry_maker(entry)
-		local pos_text = tostring(entry.pos[1]) .. "," .. tostring(entry.pos[2])
-		local truncated_elements = truncate_path(entry.path)
-		local file_with_pos = truncated_elements.file --.. ":" .. pos_text
+local mark_picker = function()
+	Snacks.picker.pick(
+		---@type snacks.picker.Config
+		{
+			finder = function()
+				local items = {} ---@type snacks.picker.finder.Item
+				for _, mark in ipairs(state.get().marks) do
+					local pos_text = tostring(mark.pos[1]) .. "," .. tostring(mark.pos[2])
+					local truncated_elements = truncate_path(mark.path)
+					table.insert(items, {
+						["data"] = {
+							mark = mark,
+							pos_text = pos_text,
+							truncated_elements = truncated_elements,
+						},
+						text = mark.name,
+						file = mark.path,
+						pos = mark.pos,
+					})
+				end
 
-		---@cast entry Mark
-		local displayer = entry_display.create({
-			separator = " ",
-			items = {
-				{ width = #(entry.workspace_name .. "-" .. entry.session_name) },
-				{
-					width = function()
-						if entry.display_name then
-							return #entry.display_name
-						end
-						return 0
-					end,
+				return items
+			end,
+			confirm = function(picker, item)
+				picker:close()
+				if item then
+					marks.goto_mark(item.text)
+				end
+			end,
+			format = function(item, _)
+				local ret = {}
+				ret[#ret + 1] = {
+					item.data.mark.workspace_name .. "-" .. item.data.mark.session_name .. " ",
+					"SnacksPickerSpecial",
+				}
+				ret[#ret + 1] =
+					{ item.data.mark.display_name and item.data.mark.display_name .. " " or "..." .. " ", "Type" }
+				ret[#ret + 1] = { item.data.truncated_elements.file .. " " }
+				ret[#ret + 1] = { item.data.truncated_elements.parents, "SnacksPickerComment" }
+
+				return ret
+			end,
+			preview = function(ctx)
+				if ctx.item.file then
+					Snacks.picker.preview.file(ctx)
+				else
+					ctx.preview:reset()
+					ctx.preview:set_title("No preview")
+				end
+			end,
+			layout = {
+				layout = {
+					backdrop = {
+						blend = 40,
+					},
 				},
-				{ width = #file_with_pos },
-				{ remaining = true },
 			},
-		})
-
-		local make_display = function(et)
-			return displayer({
-				{ entry.workspace_name .. "-" .. entry.session_name, "TelescopeResultsSpecialComment" },
-				{ entry.display_name, "Type" },
-				file_with_pos,
-				{ truncated_elements.parents, "TelescopeResultsComment" },
-			})
-		end
-
-		return {
-			value = entry,
-			display = make_display,
-			ordinal = entry.workspace_name
-				.. "-"
-				.. entry.session_name
-				.. " "
-				.. (entry.display_name or "")
-				.. " "
-				.. file_with_pos
-				.. truncated_elements.parents,
-			path = entry.path,
-			lnum = entry.pos[1],
-		}
-	end
-
-	pickers
-		.new(opts, {
-			prompt_title = "Marks",
-			finder = finders.new_table({
-				results = state.get().marks,
-				entry_maker = entry_maker,
-			}),
-			previewer = previewer,
-			sorter = conf.generic_sorter(opts),
-			attach_mappings = function(prompt_bufnr, map)
-				actions.select_default:replace(function()
-					actions.close(prompt_bufnr)
-					local selection = action_state.get_selected_entry()
-					marks.goto_mark(selection.value.name)
-				end)
-				map("n", "<Del>", function()
-					-- actions.close(prompt_bufnr)
-					local selection = action_state.get_selected_entry()
-					marks.delete_mark(selection.value.name)
-
-					local current_picker = action_state.get_current_picker(prompt_bufnr)
-					current_picker:refresh(
-						finders.new_table({
-							results = state.get().marks,
-							entry_maker = entry_maker,
-						}),
-						{}
-					)
-				end)
-
-				map("n", "r", function()
-					actions.close(prompt_bufnr)
-					local selection = action_state.get_selected_entry()
-					marks.rename_mark(selection.value.name)
-				end)
-
-				return true
-			end,
-		})
-		:find()
-end
-
-local workspace_picker = function(opts)
-	opts = opts or {}
-	local pickers = require("telescope.pickers")
-	local finders = require("telescope.finders")
-	local conf = require("telescope.config").values
-	local actions = require("telescope.actions")
-	local action_state = require("telescope.actions.state")
-
-	pickers
-		.new(opts, {
-			prompt_title = "Workspaces",
-			finder = finders.new_table({
-				results = state.get().workspaces,
-				entry_maker = function(entry)
-					---@cast entry Workspace
-					local display = entry.name
-
-					if entry == state.get().current_workspace then
-						display = utils.icons.cur .. " " .. display
-					elseif entry == state.get().last_workspace then
-						display = utils.icons.last .. " " .. display
-					end
-
-					return {
-						value = entry,
-						display = display,
-						ordinal = entry.name,
-					}
+			actions = {
+				delete = function(picker, item)
+					marks.delete_mark(item.text)
+					picker:find()
 				end,
-			}),
-			sorter = conf.generic_sorter(opts),
-			attach_mappings = function(prompt_bufnr)
-				actions.select_default:replace(function()
-					actions.close(prompt_bufnr)
-					local selection = action_state.get_selected_entry()
-					ws.switch_session(nil, selection.value)
-				end)
-				return true
-			end,
-		})
-		:find()
-end
-
-local session_picker = function(opts)
-	opts = opts or {}
-	local pickers = require("telescope.pickers")
-	local finders = require("telescope.finders")
-	local conf = require("telescope.config").values
-	local actions = require("telescope.actions")
-	local action_state = require("telescope.actions.state")
-
-	local results = {}
-
-	local previewer = conf.grep_previewer(opts)
-
-	for _, workspace in ipairs(state.get().workspaces) do
-		for _, session in ipairs(workspace.sessions) do
-			table.insert(results, {
-				display = workspace.name .. ": " .. session.name,
-				value = {
-					workspace = workspace,
-					session = session,
+				rename = function(picker, item)
+					picker:close()
+					marks.rename_mark(item.text)
+				end,
+			},
+			win = {
+				input = {
+					keys = {
+						["<Del>"] = { "delete", mode = { "n" } },
+						["r"] = { "rename", mode = { "n" } },
+					},
 				},
-			})
-		end
-	end
+			},
+		}
+	)
+end
 
-	-- Update current session metadata so it displays correctly
-	if state.get().current_session ~= nil then
-		ws.set_session_metadata(state.get().current_session, {})
-	end
+local workspace_picker = function()
+	Snacks.picker.pick(
+		---@type snacks.picker.Config
+		{
+			finder = function()
+				local items = {} ---@type snacks.picker.finder.Item
 
-	pickers
-		.new(opts, {
-			prompt_title = "Workspaces",
-			finder = finders.new_table({
-				results = results,
-				entry_maker = function(entry)
-					return {
-						value = entry.value,
-						display = entry.display,
-						ordinal = entry.display,
-						path = entry.value.session.last_file or "No last file",
-						lnum = entry.value.session.last_file_line or nil,
-					}
-				end,
-			}),
-			previewer = previewer,
-			sorter = conf.generic_sorter(opts),
-			attach_mappings = function(prompt_bufnr)
-				actions.select_default:replace(function()
-					actions.close(prompt_bufnr)
-					local selection = action_state.get_selected_entry()
+				for _, workspace in ipairs(state.get().workspaces) do
+					local text = workspace.name
+					if workspace == state.get().current_workspace then
+						text = utils.icons.cur .. " " .. text
+					elseif workspace == state.get().last_workspace then
+						text = utils.icons.last .. " " .. text
+					end
+					table.insert(items, {
+						["data"] = { workspace = workspace },
+						text = text,
+					})
+				end
 
-					ws.switch_session(selection.value.session, selection.value.workspace)
-				end)
-				return true
+				return items
 			end,
-		})
-		:find()
+			confirm = function(picker, item)
+				picker:close()
+				if item then
+					ws.switch_session(nil, item.data.workspace)
+				end
+			end,
+			format = function(item, _)
+				local ret = {}
+				ret[#ret + 1] = { item.text }
+				return ret
+			end,
+			layout = {
+				preview = false,
+				layout = {
+					backdrop = {
+						blend = 40,
+					},
+					width = 0.3,
+					min_width = 80,
+					height = 0.2,
+					min_height = 10,
+					box = "vertical",
+					border = "rounded",
+					title = " Workspace ",
+					title_pos = "center",
+					{ win = "list", border = "none" },
+					{ win = "input", height = 1, border = "top" },
+				},
+			},
+		}
+	)
+end
+
+local session_picker = function()
+	Snacks.picker.pick(
+		---@type snacks.picker.Config
+		{
+			finder = function()
+				local items = {} ---@type snacks.picker.finder.Item
+
+				-- Update current session metadata so it displays correctly
+				if state.get().current_session ~= nil then
+					ws.set_session_metadata(state.get().current_session, {})
+				end
+
+				for _, workspace in ipairs(state.get().workspaces) do
+					for _, session in ipairs(workspace.sessions) do
+						table.insert(items, {
+							["data"] = { workspace = workspace, session = session },
+							text = workspace.name .. ": " .. session.name,
+							file = session.last_file and session.last_file or nil,
+							pos = { session.last_file_line, 1 },
+						})
+					end
+				end
+
+				if state.get().current_session ~= nil then
+					ws.set_session_metadata(state.get().current_session, {})
+				end
+
+				return items
+			end,
+			confirm = function(picker, item)
+				picker:close()
+				if item then
+					ws.switch_session(item.data.session, item.data.workspace)
+				end
+			end,
+			format = function(item, _)
+				local ret = {}
+				ret[#ret + 1] = { item.text }
+				return ret
+			end,
+			preview = function(ctx)
+				if ctx.item.file then
+					Snacks.picker.preview.file(ctx)
+				else
+					ctx.preview:reset()
+					ctx.preview:set_title("No last file")
+				end
+			end,
+			layout = {
+				layout = {
+					backdrop = {
+						blend = 40,
+					},
+				},
+			},
+		}
+	)
 end
 
 function M.pick_workspace()
-	workspace_picker(require("telescope.themes").get_dropdown({}))
+	workspace_picker()
 end
 
 function M.pick_session()

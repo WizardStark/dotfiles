@@ -119,7 +119,6 @@ return {
 				},
 			},
 			"jay-babu/mason-nvim-dap.nvim",
-			"nvim-telescope/telescope-dap.nvim",
 		},
 		config = function()
 			require("config.editor.dap")
@@ -177,18 +176,6 @@ return {
 		end,
 	},
 	{
-		"rachartier/tiny-code-action.nvim",
-		dependencies = {
-			{ "nvim-lua/plenary.nvim" },
-			{ "nvim-telescope/telescope.nvim" },
-		},
-		lazy = true,
-		event = "LspAttach",
-		config = function()
-			require("config.editor.code_action")
-		end,
-	},
-	{
 		"stevearc/conform.nvim",
 		event = "BufWritePre",
 		cmd = "ConformInfo",
@@ -223,31 +210,6 @@ return {
 	-- 	end,
 	-- },
 	-- FILES
-	{
-		"nvim-telescope/telescope.nvim",
-		lazy = true,
-		cmd = { "Telescope", "Easypick" },
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"junegunn/fzf.vim",
-			"echasnovski/mini.icons",
-			"debugloop/telescope-undo.nvim",
-			"rcarriga/nvim-notify",
-			"nvim-telescope/telescope-live-grep-args.nvim",
-			"axkirillov/easypick.nvim",
-			{
-				"nvim-telescope/telescope-fzf-native.nvim",
-				build = "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build",
-			},
-			{
-				"agoodshort/telescope-git-submodules.nvim",
-				dependencies = "akinsho/toggleterm.nvim",
-			},
-		},
-		config = function()
-			require("config.editor.telescope")
-		end,
-	},
 	{
 		"echasnovski/mini.files",
 		lazy = true,

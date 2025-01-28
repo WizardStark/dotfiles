@@ -318,13 +318,13 @@ local mappings = {
 		prefix = P.misc,
 		description = "Command palette",
 	},
-	{
-		mode = "n",
-		"<leader>ft",
-		"<cmd>TodoTelescope<CR>",
-		prefix = P.find,
-		description = "TODOs, FIXs, NOTEs (etc) comments in cwd",
-	},
+	-- {
+	-- 	mode = "n",
+	-- 	"<leader>ft",
+	-- 	"<cmd>TodoTelescope<CR>",
+	-- 	prefix = P.find,
+	-- 	description = "TODOs, FIXs, NOTEs (etc) comments in cwd",
+	-- },
 	{
 		mode = "n",
 		"<leader>fg",
@@ -419,7 +419,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fc",
 		function()
-			require("telescope.builtin").lsp_incoming_calls()
+			-- require("telescope.builtin").lsp_incoming_calls()
 		end,
 		prefix = P.find,
 		description = "Calls to this symbol",
@@ -428,7 +428,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fo",
 		function()
-			require("telescope.builtin").lsp_outgoing_calls()
+			-- require("telescope.builtin").lsp_outgoing_calls()
 		end,
 		prefix = P.find,
 		description = "Calls made by this symbol",
@@ -843,15 +843,6 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>xf",
-		function()
-			require("trouble").toggle({ focus = true, mode = "telescope" })
-		end,
-		prefix = P.diag,
-		description = "Toggle diagnostics window for results from telescope",
-	},
-	{
-		mode = "n",
 		"<leader>xl",
 		function()
 			require("trouble").toggle({ focus = true, mode = "loclist" })
@@ -1044,8 +1035,6 @@ local mappings = {
 					return
 				end
 
-				-- select one, use a plugin like dressing.nvim for nicer UI for
-				-- `vim.ui.select`
 				vim.ui.select(urls, { prompt = "Select URL:" }, function(choice)
 					if choice then
 						vim.ui.open(choice)
@@ -1186,7 +1175,7 @@ local mappings = {
 		mode = "n",
 		"<leader>ca",
 		function()
-			require("tiny-code-action").code_action()
+			vim.lsp.buf.code_action()
 		end,
 		prefix = P.code,
 		description = "Show code actions",
@@ -1767,9 +1756,7 @@ local mappings = {
 	{
 		mode = { "n" },
 		"<leader>p",
-		function()
-			require("telescope").extensions.yank_history.yank_history({})
-		end,
+		"<cmd>YankyRingHistory<cr>",
 		prefix = P.misc,
 		description = "Open yank history",
 	},
@@ -2020,7 +2007,7 @@ local mappings = {
 		mode = { "n", "x" },
 		"<leader>rl",
 		function()
-			require("telescope").extensions.refactoring.refactors()
+			require("refactoring").get_refactors()
 		end,
 		prefix = P.code,
 		description = "List available refactors",

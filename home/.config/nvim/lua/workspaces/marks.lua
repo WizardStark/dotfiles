@@ -6,7 +6,10 @@ local utils = require("workspaces.utils")
 local toggleterms = require("workspaces.toggleterms")
 
 local ns = "ws_marks"
-vim.fn.sign_define("WorkspaceMark", { text = "", texthl = "TelescopeResultsField", numhl = "TelescopeResultsField" })
+vim.fn.sign_define(
+	"WorkspaceMark",
+	{ text = "", texthl = "SnacksPickerIconProperty", numhl = "SnacksPickerIconProperty" }
+)
 
 function M.create_mark()
 	local pos = vim.api.nvim_win_get_cursor(0)
@@ -156,7 +159,6 @@ function M.rename_mark(mark_name)
 end
 
 function M.display_marks()
-	require("telescope")
 	local count = 1
 	local current_workspace = state.get().current_workspace.name
 	local current_session = state.get().current_workspace.current_session_name
