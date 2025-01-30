@@ -2212,28 +2212,28 @@ local mappings = {
 		"<C-M-S-j>",
 		"<cmd>Treewalker SwapDown<cr>",
 		prefix = P.misc,
-		description = "Move down treesitter node",
+		description = "Swap down treesitter node",
 	},
 	{
 		mode = { "n", "v" },
 		"<C-M-S-k>",
 		"<cmd>Treewalker SwapUp<cr>",
 		prefix = P.misc,
-		description = "Move up treesitter node",
+		description = "Swap up treesitter node",
 	},
 	{
 		mode = { "n", "v" },
 		"<C-M-S-h>",
 		"<cmd>Treewalker SwapLeft<cr>",
 		prefix = P.misc,
-		description = "Move left treesitter node",
+		description = "Swap left treesitter node",
 	},
 	{
 		mode = { "n", "v" },
 		"<C-M-S-l>",
 		"<cmd>Treewalker SwapRight<cr>",
 		prefix = P.misc,
-		description = "Move right treesitter node",
+		description = "Swap right treesitter node",
 	},
 }
 
