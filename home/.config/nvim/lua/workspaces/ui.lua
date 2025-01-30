@@ -585,7 +585,8 @@ local session_picker = function()
 			end,
 			format = function(item, _)
 				local ret = {}
-				ret[#ret + 1] = { item.text }
+				ret[#ret + 1] = { item.data.workspace.name .. ": ", "SnacksPickerSpecial" }
+				ret[#ret + 1] = { item.data.session.name, "Type" }
 				return ret
 			end,
 			preview = function(ctx)
