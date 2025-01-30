@@ -30,14 +30,6 @@ return {
 		},
 	},
 	{
-
-		"dhananjaylatkar/notes.nvim",
-		cmd = { "NotesNew", "NotesFind", "NotesGrep" },
-		opts = {
-			root = vim.fn.expand("$HOME/notes/"),
-		},
-	},
-	{
 		"mrjones2014/legendary.nvim",
 		priority = 10000,
 		event = "UiEnter",

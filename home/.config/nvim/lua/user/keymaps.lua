@@ -1223,22 +1223,23 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>nn",
-		"<cmd>NotesNew<cr>",
-		prefix = P.notes,
-		description = "New note",
-	},
-	{
-		mode = "n",
 		"<leader>nf",
-		"<cmd>NotesFind<cr>",
+		function()
+			Snacks.picker.files({
+				dirs = { "~/notes/" },
+			})
+		end,
 		prefix = P.notes,
 		description = "Find note",
 	},
 	{
 		mode = "n",
 		"<leader>ng",
-		"<cmd>NotesGrep<cr>",
+		function()
+			Snacks.picker.grep({
+				dirs = { "~/notes/" },
+			})
+		end,
 		prefix = P.notes,
 		description = "Grep notes",
 	},
