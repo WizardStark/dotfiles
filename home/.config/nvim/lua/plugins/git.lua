@@ -38,9 +38,12 @@ return {
 		event = "VeryLazy",
 		opts = {
 			enabled = true,
-			message_template = " <summary> • <date> • <author> • <<sha>>", -- template for the blame message, check the Message template section for more options
+			message_template = " <summary> • <date> • <author> ",
 			date_format = "%Y-%d-%m",
-			virtual_text_column = 120,
+			set_extmark_options = {
+				hl_mode = "combine",
+				virt_text_pos = "right_align",
+			},
 		},
 	},
 }

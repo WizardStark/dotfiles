@@ -551,12 +551,19 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>gb",
+		"<leader>gbt",
+		"<cmd>GitBlameToggle<cr>",
+		prefix = P.git,
+		description = "Toggle inline git blame",
+	},
+	{
+		mode = "n",
+		"<leader>gbd",
 		function()
 			Snacks.git.blame_line()
 		end,
 		prefix = P.git,
-		description = "Full commit message of last commit to change line",
+		description = "Full detail git blame for current line",
 	},
 	{
 		mode = "n",
