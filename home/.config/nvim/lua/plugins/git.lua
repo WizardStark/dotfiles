@@ -34,7 +34,7 @@ return {
 		config = true,
 	},
 	{
-		"f-person/git-blame.nvim",
+		"WizardStark/git-blame.nvim",
 		event = "VeryLazy",
 		opts = {
 			enabled = true,
