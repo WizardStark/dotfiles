@@ -3,18 +3,22 @@ require("blink.cmp").setup({
 		preset = "enter",
 		["<Tab>"] = {
 			function(cmp)
-				if cmp.snippet_active() then
-					return cmp.accept()
-				else
+				if cmp.is_menu_visible() then
 					return require("blink.cmp").select_next()
+				elseif cmp.snippet_active() then
+					return cmp.snippet_forward()
 				end
 			end,
-			"snippet_forward",
 			"fallback",
 		},
 		["<S-Tab>"] = {
-			"select_prev",
-			"snippet_forward",
+			function(cmp)
+				if cmp.is_menu_visible() then
+					return require("blink.cmp").select_prev()
+				elseif cmp.snippet_active() then
+					return cmp.snippet_backward()
+				end
+			end,
 			"fallback",
 		},
 	},
