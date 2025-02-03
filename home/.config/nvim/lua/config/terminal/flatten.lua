@@ -2,15 +2,15 @@ require("flatten").setup(
 	---@module 'flatten'
 	{
 		window = {
-			open = "smart",
+			open = "alternate",
 		},
 		nest_if_no_args = true,
 		hooks = {
 			should_block = function(argv)
 				return vim.tbl_contains(argv, "-b")
 			end,
-			post_open = function(bufnr, winnr, ft, is_blocking)
-				if is_blocking then
+			post_open = function(ctx)
+				if ctx.is_blocking then
 					require("workspaces.toggleterms").close_visible_terms(true)
 				end
 			end,
