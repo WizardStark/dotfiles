@@ -39,7 +39,9 @@ require("snacks").setup({
 			reverse = true,
 			layout = {
 				box = "horizontal",
-				backdrop = false,
+				backdrop = {
+					blend = 40,
+				},
 				width = 0.8,
 				height = 0.9,
 				border = "none",

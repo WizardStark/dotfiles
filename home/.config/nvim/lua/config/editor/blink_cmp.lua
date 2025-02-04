@@ -53,6 +53,7 @@ require("blink.cmp").setup({
 					prefix_min_len = 3,
 					context_size = 5,
 					max_filesize = "1M",
+					ignore_paths = { "~/", "/" },
 				},
 			},
 		},
