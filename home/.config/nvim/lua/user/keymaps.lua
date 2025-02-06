@@ -1223,6 +1223,22 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<leader>nn",
+		function()
+			vim.ui.input({
+				prompt = "New note name (without file extension)",
+				default = "",
+				kind = "tabline",
+			}, function(input)
+				vim.cmd.e("~/notes/" .. input .. ".md")
+				vim.cmd.w()
+			end)
+		end,
+		prefix = P.notes,
+		description = "New note",
+	},
+	{
+		mode = "n",
 		"<leader>nf",
 		function()
 			Snacks.picker.files({
