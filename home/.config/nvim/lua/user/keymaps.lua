@@ -36,14 +36,11 @@ local history_picker = function()
 			finder = function()
 				local items = {} ---@type snacks.picker.finder.Item
 
-				for _, item in ipairs(Snacks_picker_hist) do
-					local picker_opts = item.opts
-					local cursor = item.cursor
-
+				for _, picker_opts in ipairs(Snacks_picker_hist) do
 					---@cast picker_opts snacks.picker.Config
 					local text = picker_opts.source .. "|" .. picker_opts.pattern .. " " .. picker_opts.search
 					table.insert(items, {
-						["data"] = { picker_opts = picker_opts, cursor = cursor },
+						["data"] = { picker_opts = picker_opts },
 						text = text,
 					})
 				end
@@ -59,15 +56,6 @@ local history_picker = function()
 					local ret = Snacks.picker.pick(opts)
 					ret.list:update()
 					ret.input:update()
-					ret.matcher.task:on(
-						"done",
-						vim.schedule_wrap(function()
-							if ret.closed then
-								return
-							end
-							ret.list:view(item.data.cursor)
-						end)
-					)
 				end
 			end,
 			format = function(item, _)

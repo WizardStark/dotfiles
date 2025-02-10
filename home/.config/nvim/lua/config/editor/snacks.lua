@@ -72,16 +72,10 @@ require("snacks").setup({
 				picker.opts.pattern = picker.finder.filter.pattern
 				picker.opts.search = picker.finder.filter.search
 				local opts = picker.opts
-				local res = {
-					cursor = picker.list.cursor,
-					opts = opts,
-				}
-				if #Snacks_picker_hist < 20 then
-					table.insert(Snacks_picker_hist, 1, res)
-				else
+				if #Snacks_picker_hist >= 20 then
 					table.remove(Snacks_picker_hist, 20)
-					table.insert(Snacks_picker_hist, 1, res)
 				end
+				table.insert(Snacks_picker_hist, 1, opts)
 			end
 		end,
 	},
