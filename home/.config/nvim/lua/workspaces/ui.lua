@@ -418,6 +418,7 @@ local mark_picker = function()
 	Snacks.picker.pick(
 		---@type snacks.picker.Config
 		{
+			source = "mark",
 			finder = function()
 				local items = {} ---@type snacks.picker.finder.Item
 				for _, mark in ipairs(state.get().marks) do
@@ -497,6 +498,7 @@ local workspace_picker = function()
 	Snacks.picker.pick(
 		---@type snacks.picker.Config
 		{
+			source = "workspace",
 			finder = function()
 				local items = {} ---@type snacks.picker.finder.Item
 
@@ -552,6 +554,7 @@ local session_picker = function()
 	Snacks.picker.pick(
 		---@type snacks.picker.Config
 		{
+			source = "session",
 			finder = function()
 				local items = {} ---@type snacks.picker.finder.Item
 
