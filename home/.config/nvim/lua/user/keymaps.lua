@@ -38,7 +38,10 @@ local history_picker = function()
 
 				for _, picker_opts in ipairs(Snacks_picker_hist) do
 					---@cast picker_opts snacks.picker.Config
-					local text = picker_opts.source .. "|" .. picker_opts.pattern .. " " .. picker_opts.search
+					local source = picker_opts.source and picker_opts.source or "unknown source"
+					local pattern = picker_opts.pattern and picker_opts.pattern or ""
+					local search = picker_opts.search and picker_opts.search or ""
+					local text = source .. " | " .. pattern .. " > " .. search
 					table.insert(items, {
 						["data"] = { picker_opts = picker_opts },
 						text = text,
