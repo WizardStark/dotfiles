@@ -28,6 +28,75 @@ end
 
 local original_branch = nil
 
+local history_picker = function()
+	Snacks.picker.pick(
+		---@type snacks.picker.Config
+		{
+			source = "history_picker",
+			finder = function()
+				local items = {} ---@type snacks.picker.finder.Item
+
+				for _, item in ipairs(Snacks_picker_hist) do
+					local picker_opts = item.opts
+					local cursor = item.cursor
+
+					---@cast picker_opts snacks.picker.Config
+					local text = picker_opts.source .. "|" .. picker_opts.pattern .. " " .. picker_opts.search
+					table.insert(items, {
+						["data"] = { picker_opts = picker_opts, cursor = cursor },
+						text = text,
+					})
+				end
+
+				return items
+			end,
+			confirm = function(picker, item)
+				picker:close()
+				if item then
+					local opts = item.data.picker_opts
+					---@cast opts snacks.picker.Config
+
+					local ret = Snacks.picker.pick(opts)
+					ret.list:update()
+					ret.input:update()
+					ret.matcher.task:on(
+						"done",
+						vim.schedule_wrap(function()
+							if ret.closed then
+								return
+							end
+							ret.list:view(item.data.cursor)
+						end)
+					)
+				end
+			end,
+			format = function(item, _)
+				local ret = {}
+				ret[#ret + 1] = { item.text }
+				return ret
+			end,
+			layout = {
+				preview = false,
+				layout = {
+					backdrop = {
+						blend = 40,
+					},
+					width = 0.3,
+					min_width = 80,
+					height = 0.2,
+					min_height = 10,
+					box = "vertical",
+					border = "rounded",
+					title = " Picker history ",
+					title_pos = "center",
+					{ win = "list", border = "none" },
+					{ win = "input", height = 1, border = "top" },
+				},
+			},
+		}
+	)
+end
+
 local P = require("user.utils").PREFIXES
 
 local mappings = {
@@ -446,7 +515,8 @@ local mappings = {
 		mode = "n",
 		"<leader>fh",
 		function()
-			Snacks.picker.resume()
+			history_picker()
+			-- Snacks.picker.resume()
 		end,
 		prefix = P.find,
 		description = "Open last picker",
