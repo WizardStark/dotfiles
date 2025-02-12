@@ -120,6 +120,7 @@ alias gst='git status -suall'
 alias gsgp='gs && gp'
 alias gsbl=show_blame
 alias gfc="git add . && gc --amend --no-edit"
+alias vup='nvim --headless "+Lazy! sync" +qa'
 
 [ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
 
