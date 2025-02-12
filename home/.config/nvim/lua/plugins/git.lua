@@ -39,7 +39,7 @@ return {
 		opts = {
 			enabled = true,
 			message_template = " <summary> • <date> • <author> ",
-			date_format = "%Y-%d-%m",
+			date_format = "%Y-%m-%d",
 			set_extmark_options = {
 				hl_mode = "combine",
 				virt_text_pos = "right_align",
