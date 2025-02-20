@@ -2148,6 +2148,17 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<leader>lw",
+		function()
+			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+				require("workspace-diagnostics").populate_workspace_diagnostics(client, 0)
+			end
+		end,
+		prefix = P.lsp,
+		description = "Load all workspace files for diagnostics",
+	},
+	{
+		mode = "n",
 		"<leader>ls",
 		function()
 			vim.cmd("LspStart")
