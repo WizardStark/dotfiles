@@ -961,7 +961,7 @@ local mappings = {
 	-- debugging
 	{
 		mode = "n",
-		"<Leader>dd",
+		"<leader>dd",
 		function()
 			require("dap").toggle_breakpoint()
 		end,
@@ -970,7 +970,7 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<Leader>dD",
+		"<leader>dD",
 		function()
 			vim.ui.input({ prompt = "Condition: " }, function(input)
 				require("dap").set_breakpoint(input)
@@ -1034,17 +1034,23 @@ local mappings = {
 		description = "Run to cursor",
 	},
 	{
-		mode = "n",
-		"<Leader>dw",
-		function()
-			require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
-		end,
+		"<leader>dw",
+		{
+			n = function()
+				require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
+			end,
+			x = function()
+				vim.cmd([[normal! vv]])
+				local text = require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+				require("dapui").elements.watches.add(text)
+			end,
+		},
 		prefix = P.debug,
 		description = "Add variable to watches",
 	},
 	{
 		mode = { "n", "x" },
-		"<Leader>dr",
+		"<leader>dr",
 		function()
 			require("dapui").eval()
 		end,
@@ -1070,7 +1076,7 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>du",
+		"<leader>dt",
 		function()
 			require("dapui").toggle({ reset = true })
 		end,
