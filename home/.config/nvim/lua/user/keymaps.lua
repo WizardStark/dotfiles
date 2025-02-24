@@ -1035,6 +1035,24 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<Leader>dw",
+		function()
+			require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
+		end,
+		prefix = P.debug,
+		description = "Add variable to watches",
+	},
+	{
+		mode = { "n", "x" },
+		"<Leader>dr",
+		function()
+			require("dapui").eval()
+		end,
+		prefix = P.debug,
+		description = "Add variable to watches",
+	},
+	{
+		mode = "n",
 		"<leader>dc",
 		continue,
 		prefix = P.debug,
