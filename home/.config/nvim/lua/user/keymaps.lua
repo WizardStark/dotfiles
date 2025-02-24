@@ -1988,6 +1988,24 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<leader>rm",
+		function()
+			require("jdtls").test_nearest_method()
+		end,
+		prefix = P.test,
+		description = "Run nearest java test",
+	},
+	{
+		mode = "n",
+		"<leader>rjc",
+		function()
+			require("jdtls").test_class()
+		end,
+		prefix = P.test,
+		description = "Run nearest java test",
+	},
+	{
+		mode = "n",
 		"<leader>nr",
 		function()
 			require("neotest").run.run(vim.fn.expand("%"))
@@ -2156,6 +2174,15 @@ local mappings = {
 		end,
 		prefix = P.lsp,
 		description = "Load all workspace files for diagnostics",
+	},
+	{
+		mode = "n",
+		"<leader>la",
+		function()
+			vim.g.extra_lsp_actions()
+		end,
+		prefix = P.lsp,
+		description = "Run extra lsp actions",
 	},
 	{
 		mode = "n",
