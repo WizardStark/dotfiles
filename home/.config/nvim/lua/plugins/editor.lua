@@ -98,7 +98,6 @@ return {
 		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			"rafamadriz/friendly-snippets",
-			"mikavilpas/blink-ripgrep.nvim",
 		},
 		version = "v0.*",
 		config = function()

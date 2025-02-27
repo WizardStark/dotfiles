@@ -1286,7 +1286,7 @@ local mappings = {
 		description = "Search and replace word under cursor",
 	},
 	{
-		mode = "n",
+		mode = { "n", "x" },
 		"<leader>ca",
 		function()
 			vim.lsp.buf.code_action()
