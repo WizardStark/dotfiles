@@ -501,7 +501,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fc",
 		function()
-			-- require("telescope.builtin").lsp_incoming_calls()
+			require("trouble").toggle({ focus = true, mode = "lsp_incoming_calls" })
 		end,
 		prefix = P.find,
 		description = "Calls to this symbol",
@@ -510,7 +510,7 @@ local mappings = {
 		mode = "n",
 		"<leader>fo",
 		function()
-			-- require("telescope.builtin").lsp_outgoing_calls()
+			require("trouble").toggle({ focus = true, mode = "lsp_outgoing_calls" })
 		end,
 		prefix = P.find,
 		description = "Calls made by this symbol",
@@ -529,7 +529,6 @@ local mappings = {
 		"<leader>fh",
 		function()
 			history_picker()
-			-- Snacks.picker.resume()
 		end,
 		prefix = P.find,
 		description = "Open last picker",
