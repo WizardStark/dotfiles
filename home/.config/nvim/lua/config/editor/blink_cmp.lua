@@ -57,6 +57,12 @@ require("blink.cmp").setup({
 			ghost_text = {
 				enabled = false,
 			},
+			list = {
+				selection = {
+					preselect = false,
+					auto_insert = true,
+				},
+			},
 		},
 	},
 	completion = {

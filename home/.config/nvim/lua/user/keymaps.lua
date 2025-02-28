@@ -12,6 +12,7 @@ local function continue()
 	end
 end
 
+-- find all URLs in buffer
 local function save_and_exit()
 	local buflist = vim.api.nvim_list_bufs()
 	for _, bufnr in ipairs(buflist) do
@@ -28,6 +29,7 @@ end
 
 local original_branch = nil
 
+-- find all URLs in buffer
 local history_picker = function()
 	Snacks.picker.pick(
 		---@type snacks.picker.Config
@@ -1138,7 +1140,7 @@ local mappings = {
 				vim.ui.open(url)
 			else
 				-- find all URLs in buffer
-				local urlPattern = require("various-textobjs.charwise-textobjs").urlPattern
+				local urlPattern = [[%l%l%l-://[^%s)"'`]+]]
 				local bufText = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 				local urls = {}
 				for url in bufText:gmatch(urlPattern) do
