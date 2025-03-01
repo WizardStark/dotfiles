@@ -3,6 +3,19 @@ local huge_file = ""
 
 local mappings = {
 	{
+
+		"UiEnter",
+		function()
+			if vim.v.event.chan > 1 then
+				if vim.g.loaded_clipboard_provider then
+					vim.g.loaded_clipboard_provider = nil
+					vim.api.nvim_cmd({ cmd = "runtime", args = { "autoload/provider/clipboard.vim" } }, {})
+				end
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
 		"BufEnter",
 		function()
 			if vim.g.workspaces_loaded then

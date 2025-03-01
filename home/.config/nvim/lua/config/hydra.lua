@@ -1,4 +1,5 @@
 local Hydra = require("hydra")
+M = {}
 
 local function trigger_dap(dapStart)
 	require("dapui").open({ reset = true })
@@ -133,7 +134,7 @@ local function traverse_changes(forward)
 	end
 end
 
-local treewalker_hydra = Hydra({
+M.treewalker_hydra = Hydra({
 	name = "Treewalker",
 	mode = { "n", "x" },
 	hint = [[
@@ -170,7 +171,7 @@ _q_: Exit]],
 	},
 })
 
-local dap_hydra = Hydra({
+M.dap_hydra = Hydra({
 	name = "Dap",
 	mode = { "n", "x" },
 	hint = [[
@@ -284,7 +285,7 @@ _q_: Exit]],
 	},
 })
 
-local trouble_hydra = Hydra({
+M.trouble_hydra = Hydra({
 	name = "Trouble",
 	mode = { "n", "x" },
 	hint = [[
@@ -321,7 +322,7 @@ _q_: Exit]],
 	},
 })
 
-local git_hydra = Hydra({
+M.git_hydra = Hydra({
 	name = "Git",
 	mode = { "n", "x" },
 	hint = [[
@@ -393,37 +394,4 @@ _q_: Exit]],
 	},
 })
 
-require("legendary").keymaps({
-	{
-		mode = { "n", "v" },
-		"<leader><C-t>",
-		function()
-			treewalker_hydra:activate()
-		end,
-		description = "Start Treesitter navigation",
-	},
-	{
-		mode = { "n", "v" },
-		"<leader><C-d>",
-		function()
-			dap_hydra:activate()
-		end,
-		description = "Start debug mode",
-	},
-	{
-		mode = { "n", "v" },
-		"<leader><C-x>",
-		function()
-			trouble_hydra:activate()
-		end,
-		description = "Start trouble nav mode",
-	},
-	{
-		mode = { "n", "v" },
-		"<leader><C-g>",
-		function()
-			git_hydra:activate()
-		end,
-		description = "Start git mode",
-	},
-})
+return M

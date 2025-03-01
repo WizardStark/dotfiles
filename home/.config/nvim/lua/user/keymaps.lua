@@ -2376,6 +2376,38 @@ local mappings = {
 		prefix = P.misc,
 		description = "Swap right treesitter node",
 	},
+	{
+		mode = { "n", "v" },
+		"<leader><C-t>",
+		function()
+			require("config.hydra").treewalker_hydra:activate()
+		end,
+		description = "Start Treesitter navigation",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader><C-d>",
+		function()
+			require("config.hydra").dap_hydra:activate()
+		end,
+		description = "Start debug mode",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader><C-x>",
+		function()
+			require("config.hydra").trouble_hydra:activate()
+		end,
+		description = "Start trouble nav mode",
+	},
+	{
+		mode = { "n", "v" },
+		"<leader><C-g>",
+		function()
+			require("config.hydra").git_hydra:activate()
+		end,
+		description = "Start git mode",
+	},
 }
 
 return {

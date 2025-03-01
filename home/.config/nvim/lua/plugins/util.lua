@@ -136,9 +136,6 @@ return {
 	},
 	{
 		"nvimtools/hydra.nvim",
-		-- lazy = true,
-		config = function()
-			require("config.hydra")
-		end,
+		lazy = true,
 	},
 }

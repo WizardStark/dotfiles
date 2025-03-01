@@ -1,6 +1,7 @@
 return {
 	{
 		"echasnovski/mini.diff",
+		lazy = true,
 		version = false,
 		opts = {
 			view = {
