@@ -26,7 +26,7 @@ M.PREFIXES = {
 
 M.special_windows = {
 	["OverseerList"] = function()
-		vim.cmd(":CompilerToggleResults")
+		vim.cmd(":OverseerToggle")
 	end,
 	["Trouble"] = function()
 		require("trouble").toggle()
@@ -60,10 +60,10 @@ local special_characters = {
 }
 
 _G.dd = function(...)
-	require('snacks').debug.inspect(...)
+	require("snacks").debug.inspect(...)
 end
 _G.bt = function()
-	require('snacks').debug.backtrace()
+	require("snacks").debug.backtrace()
 end
 vim.print = _G.dd
 

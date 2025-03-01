@@ -25,17 +25,10 @@ return {
 		end,
 	},
 	{
-		"Zeioth/compiler.nvim",
-		cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
-		dependencies = {
-			{
-				"stevearc/overseer.nvim",
-				cmd = { "CompilerOpen", "CompilerToggleResults", "CompilerRedo" },
-				config = function()
-					require("config.terminal.overseer")
-				end,
-			},
-		},
-		config = true,
+		"stevearc/overseer.nvim",
+		cmd = { "OverseerRun", "OverseerToggle" },
+		config = function()
+			require("config.terminal.overseer")
+		end,
 	},
 }
