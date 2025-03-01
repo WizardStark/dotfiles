@@ -47,18 +47,36 @@ require("incline").setup(
 				local modified = vim.bo[props.buf].modified and "bold,italic" or "bold"
 
 				local function get_git_diff()
-					local icons = { removed = "", changed = "", added = "" }
-					icons["changed"] = icons.modified
-					local signs = vim.b[props.buf].gitsigns_status_dict
+					local icons = { delete = "", change = "", add = "" }
 					local labels = {}
-					if signs == nil then
+					local buf_data = require("mini.diff").get_buf_data(props.buf)
+
+					if buf_data == nil then
 						return labels
 					end
+
+					local hunks = buf_data.hunks
+
+					if hunks == nil then
+						return labels
+					end
+
+					local diffs = { delete = 0, change = 0, add = 0 }
+
+					for _, hunk in ipairs(hunks) do
+						diffs[hunk.type] = hunk.type == "delete" and diffs[hunk.type] + hunk.ref_count
+							or diffs[hunk.type] + hunk.buf_count
+					end
+
 					for name, icon in pairs(icons) do
-						if tonumber(signs[name]) and signs[name] > 0 then
-							table.insert(labels, { icon .. signs[name] .. " ", group = "Diff" .. name })
+						if diffs[name] > 0 then
+							table.insert(
+								labels,
+								{ icon .. diffs[name] .. " ", group = "MiniDiffSign" .. name:gsub("^%l", string.upper) }
+							)
 						end
 					end
+
 					if #labels > 0 then
 						table.insert(labels, { "┊ " })
 					end

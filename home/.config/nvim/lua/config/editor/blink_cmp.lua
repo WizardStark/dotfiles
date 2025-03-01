@@ -104,7 +104,7 @@ require("blink.cmp").setup({
 
 							return map[ctx.item.source_id]
 						end,
-						highlight = "BlinkCmpSource",
+						highlight = "BlinkCmpDoc",
 					},
 				},
 			},

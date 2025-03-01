@@ -14,6 +14,125 @@ local function continue()
 	end
 end
 
+local function get_git_files()
+	local file_str = vim.fn.system("git diff --name-only --line-prefix=`git rev-parse --show-toplevel`/")
+	if file_str == "" or file_str == nil then
+		return nil
+	end
+	local file_table = vim.split(file_str, "\n")
+	table.remove(file_table, #file_table)
+	return file_table
+end
+
+-- Next 2 methods ripped from mini.diff
+local function get_hunk_buf_range(hunk)
+	if hunk.buf_count > 0 then
+		return hunk.buf_start, hunk.buf_start + hunk.buf_count - 1
+	end
+	local from = math.max(hunk.buf_start, 1)
+	return from, from
+end
+
+local function get_contiguous_hunk_ranges(hunks)
+	hunks = vim.deepcopy(hunks)
+
+	local h1_from, h1_to = get_hunk_buf_range(hunks[1])
+	local reg = { { from = h1_from, to = h1_to } }
+	for i = 2, #hunks do
+		local h, cur_region = hunks[i], reg[#reg]
+		local h_from, h_to = get_hunk_buf_range(h)
+		if h_from <= cur_region.to + 1 then
+			cur_region.to = math.max(cur_region.to, h_to)
+		else
+			table.insert(reg, { from = h_from, to = h_to })
+		end
+	end
+	local res = {}
+
+	for _, region in ipairs(reg) do
+		table.insert(res, region.from)
+	end
+
+	return res
+end
+
+local function traverse_hunks(forward)
+	local buf_data = require("mini.diff").get_buf_data(0)
+	if buf_data == nil then
+		vim.notify("No hunks found, retry")
+		return
+	end
+
+	local hunks = buf_data.hunks
+
+	if hunks == nil or hunks == {} then
+		vim.notify("No hunks found, retry")
+		return
+	end
+
+	local hunk_starts = get_contiguous_hunk_ranges(hunks)
+
+	local cur_line = unpack(vim.fn.getcurpos(), 2, 2)
+
+	local hunk_found = false
+	if forward then
+		for _, line in ipairs(hunk_starts) do
+			if line > cur_line then
+				vim.api.nvim_win_set_cursor(0, { line, 0 })
+				hunk_found = true
+				break
+			end
+		end
+	else
+		for i = #hunk_starts, 1, -1 do
+			if hunk_starts[i] < cur_line then
+				vim.api.nvim_win_set_cursor(0, { hunk_starts[i], 0 })
+				hunk_found = true
+				break
+			end
+		end
+	end
+
+	return hunk_found
+end
+
+local function next_changed_file(forward)
+	local changed_files = get_git_files()
+
+	if changed_files == nil then
+		vim.notify("No changed files found")
+		return
+	end
+
+	local buf_path = vim.fn.expand("%:p")
+	local buf_index = 0
+	for i, file in ipairs(changed_files) do
+		if buf_path == file then
+			buf_index = i
+		end
+	end
+
+	if forward then
+		local target = buf_index < #changed_files and buf_index + 1 or 1
+		vim.cmd.e(changed_files[target])
+		vim.api.nvim_win_set_cursor(0, { 1, 1 })
+		traverse_hunks(forward)
+	else
+		local target = buf_index > 1 and buf_index - 1 or #changed_files
+		vim.cmd.e(changed_files[target])
+		vim.api.nvim_win_set_cursor(0, { vim.fn.line("$"), 1 })
+		traverse_hunks(forward)
+	end
+end
+
+local function traverse_changes(forward)
+	local hunk_found = traverse_hunks(forward)
+
+	if not hunk_found then
+		next_changed_file(forward)
+	end
+end
+
 local treewalker_hydra = Hydra({
 	name = "Treewalker",
 	mode = { "n", "x" },
@@ -206,8 +325,11 @@ local git_hydra = Hydra({
 	name = "Git",
 	mode = { "n", "x" },
 	hint = [[
-_n_: Next item
-_t_: Prev item
+_n_: Next hunk  _<C-n>_: Next file
+_t_: Prev hunk  _<C-t>_: Prev file
+_s_: Stage hunk
+_r_: Reset hunk
+_o_: Toggle diff
 
 _q_: Exit]],
 	config = {
@@ -239,18 +361,25 @@ _q_: Exit]],
 		{
 			"n",
 			function()
-				local val = require("mini.diff").goto_hunk("next", { wrap = false })
-				dd(val)
+				traverse_changes(true)
 			end,
 		},
 		{
 			"t",
 			function()
-				require("mini.diff").goto_hunk("prev", { wrap = false })
-				local val = require("snacks").notifier.get_history()[1].msg
-				-- if val:gmatch("No hunks to go to") then
-				-- 	vim.notify("test")
-				-- end
+				traverse_changes(false)
+			end,
+		},
+		{
+			"<C-n>",
+			function()
+				next_changed_file(true)
+			end,
+		},
+		{
+			"<C-t>",
+			function()
+				next_changed_file(false)
 			end,
 		},
 		{
