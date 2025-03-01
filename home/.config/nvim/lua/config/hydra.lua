@@ -175,11 +175,12 @@ M.dap_hydra = Hydra({
 	name = "Dap",
 	mode = { "n", "x" },
 	hint = [[
-_b_: Add breakpoint _w_: Add to watches
-_o_: Step over      _e_: Evaluate
-_i_: Step into      _c_: Continue
-_u_: Step out       _Q_: Quit debugger
-_r_: Run to cursor  _t_: Toggle UI
+_b_: Toggle breakpoint _w_: Add to watches
+_B_: Clear breakpoints _e_: Evaluate
+_o_: Step over         _c_: Continue
+_i_: Step into         _Q_: Quit debugger
+_u_: Step out          _t_: Toggle UI
+_r_: Run to cursor
 
 _q_: Exit]],
 	config = {
@@ -200,6 +201,13 @@ _q_: Exit]],
 			"b",
 			function()
 				require("dap").toggle_breakpoint()
+			end,
+			{ desc = false },
+		},
+		{
+			"<C-b>",
+			function()
+				require("dap").clear_breakpoints()
 			end,
 			{ desc = false },
 		},

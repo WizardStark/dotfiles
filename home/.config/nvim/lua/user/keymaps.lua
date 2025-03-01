@@ -971,6 +971,15 @@ local mappings = {
 	},
 	{
 		mode = "n",
+		"<leader>dC",
+		function()
+			require("dap").clear_breakpoints()
+		end,
+		prefix = P.debug,
+		description = "Clear all breakpoints",
+	},
+	{
+		mode = "n",
 		"<leader>dD",
 		function()
 			vim.ui.input({ prompt = "Condition: " }, function(input)
