@@ -424,13 +424,22 @@ local mark_picker = function()
 				for _, mark in ipairs(state.get().marks) do
 					local pos_text = tostring(mark.pos[1]) .. "," .. tostring(mark.pos[2])
 					local truncated_elements = truncate_path(mark.path)
+					local display_name = mark.display_name and mark.display_name .. " " or "..." .. " "
+					local text = mark.workspace_name
+						.. "-"
+						.. mark.session_name
+						.. " "
+						.. display_name
+						.. truncated_elements.file
+						.. " "
+						.. truncated_elements.parents
 					table.insert(items, {
 						["data"] = {
 							mark = mark,
 							pos_text = pos_text,
 							truncated_elements = truncated_elements,
 						},
-						text = mark.name,
+						text = text,
 						file = mark.path,
 						pos = mark.pos,
 					})
@@ -474,12 +483,12 @@ local mark_picker = function()
 			},
 			actions = {
 				delete = function(picker, item)
-					marks.delete_mark(item.text)
+					marks.delete_mark(item.data.mark.name)
 					picker:find()
 				end,
 				rename = function(picker, item)
 					picker:close()
-					marks.rename_mark(item.text)
+					marks.rename_mark(item.data.mark.name)
 				end,
 			},
 			win = {
