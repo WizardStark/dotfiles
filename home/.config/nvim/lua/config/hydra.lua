@@ -205,7 +205,7 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"<C-b>",
+			"B",
 			function()
 				require("dap").clear_breakpoints()
 			end,

@@ -13,6 +13,9 @@ require("snacks").setup({
 			enabled = false,
 		},
 	},
+	input = {
+		enabled = true,
+	},
 	picker = {
 		enabled = true,
 		actions = require("trouble.sources.snacks").actions,

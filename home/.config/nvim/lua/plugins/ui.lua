@@ -39,6 +39,7 @@ return {
 	{
 		"OXY2DEV/markview.nvim",
 		ft = { "markdown", "tex" },
+		lazy = true,
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
 			"echasnovski/mini.icons",

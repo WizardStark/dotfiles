@@ -175,6 +175,14 @@ return {
 		end,
 	},
 	{
+		"pmizio/typescript-tools.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"neovim/nvim-lspconfig",
+		},
+		lazy = true,
+	},
+	{
 		"artemave/workspace-diagnostics.nvim",
 		lazy = true,
 	},

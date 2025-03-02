@@ -1,5 +1,4 @@
 local lspconfig = require("lspconfig")
--- local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 require("mason").setup({
 	ui = { border = "rounded" },
@@ -53,12 +52,34 @@ local function on_attach(client, bufnr)
 	end
 end
 
+require("typescript-tools").setup({
+	on_attach = on_attach,
+	capabilities = capabilities,
+	handlers = handlers,
+	settings = {
+		expose_as_code_action = "all",
+		tsserver_file_preferences = {
+			inlayHints = {
+				includeInlayParameterNameHints = "all",
+				includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+				includeInlayFunctionParameterTypeHints = true,
+				includeInlayVariableTypeHints = true,
+				includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+				includeInlayPropertyDeclarationTypeHints = true,
+				includeInlayFunctionLikeReturnTypeHints = true,
+				includeInlayEnumMemberValueHints = true,
+			},
+		},
+	},
+})
 mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
 		"basedpyright",
 		"jdtls",
+		"ts_ls",
 	},
+	automatic_installation = true,
 })
 
 mason_lspconfig.setup_handlers({
@@ -70,6 +91,7 @@ mason_lspconfig.setup_handlers({
 		})
 	end,
 	["jdtls"] = function() end,
+	["ts_ls"] = function() end,
 	["lua_ls"] = function()
 		lspconfig.lua_ls.setup({
 			on_attach = on_attach,
@@ -126,39 +148,6 @@ mason_lspconfig.setup_handlers({
 			},
 		})
 	end,
-	["ts_ls"] = function()
-		lspconfig.ts_ls.setup({
-			on_attach = on_attach,
-			capabilities = capabilities,
-			handlers = handlers,
-			settings = {
-				typescript = {
-					inlayHints = {
-						includeInlayParameterNameHints = "all",
-						includeInlayParameterNameHintsWhenArgumentMatchesName = true,
-						includeInlayFunctionParameterTypeHints = true,
-						includeInlayVariableTypeHints = true,
-						includeInlayVariableTypeHintsWhenTypeMatchesName = true,
-						includeInlayPropertyDeclarationTypeHints = true,
-						includeInlayFunctionLikeReturnTypeHints = true,
-						includeInlayEnumMemberValueHints = true,
-					},
-				},
-				javascript = {
-					inlayHints = {
-						includeInlayParameterNameHints = "all",
-						includeInlayParameterNameHintsWhenArgumentMatchesName = true,
-						includeInlayFunctionParameterTypeHints = true,
-						includeInlayVariableTypeHints = true,
-						includeInlayVariableTypeHintsWhenTypeMatchesName = true,
-						includeInlayPropertyDeclarationTypeHints = true,
-						includeInlayFunctionLikeReturnTypeHints = true,
-						includeInlayEnumMemberValueHints = true,
-					},
-				},
-			},
-		})
-	end,
 	["kotlin_language_server"] = function()
 		lspconfig.kotlin_language_server.setup({
 			on_attach = on_attach,
@@ -180,6 +169,28 @@ mason_lspconfig.setup_handlers({
 	end,
 })
 
+-- require("typescript-tools")
+-- require("typescript-tools").setup({
+-- 	-- on_attach = on_attach,
+-- 	-- capabilities = capabilities,
+-- 	-- handlers = handlers,
+-- 	settings = {
+-- 		expose_as_code_action = "all",
+-- 		tsserver_file_preferences = {
+-- 			inlayHints = {
+-- 				includeInlayParameterNameHints = "all",
+-- 				includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+-- 				includeInlayFunctionParameterTypeHints = true,
+-- 				includeInlayVariableTypeHints = true,
+-- 				includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+-- 				includeInlayPropertyDeclarationTypeHints = true,
+-- 				includeInlayFunctionLikeReturnTypeHints = true,
+-- 				includeInlayEnumMemberValueHints = true,
+-- 			},
+-- 		},
+-- 	},
+-- })
+--
 -- lspconfig.kulala_ls.setup({
 -- 	-- capabilities = capabilities,
 -- })
