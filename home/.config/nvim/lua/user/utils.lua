@@ -197,6 +197,16 @@ function M.close_non_terminal_buffers(close_current)
 	end
 end
 
+--- Force closes all buffers except the current one
+function M.force_close_other_buffers()
+	local current_buffer = vim.api.nvim_get_current_buf()
+	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buffer) and buffer ~= current_buffer then
+			pcall(vim.api.nvim_buf_delete, buffer, { force = true })
+		end
+	end
+end
+
 function M.get_visible_windows()
 	local visible_windows = {}
 	local current_windows = vim.api.nvim_list_wins()

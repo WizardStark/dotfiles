@@ -61,11 +61,6 @@ local mappings = {
 		prefix = P.code,
 		description = "Show code coverage summary",
 	},
-	{
-		":w | %bd! | e#",
-		prefix = P.misc,
-		description = "Force close all buffers except the current one (writes and reopens current buffer)",
-	},
 }
 
 return {

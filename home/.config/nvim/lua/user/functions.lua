@@ -31,6 +31,13 @@ local mappings = {
 	},
 	{
 		function()
+			require("user.utils").force_close_other_buffers()
+		end,
+		prefix = P.misc,
+		description = "Force close all buffers except the current one",
+	},
+	{
+		function()
 			require("user.utils").toggle_keys_window()
 		end,
 		prefix = P.misc,

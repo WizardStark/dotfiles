@@ -16,7 +16,9 @@ local function continue()
 end
 
 local function get_git_files()
-	local file_str = vim.fn.system("git diff --name-only --line-prefix=`git rev-parse --show-toplevel`/")
+	local file_str = vim.fn.system(
+		'git status -suall | cut -c 4- | sed "s|^|$(git rev-parse --show-toplevel)/$(git rev-parse --show-prefix)|g"'
+	)
 	if file_str == "" or file_str == nil then
 		return nil
 	end
@@ -27,6 +29,11 @@ end
 
 -- Next 2 methods ripped from mini.diff
 local function get_hunk_buf_range(hunk)
+	if hunk == nil then
+		vim.notify("No hunks found, likely a staged or new file")
+		return
+	end
+
 	if hunk.buf_count > 0 then
 		return hunk.buf_start, hunk.buf_start + hunk.buf_count - 1
 	end
