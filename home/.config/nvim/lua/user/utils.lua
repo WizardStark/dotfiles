@@ -9,6 +9,7 @@ M.PREFIXES = {
 	find = "Find",
 	fold = "Folds",
 	git = "Git",
+	hydra = "Hydra",
 	latex = "Latex",
 	lsp = "Language server",
 	misc = "Misc",

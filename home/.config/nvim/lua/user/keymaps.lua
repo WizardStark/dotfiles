@@ -2015,7 +2015,7 @@ local mappings = {
 			require("jdtls").test_class()
 		end,
 		prefix = P.test,
-		description = "Run nearest java test",
+		description = "Run java test class",
 	},
 	{
 		mode = "n",
@@ -2391,6 +2391,7 @@ local mappings = {
 		function()
 			require("config.hydra").treewalker_hydra:activate()
 		end,
+		prefix = P.hydra,
 		description = "Start Treesitter navigation",
 	},
 	{
@@ -2399,6 +2400,7 @@ local mappings = {
 		function()
 			require("config.hydra").dap_hydra:activate()
 		end,
+		prefix = P.hydra,
 		description = "Start debug mode",
 	},
 	{
@@ -2407,6 +2409,7 @@ local mappings = {
 		function()
 			require("config.hydra").trouble_hydra:activate()
 		end,
+		prefix = P.hydra,
 		description = "Start trouble nav mode",
 	},
 	{
@@ -2415,6 +2418,7 @@ local mappings = {
 		function()
 			require("config.hydra").git_hydra:activate()
 		end,
+		prefix = P.hydra,
 		description = "Start git mode",
 	},
 }
