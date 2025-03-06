@@ -29,7 +29,6 @@ end
 
 local original_branch = nil
 
--- find all URLs in buffer
 local history_picker = function()
 	Snacks.picker.pick(
 		---@type snacks.picker.Config

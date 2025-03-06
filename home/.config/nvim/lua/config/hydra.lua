@@ -1,6 +1,10 @@
 local Hydra = require("hydra")
 M = {}
 
+local last_git_traversed_at
+local hunk_starts
+local changed_files
+
 local function trigger_dap(dapStart)
 	require("dapui").open({ reset = true })
 	dapStart()
@@ -64,21 +68,23 @@ local function get_contiguous_hunk_ranges(hunks)
 	return res
 end
 
-local function traverse_hunks(forward)
-	local buf_data = require("mini.diff").get_buf_data(0)
-	if buf_data == nil then
-		vim.notify("No hunks found, retry")
-		return
+local function traverse_hunks(forward, file_changed)
+	if last_git_traversed_at == nil or os.time() - last_git_traversed_at > 2 or file_changed then
+		local buf_data = require("mini.diff").get_buf_data(0)
+		if buf_data == nil then
+			vim.notify("No hunks found, retry")
+			return
+		end
+
+		local hunks = buf_data.hunks
+
+		if hunks == nil or hunks == {} then
+			vim.notify("No hunks found, retry")
+			return
+		end
+
+		hunk_starts = get_contiguous_hunk_ranges(hunks)
 	end
-
-	local hunks = buf_data.hunks
-
-	if hunks == nil or hunks == {} then
-		vim.notify("No hunks found, retry")
-		return
-	end
-
-	local hunk_starts = get_contiguous_hunk_ranges(hunks)
 
 	local cur_line = unpack(vim.fn.getcurpos(), 2, 2)
 
@@ -101,15 +107,21 @@ local function traverse_hunks(forward)
 		end
 	end
 
+	if hunk_found then
+		last_git_traversed_at = os.time()
+	end
+
 	return hunk_found
 end
 
 local function next_changed_file(forward)
-	local changed_files = get_git_files()
+	if changed_files == nil or os.time() - last_git_traversed_at > 2 then
+		changed_files = get_git_files()
 
-	if changed_files == nil then
-		vim.notify("No changed files found")
-		return
+		if changed_files == nil then
+			vim.notify("No changed files found")
+			return
+		end
 	end
 
 	local buf_path = vim.fn.expand("%:p")
@@ -124,17 +136,17 @@ local function next_changed_file(forward)
 		local target = buf_index < #changed_files and buf_index + 1 or 1
 		vim.cmd.e(changed_files[target])
 		vim.api.nvim_win_set_cursor(0, { 1, 1 })
-		traverse_hunks(forward)
+		traverse_hunks(forward, true)
 	else
 		local target = buf_index > 1 and buf_index - 1 or #changed_files
 		vim.cmd.e(changed_files[target])
 		vim.api.nvim_win_set_cursor(0, { vim.fn.line("$"), 1 })
-		traverse_hunks(forward)
+		traverse_hunks(forward, true)
 	end
 end
 
 local function traverse_changes(forward)
-	local hunk_found = traverse_hunks(forward)
+	local hunk_found = traverse_hunks(forward, false)
 
 	if not hunk_found then
 		next_changed_file(forward)
