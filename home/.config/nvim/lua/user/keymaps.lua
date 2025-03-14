@@ -75,8 +75,7 @@ local history_picker = function()
 					},
 					width = 0.3,
 					min_width = 80,
-					height = 0.2,
-					min_height = 10,
+					max_height = 12,
 					box = "vertical",
 					border = "rounded",
 					title = " Picker history ",
@@ -1010,7 +1009,7 @@ local mappings = {
 		mode = "n",
 		"<leader>di",
 		function()
-			require("dap").step_into()
+			require("dap").step_into({ askForTargets = true })
 		end,
 		prefix = P.debug,
 		description = "Step into",

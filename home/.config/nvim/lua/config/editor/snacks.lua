@@ -28,6 +28,9 @@ require("snacks").setup({
 			git = {
 				native = true,
 			},
+			diff = {
+				native = true,
+			},
 		},
 		win = {
 			input = {
@@ -67,6 +70,18 @@ require("snacks").setup({
 					width = 0.6,
 					border = "rounded",
 					title_pos = "center",
+				},
+			},
+		},
+		sources = {
+			select = {
+				layout = {
+					preset = "select",
+					layout = {
+						width = 0.28,
+						min_height = 12,
+						min_width = 70,
+					},
 				},
 			},
 		},

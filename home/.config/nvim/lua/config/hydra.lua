@@ -247,7 +247,7 @@ _q_: Exit]],
 		{
 			"i",
 			function()
-				require("dap").step_into()
+				require("dap").step_into({ askForTargets = true })
 			end,
 			{ desc = false },
 		},
