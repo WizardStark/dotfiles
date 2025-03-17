@@ -29,8 +29,11 @@ M.special_windows = {
 	["OverseerList"] = function()
 		vim.cmd(":OverseerToggle")
 	end,
-	["Trouble"] = function()
-		require("trouble").toggle()
+	["trouble"] = function()
+		local view = require("trouble").close()
+		while view do
+			view = require("trouble").close()
+		end
 	end,
 	["dapui"] = function()
 		require("dapui").toggle()
