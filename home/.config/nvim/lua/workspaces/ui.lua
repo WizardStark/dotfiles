@@ -450,7 +450,7 @@ local mark_picker = function()
 			confirm = function(picker, item)
 				picker:close()
 				if item then
-					marks.goto_mark(item.text)
+					marks.goto_mark(item.data.mark.name)
 				end
 			end,
 			format = function(item, _)
