@@ -78,7 +78,7 @@ require("snacks").setup({
 				layout = {
 					preset = "select",
 					layout = {
-						width = 0.28,
+						width = 0.5,
 						min_height = 12,
 						min_width = 70,
 					},
