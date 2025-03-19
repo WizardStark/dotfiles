@@ -1719,7 +1719,7 @@ local mappings = {
 			require("workspaces.ui").pick_mark()
 		end,
 		prefix = P.work,
-		description = "Pick mark",
+		description = "Find mark",
 	},
 	{
 		mode = { "n" },
