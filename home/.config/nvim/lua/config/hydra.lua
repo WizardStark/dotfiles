@@ -197,7 +197,7 @@ M.dap_hydra = Hydra({
 _b_: Toggle breakpoint _w_: Add to watches
 _B_: Clear breakpoints _e_: Evaluate
 _o_: Step over         _c_: Continue
-_i_: Step into         _Q_: Quit debugger
+_I_: Step into         _Q_: Quit debugger
 _u_: Step out          _t_: Toggle UI
 _r_: Run to cursor
 
@@ -245,7 +245,7 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"i",
+			"I",
 			function()
 				require("dap").step_into({ askForTargets = true })
 			end,
