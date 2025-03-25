@@ -4,7 +4,6 @@ local state = require("workspaces.state")
 local marks = require("workspaces.marks")
 local ws = require("workspaces.workspaces")
 local Path = require("plenary.path")
-local Snacks = require("snacks")
 
 local function directory_completion()
 	return {

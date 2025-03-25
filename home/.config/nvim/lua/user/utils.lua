@@ -63,14 +63,6 @@ local special_characters = {
 	"}",
 }
 
-_G.dd = function(...)
-	require("snacks").debug.inspect(...)
-end
-_G.bt = function()
-	require("snacks").debug.backtrace()
-end
-vim.print = _G.dd
-
 function M.is_big_file(buf)
 	local max_filesize = 500 * 1024 -- 500 KB
 	local filename = vim.api.nvim_buf_get_name(buf)

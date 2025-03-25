@@ -28,6 +28,13 @@ require("incline").setup(
 		window = {
 			zindex = 30,
 		},
+		hide = {
+			cursorline = "focused_win",
+		},
+		debounce_threshold = {
+			falling = 50,
+			rising = 50,
+		},
 		ignore = {
 			buftypes = {},
 			filetypes = { "toggleterm" },

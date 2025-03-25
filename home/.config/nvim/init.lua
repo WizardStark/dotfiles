@@ -17,14 +17,14 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- lazy load shada
-local shada = vim.o.shada
-vim.o.shada = ""
+-- lazy load shada and rplugin (this is such an unnecessary 'optimisation')
 vim.api.nvim_create_autocmd("User", {
 	pattern = "VeryLazy",
 	callback = function()
-		vim.o.shada = shada
+		vim.o.shada = vim.o.shada .. ",:100"
 		pcall(vim.cmd.rshada, { bang = true })
+		pcall(vim.cmd.source, vim.fn.stdpath("data") .. "/rplugin.vim")
+		pcall(vim.cmd.source, "runtime/plugin/editorconfig.vim")
 	end,
 })
 
@@ -95,6 +95,9 @@ require("lazy").setup({
 		rtp = {
 			reset = true,
 			disabled_plugins = {
+				"editorconfig",
+				"shada",
+				"rplugin",
 				"gzip",
 				"matchit",
 				"netrwPlugin",

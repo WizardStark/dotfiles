@@ -1,6 +1,12 @@
 Snacks_picker_hist = {}
 
 require("snacks").setup({
+	dashboard = { enabled = false },
+	quickfile = { enabled = false },
+	scroll = { enabled = false },
+	scope = { enabled = false },
+
+	bigfile = { enabled = true },
 	notifier = { enabled = true, timeout = 3000 },
 	words = {
 		enabled = true,
@@ -13,9 +19,7 @@ require("snacks").setup({
 			enabled = false,
 		},
 	},
-	input = {
-		enabled = true,
-	},
+	input = { enabled = true },
 	picker = {
 		enabled = true,
 		actions = require("trouble.sources.snacks").actions,
@@ -100,9 +104,14 @@ require("snacks").setup({
 	rename = { enabled = true },
 	statuscolumn = { enabled = true },
 	debug = { enabled = true },
-	quickfile = {
-		enabled = true,
-		exclude = { "latex" },
-	},
 	git = { enabled = true },
 })
+
+Snacks.indent.enable()
+_G.dd = function(...)
+	require("snacks").debug.inspect(...)
+end
+_G.bt = function()
+	require("snacks").debug.backtrace()
+end
+vim.print = _G.dd

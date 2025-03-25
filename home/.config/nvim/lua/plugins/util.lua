@@ -128,8 +128,7 @@ return {
 	},
 	{
 		"folke/snacks.nvim",
-		priority = 1000,
-		lazy = false,
+		event = "UiEnter",
 		config = function()
 			require("config.editor.snacks")
 		end,
