@@ -93,7 +93,7 @@ return {
 	},
 	{
 		"b0o/incline.nvim",
-		event = "VeryLazy",
+		event = "UiEnter",
 		dependencies = "echasnovski/mini.icons",
 		config = function()
 			require("config.ui.incline")

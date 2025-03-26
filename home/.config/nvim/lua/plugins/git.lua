@@ -1,7 +1,7 @@
 return {
 	{
 		"echasnovski/mini.diff",
-		lazy = true,
+		event = "UiEnter",
 		version = false,
 		opts = {
 			view = {

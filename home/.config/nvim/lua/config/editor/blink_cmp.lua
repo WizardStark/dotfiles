@@ -1,3 +1,6 @@
+local default_sources = { "lsp", "path", "snippets", "buffer", "lazydev" }
+local debug_sources = vim.list_extend(vim.deepcopy(default_sources), { "dap" })
+
 require("blink.cmp").setup({
 	keymap = {
 		preset = "enter",
@@ -29,14 +32,16 @@ require("blink.cmp").setup({
 		},
 	},
 	sources = {
-		default = {
-			"lsp",
-			"path",
-			"snippets",
-			"buffer",
-			"lazydev",
-		},
+		default = default_sources,
+		per_filetype = { ["dap-repl"] = debug_sources, dapui_watches = debug_sources, dapui_hover = debug_sources },
 		providers = {
+			dap = {
+				name = "dap",
+				module = "blink.compat.source",
+				enabled = function()
+					return require("cmp_dap").is_dap_buffer()
+				end,
+			},
 			lazydev = {
 				name = "LazyDev",
 				module = "lazydev.integrations.blink",

@@ -98,8 +98,10 @@ return {
 		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			"rafamadriz/friendly-snippets",
+			"saghen/blink.compat",
+			"rcarriga/cmp-dap",
 		},
-		version = "v0.*",
+		version = "v1.*",
 		config = function()
 			require("config.editor.blink_cmp")
 		end,
