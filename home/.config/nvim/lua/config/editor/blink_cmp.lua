@@ -25,6 +25,12 @@ require("blink.cmp").setup({
 			"fallback",
 		},
 	},
+	enabled = function()
+		if require("cmp_dap").is_dap_buffer() then
+			return "force"
+		end
+		return true
+	end,
 	signature = {
 		enabled = true,
 		window = {

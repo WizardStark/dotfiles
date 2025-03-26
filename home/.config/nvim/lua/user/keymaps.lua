@@ -666,15 +666,6 @@ local mappings = {
 		description = "Commit history for current buffer",
 	},
 	{
-		mode = { "i" },
-		"<C-r>",
-		function()
-			Snacks.picker.registers()
-		end,
-		prefix = P.misc,
-		description = "Show registers",
-	},
-	{
 		mode = "n",
 		"<leader>bc",
 		function()
