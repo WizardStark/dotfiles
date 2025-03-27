@@ -42,8 +42,6 @@ local handlers = {
 	vim.diagnostic.config({
 		float = { border = "rounded" },
 	}),
-	["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
-	["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
 }
 
 local function on_attach(client, bufnr)

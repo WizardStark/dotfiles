@@ -41,6 +41,7 @@ local opts = {
 	sessionoptions = "blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions",
 	grepprg = "rg --vimgrep",
 	grepformat = "%f:%l:%c:%m",
+	winborder = "rounded",
 	scrollback = 100000,
 	-- from TJ's config
 	formatoptions = opt.formatoptions
@@ -62,6 +63,10 @@ return {
 		for key, value in pairs(opts) do
 			vim.opt[key] = value
 		end
+
+		vim.diagnostic.config({
+			virtual_text = true,
+		})
 
 		vim.filetype.add({
 			extension = {

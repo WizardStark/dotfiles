@@ -262,6 +262,7 @@ function M.create_backdrop_window()
 		style = "minimal",
 		focusable = false,
 		zindex = 1,
+		border = "none",
 	})
 	vim.api.nvim_set_hl(0, "LazyBackdrop", { bg = "#000000", default = true })
 	vim.api.nvim_set_option_value("winhighlight", "Normal:LazyBackdrop", { scope = "local", win = vim.g.backdrop_win })
