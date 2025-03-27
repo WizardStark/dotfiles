@@ -28,21 +28,6 @@ capabilities.textDocument.foldingRange = {
 }
 
 local mason_lspconfig = require("mason-lspconfig")
-local border = {
-	{ "╭", "FloatBorder" },
-	{ "─", "FloatBorder" },
-	{ "╮", "FloatBorder" },
-	{ "│", "FloatBorder" },
-	{ "╯", "FloatBorder" },
-	{ "─", "FloatBorder" },
-	{ "╰", "FloatBorder" },
-	{ "│", "FloatBorder" },
-}
-local handlers = {
-	vim.diagnostic.config({
-		float = { border = "rounded" },
-	}),
-}
 
 local function on_attach(client, bufnr)
 	if vim.g.extra_lsp_actions ~= nil then
@@ -53,7 +38,6 @@ end
 require("typescript-tools").setup({
 	on_attach = on_attach,
 	capabilities = capabilities,
-	handlers = handlers,
 	settings = {
 		expose_as_code_action = "all",
 		tsserver_file_preferences = {
@@ -70,6 +54,7 @@ require("typescript-tools").setup({
 		},
 	},
 })
+
 mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
@@ -85,7 +70,6 @@ mason_lspconfig.setup_handlers({
 		lspconfig[server_name].setup({
 			on_attach = on_attach,
 			capabilities = capabilities,
-			handlers = handlers,
 		})
 	end,
 	["jdtls"] = function() end,
@@ -94,7 +78,6 @@ mason_lspconfig.setup_handlers({
 		lspconfig.lua_ls.setup({
 			on_attach = on_attach,
 			capabilities = capabilities,
-			handlers = handlers,
 			settings = {
 				Lua = {
 					hint = {
@@ -108,7 +91,6 @@ mason_lspconfig.setup_handlers({
 		lspconfig["basedpyright"].setup({
 			on_attach = on_attach,
 			capabilities = capabilities,
-			handlers = handlers,
 			settings = {
 				basedpyright = {
 					typeCheckingMode = "off",
@@ -130,7 +112,6 @@ mason_lspconfig.setup_handlers({
 		lspconfig.gopls.setup({
 			on_attach = on_attach,
 			capabilities = capabilities,
-			handlers = handlers,
 			settings = {
 				gopls = {
 					hints = {
@@ -150,7 +131,6 @@ mason_lspconfig.setup_handlers({
 		lspconfig.kotlin_language_server.setup({
 			on_attach = on_attach,
 			capabilities = capabilities,
-			handlers = handlers,
 			init_options = {
 				storagePath = table.concat({ vim.fn.stdpath("data") }, "nvim-data"),
 			},
@@ -167,28 +147,6 @@ mason_lspconfig.setup_handlers({
 	end,
 })
 
--- require("typescript-tools")
--- require("typescript-tools").setup({
--- 	-- on_attach = on_attach,
--- 	-- capabilities = capabilities,
--- 	-- handlers = handlers,
--- 	settings = {
--- 		expose_as_code_action = "all",
--- 		tsserver_file_preferences = {
--- 			inlayHints = {
--- 				includeInlayParameterNameHints = "all",
--- 				includeInlayParameterNameHintsWhenArgumentMatchesName = true,
--- 				includeInlayFunctionParameterTypeHints = true,
--- 				includeInlayVariableTypeHints = true,
--- 				includeInlayVariableTypeHintsWhenTypeMatchesName = true,
--- 				includeInlayPropertyDeclarationTypeHints = true,
--- 				includeInlayFunctionLikeReturnTypeHints = true,
--- 				includeInlayEnumMemberValueHints = true,
--- 			},
--- 		},
--- 	},
--- })
---
 -- lspconfig.kulala_ls.setup({
 -- 	-- capabilities = capabilities,
 -- })
