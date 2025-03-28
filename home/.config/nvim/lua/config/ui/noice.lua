@@ -24,6 +24,9 @@ require("noice").setup(
 					width = "auto",
 					height = "auto",
 				},
+				border = {
+					style = "none",
+				},
 			},
 		},
 		cmdline = {
