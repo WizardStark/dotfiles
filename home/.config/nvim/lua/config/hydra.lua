@@ -196,7 +196,7 @@ _B_: Clear breakpoints _e_: Evaluate
 _o_: Step over         _c_: Continue
 _I_: Step into         _Q_: Quit debugger
 _u_: Step out          _t_: Toggle UI
-_r_: Run to cursor
+_R_: Run to cursor
 
 _q_: Exit]],
 	config = {
@@ -253,7 +253,7 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"r",
+			"R",
 			function()
 				require("dap").run_to_cursor()
 			end,

@@ -35,6 +35,7 @@ require("blink.cmp").setup({
 		enabled = true,
 		window = {
 			border = "rounded",
+			scrollbar = false,
 		},
 	},
 	sources = {
