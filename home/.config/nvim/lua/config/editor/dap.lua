@@ -10,7 +10,10 @@ require("nvim-dap-virtual-text").setup({
 	},
 })
 
-dapui.setup()
+dapui.setup({
+	expand_lines = false,
+})
+
 dap.listeners.after.event_initialized["dapui_config"] = function()
 	dapui.open({ reset = true })
 end
