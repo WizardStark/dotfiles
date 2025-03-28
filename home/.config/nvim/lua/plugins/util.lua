@@ -71,6 +71,9 @@ return {
 		dependencies = "rcarriga/nvim-notify",
 		opts = {
 			slots = { "a", "r", "s", "m" },
+			mapping = {
+				switchSlot = "<C-S-q>",
+			},
 		},
 	},
 	{

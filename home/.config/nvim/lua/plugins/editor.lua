@@ -27,7 +27,7 @@ return {
 		dependencies = {
 			"kevinhwang91/promise-async",
 		},
-		event = "VeryLazy",
+		lazy = true,
 		config = function()
 			require("config.editor.folds")
 		end,

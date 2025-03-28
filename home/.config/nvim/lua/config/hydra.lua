@@ -194,9 +194,9 @@ M.dap_hydra = Hydra({
 _b_: Toggle breakpoint _w_: Add to watches
 _B_: Clear breakpoints _e_: Evaluate
 _o_: Step over         _c_: Continue
-_I_: Step into         _Q_: Quit debugger
+_I_: Step into         _C_: Run to cursor
 _u_: Step out          _t_: Toggle UI
-_R_: Run to cursor
+_R_: Send to REPL      _Q_: Quit debugger
 
 _q_: Exit]],
 	config = {
@@ -253,9 +253,24 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"R",
+			"C",
 			function()
 				require("dap").run_to_cursor()
+			end,
+			{ desc = false },
+		},
+		{
+			"R",
+			function()
+				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
+				if mode == "n" then
+					require("dap").repl.execute(vim.fn.expand("<cword>"))
+				elseif mode == "V" or mode == "v" then
+					vim.cmd([[normal! vv]])
+					local text =
+						require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+					require("dap").repl.execute(text)
+				end
 			end,
 			{ desc = false },
 		},

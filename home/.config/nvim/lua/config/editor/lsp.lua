@@ -21,13 +21,23 @@ require("mason-tool-installer").setup({
 	},
 })
 
+local mason_lspconfig = require("mason-lspconfig")
+
+mason_lspconfig.setup({
+	ensure_installed = {
+		"lua_ls",
+		"basedpyright",
+		"jdtls",
+		"ts_ls",
+	},
+	automatic_installation = true,
+})
+
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities.textDocument.foldingRange = {
 	dynamicRegistration = false,
 	lineFoldingOnly = true,
 }
-
-local mason_lspconfig = require("mason-lspconfig")
 
 local function on_attach(client, bufnr)
 	if vim.g.extra_lsp_actions ~= nil then
@@ -53,16 +63,6 @@ require("typescript-tools").setup({
 			},
 		},
 	},
-})
-
-mason_lspconfig.setup({
-	ensure_installed = {
-		"lua_ls",
-		"basedpyright",
-		"jdtls",
-		"ts_ls",
-	},
-	automatic_installation = true,
 })
 
 mason_lspconfig.setup_handlers({
