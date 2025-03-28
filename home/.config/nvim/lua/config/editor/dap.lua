@@ -17,8 +17,6 @@ dapui.setup({
 dap.listeners.after.event_initialized["dapui_config"] = function()
 	dapui.open({ reset = true })
 end
-dap.listeners.before.event_terminated["dapui_config"] = dapui.close
-dap.listeners.before.event_exited["dapui_config"] = dapui.close
 
 vim.api.nvim_set_hl(0, "DapStopped", { ctermbg = 0, fg = "#1f1d2e", bg = "#f6c177" })
 vim.fn.sign_define("DapStopped", {

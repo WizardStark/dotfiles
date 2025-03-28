@@ -1071,6 +1071,7 @@ local mappings = {
 		function()
 			require("dap").terminate()
 			require("dapui").close()
+			require("nvim-dap-virtual-text").refresh()
 		end,
 		prefix = P.debug,
 		description = "Stop debug session",
