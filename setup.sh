@@ -23,6 +23,7 @@ else
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]] && require apt; then
+    sudo apt update
     sudo apt install -y zsh
     # install neovim dependencies
     # The dependencies break if on ubuntu and installed with brew, so here we use apt
@@ -44,12 +45,12 @@ if ! require nvim; then
         sudo make install
         cd ../
         rm -rf neovim
-    ) &
+    )
 fi
 
 (
     git clone https://github.com/catppuccin/zsh-syntax-highlighting.git ~/.zsh-catpuccin
-) &
+)
 
 (
     mkdir -p "$(bat --config-dir)/themes"
@@ -60,23 +61,17 @@ fi
 (
     git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
     ~/.fzf/install --key-bindings --completion --update-rc
-) &
+)
 
 (
     git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
-) &
-
-(
-    mv ~/.zshrc ~/.zshrc_old
-    stow -v --adopt -t $HOME home
-    git restore home/.zshrc
-) &
-
-(
-    ~/.config/tmux/plugins/tpm/bin/install_plugins
 )
 
-wait
+mv ~/.zshrc ~/.zshrc_old
+stow -v --adopt -t $HOME home
+git restore home/.zshrc
+
+~/.config/tmux/plugins/tpm/bin/install_plugins
 
 nvim --headless "+Lazy! sync" +qa
 
