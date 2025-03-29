@@ -305,7 +305,7 @@ _q_: Exit]],
 			"Q",
 			function()
 				require("dap").terminate()
-				-- require("dapui").close()
+				require("dapui").close()
 				require("nvim-dap-virtual-text").refresh()
 			end,
 			{ desc = false },
