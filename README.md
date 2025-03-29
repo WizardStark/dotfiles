@@ -1,7 +1,7 @@
 ## WizardStark's dotfiles
 
 This is a collection of configuration files for the tools that I like to use
-during software development: NeoVim, Tmux (not so much anymore due to Neovide and my homegrown session management), Alacritty.
+during software development: Neovim, Tmux (not so much anymore due to Neovide and my homegrown session management), Alacritty.
 
 ## Dotfile management
 
@@ -23,17 +23,6 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-If on an Apple Silicon device, after running `nvim` once, also
-run the following to recompile the broken plugin:
-
-```bash
-cd ~/.local/share/nvim/lazy/telescope-fzf-native.nvim &&
-cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release &&
-cmake --build build --config Release &&
-cmake --install build --prefix build &&
-cd -
-```
-
 ## Notes for tweaking
 
 The best sources to consult for understanding the nvim config:
@@ -42,7 +31,7 @@ The best sources to consult for understanding the nvim config:
 - [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette
 
 ## Usage
-The most important keybinds are `<space><space>` in NeoVim for the command palette,
+The most important keybinds are `<space><space>` in Neovim for the command palette,
 wherein you can fuzzy find your way through most available commands, and `<C-a>?` for
 a list of tmux binds - this is much less nice to use as I have not found a way to add
 descriptions, but the commands are pretty self explanatory.
