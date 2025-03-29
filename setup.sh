@@ -1,12 +1,19 @@
 #!/bin/bash
+set -e
 
-if [[ $(command -v brew) == "" ]]; then
+require() {
+    command -v "${1}" &>/dev/null && return 0
+    printf 'Missing required application: %s\n' "${1}" >&2
+    return 1
+}
+
+if ! require brew; then
     echo "Installing Hombrew"
     export NONINTERACTIVE=1
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    elif "$OSTYPE" == "darwin"* ]]; then
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
     brew update
@@ -15,7 +22,7 @@ else
     brew update
 fi
 
-if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ $(command -v apt) != "" ]]; then
+if [[ "$OSTYPE" == "linux-gnu"* ]] && require apt; then
     sudo apt install -y zsh
     # install neovim dependencies
     # The dependencies break if on ubuntu and installed with brew, so here we use apt
@@ -30,7 +37,7 @@ brew install wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delt
 
 mkdir -p ~/.config
 
-if [[ $(command -v nvim) == "" ]]; then
+if ! require nvim; then
     (
         git clone --depth 1 -b v0.11.0 https://github.com/neovim/neovim
         cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
