@@ -3,7 +3,7 @@ require("trouble").setup(
 	---@module 'trouble'
 	{
 		auto_preview = true,
-		auto_refresh = true,
+		auto_refresh = false,
 		focus = true,
 		preview = {
 			type = "float",

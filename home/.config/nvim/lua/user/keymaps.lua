@@ -867,7 +867,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xw",
 		function()
-			require("trouble").toggle({ focus = true, mode = "cascade" })
+			require("trouble").toggle({ focus = true, auto_refresh = true, mode = "cascade" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
@@ -876,7 +876,7 @@ local mappings = {
 		mode = "n",
 		"<leader>xd",
 		function()
-			require("trouble").toggle({ focus = true, mode = "diagnostics_buffer" })
+			require("trouble").toggle({ focus = true, auto_refresh = true, mode = "diagnostics_buffer" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics for current file",
@@ -892,12 +892,30 @@ local mappings = {
 	},
 	{
 		mode = "n",
-		"<leader>xi",
+		"<leader>xc",
 		function()
 			require("trouble").toggle({ focus = true, mode = "lsp_incoming_calls" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for calls to this symbol",
+	},
+	{
+		mode = "n",
+		"<leader>xo",
+		function()
+			require("trouble").toggle({ focus = true, mode = "lsp_outgoing_calls" })
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for calls by this symbol",
+	},
+	{
+		mode = "n",
+		"<leader>xr",
+		function()
+			require("trouble").toggle({ focus = true, mode = "lsp_references" })
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for references to this symbol",
 	},
 	{
 		mode = "n",
@@ -914,15 +932,6 @@ local mappings = {
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for all symbols in the current buffer",
-	},
-	{
-		mode = "n",
-		"<leader>xo",
-		function()
-			require("trouble").toggle({ focus = true, mode = "lsp_outgoing_calls" })
-		end,
-		prefix = P.diag,
-		description = "Toggle diagnostics window for calls by this symbol",
 	},
 	{
 		mode = "n",
