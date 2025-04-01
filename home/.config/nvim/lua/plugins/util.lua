@@ -68,7 +68,6 @@ return {
 	{
 		"chrisgrieser/nvim-recorder",
 		lazy = true,
-		dependencies = "rcarriga/nvim-notify",
 		opts = {
 			slots = { "a", "r", "s", "m" },
 			mapping = {

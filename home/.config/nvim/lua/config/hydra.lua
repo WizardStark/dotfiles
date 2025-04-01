@@ -1,5 +1,5 @@
 local Hydra = require("hydra")
-M = {}
+local M = {}
 
 local last_git_traversed_at
 local hunk_starts

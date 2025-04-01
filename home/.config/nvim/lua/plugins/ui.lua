@@ -21,12 +21,6 @@ return {
 		end,
 	},
 	{
-		"smjonas/inc-rename.nvim",
-		lazy = true,
-		cmd = { "IncRename" },
-		config = true,
-	},
-	{
 		"folke/noice.nvim",
 		event = "UiEnter",
 		dependencies = {
