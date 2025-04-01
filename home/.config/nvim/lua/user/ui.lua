@@ -16,11 +16,7 @@ local catppuccin_opts = {
 	},
 }
 
-local signs = {
-	DiagnosticSignError = "󰅚 ",
-	DiagnosticSignWarn = "󰀪 ",
-	DiagnosticSignHint = "󰌶 ",
-	DiagnosticSignInfo = " ",
+local dap_signs = {
 	DapBreakpoint = "",
 	DapBreakpointCondition = "",
 	DapBreakpointRejected = "",
@@ -28,9 +24,26 @@ local signs = {
 	DapStopped = "󰁕",
 }
 
-for type, icon in pairs(signs) do
+for type, icon in pairs(dap_signs) do
 	vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
 end
+
+vim.diagnostic.config({
+	signs = {
+		text = {
+			[vim.diagnostic.severity.HINT] = "󰌶 ",
+			[vim.diagnostic.severity.INFO] = " ",
+			[vim.diagnostic.severity.WARN] = "󰀪 ",
+			[vim.diagnostic.severity.ERROR] = "󰅚 ",
+		},
+		numhl = {
+			[vim.diagnostic.severity.HINT] = "DiagnosticSignHint",
+			[vim.diagnostic.severity.INFO] = "DiagnosticSignInfo",
+			[vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
+			[vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
+		},
+	},
+})
 
 local presets = {
 	bush = {
