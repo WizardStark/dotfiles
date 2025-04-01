@@ -1042,7 +1042,7 @@ local mappings = {
 			end,
 			x = function()
 				vim.cmd([[normal! vv]])
-				local text = require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+				local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
 				require("dapui").elements.watches.add(text)
 			end,
 		},
@@ -1251,7 +1251,7 @@ local mappings = {
 		"<leader>gf",
 		function()
 			vim.cmd([[normal! vv]])
-			local text = require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+			local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
 			text = require("user.utils").escape_special_chars(text)
 			text = "(" .. text:gsub("\n%s+", "\n"):gsub("(\n)$", ""):gsub("[\n\r]", ")\n(.*") .. ")"
 			require("grug-far").toggle_instance({

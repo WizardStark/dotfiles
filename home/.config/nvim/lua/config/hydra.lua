@@ -191,13 +191,14 @@ M.dap_hydra = Hydra({
 	name = "Dap",
 	mode = { "n", "x" },
 	hint = [[
-_b_: Toggle breakpoint _w_: Add to watches
-_B_: Clear breakpoints _e_: Evaluate
-_o_: Step over         _c_: Continue
-_I_: Step into         _C_: Run to cursor
-_u_: Step out          _t_: Toggle UI
-_R_: Send to REPL      _Q_: Quit debugger
-
+_B_: Toggle breakpoint _W_: Add to watches
+_C_: Continue          _E_: Evaluate
+_O_: Step over         _R_: Send to REPL
+_I_: Step into         _T_: Toggle UI
+_U_: Step out          _Q_: Quit debugger
+_<C-b>_: Clear breakpoints
+_<C-c>_: Run to cursor
+_<C-r>_: Rerun last debug
 _q_: Exit]],
 	config = {
 		color = "pink",
@@ -211,14 +212,14 @@ _q_: Exit]],
 	},
 	heads = {
 		{
-			"b",
+			"B",
 			function()
 				require("dap").toggle_breakpoint()
 			end,
 			{ desc = false },
 		},
 		{
-			"B",
+			"<C-b>",
 			function()
 				require("dap").clear_breakpoints()
 			end,
@@ -232,7 +233,7 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"o",
+			"O",
 			function()
 				require("dap").step_over()
 			end,
@@ -246,14 +247,14 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"u",
+			"U",
 			function()
 				require("dap").step_out()
 			end,
 			{ desc = false },
 		},
 		{
-			"C",
+			"<C-c>",
 			function()
 				require("dap").run_to_cursor()
 			end,
@@ -267,37 +268,35 @@ _q_: Exit]],
 					require("dap").repl.execute(vim.fn.expand("<cword>"))
 				elseif mode == "V" or mode == "v" then
 					vim.cmd([[normal! vv]])
-					local text =
-						require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+					local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
 					require("dap").repl.execute(text)
 				end
 			end,
 			{ desc = false },
 		},
 		{
-			"w",
+			"W",
 			function()
 				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
 				if mode == "n" then
 					require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
 				elseif mode == "V" or mode == "v" then
 					vim.cmd([[normal! vv]])
-					local text =
-						require("user.utils").region_to_text(vim.region(0, "'<", "'>", vim.fn.visualmode(), true))
+					local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
 					require("dapui").elements.watches.add(text)
 				end
 			end,
 			{ desc = false },
 		},
 		{
-			"e",
+			"E",
 			function()
 				require("dapui").eval()
 			end,
 			{ desc = false },
 		},
 		{
-			"c",
+			"C",
 			continue,
 			{ desc = false },
 		},
@@ -311,7 +310,7 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"t",
+			"T",
 			function()
 				require("dapui").toggle()
 			end,
@@ -326,8 +325,8 @@ M.trouble_hydra = Hydra({
 	name = "Trouble",
 	mode = { "n", "x" },
 	hint = [[
-_n_: Next item
-_t_: Prev item
+_N_: Next item
+_T_: Prev item
 
 _q_: Exit]],
 	config = {
@@ -340,13 +339,13 @@ _q_: Exit]],
 	},
 	heads = {
 		{
-			"n",
+			"N",
 			function()
 				require("trouble").next({ jump = true })
 			end,
 		},
 		{
-			"t",
+			"T",
 			function()
 				require("trouble").prev({ jump = true })
 			end,
@@ -360,11 +359,11 @@ M.git_hydra = Hydra({
 	name = "Git",
 	mode = { "n", "x" },
 	hint = [[
-_n_: Next hunk  _<C-n>_: Next file
-_t_: Prev hunk  _<C-t>_: Prev file
-_s_: Stage hunk
-_r_: Reset hunk
-_o_: Toggle diff
+_N_: Next hunk  _<C-n>_: Next file
+_T_: Prev hunk  _<C-t>_: Prev file
+_S_: Stage hunk
+_R_: Reset hunk
+_O_: Toggle diff
 
 _q_: Exit]],
 	config = {
@@ -380,27 +379,27 @@ _q_: Exit]],
 	},
 	heads = {
 		{
-			"s",
+			"S",
 			function()
 				return require("mini.diff").operator("apply")
 			end,
 			{ expr = true },
 		},
 		{
-			"r",
+			"R",
 			function()
 				return require("mini.diff").operator("reset")
 			end,
 			{ expr = true },
 		},
 		{
-			"n",
+			"N",
 			function()
 				traverse_changes(true)
 			end,
 		},
 		{
-			"t",
+			"T",
 			function()
 				traverse_changes(false)
 			end,
@@ -418,7 +417,7 @@ _q_: Exit]],
 			end,
 		},
 		{
-			"o",
+			"O",
 			function()
 				require("mini.diff").toggle_overlay(0)
 			end,
