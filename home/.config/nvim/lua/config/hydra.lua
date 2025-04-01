@@ -372,9 +372,6 @@ _q_: Exit]],
 			type = "window",
 			offset = 2,
 			position = "bottom-right",
-			float_opts = {
-				-- border = "rounded",
-			},
 		},
 	},
 	heads = {

@@ -862,11 +862,12 @@ local mappings = {
 		prefix = P.diag,
 		description = "Toggle diagnostics window",
 	},
+	---@diagnostic disable: missing-fields
 	{
 		mode = "n",
 		"<leader>xw",
 		function()
-			require("trouble").toggle({ focus = true, mode = "wsdiags" })
+			require("trouble").toggle({ focus = true, mode = "cascade" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
@@ -878,7 +879,7 @@ local mappings = {
 			require("trouble").toggle({ focus = true, mode = "diagnostics_buffer" })
 		end,
 		prefix = P.diag,
-		description = "Toggle diagnostics for current document",
+		description = "Toggle diagnostics for current file",
 	},
 	{
 		mode = "n",
@@ -950,6 +951,7 @@ local mappings = {
 		prefix = P.diag,
 		description = "Go to previous diagnostic item",
 	},
+	---@diagnostic enable: missing-fields
 	-- debugging
 	{
 		mode = "n",
@@ -1191,7 +1193,7 @@ local mappings = {
 		mode = "n",
 		"gd",
 		function()
-			require("trouble").toggle("lsp_definitions")
+			require("snacks").picker.lsp_definitions()
 		end,
 		prefix = P.code,
 		description = "Go to definition",
@@ -1218,7 +1220,7 @@ local mappings = {
 		mode = "n",
 		"gt",
 		function()
-			require("trouble").toggle("lsp_type_definitions")
+			require("snacks").picker.lsp_type_definitions()
 		end,
 		prefix = P.code,
 		description = "Go to type definition",
