@@ -33,7 +33,7 @@ require("trouble").setup(
 						severity = math.min(severity, item.severity)
 					end
 					return vim.tbl_filter(function(item)
-						return item.severity == severity
+						return item.severity == severity and item.filename:find((vim.loop or vim.uv).cwd(), 1, true)
 					end, items)
 				end,
 			},
