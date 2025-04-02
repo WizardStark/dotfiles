@@ -1,4 +1,4 @@
-local edgy_filetypes = {
+local special_filetypes = {
 	"neotest-output-panel",
 	"neotest-summary",
 	"noice",
@@ -6,7 +6,7 @@ local edgy_filetypes = {
 	"OverseerList",
 }
 
-local edgy_titles = {
+local special_ft_titles = {
 	["neotest-output-panel"] = "neotest",
 	["neotest-summary"] = "neotest",
 	noice = "noice",
@@ -14,11 +14,11 @@ local edgy_titles = {
 	OverseerList = "overseer",
 }
 local function is_edgy_group(props)
-	return vim.tbl_contains(edgy_filetypes, vim.bo[props.buf].filetype)
+	return vim.tbl_contains(special_filetypes, vim.bo[props.buf].filetype)
 end
 
 local function get_title(props)
-	local title = " " .. edgy_titles[vim.bo[props.buf].filetype] .. " "
+	local title = " " .. special_ft_titles[vim.bo[props.buf].filetype] .. " "
 	return { { title, group = props.focused and "FloatTitle" or "Title" } }
 end
 

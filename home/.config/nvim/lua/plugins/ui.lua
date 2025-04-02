@@ -79,13 +79,6 @@ return {
 		end,
 	},
 	{
-		"folke/edgy.nvim",
-		event = "VeryLazy",
-		config = function()
-			require("config.ui.edgy")
-		end,
-	},
-	{
 		"b0o/incline.nvim",
 		event = "UiEnter",
 		dependencies = "echasnovski/mini.icons",
