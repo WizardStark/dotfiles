@@ -13,7 +13,7 @@ local special_ft_titles = {
 	trouble = "trouble",
 	OverseerList = "overseer",
 }
-local function is_edgy_group(props)
+local function is_special_group(props)
 	return vim.tbl_contains(special_filetypes, vim.bo[props.buf].filetype)
 end
 
@@ -41,7 +41,7 @@ require("incline").setup(
 			unlisted_buffers = false,
 		},
 		render = function(props)
-			if is_edgy_group(props) then
+			if is_special_group(props) then
 				return get_title(props)
 			else
 				local unhelpfuls = { "init.lua", "index.tsx", "index.ts", "index.js", "index.jsx", "__init__.py" }
