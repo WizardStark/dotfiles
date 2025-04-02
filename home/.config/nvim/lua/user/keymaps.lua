@@ -960,6 +960,15 @@ local mappings = {
 		prefix = P.diag,
 		description = "Go to previous diagnostic item",
 	},
+	{
+		mode = "n",
+		"<leader>xf",
+		function()
+			require("trouble").toggle({ focus = true, mode = "snacks" })
+		end,
+		prefix = P.diag,
+		description = "Toggle diagnostics window for result exported from picker",
+	},
 	---@diagnostic enable: missing-fields
 	-- debugging
 	{
