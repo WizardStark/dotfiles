@@ -1,1 +1,5 @@
 frame = "buttonless"
+
+[box-drawing]
+# "font-glyph", "native" or "selected-native"
+mode = "native"
