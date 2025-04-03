@@ -1,5 +1,4 @@
 local P = require("user.utils").PREFIXES
-local huge_file = ""
 
 local mappings = {
 	{

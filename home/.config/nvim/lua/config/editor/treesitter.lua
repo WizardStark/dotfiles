@@ -25,6 +25,23 @@ configs.setup({
 		enable = true,
 		disable = disable,
 		lookahead = true,
+		select = {
+			enable = true,
+			keymaps = {
+				["af"] = { query = "@function.outer", desc = "Select outer part of a function region" },
+				["if"] = { query = "@function.inner", desc = "Select inner part of a function region" },
+				["ac"] = { query = "@class.outer", desc = "Select outer part of a class region" },
+				["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
+			},
+		},
+		lsp_interop = {
+			enable = true,
+			floating_preview_opts = {},
+			peek_definition_code = {
+				["<leader>df"] = "@function.outer",
+				["<leader>dF"] = "@class.outer",
+			},
+		},
 	},
 	textsubjects = {
 		enable = true,
