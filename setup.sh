@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+sudo echo "Shell elevated with su permissions"
+
 require() {
     command -v "${1}" &>/dev/null && return 0
     printf 'Missing required application: %s\n' "${1}" >&2

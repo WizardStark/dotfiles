@@ -12,14 +12,13 @@ from this repository to your $HOME directory.
 
 NOTE:
 
-- This script requires sudo permissions
+- This script will ask for sudo permissions, which are then used for brew and apt (if applicable) installs
 - This script will create symlinks to ~/.zshrc, ~/.config/nvim and ~/.config/tmux,
   see [GNU Stow](https://www.gnu.org/software/stow/manual/stow.html#Conflicts) for how conflicts will be handled
 
 ```bash
 git clone https://github.com/WizardStark/dotfiles.git
 cd dotfiles
-chmod +x setup.sh
 ./setup.sh
 ```
 
