@@ -177,6 +177,34 @@ local mappings = {
 		description = "Write buffer and stop snippet jumps",
 	},
 	{
+
+		mode = "n",
+		"gf",
+		function()
+			local text = vim.fn.expand("<cWORD>")
+
+			local parts = vim.split(text, ":")
+			local file = parts[1]
+			local line = tonumber(parts[2])
+			local col = tonumber(parts[3])
+
+			if vim.fn.filereadable(file) == 1 then
+				vim.cmd("edit " .. file)
+				if line then
+					if col then
+						vim.api.nvim_win_set_cursor(0, { line, col - 1 })
+					else
+						vim.api.nvim_win_set_cursor(0, { line, 0 })
+					end
+				end
+			else
+				vim.cmd("normal! gf")
+			end
+		end,
+		prefix = P.misc,
+		description = "Go to file under cursor",
+	},
+	{
 		mode = { "n" },
 		"r",
 		vim.cmd.redo,
