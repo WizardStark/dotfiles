@@ -22,31 +22,21 @@ else
     brew update
 fi
 
-if [[ "$OSTYPE" == "linux-gnu"* ]] && require apt; then
-    sudo apt update
-    sudo apt install -y zsh
-    # install neovim dependencies
-    # The dependencies break if on ubuntu and installed with brew, so here we use apt
-    sudo apt-get install -y ninja-build gettext cmake unzip curl build-essential
-else
-    brew install zsh
-    # install neovim dependencies
-    brew install ninja cmake gettext curl unzip
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # install linuxbrew dependencies
+    # these need to be installed with apt to allow installation of brew
+    if require apt; then
+        sudo apt update
+        sudo apt-get install -y build-essential procps curl file git
+    elif require yum; then
+        sudo yum groupinstall 'Development Tools'
+        sudo yum install procps-ng curl file git
+    fi
 fi
 
-brew install wget nodejs npm tmux ffind ripgrep jq vivid bat eza zoxide git-delta stow
+brew install bat eza ffind git-delta jq nodejs npm nvim ripgrep stow tmux vivid wget zoxide zsh
 
 mkdir -p ~/.config
-
-if ! require nvim; then
-    (
-        git clone --depth 1 -b v0.11.0 https://github.com/neovim/neovim
-        cd neovim && make CMAKE_BUILD_TYPE=RelWithDebInfo
-        sudo make install
-        cd ../
-        rm -rf neovim
-    )
-fi
 
 (
     git clone https://github.com/catppuccin/zsh-syntax-highlighting.git ~/.zsh-catpuccin
@@ -67,9 +57,9 @@ fi
     git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
 )
 
+echo "Moving existing ~/.zshrc to ~/.zshrc_old"
 mv ~/.zshrc ~/.zshrc_old
 stow -v --adopt -t $HOME home
-git restore home/.zshrc
 
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
