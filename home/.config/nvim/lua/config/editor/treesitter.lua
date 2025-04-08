@@ -33,6 +33,12 @@ configs.setup({
 				["ac"] = { query = "@class.outer", desc = "Select outer part of a class region" },
 				["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
 			},
+			selection_modes = {
+				["@function.outer"] = "V",
+				["@function.inner"] = "V",
+				["@class.outer"] = "V",
+				["@class.inner"] = "V",
+			},
 		},
 		lsp_interop = {
 			enable = true,

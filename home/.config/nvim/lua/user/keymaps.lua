@@ -27,6 +27,31 @@ local function is_detached_head()
 	return vim.fn.system("git branch --show-current") == ""
 end
 
+local function open_in_non_dap_window(file, line)
+	local wins = vim.api.nvim_list_wins()
+
+	local target_win = nil
+	for _, win in ipairs(wins) do
+		local buf = vim.api.nvim_win_get_buf(win)
+		local ft = vim.bo[buf].filetype
+		if not ft:match("dap") then
+			target_win = win
+			break
+		end
+	end
+
+	if not target_win then
+		vim.cmd("botright vnew")
+		target_win = vim.api.nvim_get_current_win()
+	end
+
+	vim.api.nvim_set_current_win(target_win)
+	vim.cmd("edit " .. file)
+	if line then
+		vim.api.nvim_win_set_cursor(0, { line, 0 })
+	end
+end
+
 local original_branch = nil
 
 local history_picker = function()
@@ -2460,6 +2485,47 @@ local mappings = {
 		end,
 		prefix = P.hydra,
 		description = "Start git mode",
+	},
+
+	{
+		mode = { "n", "v" },
+		"<leader>gs",
+		function()
+			local path = vim.fn.getcwd()
+			local text = vim.fn.expand("<cWORD>")
+			local parts = vim.split(text, ":")
+			local line = tonumber(parts[2]:sub(1, #parts[2] - 1))
+			parts = vim.split(vim.split(parts[1], "%(")[1], "%.")
+			local filename = parts[#parts - 1] .. ".java"
+
+			-- Find all matching files
+			local find_command = string.format("find %s -name %q", path, vim.fn.fnamemodify(filename, ":t"))
+			local matches = vim.fn.split(vim.fn.system(find_command), "\n")
+			-- Remove empty entries
+			matches = vim.tbl_filter(function(x)
+				return x ~= ""
+			end, matches)
+
+			if #matches == 0 then
+				vim.notify("File not found")
+				return
+			elseif #matches == 1 then
+				vim.cmd("PinBuffer")
+				open_in_non_dap_window(matches[1], line)
+			else
+				vim.ui.select(matches, {
+					prompt = "Select file to open:",
+					format_item = function(item)
+						return vim.fn.fnamemodify(item, ":~:.")
+					end,
+				}, function(choice)
+					if choice then
+						open_in_non_dap_window(choice, line)
+					end
+				end)
+			end
+		end,
+		description = "Go to stacktrace member",
 	},
 }
 
