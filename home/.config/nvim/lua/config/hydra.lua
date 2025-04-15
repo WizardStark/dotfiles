@@ -204,7 +204,7 @@ _q_: Exit]],
 		color = "pink",
 		hint = {
 			type = "window",
-			offset = 2,
+			offset = 3,
 			position = "top-right",
 		},
 		foreign_keys = "run",
