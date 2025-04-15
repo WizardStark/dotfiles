@@ -14,6 +14,10 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     zinit ice depth=1; zinit light romkatv/powerlevel10k
 
+    if ! [[ -n "$NVIM" ]]; then
+        zinit ice depth=1; zinit light jeffreytse/zsh-vi-mode
+    fi
+
     zinit light zsh-users/zsh-syntax-highlighting
     zinit light zsh-users/zsh-completions
     zinit light zsh-users/zsh-autosuggestions
