@@ -1941,7 +1941,9 @@ local mappings = {
 	{
 		mode = { "n" },
 		"<leader>p",
-		"<cmd>YankyRingHistory<cr>",
+		function()
+			Snacks.picker.yanky()
+		end,
 		prefix = P.misc,
 		description = "Open yank history",
 	},

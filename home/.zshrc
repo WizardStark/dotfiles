@@ -16,6 +16,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     if ! [[ -n "$NVIM" ]]; then
         zinit ice depth=1; zinit light jeffreytse/zsh-vi-mode
+        zvm_after_init_commands+=('[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh')
     fi
 
     zinit light zsh-users/zsh-syntax-highlighting

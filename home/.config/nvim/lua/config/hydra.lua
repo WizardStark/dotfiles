@@ -205,7 +205,7 @@ _q_: Exit]],
 		hint = {
 			type = "window",
 			offset = 2,
-			position = "bottom-right",
+			position = "top-right",
 		},
 		foreign_keys = "run",
 		invoke_on_body = true,

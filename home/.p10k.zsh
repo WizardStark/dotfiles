@@ -38,7 +38,7 @@
     vcs                     # git status
     # =========================[ Line #2 ]=========================
     newline                 # \n
-    # prompt_char           # prompt symbol
+    prompt_char           # prompt symbol
   )
 
   # The list of segments shown on the right. Fill it with less important segments.
@@ -117,6 +117,8 @@
     # battery               # internal battery
     # wifi                  # wifi speed
     # example               # example user-defined segment (see prompt_example function below)
+    command_execution_time
+    time
   )
 
   # Defines character set used by powerlevel10k. It's best to let `p10k configure` set it for you.
@@ -1692,7 +1694,7 @@ typeset -g PR_LIGHT_BLACK="#585b70"
   # If set to true, time will update when you hit enter. This way prompts for the past
   # commands will contain the start times of their commands as opposed to the default
   # behavior where they contain the end times of their preceding commands.
-  typeset -g POWERLEVEL9K_TIME_UPDATE_ON_COMMAND=false
+  typeset -g POWERLEVEL9K_TIME_UPDATE_ON_COMMAND=true
   # Custom icon.
   # typeset -g POWERLEVEL9K_TIME_VISUAL_IDENTIFIER_EXPANSION='⭐'
   # Custom prefix.
@@ -1737,7 +1739,20 @@ typeset -g PR_LIGHT_BLACK="#585b70"
   #   - always:   Trim down prompt when accepting a command line.
   #   - same-dir: Trim down prompt when accepting a command line unless this is the first command
   #               typed after changing current working directory.
-  typeset -g POWERLEVEL9K_TRANSIENT_PROMPT=same-dir
+  typeset -g POWERLEVEL9K_TRANSIENT_PROMPT=off
+  function p10k-on-pre-prompt() {
+    [[ $P9K_TTY == old ]] && p10k display 'empty_line'=show
+    # Show the first prompt line.
+    p10k display '1|*/left_frame'=show '*/prompt_char|2/right'=hide
+  }
+
+  function p10k-on-post-prompt() {
+    if [[ $PWD == $my_last_dir ]]; then
+      p10k display 'empty_line|1|*/left_frame'=hide '*/prompt_char|2/right'=show
+    else
+      my_last_dir=$PWD
+    fi
+  }  
 
   # Instant prompt mode.
   #
@@ -1749,7 +1764,7 @@ typeset -g PR_LIGHT_BLACK="#585b70"
   #   - verbose: Enable instant prompt and print a warning when detecting console output during
   #              zsh initialization. Choose this if you've never tried instant prompt, haven't
   #              seen the warning, or if you are unsure what this all means.
-  typeset -g POWERLEVEL9K_INSTANT_PROMPT=verbose
+  typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
 
   # Hot reload allows you to change POWERLEVEL9K options after Powerlevel10k has been initialized.
   # For example, you can type POWERLEVEL9K_BACKGROUND=red and see your prompt turn red. Hot reload
