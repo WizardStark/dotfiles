@@ -1,4 +1,6 @@
 local P = require("user.utils").PREFIXES
+local has_refreshed_codelenses = false
+local last_moved_time = vim.loop.now()
 
 local mappings = {
 	{
@@ -7,6 +9,33 @@ local mappings = {
 			if vim.g.workspaces_loaded then
 				require("workspaces.marks").clear_marks()
 				require("workspaces.marks").display_marks()
+			end
+		end,
+		prefix = P.auto,
+	},
+	{
+		{ "BufEnter", "CursorHold", "InsertLeave" },
+		function()
+			vim.loop.new_timer():start(
+				250,
+				0,
+				vim.schedule_wrap(function()
+					if vim.loop.now() - last_moved_time > 249 then
+						has_refreshed_codelenses = true
+						vim.lsp.codelens.refresh({ bufnr = 0 })
+					end
+				end)
+			)
+		end,
+		prefix = P.auto,
+	},
+	{
+		{ "CursorMoved" },
+		function()
+			last_moved_time = vim.loop.now()
+			if has_refreshed_codelenses then
+				has_refreshed_codelenses = false
+				vim.lsp.codelens.clear(vim.lsp.get_clients({ bufnr = 0 }).id, 0)
 			end
 		end,
 		prefix = P.auto,
