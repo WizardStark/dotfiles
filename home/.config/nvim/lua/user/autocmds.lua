@@ -13,7 +13,15 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
-		{ "BufEnter", "InsertLeave" },
+		"BufEnter",
+		function()
+			vim.lsp.codelens.refresh({ bufnr = 0 })
+			last_refreshed_time = vim.loop.now()
+		end,
+		prefix = P.auto,
+	},
+	{
+		"InsertLeave",
 		function()
 			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
 				vim.lsp.codelens.refresh({ bufnr = 0 })
