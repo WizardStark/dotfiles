@@ -1360,6 +1360,15 @@ local mappings = {
 		description = "Show code actions",
 	},
 	{
+		mode = { "n", "x" },
+		keys = "<leader>cl",
+		callback = function()
+			vim.lsp.codelens.run()
+		end,
+		prefix = P.code,
+		description = "Show code actions",
+	},
+	{
 		mode = { "n" },
 		keys = "<leader>ds",
 		callback = function()
@@ -2546,7 +2555,6 @@ return {
 	setup = function()
 		local prefixifier = require("user.utils").prefixifier
 		local keymaps = require("user.utils").make_keymaps
-
 		prefixifier(keymaps)(mappings)
 	end,
 }

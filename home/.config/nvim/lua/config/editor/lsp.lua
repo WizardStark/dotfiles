@@ -46,10 +46,14 @@ local function on_attach(client, bufnr)
 end
 
 require("typescript-tools").setup({
-	on_attach = on_attach,
+	on_attach = function(client, bufnr)
+		on_attach(client, bufnr)
+		vim.cmd("au! TypescriptToolsCodeLensGroup")
+	end,
 	capabilities = capabilities,
 	settings = {
 		expose_as_code_action = "all",
+		code_lens = "all",
 		tsserver_file_preferences = {
 			inlayHints = {
 				includeInlayParameterNameHints = "all",
