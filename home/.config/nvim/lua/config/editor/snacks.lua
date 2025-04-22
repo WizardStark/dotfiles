@@ -1,5 +1,72 @@
 Snacks_picker_hist = {}
 
+local keymaps_config = {
+	format = function(item, picker)
+		local ret = {} ---@type snacks.picker.Highlight[]
+		---@type vim.api.keyset.get_keymap
+		local k = item.item
+		local a = Snacks.picker.util.align
+		local lhs
+
+		if item.item.type == "unmapped" then
+			lhs = ""
+		elseif item.type == "keymap" then
+			lhs = Snacks.util.normkey(k.lhs)
+		end
+
+		ret[#ret + 1] = { a(k.mode, 1), "SnacksPickerKeymapMode" }
+		ret[#ret + 1] = { " │ " }
+		ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
+		ret[#ret + 1] = { " " }
+
+		if k.buffer and k.buffer > 0 then
+			ret[#ret + 1] = { a("buf:" .. k.buffer, 6), "SnacksPickerBufNr" }
+		else
+			ret[#ret + 1] = { a("", 6) }
+		end
+		ret[#ret + 1] = { " │ " }
+		ret[#ret + 1] = { a(k.desc or "", 20) }
+
+		return ret
+	end,
+	preview = false,
+	global = true,
+	plugs = false,
+	["local"] = true,
+	modes = { "n", "v", "x", "s", "o", "i", "c", "t" },
+	---@param picker snacks.Picker
+	confirm = function(picker, item)
+		picker:norm(function()
+			if item then
+				picker:close()
+				if item.item.type == "keymap" then
+					vim.api.nvim_input(item.item.lhs)
+				elseif item.item.type == "unmapped" then
+					item.item.callback()
+				end
+			end
+		end)
+	end,
+	actions = {
+		toggle_global = function(picker)
+			picker.opts.global = not picker.opts.global
+			picker:find()
+		end,
+		toggle_buffer = function(picker)
+			picker.opts["local"] = not picker.opts["local"]
+			picker:find()
+		end,
+	},
+	win = {
+		input = {
+			keys = {
+				["<a-g>"] = { "toggle_global", mode = { "n", "i" }, desc = "Toggle Global Keymaps" },
+				["<a-b>"] = { "toggle_buffer", mode = { "n", "i" }, desc = "Toggle Buffer Keymaps" },
+			},
+		},
+	},
+}
+
 require("snacks").setup({
 	dashboard = { enabled = false },
 	quickfile = { enabled = false },
@@ -85,6 +152,36 @@ require("snacks").setup({
 						width = 0.5,
 						min_height = 12,
 						min_width = 70,
+					},
+				},
+			},
+			keymaps = {
+				format = keymaps_config.format,
+				confirm = keymaps_config.confirm,
+				finder = function(opts, ctx)
+					local items = require("snacks.picker.source.vim").keymaps(keymaps_config)
+
+					for _, item in ipairs(items) do
+						item.type = "keymap"
+					end
+
+					for _, item in ipairs(require("user.functions").functions) do
+						table.insert(items, {
+							text = item.description,
+							item = item,
+						})
+					end
+
+					return items
+				end,
+				layout = {
+					preset = "select",
+					preview = false,
+					layout = {
+						width = 0.5,
+						min_height = 12,
+						min_width = 120,
+						max_height = 40,
 					},
 				},
 			},

@@ -30,19 +30,6 @@ return {
 		},
 	},
 	{
-		"mrjones2014/legendary.nvim",
-		priority = 10000,
-		event = "UiEnter",
-		config = function()
-			require("legendary").setup({
-				select_prompt = " Command palette",
-				sort = {
-					frecency = false,
-				},
-			})
-		end,
-	},
-	{
 		"thunder-coding/zincoxide",
 		lazy = true,
 		cmd = { "Z", "Zg", "Zt", "Zw" },

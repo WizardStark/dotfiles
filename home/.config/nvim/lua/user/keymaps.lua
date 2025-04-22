@@ -118,78 +118,78 @@ local P = require("user.utils").PREFIXES
 local mappings = {
 	{
 		mode = { "n", "v" },
-		"<leader>Q",
-		[[<CMD>qa! <CR>]],
+		keys = "<leader>Q",
+		callback = [[<CMD>qa! <CR>]],
 		prefix = P.misc,
 		description = "How to quit vim",
 	},
 	{
 		mode = { "n", "v", "t" },
-		"<D-v>",
-		[["+p]],
+		keys = "<D-v>",
+		callback = [["+p]],
 		prefix = P.misc,
 		description = "Paste with OS key",
 	},
 	{
 		mode = { "i" },
-		"<D-v>",
-		[[<C-r>+]],
+		keys = "<D-v>",
+		callback = [[<C-r>+]],
 		prefix = P.misc,
 		description = "Paste with OS key",
 	},
 	{
 		mode = { "n", "v", "t" },
-		"<C-v>",
-		[["+p]],
+		keys = "<C-v>",
+		callback = [["+p]],
 		prefix = P.misc,
 		description = "Paste with ctrl",
 	},
 	{
 		mode = { "t" },
-		"<S-BS>",
-		"<BS>",
+		keys = "<S-BS>",
+		callback = "<BS>",
 		prefix = P.misc,
 		description = "Backspace in terminal when holding shift",
 	},
 	{
 		mode = { "t" },
-		"<C-BS>",
-		"<BS>",
+		keys = "<C-BS>",
+		callback = "<BS>",
 		prefix = P.misc,
 		description = "Backspace in terminal when holding control",
 	},
 	{
 		mode = { "n" },
-		"<C-r>",
-		"r",
+		keys = "<C-r>",
+		callback = "r",
 		prefix = P.misc,
 		description = "Replace one character",
 	},
 	{
 		mode = { "i" },
-		"<C-v>",
-		[[<C-r>+]],
+		keys = "<C-v>",
+		callback = [[<C-r>+]],
 		prefix = P.misc,
 		description = "Paste with ctrl",
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>X",
-		save_and_exit,
+		keys = "<leader>X",
+		callback = save_and_exit,
 		prefix = P.misc,
 		description = "How to save and quit vim",
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>U",
-		vim.cmd.wa,
+		keys = "<leader>U",
+		callback = vim.cmd.wa,
 		prefix = P.misc,
 		description = "Write all open, modified buffers",
 	},
 	{
-		mode = "n",
-		"<esc>",
-		function()
+		mode = { "n" },
+		keys = "<esc>",
+		callback = function()
 			vim.cmd.up()
 			if vim.snippet.active() then
 				vim.snippet.stop()
@@ -203,9 +203,9 @@ local mappings = {
 	},
 	{
 
-		mode = "n",
-		"gf",
-		function()
+		mode = { "n" },
+		keys = "gf",
+		callback = function()
 			local text = vim.fn.expand("<cWORD>")
 
 			local parts = vim.split(text, ":")
@@ -231,136 +231,140 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"r",
-		vim.cmd.redo,
+		keys = "r",
+		callback = vim.cmd.redo,
 		prefix = P.misc,
 		description = "Redo",
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>y",
-		[["+y]],
+		keys = "<leader>y",
+		callback = [["+y]],
 		prefix = P.misc,
 		description = "Copy/Yank to system clipboard",
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>D",
-		[["_d]],
+		keys = "<leader>D",
+		callback = [["_d]],
 		prefix = P.misc,
 		description = "Delete without altering registers",
 	},
 	{
-		mode = "n",
-		"J",
-		"mzJ`z",
+		mode = { "n" },
+		keys = "J",
+		callback = function()
+			local pos = vim.api.nvim_win_get_cursor(0)
+			vim.cmd([[normal! J]])
+			vim.api.nvim_win_set_cursor(0, pos)
+		end,
 		prefix = P.misc,
 		description = "Join lines while maintaining cursor position",
 	},
 	{
-		mode = "n",
-		"j",
-		"v:count ? 'j' : 'gj'",
+		mode = { "n" },
+		keys = "j",
+		callback = "v:count ? 'j' : 'gj'",
 		opts = { expr = true },
 		prefix = P.misc,
 		description = "Move down one line",
 	},
 	{
-		mode = "n",
-		"k",
-		"v:count ? 'k' : 'gk'",
+		mode = { "n" },
+		keys = "k",
+		callback = "v:count ? 'k' : 'gk'",
 		opts = { expr = true },
 		prefix = P.misc,
 		description = "Move up one line",
 	},
 	{
-		mode = "n",
-		"<C-d>",
-		"<C-d>zz",
+		mode = { "n" },
+		keys = "<C-d>",
+		callback = "<C-d>zz",
 		prefix = P.move,
 		description = "Down half page and centre",
 	},
 	{
-		mode = "n",
-		"<C-u>",
-		"<C-u>zz",
+		mode = { "n" },
+		keys = "<C-u>",
+		callback = "<C-u>zz",
 		prefix = P.move,
 		description = "Up half page and centre",
 	},
 	{
-		mode = "n",
-		"n",
-		"nzzzv",
+		mode = { "n" },
+		keys = "n",
+		callback = "nzzzv",
 		prefix = P.move,
 		description = "Next occurrence of search and centre",
 	},
 	{
-		mode = "n",
-		"N",
-		"Nzzzv",
+		mode = { "n" },
+		keys = "N",
+		callback = "Nzzzv",
 		prefix = P.move,
 		description = "Next occurrence of search and centre",
 	},
 	{
-		mode = "v",
-		"<leader>k",
-		[[:s/\(.*\)/]],
+		mode = { "v" },
+		keys = "<leader>k",
+		callback = [[:s/\(.*\)/]],
 		prefix = P.misc,
 		description = "Initiate visual selection replace with selection as capture group 1",
 	},
 	{
-		mode = "v",
-		"<leader>uo",
-		[[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]],
+		mode = { "v" },
+		keys = "<leader>uo",
+		callback = [[:s/\s\+/ /g | '<,'>s/\n/ /g | s/\s// | s/\s\+/ /g | s/\. /\.\r/g <CR>]],
 		prefix = P.code,
 		description = "Format one line per sentence",
 	},
 	{
-		mode = "n",
-		"<leader>a",
-		"<C-^>",
+		mode = { "n" },
+		keys = "<leader>a",
+		callback = "<C-^>",
 		prefix = P.nav,
 		description = "Alternate file",
 	},
 	{
 		mode = { "n", "v", "i" },
-		"<C-s>",
-		vim.cmd.up,
+		keys = "<C-s>",
+		callback = vim.cmd.up,
 		prefix = P.misc,
 		description = "Save file",
 	},
 	{
-		mode = "v",
-		"<M-j>",
-		":m '>+1<CR>gv=gv",
+		mode = { "v" },
+		keys = "<M-j>",
+		callback = ":m '>+1<CR>gv=gv",
 		prefix = P.misc,
 		description = "Move visual selection one line down",
 	},
 	{
-		mode = "v",
-		"<M-k>",
-		":m '<-2<CR>gv=gv",
+		mode = { "v" },
+		keys = "<M-k>",
+		callback = ":m '<-2<CR>gv=gv",
 		prefix = P.misc,
 		description = "Move visual selection one line up",
 	},
 	{
-		mode = "v",
-		"<",
-		"<gv",
+		mode = { "v" },
+		keys = "<",
+		callback = "<gv",
 		prefix = P.misc,
 		description = "Move visual selection one indentation left",
 	},
 	{
-		mode = "v",
-		">",
-		">gv",
+		mode = { "v" },
+		keys = ">",
+		callback = ">gv",
 		prefix = P.misc,
 		description = "Move visual selection one indentation right",
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>cp",
-		function()
+		keys = "<leader>cp",
+		callback = function()
 			local path = vim.fn.expand("%:p")
 			vim.fn.setreg("+", path)
 			vim.notify("Copied " .. path .. " to clipboard")
@@ -369,18 +373,18 @@ local mappings = {
 		description = "Copy file path to clipboard",
 	},
 	{
-		mode = "n",
-		"zR",
-		function()
+		mode = { "n" },
+		keys = "zR",
+		callback = function()
 			require("ufo").openAllFolds()
 		end,
 		prefix = P.fold,
 		description = "Open all",
 	},
 	{
-		mode = "n",
-		"zM",
-		function()
+		mode = { "n" },
+		keys = "zM",
+		callback = function()
 			require("ufo").closeAllFolds()
 			vim.opt.foldlevel = 99
 			vim.opt.foldlevelstart = 99
@@ -389,27 +393,27 @@ local mappings = {
 		description = "Close all",
 	},
 	{
-		mode = "n",
-		"zr",
-		function()
+		mode = { "n" },
+		keys = "zr",
+		callback = function()
 			require("ufo").openFoldsExceptKinds()
 		end,
 		prefix = P.fold,
 		description = "Open all non-excluded",
 	},
 	{
-		mode = "n",
-		"zm",
-		function()
+		mode = { "n" },
+		keys = "zm",
+		callback = function()
 			require("ufo").closeFoldsWith()
 		end,
 		prefix = P.fold,
 		description = "Close folds with indentation level greater prefixed than number",
 	},
 	{
-		mode = "n",
-		"zP",
-		function()
+		mode = { "n" },
+		keys = "zP",
+		callback = function()
 			require("ufo").peekFoldedLinesUnderCursor()
 		end,
 		prefix = P.fold,
@@ -417,8 +421,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>o",
-		function()
+		keys = "<leader>o",
+		callback = function()
 			Snacks.picker.recent({ filter = { paths = { [vim.fn.getcwd()] = true } } })
 		end,
 		prefix = P.find,
@@ -426,9 +430,9 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v", "o" },
-		"<leader><leader>",
-		function()
-			require("legendary").find()
+		keys = "<leader><leader>",
+		callback = function()
+			Snacks.picker.keymaps()
 		end,
 		prefix = P.misc,
 		description = "Command palette",
@@ -441,18 +445,18 @@ local mappings = {
 	-- 	description = "TODOs, FIXs, NOTEs (etc) comments in cwd",
 	-- },
 	{
-		mode = "n",
-		"<leader>fg",
-		function()
+		mode = { "n" },
+		keys = "<leader>fg",
+		callback = function()
 			Snacks.picker.grep()
 		end,
 		prefix = P.find,
 		description = "Grep in cwd",
 	},
 	{
-		mode = "n",
-		"<leader>fd",
-		function()
+		mode = { "n" },
+		keys = "<leader>fd",
+		callback = function()
 			Snacks.picker.git_status()
 		end,
 		prefix = P.find,
@@ -460,71 +464,71 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"<leader>fw",
-		function()
+		keys = "<leader>fw",
+		callback = function()
 			Snacks.picker.grep_word()
 		end,
 		prefix = P.find,
 		description = "Word in cwd",
 	},
 	{
-		mode = "n",
-		"<leader>f/",
-		function()
+		mode = { "n" },
+		keys = "<leader>f/",
+		callback = function()
 			Snacks.picker.lines()
 		end,
 		prefix = P.misc,
 		description = "Fuzzy find in cwd",
 	},
 	{
-		mode = "n",
-		"<leader>f:",
-		function()
+		mode = { "n" },
+		keys = "<leader>f:",
+		callback = function()
 			Snacks.picker.command_history()
 		end,
 		prefix = P.misc,
 		description = "Show command history",
 	},
 	{
-		mode = "n",
-		"<leader>ff",
-		function()
+		mode = { "n" },
+		keys = "<leader>ff",
+		callback = function()
 			Snacks.picker.files()
 		end,
 		prefix = P.find,
 		description = "Files by filename in cwd",
 	},
 	{
-		mode = "n",
-		"<leader>fu",
-		function()
+		mode = { "n" },
+		keys = "<leader>fu",
+		callback = function()
 			Snacks.picker.undo()
 		end,
 		prefix = P.misc,
 		description = "Show change history (undotree)",
 	},
 	{
-		mode = "n",
-		"<leader>i",
-		function()
+		mode = { "n" },
+		keys = "<leader>i",
+		callback = function()
 			vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
 		end,
 		prefix = P.lsp,
 		description = "Toggle inlay hints",
 	},
 	{
-		mode = "n",
-		"<leader>fr",
-		function()
+		mode = { "n" },
+		keys = "<leader>fr",
+		callback = function()
 			Snacks.picker.lsp_references()
 		end,
 		prefix = P.find,
 		description = "References to symbol under cursor",
 	},
 	{
-		mode = "n",
-		"<leader>fs",
-		function()
+		mode = { "n" },
+		keys = "<leader>fs",
+		callback = function()
 			Snacks.picker.lsp_symbols({
 				layout = {
 					preview = "main",
@@ -554,18 +558,18 @@ local mappings = {
 	},
 	---@diagnostic disable: missing-fields
 	{
-		mode = "n",
-		"<leader>fc",
-		function()
+		mode = { "n" },
+		keys = "<leader>fc",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "lsp_incoming_calls" })
 		end,
 		prefix = P.find,
 		description = "Calls to this symbol",
 	},
 	{
-		mode = "n",
-		"<leader>fo",
-		function()
+		mode = { "n" },
+		keys = "<leader>fo",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "lsp_outgoing_calls" })
 		end,
 		prefix = P.find,
@@ -573,52 +577,52 @@ local mappings = {
 	},
 	---@diagnostic enable: missing-fields
 	{
-		mode = "n",
-		"<leader>fi",
-		function()
+		mode = { "n" },
+		keys = "<leader>fi",
+		callback = function()
 			Snacks.picker.lsp_implementations()
 		end,
 		prefix = P.find,
 		description = "Implementations of symbol under cursor",
 	},
 	{
-		mode = "n",
-		"<leader>fh",
-		function()
+		mode = { "n" },
+		keys = "<leader>fh",
+		callback = function()
 			history_picker()
 		end,
 		prefix = P.find,
 		description = "Open last picker",
 	},
 	{
-		mode = "n",
-		"<leader>fp",
-		function()
+		mode = { "n" },
+		keys = "<leader>fp",
+		callback = function()
 			Snacks.picker()
 		end,
 		prefix = P.find,
 		description = "Open list of pickers",
 	},
 	{
-		mode = "n",
-		"<leader>f?",
-		function()
+		mode = { "n" },
+		keys = "<leader>f?",
+		callback = function()
 			Snacks.picker.help()
 		end,
 		prefix = P.find,
 		description = "Help tags",
 	},
 	{
-		mode = "n",
-		"<leader>gd",
-		[[<CMD>DiffviewOpen<CR>]],
+		mode = { "n" },
+		keys = "<leader>gd",
+		callback = [[<CMD>DiffviewOpen<CR>]],
 		prefix = P.git,
 		description = "Open Git diffview",
 	},
 	{
-		mode = "n",
-		"<leader>gn",
-		function()
+		mode = { "n" },
+		keys = "<leader>gn",
+		callback = function()
 			local range = vim.fn.expand("<cWORD>")
 			vim.cmd("DiffviewOpen " .. range)
 		end,
@@ -626,16 +630,16 @@ local mappings = {
 		description = "Open Git diffview",
 	},
 	{
-		mode = "n",
-		"<leader>gq",
-		[[<CMD>DiffviewClose<CR>]],
+		mode = { "n" },
+		keys = "<leader>gq",
+		callback = [[<CMD>DiffviewClose<CR>]],
 		prefix = P.git,
 		description = "Close Git diffview",
 	},
 	{
 		mode = { "o", "v" },
-		"gh",
-		function()
+		keys = "gh",
+		callback = function()
 			require("mini.diff").textobject()
 		end,
 		prefix = P.text,
@@ -643,9 +647,9 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"gs",
+		keys = "gs",
 		opts = { expr = true },
-		function()
+		callback = function()
 			return require("mini.diff").operator("apply")
 		end,
 		prefix = P.git,
@@ -653,9 +657,9 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"gr",
+		keys = "gr",
 		opts = { expr = true },
-		function()
+		callback = function()
 			return require("mini.diff").operator("reset")
 		end,
 		prefix = P.git,
@@ -663,8 +667,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "i" },
-		"<M-n>",
-		function()
+		keys = "<M-n>",
+		callback = function()
 			require("mini.diff").goto_hunk("next")
 		end,
 		prefix = P.git,
@@ -672,8 +676,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "i" },
-		"<M-t>",
-		function()
+		keys = "<M-t>",
+		callback = function()
 			require("mini.diff").goto_hunk("prev")
 		end,
 		prefix = P.git,
@@ -681,51 +685,51 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>go",
-		function()
+		keys = "<leader>go",
+		callback = function()
 			require("mini.diff").toggle_overlay(0)
 		end,
 		prefix = P.git,
 		description = "Toggle diff overlay",
 	},
 	{
-		mode = "n",
-		"<leader>gbt",
-		"<cmd>GitBlameToggle<cr>",
+		mode = { "n" },
+		keys = "<leader>gbt",
+		callback = "<cmd>GitBlameToggle<cr>",
 		prefix = P.git,
 		description = "Toggle inline git blame",
 	},
 	{
-		mode = "n",
-		"<leader>gbd",
-		function()
+		mode = { "n" },
+		keys = "<leader>gbd",
+		callback = function()
 			Snacks.git.blame_line()
 		end,
 		prefix = P.git,
 		description = "Full detail git blame for current line",
 	},
 	{
-		mode = "n",
-		"<leader>gh",
-		function()
+		mode = { "n" },
+		keys = "<leader>gh",
+		callback = function()
 			Snacks.picker.git_log()
 		end,
 		prefix = P.git,
 		description = "Commit history",
 	},
 	{
-		mode = "n",
-		"<leader>gc",
-		function()
+		mode = { "n" },
+		keys = "<leader>gc",
+		callback = function()
 			Snacks.picker.git_log({ current_file = true })
 		end,
 		prefix = P.git,
 		description = "Commit history for current buffer",
 	},
 	{
-		mode = "n",
-		"<leader>bc",
-		function()
+		mode = { "n" },
+		keys = "<leader>bc",
+		callback = function()
 			local cur_line = vim.api.nvim_win_get_cursor(0)[1]
 			local rel_filepath = vim.fn.expand("%p"):gsub(vim.fn.system("git rev-parse --show-toplevel"), "")
 			local command = "git blame -L " .. cur_line .. "," .. cur_line .. " -sl -- " .. rel_filepath
@@ -749,9 +753,9 @@ local mappings = {
 		description = "Browse source at the commit that changed the current line",
 	},
 	{
-		mode = "n",
-		"<leader>bm",
-		function()
+		mode = { "n" },
+		keys = "<leader>bm",
+		callback = function()
 			if is_detached_head() then
 				vim.fn.system(
 					"git reset --hard HEAD && git checkout " .. original_branch .. " --force && git stash pop"
@@ -767,215 +771,215 @@ local mappings = {
 		description = "Stop browsing source at commit",
 	},
 	{
-		mode = "n",
-		"<leader>-",
-		function()
+		mode = { "n" },
+		keys = "<leader>-",
+		callback = function()
 			vim.cmd("split")
 		end,
 		prefix = P.window,
 		description = "Create horizontal split",
 	},
 	{
-		mode = "n",
-		"<leader>|",
-		function()
+		mode = { "n" },
+		keys = "<leader>|",
+		callback = function()
 			vim.cmd("vsplit")
 		end,
 		prefix = P.window,
 		description = "Create vertical split",
 	},
 	{
-		mode = "n",
-		"<A-r>",
-		function()
+		mode = { "n" },
+		keys = "<A-r>",
+		callback = function()
 			require("smart-splits").start_resize_mode()
 		end,
 		prefix = P.window,
 		description = "Enter resize mode",
 	},
 	{
-		mode = "n",
-		"<A-h>",
-		function()
+		mode = { "n" },
+		keys = "<A-h>",
+		callback = function()
 			require("smart-splits").resize_left()
 		end,
 		prefix = P.window,
 		description = "Resize leftwards",
 	},
 	{
-		mode = "n",
-		"<A-j>",
-		function()
+		mode = { "n" },
+		keys = "<A-j>",
+		callback = function()
 			require("smart-splits").resize_down()
 		end,
 		prefix = P.window,
 		description = "Resize downwards",
 	},
 	{
-		mode = "n",
-		"<A-k>",
-		function()
+		mode = { "n" },
+		keys = "<A-k>",
+		callback = function()
 			require("smart-splits").resize_up()
 		end,
 		prefix = P.window,
 		description = "Resize upwards",
 	},
 	{
-		mode = "n",
-		"<A-l>",
-		function()
+		mode = { "n" },
+		keys = "<A-l>",
+		callback = function()
 			require("smart-splits").resize_right()
 		end,
 		prefix = P.window,
 		description = "Resize rightwards",
 	},
 	{
-		mode = "n",
-		"<C-h>",
-		function()
+		mode = { "n" },
+		keys = "<C-h>",
+		callback = function()
 			require("smart-splits").move_cursor_left()
 		end,
 		prefix = P.window,
 		description = "Focus window to the left",
 	},
 	{
-		mode = "n",
-		"<C-j>",
-		function()
+		mode = { "n" },
+		keys = "<C-j>",
+		callback = function()
 			require("smart-splits").move_cursor_down()
 		end,
 		prefix = P.window,
 		description = "Focus window below",
 	},
 	{
-		mode = "n",
-		"<C-k>",
-		function()
+		mode = { "n" },
+		keys = "<C-k>",
+		callback = function()
 			require("smart-splits").move_cursor_up()
 		end,
 		prefix = P.window,
 		description = "Focus window above",
 	},
 	{
-		mode = "n",
-		"<C-l>",
-		function()
+		mode = { "n" },
+		keys = "<C-l>",
+		callback = function()
 			require("smart-splits").move_cursor_right()
 		end,
 		prefix = P.window,
 		description = "Focus window to the right",
 	},
 	{
-		mode = "n",
-		"<leader><C-h>",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-h>",
+		callback = function()
 			require("smart-splits").swap_buf_left()
 		end,
 		prefix = P.window,
 		description = "Swap current buffer leftwards",
 	},
 	{
-		mode = "n",
-		"<leader><C-j>",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-j>",
+		callback = function()
 			require("smart-splits").swap_buf_down()
 		end,
 		prefix = P.window,
 		description = "Swap current buffer downwards",
 	},
 	{
-		mode = "n",
-		"<leader><C-k>",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-k>",
+		callback = function()
 			require("smart-splits").swap_buf_up()
 		end,
 		prefix = P.window,
 		description = "Swap current buffer upwards",
 	},
 	{
-		mode = "n",
-		"<leader><C-l>",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-l>",
+		callback = function()
 			require("smart-splits").swap_buf_right()
 		end,
 		prefix = P.window,
 		description = "Swap current buffer rightwards",
 	},
 	{
-		mode = "n",
-		"<leader>e",
-		function()
+		mode = { "n" },
+		keys = "<leader>e",
+		callback = function()
 			require("user.utils").toggle_minifiles()
 		end,
 		prefix = P.nav,
 		description = "Open file explorer",
 	},
 	{
-		mode = "n",
-		"<leader>xx",
+		mode = { "n" },
+		keys = "<leader>xx",
 		"<cmd>Trouble diagnostics toggle<cr>",
 		prefix = P.diag,
 		description = "Toggle diagnostics window",
 	},
 	---@diagnostic disable: missing-fields
 	{
-		mode = "n",
-		"<leader>xw",
-		function()
+		mode = { "n" },
+		keys = "<leader>xw",
+		callback = function()
 			require("trouble").toggle({ focus = true, auto_refresh = true, mode = "cascade" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for entire workspace",
 	},
 	{
-		mode = "n",
-		"<leader>xd",
-		function()
+		mode = { "n" },
+		keys = "<leader>xd",
+		callback = function()
 			require("trouble").toggle({ focus = true, auto_refresh = true, mode = "diagnostics_buffer" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics for current file",
 	},
 	{
-		mode = "n",
-		"<leader>xq",
-		function()
+		mode = { "n" },
+		keys = "<leader>xq",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "qflist" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window with quickfix list",
 	},
 	{
-		mode = "n",
-		"<leader>xc",
-		function()
+		mode = { "n" },
+		keys = "<leader>xc",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "lsp_incoming_calls" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for calls to this symbol",
 	},
 	{
-		mode = "n",
-		"<leader>xo",
-		function()
+		mode = { "n" },
+		keys = "<leader>xo",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "lsp_outgoing_calls" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for calls by this symbol",
 	},
 	{
-		mode = "n",
-		"<leader>xr",
-		function()
+		mode = { "n" },
+		keys = "<leader>xr",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "lsp_references" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for references to this symbol",
 	},
 	{
-		mode = "n",
-		"<leader>xs",
-		function()
+		mode = { "n" },
+		keys = "<leader>xs",
+		callback = function()
 			require("trouble").toggle({
 				focus = true,
 				win = {
@@ -989,36 +993,36 @@ local mappings = {
 		description = "Toggle diagnostics window for all symbols in the current buffer",
 	},
 	{
-		mode = "n",
-		"<leader>xl",
-		function()
+		mode = { "n" },
+		keys = "<leader>xl",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "loclist" })
 		end,
 		prefix = P.diag,
 		description = "Toggle diagnostics window for loclist",
 	},
 	{
-		mode = "n",
-		"<leader>xn",
-		function()
+		mode = { "n" },
+		keys = "<leader>xn",
+		callback = function()
 			require("trouble").next({ jump = true })
 		end,
 		prefix = P.diag,
 		description = "Go to next diagnostics item",
 	},
 	{
-		mode = "n",
-		"<leader>xt",
-		function()
+		mode = { "n" },
+		keys = "<leader>xt",
+		callback = function()
 			require("trouble").prev({ jump = true })
 		end,
 		prefix = P.diag,
 		description = "Go to previous diagnostic item",
 	},
 	{
-		mode = "n",
-		"<leader>xf",
-		function()
+		mode = { "n" },
+		keys = "<leader>xf",
+		callback = function()
 			require("trouble").toggle({ focus = true, mode = "snacks" })
 		end,
 		prefix = P.diag,
@@ -1027,27 +1031,27 @@ local mappings = {
 	---@diagnostic enable: missing-fields
 	-- debugging
 	{
-		mode = "n",
-		"<leader>dd",
-		function()
+		mode = { "n" },
+		keys = "<leader>dd",
+		callback = function()
 			require("dap").toggle_breakpoint()
 		end,
 		prefix = P.debug,
 		description = "Toggle breakpoint",
 	},
 	{
-		mode = "n",
-		"<leader>dC",
-		function()
+		mode = { "n" },
+		keys = "<leader>dC",
+		callback = function()
 			require("dap").clear_breakpoints()
 		end,
 		prefix = P.debug,
 		description = "Clear all breakpoints",
 	},
 	{
-		mode = "n",
-		"<leader>dD",
-		function()
+		mode = { "n" },
+		keys = "<leader>dD",
+		callback = function()
 			vim.ui.input({ prompt = "Condition: " }, function(input)
 				require("dap").set_breakpoint(input)
 			end)
@@ -1056,94 +1060,99 @@ local mappings = {
 		description = "Toggle conditional breakpoint",
 	},
 	{
-		mode = "n",
-		"<leader>dl",
-		function()
+		mode = { "n" },
+		keys = "<leader>dl",
+		callback = function()
 			trigger_dap(require("dap").run_last)
 		end,
 		prefix = P.debug,
 		description = "Nearest test",
 	},
 	{
-		mode = "n",
-		"<leader>do",
-		function()
+		mode = { "n" },
+		keys = "<leader>do",
+		callback = function()
 			require("dap").step_over()
 		end,
 		prefix = P.debug,
 		description = "Step over",
 	},
 	{
-		mode = "n",
-		"<leader>di",
-		function()
+		mode = { "n" },
+		keys = "<leader>di",
+		callback = function()
 			require("dap").step_into({ askForTargets = true })
 		end,
 		prefix = P.debug,
 		description = "Step into",
 	},
 	{
-		mode = "n",
-		"<leader>du",
-		function()
+		mode = { "n" },
+		keys = "<leader>du",
+		callback = function()
 			require("dap").step_out()
 		end,
 		prefix = P.debug,
 		description = "Step out",
 	},
 	{
-		mode = "n",
-		"<leader>db",
-		function()
+		mode = { "n" },
+		keys = "<leader>db",
+		callback = function()
 			require("dap").step_back()
 		end,
 		prefix = P.debug,
 		description = "Step back",
 	},
 	{
-		mode = "n",
-		"<leader>dh",
-		function()
+		mode = { "n" },
+		keys = "<leader>dh",
+		callback = function()
 			require("dap").run_to_cursor()
 		end,
 		prefix = P.debug,
 		description = "Run to cursor",
 	},
 	{
-		"<leader>dw",
-		{
-			n = function()
-				require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
-			end,
-			x = function()
-				vim.cmd([[normal! vv]])
-				local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
-				require("dapui").elements.watches.add(text)
-			end,
-		},
+		mode = { "n" },
+		keys = "<leader>dw",
+		callback = function()
+			require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
+		end,
+		prefix = P.debug,
+		description = "Add variable to watches",
+	},
+	{
+		mode = { "x" },
+		keys = "<leader>dw",
+		callback = function()
+			vim.cmd([[normal! vv]])
+			local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
+			require("dapui").elements.watches.add(text)
+		end,
 		prefix = P.debug,
 		description = "Add variable to watches",
 	},
 	{
 		mode = { "n", "x" },
-		"<leader>dr",
-		function()
+		keys = "<leader>dr",
+		callback = function()
 			require("dapui").eval()
 		end,
 		prefix = P.debug,
 		description = "Add variable to watches",
 	},
 	{
-		mode = "n",
-		"<leader>dc",
+		mode = { "n" },
+		keys = "<leader>dc",
 		continue,
 		prefix = P.debug,
 		description = "Start debug session, or continue session",
 	},
 	{
-		mode = "n",
-		"<leader>de",
-		function()
+		mode = { "n" },
+		keys = "<leader>de",
+		callback = function()
 			require("dap").terminate()
 			require("dapui").close()
 			require("nvim-dap-virtual-text").refresh()
@@ -1152,41 +1161,41 @@ local mappings = {
 		description = "Stop debug session",
 	},
 	{
-		mode = "n",
-		"<leader>dt",
-		function()
+		mode = { "n" },
+		keys = "<leader>dt",
+		callback = function()
 			require("dapui").toggle({ reset = true })
 		end,
 		prefix = P.debug,
 		description = "Reset and toggle ui",
 	},
 	{
-		mode = "n",
-		"<leader>bt",
-		function()
+		mode = { "n" },
+		keys = "<leader>bt",
+		callback = function()
 			require("alternate-toggler").toggleAlternate()
 		end,
 		prefix = P.misc,
 		description = "Toggle booleans",
 	},
 	{
-		mode = "n",
-		"<leader>ro",
-		"<cmd>OverseerToggle<cr>",
+		mode = { "n" },
+		keys = "<leader>ro",
+		callback = "<cmd>OverseerToggle<cr>",
 		prefix = P.task,
 		description = "Open task output window",
 	},
 	{
-		mode = "n",
-		"<leader>rt",
-		"<cmd>OverseerRun<CR>",
+		mode = { "n" },
+		keys = "<leader>rt",
+		callback = "<cmd>OverseerRun<CR>",
 		prefix = P.task,
 		description = "List build tasks to run",
 	},
 	{
 		mode = { "n", "v" },
-		"gx",
-		function()
+		keys = "gx",
+		callback = function()
 			require("various-textobjs").url()
 			local foundURL = vim.fn.mode():find("v")
 			if foundURL then
@@ -1217,8 +1226,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>bf",
-		function()
+		keys = "<leader>bf",
+		callback = function()
 			require("conform").format({ async = false })
 		end,
 		prefix = P.code,
@@ -1226,91 +1235,91 @@ local mappings = {
 	},
 	--latex
 	{
-		mode = "n",
-		"<leader>lb",
-		[[:VimtexCompile <CR>]],
+		mode = { "n" },
+		keys = "<leader>lb",
+		callback = [[:VimtexCompile <CR>]],
 		prefix = P.latex,
 		description = "Build/compile document",
 	},
 	{
-		mode = "n",
-		"<leader>lc",
-		[[:VimtexClean <CR>]],
+		mode = { "n" },
+		keys = "<leader>lc",
+		callback = [[:VimtexClean <CR>]],
 		prefix = P.latex,
 		description = "Clean aux files",
 	},
 	{
-		mode = "n",
-		"<leader>le",
-		[[:VimtexTocOpen <CR>]],
+		mode = { "n" },
+		keys = "<leader>le",
+		callback = [[:VimtexTocOpen <CR>]],
 		prefix = P.latex,
 		description = "Open table of contents",
 	},
 	{
-		mode = "n",
-		"<leader>ln",
-		[[:VimtexTocToggle <CR>]],
+		mode = { "n" },
+		keys = "<leader>ln",
+		callback = [[:VimtexTocToggle <CR>]],
 		prefix = P.latex,
 		description = "Toggle table of contents",
 	},
 	{
-		mode = "n",
-		"K",
-		function()
+		mode = { "n" },
+		keys = "K",
+		callback = function()
 			vim.lsp.buf.hover()
 		end,
 		prefix = P.code,
 		description = "Show documentation",
 	},
 	{
-		mode = "n",
-		"gd",
-		function()
+		mode = { "n" },
+		keys = "gd",
+		callback = function()
 			require("snacks").picker.lsp_definitions()
 		end,
 		prefix = P.code,
 		description = "Go to definition",
 	},
 	{
-		mode = "n",
-		"gD",
-		function()
+		mode = { "n" },
+		keys = "gD",
+		callback = function()
 			vim.lsp.buf.declaration()
 		end,
 		prefix = P.code,
 		description = "Go to declaration",
 	},
 	{
-		mode = "n",
-		"<leader>K",
-		function()
+		mode = { "n" },
+		keys = "<leader>K",
+		callback = function()
 			vim.lsp.buf.signature_help()
 		end,
 		prefix = P.code,
 		description = "Show function signature",
 	},
 	{
-		mode = "n",
-		"gt",
-		function()
+		mode = { "n" },
+		keys = "gt",
+		callback = function()
 			require("snacks").picker.lsp_type_definitions()
 		end,
 		prefix = P.code,
 		description = "Go to type definition",
 	},
 	{
-		mode = "n",
-		"<leader>rn",
-		function()
+		mode = { "n" },
+		keys = "<leader>rn",
+		callback = function()
 			require("config.editor.rename").rename({ insert = true })
 		end,
 		prefix = P.code,
 		description = "Rename",
 	},
 	{
-		mode = "n",
-		"<leader>gf",
-		function()
+		mode = { "n" },
+		keys = "<leader>gf",
+		callback = function()
 			require("grug-far").toggle_instance({
 				instanceName = "main_instance",
 				prefills = {
@@ -1322,9 +1331,9 @@ local mappings = {
 		description = "Search and replace word under cursor",
 	},
 	{
-		mode = "v",
-		"<leader>gf",
-		function()
+		mode = { "v" },
+		keys = "<leader>gf",
+		callback = function()
 			vim.cmd([[normal! vv]])
 			local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
 			text = require("user.utils").escape_special_chars(text)
@@ -1343,17 +1352,17 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"<leader>ca",
-		function()
+		keys = "<leader>ca",
+		callback = function()
 			vim.lsp.buf.code_action()
 		end,
 		prefix = P.code,
 		description = "Show code actions",
 	},
 	{
-		mode = "n",
-		"<leader>ds",
-		function()
+		mode = { "n" },
+		keys = "<leader>ds",
+		callback = function()
 			vim.diagnostic.open_float()
 		end,
 		prefix = P.code,
@@ -1361,8 +1370,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x", "o" },
-		"s",
-		function()
+		keys = "s",
+		callback = function()
 			require("flash").jump()
 		end,
 		prefix = P.move,
@@ -1370,24 +1379,24 @@ local mappings = {
 	},
 	{
 		mode = { "c" },
-		"<c-s>",
-		function()
+		keys = "<c-s>",
+		callback = function()
 			require("flash").toggle()
 		end,
 		prefix = P.move,
 		description = "Toggle Flash Search",
 	},
 	{
-		mode = "n",
-		"<leader>cm",
-		"<cmd>Mason<cr>",
+		mode = { "n" },
+		keys = "<leader>cm",
+		callback = "<cmd>Mason<cr>",
 		prefix = P.misc,
 		description = "Open Mason: LSP server, formatter, DAP and linter manager",
 	},
 	{
-		mode = "n",
-		"<leader>nn",
-		function()
+		mode = { "n" },
+		keys = "<leader>nn",
+		callback = function()
 			vim.ui.input({
 				prompt = "New note name (without file extension)",
 				default = "",
@@ -1401,9 +1410,9 @@ local mappings = {
 		description = "New note",
 	},
 	{
-		mode = "n",
-		"<leader>nf",
-		function()
+		mode = { "n" },
+		keys = "<leader>nf",
+		callback = function()
 			Snacks.picker.files({
 				dirs = { "~/notes/" },
 			})
@@ -1412,9 +1421,9 @@ local mappings = {
 		description = "Find note",
 	},
 	{
-		mode = "n",
-		"<leader>ng",
-		function()
+		mode = { "n" },
+		keys = "<leader>ng",
+		callback = function()
 			Snacks.picker.grep({
 				dirs = { "~/notes/" },
 			})
@@ -1423,62 +1432,62 @@ local mappings = {
 		description = "Grep notes",
 	},
 	{
-		mode = "t",
-		"<esc>",
-		[[<C-\><C-n>]],
+		mode = { "t" },
+		keys = "<esc>",
+		callback = [[<C-\><C-n>]],
 		{ buffer = 0 },
 		prefix = P.term,
 		description = "Exit insert mode in terminal",
 	},
 	{
-		mode = "n",
-		"<C-\\>",
-		function()
+		mode = { "n" },
+		keys = "<C-\\>",
+		callback = function()
 			require("workspaces.toggleterms").toggle_term(vim.v.count, "horizontal", nil, "bottom")
 		end,
 		prefix = P.term,
 		description = "Open in horizontal split",
 	},
 	{
-		mode = "n",
-		"<leader><C-\\>",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-\\>",
+		callback = function()
 			require("workspaces.toggleterms").toggle_active_terms(true)
 		end,
 		prefix = P.term,
 		description = "Toggle all visible terminals",
 	},
 	{
-		mode = "n",
-		"<C-]>",
-		function()
+		mode = { "n" },
+		keys = "<C-]>",
+		callback = function()
 			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", nil, "right")
 		end,
 		prefix = P.term,
 		description = "Open in vertical split",
 	},
 	{
-		mode = "n",
-		"<leader><C-]>",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-]>",
+		callback = function()
 			require("workspaces.toggleterms").toggle_active_terms(true)
 		end,
 		prefix = P.term,
 		description = "Toggle all visible terminals",
 	},
 	{
-		mode = "n",
-		"<C-->",
-		function()
+		mode = { "n" },
+		keys = "<C-->",
+		callback = function()
 			require("workspaces.toggleterms").toggle_term(vim.v.count, "vertical", nil, "left")
 		end,
 		prefix = P.term,
 		description = "Open in left vertical split",
 	},
 	{
-		mode = "n",
-		"<leader><C-->",
-		function()
+		mode = { "n" },
+		keys = "<leader><C-->",
+		callback = function()
 			require("workspaces.toggleterms").toggle_active_terms(true)
 		end,
 		prefix = P.term,
@@ -1486,8 +1495,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"ii",
-		function()
+		keys = "ii",
+		callback = function()
 			require("various-textobjs").indentation("inner", "inner")
 		end,
 		prefix = P.text,
@@ -1495,8 +1504,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"ai",
-		function()
+		keys = "ai",
+		callback = function()
 			require("various-textobjs").indentation("outer", "inner")
 		end,
 		prefix = P.text,
@@ -1504,8 +1513,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"iI",
-		function()
+		keys = "iI",
+		callback = function()
 			require("various-textobjs").indentation("inner", "outer")
 		end,
 		prefix = P.text,
@@ -1513,8 +1522,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"aI",
-		function()
+		keys = "aI",
+		callback = function()
 			require("various-textobjs").indentation("outer", "outer")
 		end,
 		prefix = P.text,
@@ -1522,8 +1531,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"R",
-		function()
+		keys = "R",
+		callback = function()
 			require("various-textobjs").restOfIndentation()
 		end,
 		prefix = P.text,
@@ -1531,8 +1540,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"iS",
-		function()
+		keys = "iS",
+		callback = function()
 			require("various-textobjs").subword("inner")
 		end,
 		prefix = P.text,
@@ -1540,8 +1549,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"aS",
-		function()
+		keys = "aS",
+		callback = function()
 			require("various-textobjs").subword("outer")
 		end,
 		prefix = P.text,
@@ -1549,8 +1558,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"r",
-		function()
+		keys = "r",
+		callback = function()
 			require("various-textobjs").restOfParagraph()
 		end,
 		prefix = P.text,
@@ -1558,8 +1567,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"gG",
-		function()
+		keys = "gG",
+		callback = function()
 			require("various-textobjs").entireBuffer()
 		end,
 		prefix = P.text,
@@ -1567,8 +1576,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"n",
-		function()
+		keys = "n",
+		callback = function()
 			require("various-textobjs").nearEoL()
 		end,
 		prefix = P.text,
@@ -1576,8 +1585,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"i_",
-		function()
+		keys = "i_",
+		callback = function()
 			require("various-textobjs").lineCharacterwise("inner")
 		end,
 		prefix = P.text,
@@ -1585,8 +1594,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"a_",
-		function()
+		keys = "a_",
+		callback = function()
 			require("various-textobjs").lineCharacterwise("outer")
 		end,
 		prefix = P.text,
@@ -1594,8 +1603,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"|",
-		function()
+		keys = "|",
+		callback = function()
 			require("various-textobjs").column()
 		end,
 		prefix = P.text,
@@ -1603,8 +1612,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"iN",
-		function()
+		keys = "iN",
+		callback = function()
 			require("various-textobjs").notebookCell("inner")
 		end,
 		prefix = P.text,
@@ -1612,8 +1621,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"aN",
-		function()
+		keys = "aN",
+		callback = function()
 			require("various-textobjs").notebookCell("outer")
 		end,
 		prefix = P.text,
@@ -1621,8 +1630,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"iv",
-		function()
+		keys = "iv",
+		callback = function()
 			require("various-textobjs").value("inner")
 		end,
 		prefix = P.text,
@@ -1630,8 +1639,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"av",
-		function()
+		keys = "av",
+		callback = function()
 			require("various-textobjs").value("outer")
 		end,
 		prefix = P.text,
@@ -1639,8 +1648,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"ik",
-		function()
+		keys = "ik",
+		callback = function()
 			require("various-textobjs").key("inner")
 		end,
 		prefix = P.text,
@@ -1648,8 +1657,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"ak",
-		function()
+		keys = "ak",
+		callback = function()
 			require("various-textobjs").key("outer")
 		end,
 		prefix = P.text,
@@ -1657,8 +1666,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"L",
-		function()
+		keys = "L",
+		callback = function()
 			require("various-textobjs").url()
 		end,
 		prefix = P.text,
@@ -1666,8 +1675,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"in",
-		function()
+		keys = "in",
+		callback = function()
 			require("various-textobjs").number("inner")
 		end,
 		prefix = P.text,
@@ -1675,8 +1684,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"an",
-		function()
+		keys = "an",
+		callback = function()
 			require("various-textobjs").number("outer")
 		end,
 		prefix = P.text,
@@ -1684,8 +1693,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"!",
-		function()
+		keys = "!",
+		callback = function()
 			require("various-textobjs").diagnostic()
 		end,
 		prefix = P.text,
@@ -1693,8 +1702,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"iM",
-		function()
+		keys = "iM",
+		callback = function()
 			require("various-textobjs").chainMember("inner")
 		end,
 		prefix = P.text,
@@ -1702,8 +1711,8 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		"aM",
-		function()
+		keys = "aM",
+		callback = function()
 			require("various-textobjs").chainMember("outer")
 		end,
 		prefix = P.text,
@@ -1711,8 +1720,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sn",
-		function()
+		keys = "<leader>sn",
+		callback = function()
 			require("workspaces.workspaces").next_session()
 		end,
 		prefix = P.work,
@@ -1720,8 +1729,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sp",
-		function()
+		keys = "<leader>sp",
+		callback = function()
 			require("workspaces.workspaces").previous_session()
 		end,
 		prefix = P.work,
@@ -1729,8 +1738,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>z",
-		function()
+		keys = "<leader>z",
+		callback = function()
 			require("workspaces.workspaces").alternate_session()
 		end,
 		prefix = P.work,
@@ -1738,8 +1747,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sz",
-		function()
+		keys = "<leader>sz",
+		callback = function()
 			require("workspaces.workspaces").alternate_workspace()
 		end,
 		prefix = P.work,
@@ -1747,8 +1756,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sa",
-		function()
+		keys = "<leader>sa",
+		callback = function()
 			require("workspaces.ui").pick_session()
 		end,
 		prefix = P.work,
@@ -1756,8 +1765,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>scd",
-		function()
+		keys = "<leader>scd",
+		callback = function()
 			require("workspaces.ui").change_current_session_directory_input()
 		end,
 		prefix = P.work,
@@ -1765,8 +1774,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"\\",
-		function()
+		keys = "\\",
+		callback = function()
 			require("workspaces.workspaces").switch_session_by_index(vim.v.count1)
 		end,
 		prefix = P.work,
@@ -1774,8 +1783,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sw",
-		function()
+		keys = "<leader>sw",
+		callback = function()
 			require("workspaces.ui").pick_workspace()
 		end,
 		prefix = P.work,
@@ -1783,8 +1792,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>t",
-		function()
+		keys = "<leader>t",
+		callback = function()
 			require("workspaces.ui").pick_mark()
 		end,
 		prefix = P.work,
@@ -1792,8 +1801,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>q",
-		function()
+		keys = "<leader>q",
+		callback = function()
 			require("workspaces.marks").toggle_mark()
 		end,
 		prefix = P.work,
@@ -1801,8 +1810,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>scs",
-		function()
+		keys = "<leader>scs",
+		callback = function()
 			require("workspaces.ui").create_session_input()
 		end,
 		prefix = P.work,
@@ -1810,8 +1819,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>srs",
-		function()
+		keys = "<leader>srs",
+		callback = function()
 			require("workspaces.ui").rename_current_session_input()
 		end,
 		prefix = P.work,
@@ -1819,8 +1828,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>scw",
-		function()
+		keys = "<leader>scw",
+		callback = function()
 			require("workspaces.ui").create_workspace_input()
 		end,
 		prefix = P.work,
@@ -1828,8 +1837,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>srw",
-		function()
+		keys = "<leader>srw",
+		callback = function()
 			require("workspaces.ui").rename_current_workspace_input()
 		end,
 		prefix = P.work,
@@ -1837,8 +1846,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sds",
-		function()
+		keys = "<leader>sds",
+		callback = function()
 			require("workspaces.ui").delete_session_input()
 		end,
 		prefix = P.work,
@@ -1846,8 +1855,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>sdw",
-		function()
+		keys = "<leader>sdw",
+		callback = function()
 			require("workspaces.ui").delete_workspace_input()
 		end,
 		prefix = P.work,
@@ -1855,8 +1864,9 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"m",
-		function()
+		keys = "m",
+		callback = function()
+			vim.notify("calling substitute")
 			require("substitute").operator()
 		end,
 		prefix = P.misc,
@@ -1864,8 +1874,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"mm",
-		function()
+		keys = "mm",
+		callback = function()
 			require("substitute").line()
 		end,
 		prefix = P.misc,
@@ -1873,8 +1883,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"M",
-		function()
+		keys = "M",
+		callback = function()
 			require("substitute").eol()
 		end,
 		prefix = P.misc,
@@ -1882,8 +1892,8 @@ local mappings = {
 	},
 	{
 		mode = { "x" },
-		"m",
-		function()
+		keys = "m",
+		callback = function()
 			require("substitute").visual()
 		end,
 		prefix = P.misc,
@@ -1891,8 +1901,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><BS>",
-		function()
+		keys = "<leader><BS>",
+		callback = function()
 			Snacks.notifier.hide()
 		end,
 		prefix = P.misc,
@@ -1900,50 +1910,50 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"p",
-		"<Plug>(YankyPutAfter)",
+		keys = "p",
+		callback = "<Plug>(YankyPutAfter)",
 		prefix = P.misc,
 		description = "Paste after cursor",
 	},
 	{
 		mode = { "n", "x" },
-		"P",
-		"<Plug>(YankyPutBefore)",
+		keys = "P",
+		callback = "<Plug>(YankyPutBefore)",
 		prefix = P.misc,
 		description = "Paste before cursor",
 	},
 	{
 		mode = { "n", "x" },
-		"gp",
-		"<Plug>(YankyGPutAfter)",
+		keys = "gp",
+		callback = "<Plug>(YankyGPutAfter)",
 		prefix = P.misc,
 		description = "Paste after selection",
 	},
 	{
 		mode = { "n", "x" },
-		"gP",
-		"<Plug>(YankyGPutBefore)",
+		keys = "gP",
+		callback = "<Plug>(YankyGPutBefore)",
 		prefix = P.misc,
 		description = "Paste after selection",
 	},
 	{
-		mode = "n",
-		"<c-t>",
-		"<Plug>(YankyPreviousEntry)",
-		prefix = P.misc,
-		description = "Cycle to next item in yank history",
-	},
-	{
-		mode = "n",
-		"<c-n>",
-		"<Plug>(YankyNextEntry)",
+		mode = { "n" },
+		keys = "<c-t>",
+		callback = "<Plug>(YankyPreviousEntry)",
 		prefix = P.misc,
 		description = "Cycle to next item in yank history",
 	},
 	{
 		mode = { "n" },
-		"<leader>p",
-		function()
+		keys = "<c-n>",
+		callback = "<Plug>(YankyNextEntry)",
+		prefix = P.misc,
+		description = "Cycle to next item in yank history",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>p",
+		callback = function()
 			Snacks.picker.yanky()
 		end,
 		prefix = P.misc,
@@ -2030,18 +2040,18 @@ local mappings = {
 	-- 	description = "run all cells of all languages",
 	-- },
 	{
-		mode = "n",
-		"<leader>bp",
-		function()
+		mode = { "n" },
+		keys = "<leader>bp",
+		callback = function()
 			require("dropbar.api").pick()
 		end,
 		prefix = P.nav,
 		description = "Enter breadcrumb selection",
 	},
 	{
-		mode = "n",
-		"<leader>w",
-		function()
+		mode = { "n" },
+		keys = "<leader>w",
+		callback = function()
 			local win = require("window-picker").pick_window()
 			if win then
 				vim.api.nvim_set_current_win(win)
@@ -2051,133 +2061,133 @@ local mappings = {
 		description = "Enter window selection",
 	},
 	{
-		mode = "n",
-		"<leader>ll",
-		function()
+		mode = { "n" },
+		keys = "<leader>ll",
+		callback = function()
 			require("lazy").home()
 		end,
 		prefix = P.misc,
 		description = "Open plugin manager",
 	},
 	{
-		mode = "n",
-		"<leader>ld",
-		function()
+		mode = { "n" },
+		keys = "<leader>ld",
+		callback = function()
 			require("osv").launch({ port = 8086 })
 		end,
 		prefix = P.debug,
 		description = "Launch lua debugger server on this nvim instance",
 	},
 	{
-		mode = "n",
-		"<leader>rm",
-		function()
+		mode = { "n" },
+		keys = "<leader>rm",
+		callback = function()
 			require("jdtls").test_nearest_method()
 		end,
 		prefix = P.test,
 		description = "Run nearest java test",
 	},
 	{
-		mode = "n",
-		"<leader>rjc",
-		function()
+		mode = { "n" },
+		keys = "<leader>rjc",
+		callback = function()
 			require("jdtls").test_class()
 		end,
 		prefix = P.test,
 		description = "Run java test class",
 	},
 	{
-		mode = "n",
-		"<leader>nr",
-		function()
+		mode = { "n" },
+		keys = "<leader>nr",
+		callback = function()
 			require("neotest").run.run(vim.fn.expand("%"))
 		end,
 		prefix = P.test,
 		description = "Run all tests in file",
 	},
 	{
-		mode = "n",
-		"<leader>nt",
-		function()
+		mode = { "n" },
+		keys = "<leader>nt",
+		callback = function()
 			require("neotest").run.run()
 		end,
 		prefix = P.test,
 		description = "Run nearest test",
 	},
 	{
-		mode = "n",
-		"<leader>no",
-		function()
+		mode = { "n" },
+		keys = "<leader>no",
+		callback = function()
 			require("neotest").output.open()
 		end,
 		prefix = P.test,
 		description = "Show test output",
 	},
 	{
-		mode = "n",
-		"<leader>np",
-		function()
+		mode = { "n" },
+		keys = "<leader>np",
+		callback = function()
 			require("neotest").output_panel.toggle()
 		end,
 		prefix = P.test,
 		description = "Toggle aggregated output window",
 	},
 	{
-		mode = "n",
-		"<leader>nc",
-		function()
+		mode = { "n" },
+		keys = "<leader>nc",
+		callback = function()
 			require("neotest").output_panel.clear()
 		end,
 		prefix = P.test,
 		description = "Clear aggregated output window",
 	},
 	{
-		mode = "n",
-		"<leader>ns",
-		function()
+		mode = { "n" },
+		keys = "<leader>ns",
+		callback = function()
 			require("neotest").summary.toggle()
 		end,
 		prefix = P.test,
 		description = "Toggle summary tree",
 	},
 	{
-		mode = "v",
-		"<leader>cs",
+		mode = { "v" },
+		keys = "<leader>cs",
 		"<cmd>CodeSnapASCII<cr>",
 		prefix = P.misc,
 		description = "Copy ASCII code snapshot to clipboard",
 	},
 	{
-		mode = "x",
-		"<leader>re",
-		function()
+		mode = { "x" },
+		keys = "<leader>re",
+		callback = function()
 			require("refactoring").refactor("Extract Function")
 		end,
 		prefix = P.code,
 		description = "Extract function",
 	},
 	{
-		mode = "x",
-		"<leader>rff",
-		function()
+		mode = { "x" },
+		keys = "<leader>rff",
+		callback = function()
 			require("refactoring").refactor("Extract Function To File")
 		end,
 		prefix = P.code,
 		description = "Extract function to file",
 	},
 	{
-		mode = "x",
-		"<leader>rv",
-		function()
+		mode = { "x" },
+		keys = "<leader>rv",
+		callback = function()
 			require("refactoring").refactor("Extract Variable")
 		end,
 		prefix = P.code,
 		description = "Extract variable",
 	},
 	{
-		mode = "n",
-		"<leader>rI",
-		function()
+		mode = { "n" },
+		keys = "<leader>rI",
+		callback = function()
 			require("refactoring").refactor("Inline Function")
 		end,
 		prefix = P.code,
@@ -2185,26 +2195,26 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"<leader>ri",
-		function()
+		keys = "<leader>ri",
+		callback = function()
 			require("refactoring").refactor("Inline Variable")
 		end,
 		prefix = P.code,
 		description = "Inline variable",
 	},
 	{
-		mode = "n",
-		"<leader>rb",
-		function()
+		mode = { "n" },
+		keys = "<leader>rb",
+		callback = function()
 			require("refactoring").refactor("Extract Block")
 		end,
 		prefix = P.code,
 		description = "Extract block",
 	},
 	{
-		mode = "n",
-		"<leader>rfb",
-		function()
+		mode = { "n" },
+		keys = "<leader>rfb",
+		callback = function()
 			require("refactoring").refactor("Extract Block To File")
 		end,
 		prefix = P.code,
@@ -2212,17 +2222,17 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x" },
-		"<leader>rl",
-		function()
+		keys = "<leader>rl",
+		callback = function()
 			require("refactoring").get_refactors()
 		end,
 		prefix = P.code,
 		description = "List available refactors",
 	},
 	{
-		mode = "n",
-		"<leader>rp",
-		function()
+		mode = { "n" },
+		keys = "<leader>rp",
+		callback = function()
 			require("refactoring").debug.printf({ below = true, show_success_message = false })
 		end,
 		prefix = P.code,
@@ -2230,26 +2240,26 @@ local mappings = {
 	},
 	{
 		mode = { "x", "n" },
-		"<leader>rdv",
-		function()
+		keys = "<leader>rdv",
+		callback = function()
 			require("refactoring").debug.print_var({ show_success_message = false })
 		end,
 		prefix = P.code,
 		description = "Add print statement with variable value",
 	},
 	{
-		mode = "n",
-		"<leader>rdc",
-		function()
+		mode = { "n" },
+		keys = "<leader>rdc",
+		callback = function()
 			require("refactoring").debug.cleanup({ show_success_message = true })
 		end,
 		prefix = P.code,
 		description = "Clean up all automated print statements",
 	},
 	{
-		mode = "n",
-		"<leader>lw",
-		function()
+		mode = { "n" },
+		keys = "<leader>lw",
+		callback = function()
 			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
 				require("workspace-diagnostics").populate_workspace_diagnostics(client, 0)
 			end
@@ -2258,36 +2268,36 @@ local mappings = {
 		description = "Load all workspace files for diagnostics",
 	},
 	{
-		mode = "n",
-		"<leader>la",
-		function()
+		mode = { "n" },
+		keys = "<leader>la",
+		callback = function()
 			vim.g.extra_lsp_actions()
 		end,
 		prefix = P.lsp,
 		description = "Run extra lsp actions",
 	},
 	{
-		mode = "n",
-		"<leader>ls",
-		function()
+		mode = { "n" },
+		keys = "<leader>ls",
+		callback = function()
 			vim.cmd("LspStart")
 		end,
 		prefix = P.lsp,
 		description = "Start",
 	},
 	{
-		mode = "n",
-		"<leader>lr",
-		function()
+		mode = { "n" },
+		keys = "<leader>lr",
+		callback = function()
 			vim.cmd("LspRestart")
 		end,
 		prefix = P.lsp,
 		description = "Restart",
 	},
 	{
-		mode = "n",
-		"<leader>J",
-		function()
+		mode = { "n" },
+		keys = "<leader>J",
+		callback = function()
 			vim.fn.setreg('"', vim.fn.getreg('"'):gsub("[\n\r]", " "))
 		end,
 		prefix = P.misc,
@@ -2295,8 +2305,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><CR>",
-		function()
+		keys = "<leader><CR>",
+		callback = function()
 			vim.cmd("CheckboxPrev")
 		end,
 		prefix = P.misc,
@@ -2304,8 +2314,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><S-CR>",
-		function()
+		keys = "<leader><S-CR>",
+		callback = function()
 			vim.cmd("CheckboxPrev")
 		end,
 		prefix = P.misc,
@@ -2313,8 +2323,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>ct",
-		function()
+		keys = "<leader>ct",
+		callback = function()
 			vim.cmd("CheckboxToggle")
 		end,
 		prefix = P.misc,
@@ -2322,8 +2332,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>mcc",
-		function()
+		keys = "<leader>mcc",
+		callback = function()
 			vim.cmd("CodeCreate")
 		end,
 		prefix = P.misc,
@@ -2331,8 +2341,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>mce",
-		function()
+		keys = "<leader>mce",
+		callback = function()
 			vim.cmd("CodeEdit")
 		end,
 		prefix = P.misc,
@@ -2340,8 +2350,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>ms",
-		function()
+		keys = "<leader>ms",
+		callback = function()
 			vim.cmd({ cmd = "Markview", args = { "splitToggle" } })
 		end,
 		prefix = P.misc,
@@ -2349,8 +2359,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"]]",
-		function()
+		keys = "]]",
+		callback = function()
 			require("snacks").words.jump(vim.v.count1)
 		end,
 		prefix = P.misc,
@@ -2358,8 +2368,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"[[",
-		function()
+		keys = "[[",
+		callback = function()
 			require("snacks").words.jump(-vim.v.count1)
 		end,
 		prefix = P.misc,
@@ -2367,8 +2377,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"gS",
-		function()
+		keys = "gS",
+		callback = function()
 			require("mini.splitjoin").toggle()
 		end,
 		prefix = P.misc,
@@ -2376,8 +2386,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>mt",
-		function()
+		keys = "<leader>mt",
+		callback = function()
 			local wc_out = vim.fn.system("wc -L " .. vim.fn.expand("%:p"))
 			local longest_line = tonumber(string.sub(wc_out, wc_out:find("%d+")))
 			if longest_line < vim.o.columns then
@@ -2391,8 +2401,8 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		"<leader>nh",
-		function()
+		keys = "<leader>nh",
+		callback = function()
 			Snacks.notifier.show_history()
 		end,
 		prefix = P.misc,
@@ -2400,64 +2410,64 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<C-S-j>",
-		"<cmd>Treewalker Down<cr>",
+		keys = "<C-S-j>",
+		callback = "<cmd>Treewalker Down<cr>",
 		prefix = P.misc,
 		description = "Move down treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-S-k>",
-		"<cmd>Treewalker Up<cr>",
+		keys = "<C-S-k>",
+		callback = "<cmd>Treewalker Up<cr>",
 		prefix = P.misc,
 		description = "Move up treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-S-h>",
-		"<cmd>Treewalker Left<cr>",
+		keys = "<C-S-h>",
+		callback = "<cmd>Treewalker Left<cr>",
 		prefix = P.misc,
 		description = "Move left treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-S-l>",
-		"<cmd>Treewalker Right<cr>",
+		keys = "<C-S-l>",
+		callback = "<cmd>Treewalker Right<cr>",
 		prefix = P.misc,
 		description = "Move right treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-M-S-j>",
-		"<cmd>Treewalker SwapDown<cr>",
+		keys = "<C-M-S-j>",
+		callback = "<cmd>Treewalker SwapDown<cr>",
 		prefix = P.misc,
 		description = "Swap down treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-M-S-k>",
-		"<cmd>Treewalker SwapUp<cr>",
+		keys = "<C-M-S-k>",
+		callback = "<cmd>Treewalker SwapUp<cr>",
 		prefix = P.misc,
 		description = "Swap up treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-M-S-h>",
-		"<cmd>Treewalker SwapLeft<cr>",
+		keys = "<C-M-S-h>",
+		callback = "<cmd>Treewalker SwapLeft<cr>",
 		prefix = P.misc,
 		description = "Swap left treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<C-M-S-l>",
-		"<cmd>Treewalker SwapRight<cr>",
+		keys = "<C-M-S-l>",
+		callback = "<cmd>Treewalker SwapRight<cr>",
 		prefix = P.misc,
 		description = "Swap right treesitter node",
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><C-t>",
-		function()
+		keys = "<leader><C-t>",
+		callback = function()
 			require("config.hydra").treewalker_hydra:activate()
 		end,
 		prefix = P.hydra,
@@ -2465,8 +2475,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><C-d>",
-		function()
+		keys = "<leader><C-d>",
+		callback = function()
 			require("config.hydra").dap_hydra:activate()
 		end,
 		prefix = P.hydra,
@@ -2474,8 +2484,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><C-x>",
-		function()
+		keys = "<leader><C-x>",
+		callback = function()
 			require("config.hydra").trouble_hydra:activate()
 		end,
 		prefix = P.hydra,
@@ -2483,8 +2493,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader><C-g>",
-		function()
+		keys = "<leader><C-g>",
+		callback = function()
 			require("config.hydra").git_hydra:activate()
 		end,
 		prefix = P.hydra,
@@ -2492,8 +2502,8 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		"<leader>gs",
-		function()
+		keys = "<leader>gs",
+		callback = function()
 			local path = vim.fn.getcwd()
 			local text = vim.fn.expand("<cWORD>")
 			local parts = vim.split(text, ":")
@@ -2535,7 +2545,8 @@ local mappings = {
 return {
 	setup = function()
 		local prefixifier = require("user.utils").prefixifier
-		local keymaps = require("legendary").keymaps
+		local keymaps = require("user.utils").make_keymaps
+
 		prefixifier(keymaps)(mappings)
 	end,
 }

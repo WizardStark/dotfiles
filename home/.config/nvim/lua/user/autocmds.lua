@@ -1,48 +1,41 @@
-local P = require("user.utils").PREFIXES
 local last_refreshed_time = nil
 
 local mappings = {
 	{
-		"BufEnter",
-		function()
+		event = "BufEnter",
+		callback = function()
 			if vim.g.workspaces_loaded then
 				require("workspaces.marks").clear_marks()
 				require("workspaces.marks").display_marks()
 			end
 		end,
-		prefix = P.auto,
 	},
 	{
-		{ "BufEnter", "BufWritePost" },
-		function()
+		event = { "BufEnter", "BufWritePost" },
+		callback = function()
 			vim.lsp.codelens.refresh({ bufnr = 0 })
 			last_refreshed_time = vim.loop.now()
 		end,
-		prefix = P.auto,
 	},
 	{
-		"InsertLeave",
-		function()
+		event = "InsertLeave",
+		callback = function()
 			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
 				vim.lsp.codelens.refresh({ bufnr = 0 })
 				last_refreshed_time = vim.loop.now()
 			end
 		end,
-		prefix = P.auto,
 	},
 	{
-		"BufEnter",
-		opts = {
-			pattern = { "*.zsh-theme", "*.zshrc", "*.zshenv", "*.zprofile" },
-		},
-		function()
+		event = "BufEnter",
+		pattern = { "*.zsh-theme", "*.zshrc", "*.zshenv", "*.zprofile" },
+		callback = function()
 			vim.cmd("setfiletype zsh")
 		end,
-		prefix = P.auto,
 	},
 	{
-		"BufWinEnter",
-		function()
+		event = "BufWinEnter",
+		callback = function()
 			if vim.bo.bt == "terminal" then
 				vim.opt_local.number = false
 				vim.opt_local.relativenumber = false
@@ -51,48 +44,39 @@ local mappings = {
 				vim.cmd("wincmd L")
 			end
 		end,
-		prefix = P.auto,
 	},
 	{
-		"WinClosed",
-		function()
+		event = "WinClosed",
+		callback = function()
 			if vim.g.backdrop_buf then
 				require("user.utils").close_backdrop_window()
 			end
 		end,
-		prefix = P.auto,
 	},
 	{
-		"FileType",
-		opts = {
-			pattern = "markdown",
-		},
-		function()
+		event = "FileType",
+		pattern = "markdown",
+		callback = function()
 			vim.opt.wrap = false
 		end,
-		prefix = P.auto,
 	},
 	{
-		"BufWritePost",
-		opts = {
-			pattern = "*.bib",
-		},
-		function()
+		event = "BufWritePost",
+		pattern = "*.bib",
+		callback = function()
 			vim.cmd("!bibtex main")
 		end,
-		prefix = P.auto,
 	},
 	{
-		"TermOpen",
-		function()
+		event = "TermOpen",
+		callback = function()
 			vim.opt_local.number = false
 			vim.opt_local.relativenumber = false
 		end,
-		prefix = P.auto,
 	},
 	{
-		"QuitPre",
-		function()
+		event = "QuitPre",
+		callback = function()
 			local terms = require("toggleterm.terminal").get_all()
 			for _, term in ipairs(terms) do
 				if vim.fn.win_id2win(term.window) == vim.fn.winnr() then
@@ -105,124 +89,106 @@ local mappings = {
 				end
 			end
 		end,
-		prefix = P.auto,
 	},
 	{
-		name = "UserMiniFiles",
-		{
-			"User",
-			opts = {
-				pattern = "MiniFilesWindowOpen",
-			},
-			function(args)
-				if not vim.g.backdrop_buf then
-					require("user.utils").create_backdrop_window()
+		event = "User",
+		pattern = "MiniFilesWindowOpen",
+		callback = function(args)
+			if not vim.g.backdrop_buf then
+				require("user.utils").create_backdrop_window()
+			end
+		end,
+	},
+	{
+		event = "User",
+		pattern = "MiniFilesActionRename",
+		callback = function(event)
+			require("snacks").rename.on_rename_file(event.data.from, event.data.to)
+		end,
+	},
+	{
+		event = "User",
+		pattern = "MiniFilesBufferCreate",
+		callback = function(args)
+			local MiniFiles = require("mini.files")
+			local buf_id = args.data.buf_id
+			vim.keymap.set("n", "h", function()
+				MiniFiles.go_out()
+				MiniFiles.go_out()
+				MiniFiles.go_in({})
+			end, { buffer = buf_id })
+
+			vim.keymap.set("n", "<esc>", function()
+				MiniFiles.close()
+			end, { buffer = buf_id })
+
+			vim.keymap.set("n", "<CR>", function()
+				MiniFiles.go_in({ close_on_file = true })
+			end, { buffer = buf_id })
+
+			vim.keymap.set("n", "<leader>scs", function()
+				local fs_entry = MiniFiles.get_fs_entry()
+
+				if not fs_entry then
+					vim.notify("Cannot identify filesystem entry")
+					return
 				end
-				local win_id = args.data.win_id
-			end,
-			prefix = P.auto,
-		},
-		{
-			"User",
-			opts = {
-				pattern = "MiniFilesActionRename",
-			},
-			function(event)
-				require("snacks").rename.on_rename_file(event.data.from, event.data.to)
-			end,
-			prefix = P.auto,
-		},
-		{
-			"User",
-			opts = {
-				pattern = "MiniFilesBufferCreate",
-			},
-			function(args)
-				local MiniFiles = require("mini.files")
-				local buf_id = args.data.buf_id
-				vim.keymap.set("n", "h", function()
-					MiniFiles.go_out()
-					MiniFiles.go_out()
-					MiniFiles.go_in({})
-				end, { buffer = buf_id })
 
-				vim.keymap.set("n", "<esc>", function()
+				if fs_entry.fs_type == "directory" then
 					MiniFiles.close()
-				end, { buffer = buf_id })
+					require("workspaces.workspaces").create_session(fs_entry.name, fs_entry.path)
+				else
+					MiniFiles.close()
+					vim.notify("File selected, creating session from parent directory")
+					local split_path = vim.split(fs_entry.path, "/")
+					table.remove(split_path)
+					local new_path = table.concat(split_path, "/")
+					require("workspaces.workspaces").create_session(fs_entry.name, new_path)
+				end
+			end, { buffer = buf_id })
 
-				vim.keymap.set("n", "<CR>", function()
-					MiniFiles.go_in({ close_on_file = true })
-				end, { buffer = buf_id })
+			vim.keymap.set("n", "<leader>scw", function()
+				local fs_entry = MiniFiles.get_fs_entry()
 
-				vim.keymap.set("n", "<leader>scs", function()
-					local fs_entry = MiniFiles.get_fs_entry()
+				if not fs_entry then
+					vim.notify("Cannot identify filesystem entry")
+					return
+				end
 
-					if not fs_entry then
-						vim.notify("Cannot identify filesystem entry")
-						return
-					end
-
-					if fs_entry.fs_type == "directory" then
-						MiniFiles.close()
-						require("workspaces.workspaces").create_session(fs_entry.name, fs_entry.path)
-					else
-						MiniFiles.close()
-						vim.notify("File selected, creating session from parent directory")
-						local split_path = vim.split(fs_entry.path, "/")
-						table.remove(split_path)
-						local new_path = table.concat(split_path, "/")
-						require("workspaces.workspaces").create_session(fs_entry.name, new_path)
-					end
-				end, { buffer = buf_id })
-
-				vim.keymap.set("n", "<leader>scw", function()
-					local fs_entry = MiniFiles.get_fs_entry()
-
-					if not fs_entry then
-						vim.notify("Cannot identify filesystem entry")
-						return
-					end
-
-					if fs_entry.fs_type == "directory" then
-						MiniFiles.close()
-						require("workspaces.workspaces").create_workspace(fs_entry.name, fs_entry.name, fs_entry.path)
-						vim.notify("Workspace created")
-					else
-						MiniFiles.close()
-						vim.notify("File selected, creating workspace from parent directory")
-						local split_path = vim.split(fs_entry.path, "/")
-						table.remove(split_path)
-						local new_path = table.concat(split_path, "/")
-						require("workspaces.workspaces").create_workspace(fs_entry.name, fs_entry.name, new_path)
-						vim.notify("Workspace created")
-					end
-				end, { buffer = buf_id })
-			end,
-			prefix = P.auto,
-		},
+				if fs_entry.fs_type == "directory" then
+					MiniFiles.close()
+					require("workspaces.workspaces").create_workspace(fs_entry.name, fs_entry.name, fs_entry.path)
+					vim.notify("Workspace created")
+				else
+					MiniFiles.close()
+					vim.notify("File selected, creating workspace from parent directory")
+					local split_path = vim.split(fs_entry.path, "/")
+					table.remove(split_path)
+					local new_path = table.concat(split_path, "/")
+					require("workspaces.workspaces").create_workspace(fs_entry.name, fs_entry.name, new_path)
+					vim.notify("Workspace created")
+				end
+			end, { buffer = buf_id })
+		end,
 	},
 	{
-		"QuickFixCmdPost",
-		function()
+		event = "QuickFixCmdPost",
+		callback = function()
 			require("trouble").open("qflist")
 		end,
-		prefix = P.auto,
 	},
 	{
-		"User",
-		opts = {
-			pattern = "LazyReload",
-		},
-		function()
+		event = "User",
+		pattern = "LazyReload",
+		callback = function()
 			if vim.g.workspaces_loaded then
 				require("workspaces.workspaces").setup_lualine()
 			end
 		end,
-		prefix = P.auto,
 	},
 	{
-		"VimLeave",
-		function()
+		event = "VimLeave",
+		callback = function()
 			if vim.g.workspaces_loaded then
 				local state = require("workspaces.state")
 				local persist = require("workspaces.persistence")
@@ -234,58 +200,16 @@ local mappings = {
 				persist.persist_workspaces()
 			end
 		end,
-		prefix = P.auto,
 	},
-	-- {
-	-- 	name = "BigFile",
-	-- 	clear = true,
-	-- 	{
-	-- 		"BufReadPre",
-	-- 		opts = {
-	-- 			pattern = "*",
-	-- 		},
-	-- 		function()
-	-- 			local relevant_file = vim.fn.expand("<afile>")
-	-- 			local ok, stats = pcall(vim.uv.fs_stat, vim.fn.expand(relevant_file))
-	-- 			if not ok then
-	-- 				return
-	-- 			end
-	-- 			local ok, linecount = pcall(vim.fn.system, "< " .. vim.fn.expand(relevant_file) .. "head -1000 | wc -l")
-	-- 			if not ok then
-	-- 				linecount = "1000"
-	-- 			end
-	-- 			local just_big = (stats.size > 1024 * 1024 * 2)
-	-- 			local big_however = (stats.size > 1024 * 1024 * 0.5)
-	-- 			local just_a_few_lines = tonumber(linecount:match("%d+")) < 5
-	-- 			if just_big or (big_however and just_a_few_lines) then
-	-- 				vim.notify("File: " .. relevant_file .. " is greater than 2MB.  Shutting off file detection ")
-	-- 				huge_file = relevant_file
-	-- 				vim.cmd.filetype("off")
-	-- 				vim.cmd.setlocal("noswapfile")
-	-- 				vim.cmd.setlocal("undolevels=0")
-	-- 				vim.cmd.setlocal("bufhidden=unload")
-	-- 			end
-	-- 		end,
-	-- 	},
-	-- 	{
-	-- 		"BufReadPost",
-	-- 		opts = {
-	-- 			pattern = "*",
-	-- 		},
-	-- 		function()
-	-- 			local relevant_file = vim.fn.expand("<afile>")
-	-- 			if relevant_file == huge_file then
-	-- 				vim.cmd.filetype("on")
-	-- 			end
-	-- 		end,
-	-- 	},
-	-- },
 }
 
 return {
 	setup = function()
-		local prefixifier = require("user.utils").prefixifier
-		local autocmds = require("legendary").autocmds
-		prefixifier(autocmds)(mappings)
+		for _, cmd in ipairs(mappings) do
+			vim.api.nvim_create_autocmd(cmd.event, {
+				pattern = cmd.pattern and cmd.pattern or nil,
+				callback = cmd.callback,
+			})
+		end
 	end,
 }

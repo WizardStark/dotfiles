@@ -284,4 +284,31 @@ function M.close_backdrop_window()
 	end
 end
 
+function M.make_keymaps(maps)
+	for _, mapping in ipairs(maps) do
+		local opts = mapping.opts and mapping.opts or {}
+		opts.desc = mapping.description
+		opts.noremap = true
+		local rhs = ""
+		local lhs = mapping.keys
+
+		if type(mapping.callback) == "string" then
+			rhs = mapping.callback
+		else
+			opts.callback = mapping.callback
+		end
+
+		if mapping.mode == nil then
+			vim.notify("Aborting setting mapping with no mode, with description: " .. opts.desc)
+		else
+			for _, mode in ipairs(mapping.mode) do
+				local ok, err = pcall(vim.api.nvim_set_keymap, mode, lhs, rhs, opts)
+				if not ok then
+					vim.notify(err)
+				end
+			end
+		end
+	end
+end
+
 return M
