@@ -52,6 +52,39 @@ local function open_in_non_dap_window(file, line)
 	end
 end
 
+local default_notebook = [[
+  {
+    "cells": [
+     {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        ""
+      ]
+     }
+    ],
+    "metadata": {
+     "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+     },
+     "language_info": {
+      "codemirror_mode": {
+        "name": "ipython"
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3"
+     }
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5
+  }
+]]
+
 local original_branch = nil
 
 local history_picker = function()
@@ -1875,7 +1908,6 @@ local mappings = {
 		mode = { "n" },
 		keys = "m",
 		callback = function()
-			vim.notify("calling substitute")
 			require("substitute").operator()
 		end,
 		prefix = P.misc,
@@ -1968,86 +2000,129 @@ local mappings = {
 		prefix = P.misc,
 		description = "Open yank history",
 	},
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>me",
-	-- 	":MoltenEvaluateOperator<CR>",
-	-- 	description = "evaluate operator",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>mo",
-	-- 	":noautocmd MoltenEnterOutput<CR>",
-	-- 	description = "open output window",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>mr",
-	-- 	":MoltenReevaluateCell<CR>",
-	-- 	{ desc = "re-eval cell", silent = true },
-	-- },
-	-- {
-	-- 	mode = "v",
-	-- 	"<leader>r",
-	-- 	":<C-u>MoltenEvaluateVisual<CR>gv",
-	-- 	description = "execute visual selection",
-	-- },
-	-- { mode = "n", "<leader>mc", ":MoltenHideOutput<CR>", description = "close output window" },
-	-- { mode = "n", "<leader>md", ":MoltenDelete<CR>", description = "delete Molten cell" },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>mx",
-	-- 	":MoltenOpenInBrowser<CR>",
-	-- 	description = "open output in browser",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>rc",
-	-- 	function()
-	-- 		require("quarto.runner").run_cell()
-	-- 	end,
-	-- 	description = "run cell",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>ra",
-	-- 	function()
-	-- 		require("quarto.runner").run_above()
-	-- 	end,
-	-- 	description = "run cell and above",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>rA",
-	-- 	function()
-	-- 		require("quarto.runner").run_all()
-	-- 	end,
-	-- 	description = "run all cells",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>rl",
-	-- 	function()
-	-- 		require("quarto.runner").run_line()
-	-- 	end,
-	-- 	description = "run line",
-	-- },
-	-- {
-	-- 	mode = "v",
-	-- 	"<leader>rv",
-	-- 	function()
-	-- 		require("quarto.runner").run_range()
-	-- 	end,
-	-- 	description = "run visual range",
-	-- },
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>RA",
-	-- 	function()
-	-- 		require("quarto.runner").run_all(true)
-	-- 	end,
-	-- 	description = "run all cells of all languages",
-	-- },
+	{
+		mode = { "n" },
+		keys = "<leader>me",
+		callback = "<cmd>MoltenEvaluateOperator<CR>",
+		prefix = P.ipynb,
+		description = "evaluate operator",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>mo",
+		callback = "<cmd>noautocmd MoltenEnterOutput<CR>",
+		prefix = P.ipynb,
+		description = "open output window",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>mr",
+		callback = "<cmd>MoltenReevaluateCell<CR>",
+		prefix = P.ipynb,
+		description = "re-eval cell",
+		opts = { silent = true },
+	},
+	{
+		mode = { "v" },
+		keys = "<leader>r",
+		callback = "<cmd><C-u>MoltenEvaluateVisual<CR>gv",
+		prefix = P.ipynb,
+		description = "execute visual selection",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>mc",
+		callback = "<cmd>MoltenHideOutput<CR>",
+		prefix = P.ipynb,
+		description = "close output window",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>md",
+		callback = "<cmd>MoltenDelete<CR>",
+		prefix = P.ipynb,
+		description = "delete Molten cell",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>mx",
+		callback = ":MoltenOpenInBrowser<CR>",
+		prefix = P.ipynb,
+		description = "open output in browser",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>rc",
+		callback = function()
+			require("quarto.runner").run_cell()
+		end,
+		prefix = P.ipynb,
+		description = "run cell",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>ra",
+		callback = function()
+			require("quarto.runner").run_above()
+		end,
+		prefix = P.ipynb,
+		description = "run cell and above",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>rA",
+		callback = function()
+			require("quarto.runner").run_all()
+		end,
+		prefix = P.ipynb,
+		description = "run all cells",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>rl",
+		callback = function()
+			require("quarto.runner").run_line()
+		end,
+		prefix = P.ipynb,
+		description = "run line",
+	},
+	{
+		mode = { "v" },
+		keys = "<leader>rv",
+		callback = function()
+			require("quarto.runner").run_range()
+		end,
+		prefix = P.ipynb,
+		description = "run visual range",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>RA",
+		callback = function()
+			require("quarto.runner").run_all(true)
+		end,
+		prefix = P.ipynb,
+		description = "run all cells of all languages",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>nb",
+		callback = function()
+			vim.ui.input({ prompt = "Notebook Path: ", completion = "file" }, function(input)
+				-- local path = vim.fn.expand(input .. ".ipynb")
+				-- local file = io.open(path, "w")
+				-- if file then
+				-- 	file:write(default_notebook)
+				-- 	file:close()
+				-- 	vim.cmd("edit " .. path)
+				-- else
+				-- 	print("Error: Could not open new notebook file for writing.")
+				-- end
+			end)
+		end,
+		prefix = P.ipynb,
+		description = "Create new ipynb notebook",
+	},
 	{
 		mode = { "n" },
 		keys = "<leader>bp",
@@ -2508,6 +2583,15 @@ local mappings = {
 		end,
 		prefix = P.hydra,
 		description = "Start git mode",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader><C-n>",
+		callback = function()
+			require("config.hydra").notebook_hydra:activate()
+		end,
+		prefix = P.hydra,
+		description = "Start notebook mode",
 	},
 	{
 		mode = { "n", "v" },

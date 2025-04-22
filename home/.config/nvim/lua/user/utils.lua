@@ -16,6 +16,7 @@ M.PREFIXES = {
 	move = "Movement",
 	nav = "Navigation",
 	notes = "Notes",
+	ipynb = "Notebooks",
 	task = "Tasks",
 	term = "Terminal",
 	test = "Test",

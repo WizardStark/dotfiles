@@ -11,17 +11,7 @@ require("jupytext").setup({
 })
 
 require("quarto").setup({
-	completion = {
-		enabled = true,
-	},
-	chunks = "all",
-	diagnostics = {
-		enabled = true,
-		triggers = { "BufWritePost" },
-	},
-	lspFeatures = {
-		languages = { "python" },
-	},
+	debug = true,
 	codeRunner = {
 		enabled = true,
 		default_method = "molten",

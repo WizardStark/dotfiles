@@ -25,6 +25,16 @@ configs.setup({
 		enable = true,
 		disable = disable,
 		lookahead = true,
+		move = {
+			enable = true,
+			set_jumps = false, -- you can change this if you want.
+			goto_next_start = {
+				["]b"] = { query = "@code_cell.inner", desc = "next code block" },
+			},
+			goto_previous_start = {
+				["[b"] = { query = "@code_cell.inner", desc = "previous code block" },
+			},
+		},
 		select = {
 			enable = true,
 			keymaps = {
@@ -32,6 +42,8 @@ configs.setup({
 				["if"] = { query = "@function.inner", desc = "Select inner part of a function region" },
 				["ac"] = { query = "@class.outer", desc = "Select outer part of a class region" },
 				["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
+				["ib"] = { query = "@code_cell.inner", desc = "in block" },
+				["ab"] = { query = "@code_cell.outer", desc = "around block" },
 			},
 			selection_modes = {
 				["@function.outer"] = "V",

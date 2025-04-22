@@ -162,6 +162,12 @@ local function traverse_changes(forward)
 	end
 end
 
+local function keys(str)
+	return function()
+		vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(str, true, false, true), "m", true)
+	end
+end
+
 M.treewalker_hydra = Hydra({
 	name = "Treewalker",
 	mode = { "n", "x" },
@@ -410,6 +416,26 @@ _q_: Exit]],
 			end,
 		},
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
+	},
+})
+
+M.notebook_hydra = Hydra({
+	name = "Notebook",
+	mode = { "n" },
+	hint = [[
+_j_/_k_: move down/up  _r_: run cell
+_l_: run line        _R_: run above
+_q_: exit ]],
+	config = {
+		invoke_on_body = true,
+	},
+	heads = {
+		{ "j", keys("]b") },
+		{ "k", keys("[b") },
+		{ "r", "<cmd>MoltenReevaluateCell<CR>" },
+		{ "l", "<cmd>QuartoSendLine<CR>" },
+		{ "R", "<cmd>MoltenReevaluateCell<CR>" },
+		{ "q", nil, { exit = true } },
 	},
 })
 

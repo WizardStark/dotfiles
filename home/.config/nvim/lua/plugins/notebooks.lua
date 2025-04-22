@@ -20,4 +20,14 @@ return {
 			require("config.notebooks")
 		end,
 	},
+	{
+
+		"GCBallesteros/jupytext.nvim",
+		event = "UiEnter",
+		opts = {
+			style = "markdown",
+			output_extension = "md",
+			force_ft = "markdown",
+		},
+	},
 }

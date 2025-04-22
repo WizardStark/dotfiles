@@ -44,7 +44,6 @@ local mappings = {
 		prefix = P.misc,
 		description = "Toggle window that logs keypresses",
 	},
-
 	{
 		callback = function()
 			require("lint").try_lint()

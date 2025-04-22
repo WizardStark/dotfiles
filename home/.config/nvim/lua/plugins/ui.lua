@@ -31,18 +31,18 @@ return {
 			require("config.ui.noice")
 		end,
 	},
-	{
-		"OXY2DEV/markview.nvim",
-		ft = { "markdown", "tex" },
-		lazy = true,
-		dependencies = {
-			"nvim-treesitter/nvim-treesitter",
-			"echasnovski/mini.icons",
-		},
-		config = function()
-			require("config.ui.markview")
-		end,
-	},
+	-- {
+	-- 	"OXY2DEV/markview.nvim",
+	-- 	ft = { "markdown", "tex" },
+	-- 	lazy = true,
+	-- 	dependencies = {
+	-- 		"nvim-treesitter/nvim-treesitter",
+	-- 		"echasnovski/mini.icons",
+	-- 	},
+	-- 	config = function()
+	-- 		require("config.ui.markview")
+	-- 	end,
+	-- },
 	{
 		"folke/trouble.nvim",
 		lazy = true,
