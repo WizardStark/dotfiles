@@ -13,7 +13,7 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
-		"BufEnter",
+		{ "BufEnter", "BufWritePost" },
 		function()
 			vim.lsp.codelens.refresh({ bufnr = 0 })
 			last_refreshed_time = vim.loop.now()
