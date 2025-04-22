@@ -114,6 +114,13 @@ function M.switch_session(target_session, target_workspace)
 		return
 	end
 
+	if _G.Hydra ~= {} then
+		require("config.hydra").dap_hydra:exit()
+		require("config.hydra").git_hydra:exit()
+		require("config.hydra").trouble_hydra:exit()
+		require("config.hydra").treewalker_hydra:exit()
+	end
+
 	-- Save current session before switching
 	pcall(save_named_buffers)
 	-- hide all toggleterms

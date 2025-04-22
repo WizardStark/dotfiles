@@ -552,6 +552,7 @@ local mappings = {
 		prefix = P.misc,
 		description = "List all symbols in current buffer",
 	},
+	---@diagnostic disable: missing-fields
 	{
 		mode = "n",
 		"<leader>fc",
@@ -570,6 +571,7 @@ local mappings = {
 		prefix = P.find,
 		description = "Calls made by this symbol",
 	},
+	---@diagnostic enable: missing-fields
 	{
 		mode = "n",
 		"<leader>fi",
@@ -2488,7 +2490,6 @@ local mappings = {
 		prefix = P.hydra,
 		description = "Start git mode",
 	},
-
 	{
 		mode = { "n", "v" },
 		"<leader>gs",

@@ -1,6 +1,5 @@
 local P = require("user.utils").PREFIXES
-local has_refreshed_codelenses = false
-local last_moved_time = vim.loop.now()
+local last_refreshed_time = nil
 
 local mappings = {
 	{
@@ -14,28 +13,11 @@ local mappings = {
 		prefix = P.auto,
 	},
 	{
-		{ "BufEnter", "CursorHold", "InsertLeave" },
+		{ "BufEnter", "InsertLeave" },
 		function()
-			vim.loop.new_timer():start(
-				250,
-				0,
-				vim.schedule_wrap(function()
-					if vim.loop.now() - last_moved_time > 249 then
-						has_refreshed_codelenses = true
-						vim.lsp.codelens.refresh({ bufnr = 0 })
-					end
-				end)
-			)
-		end,
-		prefix = P.auto,
-	},
-	{
-		{ "CursorMoved" },
-		function()
-			last_moved_time = vim.loop.now()
-			if has_refreshed_codelenses then
-				has_refreshed_codelenses = false
-				vim.lsp.codelens.clear(vim.lsp.get_clients({ bufnr = 0 }).id, 0)
+			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
+				vim.lsp.codelens.refresh({ bufnr = 0 })
+				last_refreshed_time = vim.loop.now()
 			end
 		end,
 		prefix = P.auto,

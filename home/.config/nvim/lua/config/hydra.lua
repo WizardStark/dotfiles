@@ -1,6 +1,15 @@
 local Hydra = require("hydra")
 local M = {}
 
+Hydra.setup({
+	color = "pink",
+	hint = {
+		type = "window",
+		offset = 2,
+		position = { "bottom", "right" },
+	},
+})
+
 local last_git_traversed_at
 local hunk_starts
 local changed_files
@@ -164,14 +173,6 @@ _j_: Down  _J_: Down
 _k_: Up    _K_: Up
 
 _q_: Exit]],
-	config = {
-		color = "pink",
-		hint = {
-			type = "window",
-			offset = 2,
-			position = "bottom-right",
-		},
-	},
 	heads = {
 		{ "h", "<cmd>Treewalker Left<cr>" },
 		{ "l", "<cmd>Treewalker Right<cr>" },
@@ -201,9 +202,7 @@ _<C-c>_: Run to cursor
 _<C-r>_: Rerun last debug
 _q_: Exit]],
 	config = {
-		color = "pink",
 		hint = {
-			type = "window",
 			offset = 3,
 			position = "top-right",
 		},
@@ -316,7 +315,6 @@ _q_: Exit]],
 			end,
 			{ desc = false },
 		},
-
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
 	},
 })
@@ -329,14 +327,6 @@ _N_: Next item
 _T_: Prev item
 
 _q_: Exit]],
-	config = {
-		color = "pink",
-		hint = {
-			type = "window",
-			offset = 2,
-			position = "bottom-right",
-		},
-	},
 	heads = {
 		{
 			"N",
@@ -419,7 +409,6 @@ _q_: Exit]],
 				require("mini.diff").toggle_overlay(0)
 			end,
 		},
-
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
 	},
 })
