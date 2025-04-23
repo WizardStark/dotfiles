@@ -81,7 +81,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
       shift
 
       case "$command" in
-        export|unset) fzf --preview "eval 'echo ${}'"         "$@" ;;
+        export|unset) fzf --preview "eval 'echo ${}'"          "$@" ;;
         ssh)          fzf --preview 'dig {}'                   "$@" ;;
         *)            fzf --preview "$fzf_file_or_dir_preview" "$@" ;;
       esac
@@ -93,7 +93,17 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     # Allow comments in commandline
     setopt interactivecomments
 
-    alias ls="eza --color=always -1 -a --icons=always"
+    _venv_completion() {
+        local -a venvs
+        venvs=($HOME/.virtualenvs/*(/:t))
+        compadd -a venvs
+    }
+
+    compdef _venv_completion venv rmvenv
+
+    if require eza; then
+        alias ls="eza --color=always -1 -a --icons=always"
+    fi
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     eval "$(zoxide init --cmd cd zsh)"

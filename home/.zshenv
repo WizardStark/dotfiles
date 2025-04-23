@@ -1,5 +1,6 @@
 export HISTORY_START_WITH_GLOBAL=true
 
+# Utility to add to path without duplication
 pathmunge() {
     if ! echo $PATH | /usr/bin/env egrep -q "(^|:)$1($|:)"; then
         if [ "$2" = "after" ]; then
@@ -8,6 +9,13 @@ pathmunge() {
             PATH=$1:$PATH
         fi
     fi
+}
+
+# Utility to check for presence of binaries
+require() {
+    command -v "${1}" &>/dev/null && return 0
+    printf 'Missing required application: %s\n' "${1}" >&2
+    return 1
 }
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
