@@ -434,7 +434,7 @@ _q_: exit ]],
 		{ "k", keys("[b") },
 		{ "r", "<cmd>MoltenReevaluateCell<CR>" },
 		{ "l", "<cmd>QuartoSendLine<CR>" },
-		{ "R", "<cmd>MoltenReevaluateCell<CR>" },
+		{ "R", "<cmd>QuartoSendAbove<CR>" },
 		{ "q", nil, { exit = true } },
 	},
 })

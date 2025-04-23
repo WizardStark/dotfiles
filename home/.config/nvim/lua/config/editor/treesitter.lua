@@ -21,6 +21,9 @@ configs.setup({
 	endwise = {
 		enable = true,
 	},
+	playground = {
+		enable = true,
+	},
 	textobjects = {
 		enable = true,
 		disable = disable,

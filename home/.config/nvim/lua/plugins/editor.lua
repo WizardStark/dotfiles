@@ -6,6 +6,7 @@ return {
 		event = "UiEnter",
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter-textobjects",
+			"nvim-treesitter/playground",
 			"RRethy/nvim-treesitter-textsubjects",
 			"RRethy/nvim-treesitter-endwise",
 		},
