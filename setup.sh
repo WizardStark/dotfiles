@@ -9,21 +9,6 @@ require() {
     return 1
 }
 
-if ! require brew; then
-    echo "Installing Hombrew"
-    export NONINTERACTIVE=1
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-    fi
-    brew update
-else
-    echo "Updating Homebrew"
-    brew update
-fi
-
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # install linuxbrew dependencies
     # these need to be installed with apt to allow installation of brew
@@ -36,7 +21,31 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     fi
 fi
 
-brew install bat eza ffind git-delta jq nodejs npm nvim ripgrep stow tmux vivid wget zoxide zsh
+if ! require brew; then
+    echo "Installing Hombrew"
+    export NONINTERACTIVE=1
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if [ -d "/home/linuxbrew/.linuxbrew/bin/brew"]; then
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        else
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        if [ -d "/opt/homebrew/bin/brew"]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        else
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
+    fi
+    brew update
+else
+    echo "Updating Homebrew"
+    brew update
+fi
+
+brew install bat eza ffind git-delta jq jupytext nodejs npm nvim ripgrep stow tmux vivid wget zoxide zsh
 
 mkdir -p ~/.config
 
