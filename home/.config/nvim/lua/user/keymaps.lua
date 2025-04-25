@@ -1386,21 +1386,12 @@ local mappings = {
 		mode = { "v" },
 		keys = "<leader>gf",
 		callback = function()
-			vim.cmd([[normal! vv]])
-			local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
-			text = require("user.utils").escape_special_chars(text)
-			text = "(" .. text:gsub("\n%s+", "\n"):gsub("(\n)$", ""):gsub("[\n\r]", ")\n(.*") .. ")"
-			require("grug-far").toggle_instance({
+			require("grug-far").with_visual_selection({
 				instanceName = "main_instance",
-				ignoreVisualSelection = true,
-				prefills = {
-					search = text,
-					flags = "-U",
-				},
 			})
 		end,
 		prefix = P.code,
-		description = "Search and replace word under cursor",
+		description = "Search and replace visual selection",
 	},
 	{
 		mode = { "n", "x" },

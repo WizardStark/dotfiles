@@ -24,8 +24,7 @@ return {
 		"folke/noice.nvim",
 		event = "UiEnter",
 		dependencies = {
-			-- "MunifTanjim/nui.nvim",
-			{ "pynappo/nui.nvim", branch = "support-winborder" },
+			"MunifTanjim/nui.nvim",
 		},
 		config = function()
 			require("config.ui.noice")
@@ -63,8 +62,7 @@ return {
 	{
 		"grapp-dev/nui-components.nvim",
 		dependencies = {
-			-- "MunifTanjim/nui.nvim",
-			{ "pynappo/nui.nvim", branch = "support-winborder" },
+			"MunifTanjim/nui.nvim",
 		},
 		lazy = true,
 	},

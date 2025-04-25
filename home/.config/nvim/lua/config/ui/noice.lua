@@ -25,9 +25,6 @@ require("noice").setup(
 					width = "auto",
 					height = "auto",
 				},
-				-- border = {
-				-- 	style = "none",
-				-- },
 			},
 		},
 		cmdline = {
@@ -54,9 +51,6 @@ require("noice").setup(
 			hover = {
 				enabled = false,
 			},
-		},
-		popupmenu = {
-			-- backend = "cmp", -- backend to use to show regular cmdline completions
 		},
 		presets = {
 			bottom_search = false, -- use a classic bottom cmdline for search
