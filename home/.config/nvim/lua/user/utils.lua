@@ -195,6 +195,16 @@ function M.close_non_terminal_buffers(close_current)
 	end
 end
 
+function M.close_terminal_buffers()
+	local current_buffer = vim.api.nvim_get_current_buf()
+	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+		local should_delete = vim.api.nvim_buf_is_valid(buffer) and vim.bo[buffer].bt == "terminal"
+		if should_delete then
+			pcall(vim.api.nvim_buf_delete, buffer, { force = true })
+		end
+	end
+end
+
 --- Force closes all buffers except the current one
 function M.force_close_other_buffers()
 	local current_buffer = vim.api.nvim_get_current_buf()

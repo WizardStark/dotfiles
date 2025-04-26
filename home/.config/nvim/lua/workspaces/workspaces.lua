@@ -125,6 +125,7 @@ function M.switch_session(target_session, target_workspace)
 	pcall(save_named_buffers)
 	-- hide all toggleterms
 	toggleterms.close_visible_terms(true)
+	require("user.utils").close_terminal_buffers()
 
 	local session_dir = Path:new(vim.fn.expand(state.get().current_session.dir))
 
@@ -167,6 +168,7 @@ function M.switch_session(target_session, target_workspace)
 
 	vim.api.nvim_set_current_win(win)
 	vim.api.nvim_win_set_cursor(win, pos)
+	vim.cmd.stopinsert()
 
 	M.setup_lualine()
 end
