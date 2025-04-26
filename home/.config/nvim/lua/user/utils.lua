@@ -28,19 +28,19 @@ M.PREFIXES = {
 }
 
 M.special_windows = {
-	["OverseerList"] = function()
+	OverseerList = function()
 		vim.cmd(":OverseerToggle")
 	end,
-	["trouble"] = function()
+	trouble = function()
 		local view = require("trouble").close()
 		while view do
 			view = require("trouble").close()
 		end
 	end,
-	["dapui"] = function()
+	dapui = function()
 		require("dapui").toggle()
 	end,
-	["DiffviewFiles"] = function()
+	DiffviewFiles = function()
 		vim.cmd(":DiffviewClose")
 	end,
 }
@@ -250,6 +250,9 @@ function M.toggle_special_buffers(toggled_types)
 		for _, filetype in ipairs(visible_window_filetypes) do
 			if filetype:find("dapui") then
 				filetype = "dapui"
+			end
+			if filetype:find("Avante") then
+				require("avante.api").toggle()
 			end
 			for type, func in pairs(M.special_windows) do
 				if filetype == type then

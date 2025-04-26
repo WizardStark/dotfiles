@@ -2630,6 +2630,18 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
+		keys = "<leader>in",
+		callback = function()
+			require("avante.api").ask({ new_chat = true })
+			if check_keybind("n", " ac") then
+				vim.keymap.del("n", "<space>ac")
+			end
+		end,
+		prefix = P.llm,
+		description = "Open a new chat",
+	},
+	{
+		mode = { "n", "v" },
 		keys = "<leader>it",
 		callback = function()
 			require("avante.api").toggle()
@@ -2648,6 +2660,31 @@ local mappings = {
 		end,
 		prefix = P.llm,
 		description = "Edit line/selection",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>ii",
+		callback = "<cmd>AvanteFocus<cr>",
+		prefix = P.llm,
+		description = "Focus the input",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>ie",
+		callback = function()
+			require("avante.api").select_history()
+		end,
+		prefix = P.llm,
+		description = "Edit line/selection",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>is",
+		callback = function()
+			require("avante.api").stop()
+		end,
+		prefix = P.llm,
+		description = "Stop",
 	},
 }
 
