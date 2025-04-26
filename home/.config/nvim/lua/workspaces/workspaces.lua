@@ -169,7 +169,6 @@ function M.switch_session(target_session, target_workspace)
 	vim.api.nvim_win_set_cursor(win, pos)
 
 	M.setup_lualine()
-	persist.persist_workspaces()
 end
 
 function M.rename_current_session(name)

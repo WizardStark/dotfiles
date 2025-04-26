@@ -85,6 +85,16 @@ local default_notebook = [[
   }
 ]]
 
+local function check_keybind(mode, lhs)
+	local keymaps = vim.api.nvim_get_keymap(mode)
+	for _, km in ipairs(keymaps) do
+		if km.lhs == lhs then
+			return true
+		end
+	end
+	return false
+end
+
 local original_branch = nil
 
 local history_picker = function()
@@ -542,7 +552,7 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>i",
+		keys = "<leader>li",
 		callback = function()
 			vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
 		end,
@@ -2632,6 +2642,39 @@ local mappings = {
 			end
 		end,
 		description = "Go to stacktrace member",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>ia",
+		callback = function()
+			require("avante.api").ask()
+			if check_keybind("n", " ac") then
+				vim.keymap.del("n", "<space>ac")
+			end
+		end,
+		prefix = P.llm,
+		description = "Ask",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>it",
+		callback = function()
+			require("avante.api").toggle()
+			if check_keybind("n", " ac") then
+				vim.keymap.del("n", "<space>ac")
+			end
+		end,
+		prefix = P.llm,
+		description = "Toggle window",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>ie",
+		callback = function()
+			require("avante.api").edit()
+		end,
+		prefix = P.llm,
+		description = "Edit line/selection",
 	},
 }
 

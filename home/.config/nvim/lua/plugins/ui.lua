@@ -31,18 +31,13 @@ return {
 			require("config.ui.noice")
 		end,
 	},
-	-- {
-	-- 	"OXY2DEV/markview.nvim",
-	-- 	ft = { "markdown", "tex" },
-	-- 	lazy = true,
-	-- 	dependencies = {
-	-- 		"nvim-treesitter/nvim-treesitter",
-	-- 		"echasnovski/mini.icons",
-	-- 	},
-	-- 	config = function()
-	-- 		require("config.ui.markview")
-	-- 	end,
-	-- },
+	{
+		"MeanderingProgrammer/render-markdown.nvim",
+		opts = {
+			file_types = { "markdown", "Avante" },
+		},
+		ft = { "markdown", "Avante" },
+	},
 	{
 		"folke/trouble.nvim",
 		lazy = true,

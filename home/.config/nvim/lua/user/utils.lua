@@ -12,6 +12,7 @@ M.PREFIXES = {
 	hydra = "Hydra",
 	latex = "Latex",
 	lsp = "LSP",
+	llm = "LLM",
 	misc = "Misc",
 	move = "Movement",
 	nav = "Navigation",

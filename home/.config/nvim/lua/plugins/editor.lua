@@ -101,6 +101,7 @@ return {
 			"rafamadriz/friendly-snippets",
 			"saghen/blink.compat",
 			"rcarriga/cmp-dap",
+			"Kaiser-Yang/blink-cmp-avante",
 		},
 		version = "v1.*",
 		config = function()

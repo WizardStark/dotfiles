@@ -62,3 +62,12 @@ python -m ipykernel install --user --name project_name
 Recent versions of `jupyter_client` also do not create their runtime directory for some reason, so
 if you see an error to the effect of "file/directory does not exist /some/path/Jupyter/runtime/kernel-someid",
 simply create the directory.
+
+## LLM integration
+
+Install Ollama:
+```
+curl -fsSL https://ollama.com/install.sh | sh
+```
+And currently it appears that qwen2.5-coder is the best local model, so choose from https://ollama.com/library/qwen2.5-coder:7b-instruct
+(it has been prefilled with a decent choice for 8GB vram gpu's)
