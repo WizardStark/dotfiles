@@ -2399,33 +2399,6 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		keys = "<leader><CR>",
-		callback = function()
-			vim.cmd("CheckboxPrev")
-		end,
-		prefix = P.misc,
-		description = "Next checkbox state",
-	},
-	{
-		mode = { "n", "v" },
-		keys = "<leader><S-CR>",
-		callback = function()
-			vim.cmd("CheckboxPrev")
-		end,
-		prefix = P.misc,
-		description = "Previous checkbox state",
-	},
-	{
-		mode = { "n", "v" },
-		keys = "<leader>ct",
-		callback = function()
-			vim.cmd("CheckboxToggle")
-		end,
-		prefix = P.misc,
-		description = "Toggle if line is a checkbox",
-	},
-	{
-		mode = { "n", "v" },
 		keys = "<leader>mcc",
 		callback = function()
 			vim.cmd("CodeCreate")
