@@ -108,6 +108,7 @@ mason_lspconfig.setup_handlers({
 						diagnosticMode = "openFilesOnly",
 						useLibraryCodeForTypes = true,
 					},
+					pythonPath = require("user.utils").get_python_venv(),
 				},
 			},
 		})

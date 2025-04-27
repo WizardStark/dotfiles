@@ -326,4 +326,27 @@ function M.make_keymaps(maps)
 	end
 end
 
+function M.get_python_venv()
+	local kernels = vim.split(vim.fn.system("lsvenv"), "\n")
+	local cwd = vim.fn.getcwd()
+	local function escape_lua_patterns(s)
+		return s:gsub("([^%w])", "%%%1")
+	end
+
+	local kernel_name = nil
+
+	for _, kernel in ipairs(kernels) do
+		if cwd:find(escape_lua_patterns(kernel)) then
+			kernel_name = kernel
+			break
+		end
+	end
+
+	if kernel_name ~= nil and vim.tbl_contains(kernels, kernel_name) then
+		return vim.fn.expand("~/.virtualenvs/" .. kernel_name .. "/bin/python3")
+	else
+		return vim.split(vim.fn.system("which python"), "\n")[1]
+	end
+end
+
 return M

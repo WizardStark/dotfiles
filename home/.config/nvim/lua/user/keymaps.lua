@@ -1188,7 +1188,7 @@ local mappings = {
 	{
 		mode = { "n" },
 		keys = "<leader>dc",
-		continue,
+		callback = continue,
 		prefix = P.debug,
 		description = "Start debug session, or continue session",
 	},
