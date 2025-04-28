@@ -7,7 +7,6 @@ local opts = {
 		model = vim.g.ollama_model,
 	},
 	behaviour = {
-		-- auto_suggestions = true,
 		enable_cursor_planning_mode = true,
 		auto_set_keymaps = false,
 		use_cwd_as_project_root = true,

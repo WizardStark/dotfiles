@@ -2,3 +2,5 @@
 **/lcl/**
 **/tmux/plugins/**
 **/spell
+.aider*
+!.aider.conf.yml

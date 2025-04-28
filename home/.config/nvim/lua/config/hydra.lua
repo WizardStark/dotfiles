@@ -206,6 +206,7 @@ _U_: Step out          _Q_: Quit debugger
 _<C-b>_: Clear breakpoints
 _<C-c>_: Run to cursor
 _<C-r>_: Rerun last debug
+_<C-t>_: Toggle virtual text
 _q_: Exit]],
 	config = {
 		hint = {
@@ -311,6 +312,13 @@ _q_: Exit]],
 				require("dap").terminate()
 				require("dapui").close()
 				require("nvim-dap-virtual-text").refresh()
+			end,
+			{ desc = false },
+		},
+		{
+			"<C-t>",
+			function()
+				require("nvim-dap-virtual-text").toggle()
 			end,
 			{ desc = false },
 		},

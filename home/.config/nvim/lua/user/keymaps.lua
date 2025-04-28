@@ -1214,6 +1214,15 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
+		keys = "<leader>dv",
+		callback = function()
+			require("nvim-dap-virtual-text").toggle()
+		end,
+		prefix = P.debug,
+		description = "Reset and toggle ui",
+	},
+	{
+		mode = { "n" },
 		keys = "<leader>bt",
 		callback = function()
 			require("alternate-toggler").toggleAlternate()
@@ -2670,7 +2679,7 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		keys = "<leader>ie",
+		keys = "<leader>ih",
 		callback = function()
 			require("avante.api").select_history()
 		end,

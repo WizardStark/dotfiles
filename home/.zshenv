@@ -72,3 +72,10 @@ rmvenv() {
         rm -r $VENV_HOME/$1
     fi
 }
+
+export OLLAMA_API_BASE=http://127.0.0.1:11434
+
+airun() {
+    export OLLAMA_CONTEXT_LENGTH=8192 ollama serve
+    aider --model ollama_chat/${1}
+}
