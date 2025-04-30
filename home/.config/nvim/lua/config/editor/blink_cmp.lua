@@ -1,4 +1,4 @@
-local default_sources = { "lsp", "avante", "path", "snippets", "buffer", "lazydev" }
+local default_sources = { "lsp", "path", "snippets", "buffer", "lazydev" }
 local debug_sources = vim.list_extend(vim.deepcopy(default_sources), { "dap" })
 
 require("blink.cmp").setup({
@@ -54,29 +54,11 @@ require("blink.cmp").setup({
 				module = "lazydev.integrations.blink",
 				fallbacks = { "lsp" },
 			},
-			avante = {
-				module = "blink-cmp-avante",
-				name = "Avante",
-				opts = {
-					command = {
-						get_kind_name = function(_)
-							return "AvanteCmd"
-						end,
-					},
-					mention = {
-						get_kind_name = function(_)
-							return "AvanteMention"
-						end,
-					},
-				},
-			},
 		},
 	},
 	appearance = {
 		kind_icons = {
 			Snippet = "",
-			AvanteCmd = "",
-			AvanteMention = "",
 		},
 	},
 	cmdline = {

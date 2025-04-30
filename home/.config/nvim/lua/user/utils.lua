@@ -251,9 +251,6 @@ function M.toggle_special_buffers(toggled_types)
 			if filetype:find("dapui") then
 				filetype = "dapui"
 			end
-			if filetype:find("Avante") then
-				require("avante.api").toggle()
-			end
 			for type, func in pairs(M.special_windows) do
 				if filetype == type then
 					table.insert(toggled_types, type)
