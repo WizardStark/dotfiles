@@ -196,9 +196,15 @@ function M.close_non_terminal_buffers(close_current)
 end
 
 function M.close_terminal_buffers()
-	local current_buffer = vim.api.nvim_get_current_buf()
+	local toggleterm_bufs = {}
+	for _, term in ipairs(require("toggleterm.terminal").get_all(true)) do
+		table.insert(toggleterm_bufs, term.bufnr)
+	end
+
 	for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
-		local should_delete = vim.api.nvim_buf_is_valid(buffer) and vim.bo[buffer].bt == "terminal"
+		local should_delete = vim.api.nvim_buf_is_valid(buffer)
+			and vim.bo[buffer].bt == "terminal"
+			and not vim.list_contains(toggleterm_bufs, buffer)
 		if should_delete then
 			pcall(vim.api.nvim_buf_delete, buffer, { force = true })
 		end
