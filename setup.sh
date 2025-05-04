@@ -76,6 +76,7 @@ stow -v --adopt -t $HOME home
 
 nvim --headless "+Lazy! sync" +qa
 
-sudo chsh -s $(which zsh)
+command -v zsh | sudo tee -a /etc/shells
+sudo chsh -s $(which zsh) $(whoami)
 zsh -l
 echo "Done!"
