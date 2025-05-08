@@ -5,6 +5,7 @@ local state = require("workspaces.state")
 local bps = require("workspaces.breakpoints")
 local utils = require("workspaces.utils")
 local toggleterms = require("workspaces.toggleterms")
+local keymaps = require("workspaces.keymaps")
 
 ---@type string
 M.workspaces_path = vim.fn.stdpath("data") .. Path.path.sep .. "workspaces"
@@ -299,6 +300,7 @@ function M.load_workspaces()
 	bps.apply_breakpoints(session.breakpoints)
 	toggleterms.toggle_active_terms(true)
 	load_marks()
+	keymaps.setup_keymaps()
 end
 
 function M.purge_workspaces()

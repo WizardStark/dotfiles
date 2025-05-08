@@ -324,7 +324,7 @@ function M.delete_workspace(name)
 		-- If the current session is the last one delete the local file and recreate it
 		if #state.get().workspaces == 0 then
 			M.purge_workspaces()
-			M.load_workspaces()
+			persist.load_workspaces()
 		end
 
 		M.switch_session(nil, state.get().workspaces[1])
