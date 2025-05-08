@@ -39,7 +39,7 @@ local keymaps_config = {
 		picker:norm(function()
 			if item then
 				picker:close()
-				if item.item.type == "keymap" then
+				if item.type == "keymap" then
 					vim.api.nvim_input(item.item.lhs)
 				elseif item.item.type == "unmapped" then
 					item.item.callback()
