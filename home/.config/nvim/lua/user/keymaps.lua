@@ -960,7 +960,7 @@ local mappings = {
 	{
 		mode = { "n" },
 		keys = "<leader>xx",
-		"<cmd>Trouble diagnostics toggle<cr>",
+		callback = "<cmd>Trouble diagnostics toggle<cr>",
 		prefix = P.diag,
 		description = "Toggle diagnostics window",
 	},
@@ -2247,7 +2247,7 @@ local mappings = {
 	{
 		mode = { "v" },
 		keys = "<leader>cs",
-		"<cmd>CodeSnapASCII<cr>",
+		callback = "<cmd>CodeSnapASCII<cr>",
 		prefix = P.misc,
 		description = "Copy ASCII code snapshot to clipboard",
 	},

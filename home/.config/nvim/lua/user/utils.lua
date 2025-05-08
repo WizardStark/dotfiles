@@ -322,7 +322,7 @@ function M.make_keymaps(maps)
 			for _, mode in ipairs(mapping.mode) do
 				local ok, err = pcall(vim.api.nvim_set_keymap, mode, lhs, rhs, opts)
 				if not ok then
-					vim.notify(err)
+					vim.notify("Error: " .. err .. " for keys :" .. lhs)
 				end
 			end
 		end
