@@ -5,9 +5,11 @@ local workspace_dir = vim.fn.stdpath("cache") .. "/jdtls/workspace-root/" .. pro
 if vim.loop.fs_stat(workspace_dir) == nil then
 	Path:new(workspace_dir):mkdir({ parents = true })
 end
-local jdtls_path = require("mason-registry").get_package("jdtls"):get_install_path()
-local java_debug_path = require("mason-registry").get_package("java-debug-adapter"):get_install_path()
-local java_test_path = require("mason-registry").get_package("java-test"):get_install_path()
+
+local jdtls_path = vim.fn.expand("$MASON/packages/jdtls")
+local java_debug_path = vim.fn.expand("$MASON/packages/java-debug-adapter")
+local java_test_path = vim.fn.expand("$MASON/packages/java-test")
+
 local os
 if vim.fn.has("macunix") then
 	os = "mac"

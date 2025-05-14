@@ -29,7 +29,7 @@ vim.fn.sign_define("DapStopped", {
 dap.set_log_level("TRACE")
 dap.defaults.fallback.exception_breakpoints = { "uncaught" }
 
-local chrome_debug_path = require("mason-registry").get_package("chrome-debug-adapter"):get_install_path()
+local chrome_debug_path = vim.fn.exepath("chrome-debug-adapter")
 dap.adapters.chrome = {
 	type = "executable",
 	command = "node",

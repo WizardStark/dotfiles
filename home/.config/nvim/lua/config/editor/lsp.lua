@@ -27,7 +27,6 @@ mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
 		"basedpyright",
-		"jdtls",
 		"ts_ls",
 	},
 	automatic_installation = true,
@@ -44,6 +43,13 @@ local function on_attach(client, bufnr)
 		vim.g.extra_lsp_actions()
 	end
 end
+
+vim.lsp.config("*", {
+	capabilities = capabilities,
+	on_attach = on_attach,
+})
+
+vim.lsp.enable({ "jdtls", "ts_ls" }, false)
 
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
@@ -69,87 +75,72 @@ require("typescript-tools").setup({
 	},
 })
 
-mason_lspconfig.setup_handlers({
-	function(server_name)
-		lspconfig[server_name].setup({
-			on_attach = on_attach,
-			capabilities = capabilities,
-		})
-	end,
-	["jdtls"] = function() end,
-	["ts_ls"] = function() end,
-	["lua_ls"] = function()
-		lspconfig.lua_ls.setup({
-			on_attach = on_attach,
-			capabilities = capabilities,
-			settings = {
-				Lua = {
-					hint = {
-						enable = true,
-					},
-				},
+lspconfig.lua_ls.setup({
+	on_attach = on_attach,
+	capabilities = capabilities,
+	settings = {
+		Lua = {
+			hint = {
+				enable = true,
 			},
-		})
-	end,
-	["basedpyright"] = function()
-		lspconfig["basedpyright"].setup({
-			on_attach = on_attach,
-			capabilities = capabilities,
-			settings = {
-				basedpyright = {
-					typeCheckingMode = "off",
+		},
+	},
+})
+
+lspconfig.basedpyright.setup({
+	on_attach = on_attach,
+	capabilities = capabilities,
+	settings = {
+		basedpyright = {
+			typeCheckingMode = "off",
+		},
+		python = {
+			analysis = {
+				diagnosticSeverityOverrides = {
+					reportUnusedExpression = "none",
 				},
-				python = {
-					analysis = {
-						diagnosticSeverityOverrides = {
-							reportUnusedExpression = "none",
-						},
-						autoSearchPaths = true,
-						diagnosticMode = "openFilesOnly",
-						useLibraryCodeForTypes = true,
-					},
-					pythonPath = require("user.utils").get_python_venv(),
-				},
+				autoSearchPaths = true,
+				diagnosticMode = "openFilesOnly",
+				useLibraryCodeForTypes = true,
 			},
-		})
-	end,
-	["gopls"] = function()
-		lspconfig.gopls.setup({
-			on_attach = on_attach,
-			capabilities = capabilities,
-			settings = {
-				gopls = {
-					hints = {
-						rangeVariableTypes = true,
-						parameterNames = true,
-						constantValues = true,
-						assignVariableTypes = true,
-						compositeLiteralFields = true,
-						compositeLiteralTypes = true,
-						functionTypeParameters = true,
-					},
-				},
+			pythonPath = require("user.utils").get_python_venv(),
+		},
+	},
+})
+
+lspconfig.gopls.setup({
+	on_attach = on_attach,
+	capabilities = capabilities,
+	settings = {
+		gopls = {
+			hints = {
+				rangeVariableTypes = true,
+				parameterNames = true,
+				constantValues = true,
+				assignVariableTypes = true,
+				compositeLiteralFields = true,
+				compositeLiteralTypes = true,
+				functionTypeParameters = true,
 			},
-		})
-	end,
-	["kotlin_language_server"] = function()
-		lspconfig.kotlin_language_server.setup({
-			on_attach = on_attach,
-			capabilities = capabilities,
-			init_options = {
-				storagePath = table.concat({ vim.fn.stdpath("data") }, "nvim-data"),
+		},
+	},
+})
+
+lspconfig.kotlin_language_server.setup({
+	on_attach = on_attach,
+	capabilities = capabilities,
+	init_options = {
+		storagePath = table.concat({ vim.fn.stdpath("data") }, "nvim-data"),
+	},
+	settings = {
+		kotlin = {
+			hints = {
+				typeHints = true,
+				parameterHints = true,
+				chaineHints = true,
 			},
-			settings = {
-				kotlin = {
-					hints = {
-						typeHints = true,
-						parameterHints = true,
-						chaineHints = true,
-					},
-				},
-			},
-		})
-	end,
+		},
+	},
 })
 
 -- lspconfig.kulala_ls.setup({

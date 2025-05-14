@@ -146,7 +146,6 @@ return {
 		"mfussenegger/nvim-jdtls",
 		dependencies = {
 			"mfussenegger/nvim-dap",
-			"neovim/nvim-lspconfig",
 		},
 		ft = "java",
 		config = function()
@@ -169,8 +168,8 @@ return {
 		"neovim/nvim-lspconfig",
 		event = "VeryLazy",
 		dependencies = {
-			{ "williamboman/mason.nvim", version = "1.*" },
-			{ "williamboman/mason-lspconfig.nvim", version = "1.*" },
+			"williamboman/mason.nvim",
+			"williamboman/mason-lspconfig.nvim",
 			"WhoIsSethDaniel/mason-tool-installer.nvim",
 		},
 		config = function()
