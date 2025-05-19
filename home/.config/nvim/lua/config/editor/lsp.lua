@@ -32,6 +32,7 @@ mason_lspconfig.setup({
 	automatic_installation = true,
 	automatic_enable = {
 		exclude = {
+			"basedpyright",
 			"lua_ls",
 			"jdtls",
 			"ts_ls",
@@ -93,7 +94,18 @@ lspconfig.lua_ls.setup({
 })
 
 lspconfig.basedpyright.setup({
-	on_attach = on_attach,
+	on_attach = function(client, bufnr)
+		on_attach(client, bufnr)
+		local path = require("user.utils").get_python_venv()
+
+		if client.settings then
+			client.settings.python = vim.tbl_deep_extend("force", client.settings.python, { pythonPath = path })
+		else
+			client.config.settings =
+				vim.tbl_deep_extend("force", client.config.settings, { python = { pythonPath = path } })
+		end
+		client.notify("workspace/didChangeConfiguration", { settings = nil })
+	end,
 	capabilities = capabilities,
 	settings = {
 		basedpyright = {
@@ -108,7 +120,6 @@ lspconfig.basedpyright.setup({
 				diagnosticMode = "openFilesOnly",
 				useLibraryCodeForTypes = true,
 			},
-			pythonPath = require("user.utils").get_python_venv(),
 		},
 	},
 })

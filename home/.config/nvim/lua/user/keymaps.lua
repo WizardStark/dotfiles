@@ -2154,6 +2154,15 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
+		keys = "K",
+		callback = function()
+			vim.lsp.buf.hover()
+		end,
+		prefix = P.code,
+		description = "Show documentation",
+	},
+	{
+		mode = { "n" },
 		keys = "<leader>la",
 		callback = function()
 			vim.g.extra_lsp_actions()

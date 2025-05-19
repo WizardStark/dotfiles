@@ -77,15 +77,6 @@ local mappings = {
 		end,
 	},
 	{
-		event = "BufWritePost",
-		pattern = { "*.ipynb" },
-		callback = function()
-			if require("molten.status").initialized() == "Molten" then
-				vim.cmd("MoltenExportOutput!")
-			end
-		end,
-	},
-	{
 		event = "BufEnter",
 		pattern = "*.py",
 		callback = function(e)
@@ -127,22 +118,6 @@ local mappings = {
 		end,
 	},
 	{
-		event = { "BufEnter", "BufWritePost" },
-		callback = function()
-			vim.lsp.codelens.refresh({ bufnr = 0 })
-			last_refreshed_time = vim.loop.now()
-		end,
-	},
-	{
-		event = "InsertLeave",
-		callback = function()
-			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
-				vim.lsp.codelens.refresh({ bufnr = 0 })
-				last_refreshed_time = vim.loop.now()
-			end
-		end,
-	},
-	{
 		event = "BufEnter",
 		pattern = { "*.zsh-theme", "*.zshrc", "*.zshenv", "*.zprofile" },
 		callback = function()
@@ -162,10 +137,25 @@ local mappings = {
 		end,
 	},
 	{
-		event = "WinClosed",
+		event = { "BufEnter", "BufWritePost" },
 		callback = function()
-			if vim.g.backdrop_buf then
-				require("user.utils").close_backdrop_window()
+			vim.lsp.codelens.refresh({ bufnr = 0 })
+			last_refreshed_time = vim.loop.now()
+		end,
+	},
+	{
+		event = "BufWritePost",
+		pattern = "*.bib",
+		callback = function()
+			vim.cmd("!bibtex main")
+		end,
+	},
+	{
+		event = "BufWritePost",
+		pattern = { "*.ipynb" },
+		callback = function()
+			if require("molten.status").initialized() == "Molten" then
+				vim.cmd("MoltenExportOutput!")
 			end
 		end,
 	},
@@ -188,10 +178,12 @@ local mappings = {
 		end,
 	},
 	{
-		event = "BufWritePost",
-		pattern = "*.bib",
+		event = "InsertLeave",
 		callback = function()
-			vim.cmd("!bibtex main")
+			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
+				vim.lsp.codelens.refresh({ bufnr = 0 })
+				last_refreshed_time = vim.loop.now()
+			end
 		end,
 	},
 	{
@@ -310,6 +302,14 @@ local mappings = {
 		callback = function()
 			if vim.g.workspaces_loaded then
 				require("workspaces.workspaces").setup_lualine()
+			end
+		end,
+	},
+	{
+		event = "WinClosed",
+		callback = function()
+			if vim.g.backdrop_buf then
+				require("user.utils").close_backdrop_window()
 			end
 		end,
 	},
