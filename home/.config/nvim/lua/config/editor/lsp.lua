@@ -30,6 +30,13 @@ mason_lspconfig.setup({
 		"ts_ls",
 	},
 	automatic_installation = true,
+	automatic_enable = {
+		exclude = {
+			"lua_ls",
+			"jdtls",
+			"ts_ls",
+		},
+	},
 })
 
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -48,8 +55,6 @@ vim.lsp.config("*", {
 	capabilities = capabilities,
 	on_attach = on_attach,
 })
-
-vim.lsp.enable({ "jdtls", "ts_ls" }, false)
 
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)

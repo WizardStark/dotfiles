@@ -407,50 +407,38 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "zR",
-		callback = function()
-			require("ufo").openAllFolds()
-		end,
+		keys = "<Tab>",
+		callback = "zm",
 		prefix = P.fold,
-		description = "Open all",
+		description = "Increase folding",
 	},
 	{
 		mode = { "n" },
-		keys = "zM",
-		callback = function()
-			require("ufo").closeAllFolds()
-			vim.opt.foldlevel = 99
-			vim.opt.foldlevelstart = 99
-		end,
+		keys = "<S-Tab>",
+		callback = "zr",
 		prefix = P.fold,
-		description = "Close all",
+		description = "Decrease folding",
 	},
 	{
 		mode = { "n" },
-		keys = "zr",
-		callback = function()
-			require("ufo").openFoldsExceptKinds()
-		end,
+		keys = "<leader><Tab>",
+		callback = "zM",
 		prefix = P.fold,
-		description = "Open all non-excluded",
+		description = "Fold all",
 	},
 	{
 		mode = { "n" },
-		keys = "zm",
-		callback = function()
-			require("ufo").closeFoldsWith()
-		end,
+		keys = "<leader><S-Tab>",
+		callback = "zR",
 		prefix = P.fold,
-		description = "Close folds with indentation level greater prefixed than number",
+		description = "Open all folds",
 	},
 	{
 		mode = { "n" },
-		keys = "zP",
-		callback = function()
-			require("ufo").peekFoldedLinesUnderCursor()
-		end,
+		keys = "<C-f>",
+		callback = "za",
 		prefix = P.fold,
-		description = "Peek folded lines",
+		description = "Toggle fold",
 	},
 	{
 		mode = { "n" },
@@ -470,13 +458,6 @@ local mappings = {
 		prefix = P.misc,
 		description = "Command palette",
 	},
-	-- {
-	-- 	mode = "n",
-	-- 	"<leader>ft",
-	-- 	"<cmd>TodoTelescope<CR>",
-	-- 	prefix = P.find,
-	-- 	description = "TODOs, FIXs, NOTEs (etc) comments in cwd",
-	-- },
 	{
 		mode = { "n" },
 		keys = "<leader>fg",
@@ -1303,15 +1284,6 @@ local mappings = {
 		callback = [[:VimtexTocToggle <CR>]],
 		prefix = P.latex,
 		description = "Toggle table of contents",
-	},
-	{
-		mode = { "n" },
-		keys = "K",
-		callback = function()
-			vim.lsp.buf.hover()
-		end,
-		prefix = P.code,
-		description = "Show documentation",
 	},
 	{
 		mode = { "n" },

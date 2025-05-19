@@ -24,16 +24,6 @@ return {
 		},
 	},
 	{
-		"kevinhwang91/nvim-ufo",
-		dependencies = {
-			"kevinhwang91/promise-async",
-		},
-		lazy = true,
-		config = function()
-			require("config.editor.folds")
-		end,
-	},
-	{
 		"echasnovski/mini.pairs",
 		event = { "InsertEnter" },
 		config = true,

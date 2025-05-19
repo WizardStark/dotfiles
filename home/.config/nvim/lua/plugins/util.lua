@@ -23,7 +23,7 @@ return {
 		opts = {
 			get_auto_pin = function(bufnr)
 				if vim.bo[bufnr].filetype == "minifiles" then
-					return "filetype"
+					return "buftype"
 				end
 				return require("stickybuf").should_auto_pin(bufnr)
 			end,

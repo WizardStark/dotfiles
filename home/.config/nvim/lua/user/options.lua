@@ -4,10 +4,7 @@ vim.g.loaded_netrwPlugin = 1
 local opt = vim.opt
 
 local opts = {
-	foldcolumn = "0",
-	foldlevel = 99,
 	foldlevelstart = 99,
-	foldenable = true,
 	termguicolors = true,
 	showmatch = true,
 	inccommand = "split",
@@ -32,6 +29,7 @@ local opts = {
 	fillchars = {
 		vert = "│",
 		eob = " ",
+		fold = " ",
 	},
 	scrolloff = 8,
 	undofile = true,

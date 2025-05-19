@@ -10,7 +10,6 @@ local catppuccin_opts = {
 		dap_ui = true,
 		diffview = true,
 		treesitter = true,
-		ufo = true,
 		overseer = true,
 		lsp_trouble = true,
 	},
@@ -148,7 +147,6 @@ return {
 				vim.cmd.wincmd({ args = { "w" }, count = 1 })
 			end
 
-			require("ufo")
 			require("workspaces.persistence").load_workspaces()
 			require("workspaces.workspaces").setup_lualine()
 			vim.cmd.stopinsert()
