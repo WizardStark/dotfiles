@@ -91,6 +91,7 @@ return {
 			"rafamadriz/friendly-snippets",
 			"saghen/blink.compat",
 			"rcarriga/cmp-dap",
+			"hrsh7th/cmp-calc",
 		},
 		version = "v1.*",
 		config = function()

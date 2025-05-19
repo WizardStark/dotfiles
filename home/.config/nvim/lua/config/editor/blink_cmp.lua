@@ -1,4 +1,4 @@
-local default_sources = { "lsp", "path", "snippets", "buffer", "lazydev" }
+local default_sources = { "lsp", "path", "calc", "snippets", "buffer", "lazydev" }
 local debug_sources = vim.list_extend(vim.deepcopy(default_sources), { "dap" })
 
 require("blink.cmp").setup({
@@ -42,6 +42,10 @@ require("blink.cmp").setup({
 		default = default_sources,
 		per_filetype = { ["dap-repl"] = debug_sources, dapui_watches = debug_sources, dapui_hover = debug_sources },
 		providers = {
+			calc = {
+				name = "calc",
+				module = "blink.compat.source",
+			},
 			dap = {
 				name = "dap",
 				module = "blink.compat.source",
