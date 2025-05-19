@@ -116,7 +116,7 @@ require("lualine").setup(
 			lualine_a = { { "mode", cond = is_not_toggleterm }, { get_term_name, cond = is_toggleterm } },
 			lualine_b = {
 				{ get_words, cond = is_text_file },
-				{ "b:gitsigns_head", icon = "" },
+				{ "branch", icon = "" },
 				"diagnostics",
 			},
 			lualine_c = { { get_plugin_info }, { get_startup_time } },
