@@ -79,7 +79,7 @@ require("blink.cmp").setup({
 	},
 	completion = {
 		keyword = {
-			range = "full",
+			range = "prefix",
 		},
 		list = {
 			selection = {
