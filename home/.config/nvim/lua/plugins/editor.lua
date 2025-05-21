@@ -203,20 +203,9 @@ return {
 		"echasnovski/mini.files",
 		lazy = true,
 		version = false,
-		opts = {
-			mappings = {
-				go_out = "H",
-				go_out_plus = "",
-				synchronize = "s",
-			},
-			windows = {
-				max_number = 3,
-				preview = true,
-				width_nofocus = 30,
-				width_focus = 50,
-				width_preview = 75,
-			},
-		},
+		config = function()
+			require("config.editor.minifiles")
+		end,
 	},
 	{
 		"luckasRanarison/tailwind-tools.nvim",
