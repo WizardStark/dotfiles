@@ -97,6 +97,7 @@ lspconfig.basedpyright.setup({
 	on_attach = function(client, bufnr)
 		on_attach(client, bufnr)
 		local path = require("user.utils").get_python_venv()
+		require("dap-python").setup(path)
 
 		if client.settings then
 			client.settings.python = vim.tbl_deep_extend("force", client.settings.python, { pythonPath = path })

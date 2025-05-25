@@ -120,10 +120,8 @@ dap.configurations.svelte = {
 
 require("dap-go").setup()
 
--- local debugpy_path = require("mason-registry").get_package("debugpy"):get_install_path()
--- require("dap-python").setup(debugpy_path .. "/venv/bin/python")
-
 require("dap-python").setup(require("user.utils").get_python_venv())
+-- require("dap-python").resolve_python = require("user.utils").get_python_venv
 
 table.insert(require("dap").configurations.python, {
 	type = "python",
