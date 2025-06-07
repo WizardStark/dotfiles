@@ -47,4 +47,19 @@ return {
 			},
 		},
 	},
+	{
+		"pwntester/octo.nvim",
+		event = "VeryLazy",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"folke/snacks.nvim",
+			"echasnovski/mini.icons",
+		},
+		config = function()
+			require("octo").setup({
+				use_local_fs = true,
+				picker = "snacks",
+			})
+		end,
+	},
 }
