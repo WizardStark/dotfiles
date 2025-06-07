@@ -42,6 +42,13 @@ pathmunge $HOME/.local/bin
 pathmunge $HOME/local/lib
 CASE_SENSITIVE="true"
 
+if [ -z "$(pgrep ssh-agent)" ]; then
+    eval $(ssh-agent) >/dev/null 2>&1
+    echo $SSH_AUTH_SOCK >~/.ssh/.agent_socket
+else
+    export SSH_AUTH_SOCK=$(cat ~/.ssh/.agent_socket)
+fi
+
 export VENV_HOME="$HOME/.virtualenvs"
 [[ -d $VENV_HOME ]] || mkdir $VENV_HOME
 
@@ -71,11 +78,4 @@ rmvenv() {
     else
         rm -r $VENV_HOME/$1
     fi
-}
-
-export OLLAMA_API_BASE=http://127.0.0.1:11434
-
-airun() {
-    export OLLAMA_CONTEXT_LENGTH=8192 ollama serve
-    aider --model ollama_chat/${1}
 }

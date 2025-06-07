@@ -107,13 +107,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
     eval "$(zoxide init --cmd cd zsh)"
-
-    if [ -z "$(pgrep ssh-agent)" ] ; then
-        eval $(ssh-agent) > /dev/null 2>&1
-        echo $SSH_AUTH_SOCK > ~/.ssh/.agent_socket
-    else
-        export SSH_AUTH_SOCK=$(cat ~/.ssh/.agent_socket)
-    fi
 fi
 
 show_blame() {
