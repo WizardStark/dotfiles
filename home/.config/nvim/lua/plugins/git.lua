@@ -55,6 +55,9 @@ return {
 			"folke/snacks.nvim",
 			"echasnovski/mini.icons",
 		},
+		enabled = function()
+			return vim.fn.executable("gh") == 1
+		end,
 		config = function()
 			require("octo").setup({
 				use_local_fs = true,
