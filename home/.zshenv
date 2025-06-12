@@ -1,5 +1,3 @@
-export HISTORY_START_WITH_GLOBAL=true
-
 # Utility to add to path without duplication
 pathmunge() {
     if ! echo $PATH | /usr/bin/env egrep -q "(^|:)$1($|:)"; then
@@ -27,6 +25,8 @@ fi
 [ -f ~/.lcl.zshenv ] && source ~/.lcl.zshenv
 
 if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
+    export HISTORY_START_WITH_GLOBAL=true
+
     source ~/.zsh-catpuccin/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh
     export FZF_DEFAULT_OPTS=" \
       --color=bg+:#313244,bg:#0e0e1e,spinner:#f5e0dc,hl:#f38ba8 \
@@ -35,19 +35,19 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     export BAT_THEME="Catppuccin Mocha"
     export EZA_COLORS="$(vivid generate catppuccin-mocha)"
+
+    if [ -z "$(pgrep ssh-agent)" ]; then
+        eval $(ssh-agent) >/dev/null 2>&1
+        echo $SSH_AUTH_SOCK >~/.ssh/.agent_socket
+    else
+        export SSH_AUTH_SOCK=$(cat ~/.ssh/.agent_socket)
+    fi
 fi
 
 pathmunge $HOME/local/bin
 pathmunge $HOME/.local/bin
 pathmunge $HOME/local/lib
 CASE_SENSITIVE="true"
-
-if [ -z "$(pgrep ssh-agent)" ]; then
-    eval $(ssh-agent) >/dev/null 2>&1
-    echo $SSH_AUTH_SOCK >~/.ssh/.agent_socket
-else
-    export SSH_AUTH_SOCK=$(cat ~/.ssh/.agent_socket)
-fi
 
 export VENV_HOME="$HOME/.virtualenvs"
 [[ -d $VENV_HOME ]] || mkdir $VENV_HOME
