@@ -68,6 +68,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     zstyle ':fzf-tab:complete:bat:*' fzf-preview $dir_or_file_preview
     zstyle ':fzf-tab:complete:cat:*' fzf-preview $dir_or_file_preview
     zstyle ':fzf-tab:complete:eza:*' fzf-preview $dir_or_file_preview
+    zstyle ':fzf-tab:complete:lsd:*' fzf-preview $dir_preview
     zstyle ':fzf-tab:complete:nvim:*' fzf-preview $dir_or_file_preview
     zstyle ':fzf-tab:complete:less:*' fzf-preview $dir_or_file_preview
     zstyle ':fzf-tab:complete:head:*' fzf-preview $dir_or_file_preview
@@ -112,6 +113,12 @@ fi
 show_blame() {
   git ls-files | while read f; do git blame -w --line-porcelain -- "$f" | grep -I '^author '; done | sort -f | uniq -ic | sort -n
 }
+
+lsd() { (
+    cd "${1:-$HOME}" &&
+        echo $(pwd) &&
+        ls
+); }
 
 export EDITOR='nvim'
 alias vim="nvim"
