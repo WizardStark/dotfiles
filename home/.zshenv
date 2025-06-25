@@ -76,6 +76,6 @@ rmvenv() {
     if [ $# -eq 0 ]; then
         echo "Please provide venv name"
     else
-        rm -r $VENV_HOME/$1
+        rm -rf $VENV_HOME/$1
     fi
 }
