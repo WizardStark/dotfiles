@@ -17,7 +17,11 @@ local function clients_lsp()
 	local formatters = conform.list_formatters(bufnr)
 	if ok then
 		for _, formatter in ipairs(formatters) do
-			table.insert(buf_client_names, formatter["name"])
+			if formatter["name"]:find("ruff") then
+				table.insert(buf_client_names, "ruff_format")
+			else
+				table.insert(buf_client_names, formatter["name"])
+			end
 		end
 	end
 

@@ -36,6 +36,7 @@ mason_lspconfig.setup({
 			"lua_ls",
 			"jdtls",
 			"ts_ls",
+			"ruff",
 		},
 	},
 })

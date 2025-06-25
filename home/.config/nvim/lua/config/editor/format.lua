@@ -17,7 +17,7 @@ require("conform").setup(
 		-- Define your formatters
 		formatters_by_ft = {
 			lua = { "stylua" },
-			python = { "usort", "black" },
+			python = { "ruff_format", "ruff_organize_imports", "ruff_fix" },
 			java = { "google-java-format" },
 			kotlin = { "ktlint" },
 			javascript = { "prettier" },
