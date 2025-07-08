@@ -2416,6 +2416,24 @@ local mappings = {
 		end,
 		description = "Go to stacktrace member",
 	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader>Ol",
+		callback = function()
+			vim.cmd("Octo pr list")
+		end,
+		prefix = P.git,
+		description = "List github PR's",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<localleader>co",
+		callback = function()
+			vim.cmd("Octo review thread")
+		end,
+		prefix = P.git,
+		description = "Open comment buffer",
+	},
 }
 
 return {

@@ -125,6 +125,15 @@ local mappings = {
 		end,
 	},
 	{
+		event = "BufEnter",
+		pattern = { "octo://*" },
+		callback = function()
+			if vim.wo.diff then
+				vim.wo.foldenable = false
+			end
+		end,
+	},
+	{
 		event = "BufWinEnter",
 		callback = function()
 			if vim.bo.bt == "terminal" then

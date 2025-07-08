@@ -62,6 +62,9 @@ return {
 			require("octo").setup({
 				use_local_fs = true,
 				picker = "snacks",
+				reviews = {
+					auto_show_threads = false,
+				},
 			})
 		end,
 	},
