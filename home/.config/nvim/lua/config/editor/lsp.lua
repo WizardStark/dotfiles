@@ -111,7 +111,7 @@ lspconfig.basedpyright.setup({
 	capabilities = capabilities,
 	settings = {
 		basedpyright = {
-			typeCheckingMode = "off",
+			typeCheckingMode = "standard",
 		},
 		python = {
 			analysis = {
