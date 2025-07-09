@@ -2427,6 +2427,15 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
+		keys = "<leader>Oc",
+		callback = function()
+			vim.cmd("Octo pr create")
+		end,
+		prefix = P.git,
+		description = "Create a new github PR from the current branch",
+	},
+	{
+		mode = { "n", "v" },
 		keys = "<localleader>co",
 		callback = function()
 			vim.cmd("Octo review thread")

@@ -5,6 +5,7 @@ local allowed_filetypes = {
 	"python",
 	"go",
 	"sh",
+	"toml",
 	"zsh",
 }
 
@@ -37,6 +38,14 @@ require("conform").setup(
 			zsh = { "shfmt" },
 			yml = { "yamlfmt" },
 			yaml = { "yamlfmt" },
+			toml = function(bufnr)
+				local filename = vim.api.nvim_buf_get_name(bufnr)
+				if vim.fn.fnamemodify(filename, ":t") == "pyproject.toml" then
+					return { "pyproject-fmt" }
+				else
+					return {}
+				end
+			end,
 		},
 
 		format_on_save = function(bufnr)
