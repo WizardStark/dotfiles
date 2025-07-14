@@ -37,8 +37,8 @@ M.special_windows = {
 			view = require("trouble").close()
 		end
 	end,
-	dapui = function()
-		require("dapui").toggle()
+	dap = function()
+		require("dap-view").toggle()
 	end,
 	DiffviewFiles = function()
 		vim.cmd(":DiffviewClose")
@@ -254,8 +254,8 @@ function M.toggle_special_buffers(toggled_types)
 	else
 		local visible_window_filetypes = M.get_visible_window_filetypes()
 		for _, filetype in ipairs(visible_window_filetypes) do
-			if filetype:find("dapui") then
-				filetype = "dapui"
+			if filetype:find("dap") then
+				filetype = "dap"
 			end
 			for type, func in pairs(M.special_windows) do
 				if filetype == type then

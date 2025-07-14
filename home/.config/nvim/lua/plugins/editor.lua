@@ -89,12 +89,7 @@ return {
 		dependencies = {
 			"theHamsta/nvim-dap-virtual-text",
 			"neovim/nvim-lspconfig",
-			{
-				"rcarriga/nvim-dap-ui",
-				dependencies = {
-					"nvim-neotest/nvim-nio",
-				},
-			},
+			"igorlfs/nvim-dap-view",
 			"jay-babu/mason-nvim-dap.nvim",
 		},
 		config = function()

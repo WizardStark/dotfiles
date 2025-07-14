@@ -134,7 +134,6 @@ require("lualine").setup(
 			lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 		},
 		extensions = {
-			"nvim-dap-ui",
 			"mason",
 			"lazy",
 			"trouble",

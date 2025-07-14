@@ -40,7 +40,7 @@ require("blink.cmp").setup({
 	},
 	sources = {
 		default = default_sources,
-		per_filetype = { ["dap-repl"] = debug_sources, dapui_watches = debug_sources, dapui_hover = debug_sources },
+		per_filetype = { ["dap-repl"] = debug_sources, ["dap-view"] = debug_sources },
 		providers = {
 			calc = {
 				name = "calc",

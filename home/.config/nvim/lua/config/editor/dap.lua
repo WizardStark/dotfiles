@@ -1,5 +1,5 @@
 local dap = require("dap")
-local dapui = require("dapui")
+local dapview = require("dap-view")
 
 require("nvim-dap-virtual-text").setup({
 	automatic_installation = true,
@@ -10,13 +10,13 @@ require("nvim-dap-virtual-text").setup({
 	},
 })
 
-dapui.setup({
-	expand_lines = false,
+dapview.setup({
+	auto_toggle = true,
+	winbar = {
+		sections = { "watches", "scopes", "exceptions", "breakpoints", "threads", "repl", "console" },
+	},
+	switchbuf = "usetab",
 })
-
-dap.listeners.after.event_initialized["dapui_config"] = function()
-	dapui.open({ reset = true })
-end
 
 vim.api.nvim_set_hl(0, "DapStopped", { ctermbg = 0, fg = "#1f1d2e", bg = "#f6c177" })
 vim.fn.sign_define("DapStopped", {

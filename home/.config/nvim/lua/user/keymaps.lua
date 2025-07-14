@@ -1,5 +1,5 @@
 local function trigger_dap(dapStart)
-	require("dapui").open({ reset = true })
+	require("dap-view").open()
 	dapStart()
 end
 
@@ -7,7 +7,7 @@ local function continue()
 	if require("dap").session() then
 		require("dap").continue()
 	else
-		require("dapui").open({ reset = true })
+		require("dap-view").open()
 		require("dap").continue()
 	end
 end
@@ -1129,29 +1129,29 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>dw",
+		keys = "<leader>dr",
 		callback = function()
-			require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
+			require("dap.ui.widgets").hover(vim.fn.expand("<cword>"))
 		end,
 		prefix = P.debug,
-		description = "Add variable to watches",
+		description = "Evaluate expression",
 	},
 	{
 		mode = { "x" },
-		keys = "<leader>dw",
+		keys = "<leader>dr",
 		callback = function()
 			vim.cmd([[normal! vv]])
 			local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
-			require("dapui").elements.watches.add(text)
+			require("dap.ui.widgets").hover(text)
 		end,
 		prefix = P.debug,
-		description = "Add variable to watches",
+		description = "Evaluate selection",
 	},
 	{
 		mode = { "n", "x" },
-		keys = "<leader>dr",
+		keys = "<leader>dw",
 		callback = function()
-			require("dapui").eval()
+			require("dap-view").add_expr()
 		end,
 		prefix = P.debug,
 		description = "Add variable to watches",
@@ -1168,7 +1168,6 @@ local mappings = {
 		keys = "<leader>de",
 		callback = function()
 			require("dap").terminate()
-			require("dapui").close()
 			require("nvim-dap-virtual-text").refresh()
 		end,
 		prefix = P.debug,
@@ -1178,7 +1177,7 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>dt",
 		callback = function()
-			require("dapui").toggle({ reset = true })
+			require("dap-view").toggle()
 		end,
 		prefix = P.debug,
 		description = "Reset and toggle ui",

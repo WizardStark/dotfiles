@@ -8,11 +8,8 @@ local enable = function(buf, win)
 		["trouble"] = true,
 		["qf"] = true,
 		["noice"] = true,
-		["dapui_scopes"] = true,
-		["dapui_breakpoints"] = true,
-		["dapui_stacks"] = true,
-		["dapui_watches"] = true,
-		["dapui_console"] = true,
+		["dap-view"] = true,
+		["dap-view-term"] = true,
 		["dap-repl"] = true,
 		["neocomposer-menu"] = true,
 	}

@@ -178,6 +178,14 @@ local mappings = {
 	},
 	{
 		event = "FileType",
+		pattern = { "dap-float" },
+		callback = function(e)
+			vim.keymap.set("n", "q", "<C-w>q", { buffer = e.buf })
+			vim.keymap.set("n", "<Esc>", "<C-w>q", { buffer = e.buf })
+		end,
+	},
+	{
+		event = "FileType",
 		callback = function()
 			vim.opt.foldcolumn = "0"
 			vim.opt.foldmethod = "expr"

@@ -15,7 +15,7 @@ local hunk_starts
 local changed_files
 
 local function trigger_dap(dapStart)
-	require("dapui").open({ reset = true })
+	require("dap-view").open()
 	dapStart()
 end
 
@@ -23,7 +23,7 @@ local function continue()
 	if require("dap").session() then
 		require("dap").continue()
 	else
-		require("dapui").open({ reset = true })
+		require("dap-view").open()
 		require("dap").continue()
 	end
 end
@@ -198,15 +198,16 @@ M.dap_hydra = Hydra({
 	name = "Dap",
 	mode = { "n", "x" },
 	hint = [[
-_B_: Toggle breakpoint _W_: Add to watches
-_C_: Continue          _E_: Evaluate
-_O_: Step over         _R_: Send to REPL
-_I_: Step into         _T_: Toggle UI
-_U_: Step out          _Q_: Quit debugger
-_<C-b>_: Clear breakpoints
-_<C-c>_: Run to cursor
+_<C-b>_: Toggle breakpoint _O_: Step over
+_<C-c>_: Continue          _I_: Step into
+_<C-w>_: Add to watches    _U_: Step out
+_<C-e>_: Evaluate          _Q_: Quit debugger
+_<C-R>_: Send to REPL      
+_<C-t>_: Toggle UI
+_<C-B>_: Clear breakpoints
+_<C-C>_: Run to cursor
 _<C-r>_: Rerun last debug
-_<C-t>_: Toggle virtual text
+_<C-v>_: Toggle virtual text
 _q_: Exit]],
 	config = {
 		hint = {
@@ -218,14 +219,14 @@ _q_: Exit]],
 	},
 	heads = {
 		{
-			"B",
+			"<C-b>",
 			function()
 				require("dap").toggle_breakpoint()
 			end,
 			{ desc = false },
 		},
 		{
-			"<C-b>",
+			"<C-B>",
 			function()
 				require("dap").clear_breakpoints()
 			end,
@@ -260,14 +261,14 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"<C-c>",
+			"<C-C>",
 			function()
 				require("dap").run_to_cursor()
 			end,
 			{ desc = false },
 		},
 		{
-			"R",
+			"<C-R>",
 			function()
 				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
 				if mode == "n" then
@@ -281,28 +282,28 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"W",
+			"<C-w>",
+			function()
+				require("dap-view").add_expr()
+			end,
+			{ desc = false },
+		},
+		{
+			"<C-e>",
 			function()
 				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
 				if mode == "n" then
-					require("dapui").elements.watches.add(vim.fn.expand("<cword>"))
+					require("dap.ui.widgets").hover(vim.fn.expand("<cword>"))
 				elseif mode == "V" or mode == "v" then
 					vim.cmd([[normal! vv]])
 					local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
-					require("dapui").elements.watches.add(text)
+					require("dap.ui.widgets").hover(text)
 				end
 			end,
 			{ desc = false },
 		},
 		{
-			"E",
-			function()
-				require("dapui").eval()
-			end,
-			{ desc = false },
-		},
-		{
-			"C",
+			"<C-c>",
 			continue,
 			{ desc = false },
 		},
@@ -310,22 +311,21 @@ _q_: Exit]],
 			"Q",
 			function()
 				require("dap").terminate()
-				require("dapui").close()
 				require("nvim-dap-virtual-text").refresh()
 			end,
 			{ desc = false },
 		},
 		{
-			"<C-t>",
+			"<C-v>",
 			function()
 				require("nvim-dap-virtual-text").toggle()
 			end,
 			{ desc = false },
 		},
 		{
-			"T",
+			"<C-t>",
 			function()
-				require("dapui").toggle()
+				require("dap-view").toggle()
 			end,
 			{ desc = false },
 		},
