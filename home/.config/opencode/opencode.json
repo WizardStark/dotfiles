@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "llama/{env:QWEN3_MODEL}",
+  "theme": "catpuccin",
+  "provider": {
+    "llama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://localhost:8080"
+      },
+      "models": {
+        "{env:QWEN3_MODEL}": {
+          "name": "Qwen3",
+          "limit": {
+            "output": 0,
+            "context": 24000
+          }
+        }
+      }
+    }
+  }
+}
