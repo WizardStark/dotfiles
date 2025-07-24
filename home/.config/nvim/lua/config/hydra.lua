@@ -202,10 +202,10 @@ _<C-b>_: Toggle breakpoint _O_: Step over
 _<C-c>_: Continue          _I_: Step into
 _<C-w>_: Add to watches    _U_: Step out
 _<C-e>_: Evaluate          _Q_: Quit debugger
-_<C-R>_: Send to REPL      
+_<C-S-r>_: Send to REPL      
 _<C-t>_: Toggle UI
-_<C-B>_: Clear breakpoints
-_<C-C>_: Run to cursor
+_<C-S-b>_: Clear breakpoints
+_<C-S-c>_: Run to cursor
 _<C-r>_: Rerun last debug
 _<C-v>_: Toggle virtual text
 _q_: Exit]],
@@ -226,7 +226,7 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"<C-B>",
+			"<C-S-b>",
 			function()
 				require("dap").clear_breakpoints()
 			end,
@@ -261,14 +261,14 @@ _q_: Exit]],
 			{ desc = false },
 		},
 		{
-			"<C-C>",
+			"<C-S-c>",
 			function()
 				require("dap").run_to_cursor()
 			end,
 			{ desc = false },
 		},
 		{
-			"<C-R>",
+			"<C-S-r>",
 			function()
 				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
 				if mode == "n" then
