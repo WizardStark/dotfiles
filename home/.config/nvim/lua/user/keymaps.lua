@@ -407,14 +407,14 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<Tab>",
+		keys = "<leader>fm",
 		callback = "zm",
 		prefix = P.fold,
 		description = "Increase folding",
 	},
 	{
 		mode = { "n" },
-		keys = "<S-Tab>",
+		keys = "<leader>fl",
 		callback = "zr",
 		prefix = P.fold,
 		description = "Decrease folding",
