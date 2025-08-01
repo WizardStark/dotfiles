@@ -7,6 +7,7 @@ local allowed_filetypes = {
 	"sh",
 	"toml",
 	"zsh",
+	"sql",
 }
 
 local function is_allowed_ft(bufnr)
@@ -35,6 +36,7 @@ require("conform").setup(
 			go = { "gofumpt" },
 			bash = { "shfmt" },
 			sh = { "shfmt" },
+			sql = { "sqlfmt" },
 			zsh = { "shfmt" },
 			yml = { "yamlfmt" },
 			yaml = { "yamlfmt" },
@@ -62,6 +64,9 @@ require("conform").setup(
 			},
 			shfmt = {
 				prepend_args = { "-i", "2" },
+			},
+			sqlfmt = {
+				prepend_args = { "--dialect", "clickhouse" },
 			},
 		},
 	}

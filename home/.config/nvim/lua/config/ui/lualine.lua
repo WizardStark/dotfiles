@@ -3,18 +3,20 @@ local function clients_lsp()
 	local bufnr = vim.api.nvim_get_current_buf()
 
 	local clients = vim.lsp.get_clients({ bufnr = bufnr })
+	local ok, conform = pcall(require, "conform")
+	local formatters = conform.list_formatters(bufnr)
 
-	if next(clients) == nil then
+	if next(clients) == nil and next(formatters) == nil then
 		return " No servers"
 	end
 
 	local buf_client_names = {}
-	for _, client in pairs(clients) do
-		table.insert(buf_client_names, client.name)
+	if next(clients) ~= nil then
+		for _, client in pairs(clients) do
+			table.insert(buf_client_names, client.name)
+		end
 	end
 
-	local ok, conform = pcall(require, "conform")
-	local formatters = conform.list_formatters(bufnr)
 	if ok then
 		for _, formatter in ipairs(formatters) do
 			if formatter["name"]:find("ruff") then
