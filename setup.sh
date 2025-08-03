@@ -45,7 +45,7 @@ else
     brew update
 fi
 
-brew install bat eza ffind git-delta jq jupytext nodejs npm nvim ripgrep stow tmux vivid wget zoxide zsh
+brew install bat dust eza ffind git-delta hyperfine jq jupytext nodejs npm nvim ripgrep stow tmux tokei vivid wget zoxide zsh
 
 mkdir -p ~/.config
 
