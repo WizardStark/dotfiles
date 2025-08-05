@@ -44,7 +44,8 @@ require("incline").setup(
 			if is_special_group(props) then
 				return get_title(props)
 			else
-				local unhelpfuls = { "init.lua", "index.tsx", "index.ts", "index.js", "index.jsx", "__init__.py" }
+				local unhelpfuls =
+					{ "init.lua", "index.tsx", "index.ts", "index.js", "index.jsx", "__init__.py", "+page.svelte" }
 				local filename = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(props.buf), ":t")
 				if require("user.utils").contains(filename, unhelpfuls) then
 					local full_path = vim.api.nvim_buf_get_name(props.buf)
