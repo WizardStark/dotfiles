@@ -62,10 +62,6 @@ return {
 			vim.opt[key] = value
 		end
 
-		vim.diagnostic.config({
-			virtual_text = true,
-		})
-
 		vim.filetype.add({
 			extension = {
 				["http"] = "http",

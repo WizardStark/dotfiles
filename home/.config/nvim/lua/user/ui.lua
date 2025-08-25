@@ -28,6 +28,7 @@ for type, icon in pairs(dap_signs) do
 end
 
 vim.diagnostic.config({
+	virtual_text = true,
 	signs = {
 		text = {
 			[vim.diagnostic.severity.HINT] = "󰌶 ",

@@ -2155,7 +2155,13 @@ local mappings = {
 		mode = { "n" },
 		keys = "K",
 		callback = function()
-			vim.lsp.buf.hover()
+			vim.lsp.buf.hover({
+				close_events = {
+					"CursorMoved",
+					"BufHidden", -- fix window persisting on buffer switch (not `BufLeave` so float can be entered)
+					"LspDetach", -- fix window persisting when restarting LSP
+				},
+			})
 		end,
 		prefix = P.code,
 		description = "Show documentation",

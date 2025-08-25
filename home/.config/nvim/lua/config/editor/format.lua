@@ -5,7 +5,9 @@ local allowed_filetypes = {
 	"python",
 	"go",
 	"sh",
+	"svelte",
 	"toml",
+	"typescript",
 	"zsh",
 	"sql",
 }
