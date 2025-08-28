@@ -33,6 +33,9 @@ return {
 		"sindrets/diffview.nvim",
 		cmd = { "DiffviewOpen", "DiffviewClose" },
 		config = true,
+		opts = {
+			enhanced_diff_hl = true,
+		},
 	},
 	{
 		"WizardStark/git-blame.nvim",

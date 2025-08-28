@@ -30,6 +30,7 @@ local opts = {
 		vert = "│",
 		eob = " ",
 		fold = " ",
+		diff = "╱",
 	},
 	scrolloff = 8,
 	undofile = true,
@@ -52,6 +53,7 @@ local opts = {
 		+ "n" -- Indent past the formatlistpat, not underneath it.
 		+ "j" -- Auto-remove comments if possible.
 		- "2", -- I'm not in gradeschool anymore
+	diffopt = "internal,filler,closeoff,algorithm:patience,indent-heuristic,linematch:40",
 }
 
 return {
@@ -61,7 +63,6 @@ return {
 		for key, value in pairs(opts) do
 			vim.opt[key] = value
 		end
-
 		vim.filetype.add({
 			extension = {
 				["http"] = "http",
