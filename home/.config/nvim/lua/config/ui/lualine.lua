@@ -101,7 +101,7 @@ end
 
 local function get_startup_time()
 	local stats = require("lazy").stats()
-	return "󰅕 " .. stats.startuptime .. "ms"
+	return "󰅕 " .. string.format("%.2f", stats.startuptime) .. "ms"
 end
 
 local palette = require("catppuccin.palettes").get_palette("mocha")

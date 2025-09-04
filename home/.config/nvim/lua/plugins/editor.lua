@@ -75,6 +75,7 @@ return {
 			"rafamadriz/friendly-snippets",
 			"saghen/blink.compat",
 			"rcarriga/cmp-dap",
+			"moyiz/blink-emoji.nvim",
 			"hrsh7th/cmp-calc",
 		},
 		version = "v1.*",

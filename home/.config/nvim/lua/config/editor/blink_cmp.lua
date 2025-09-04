@@ -1,4 +1,4 @@
-local default_sources = { "lsp", "path", "calc", "snippets", "buffer", "lazydev" }
+local default_sources = { "lsp", "path", "calc", "snippets", "buffer", "lazydev", "emoji" }
 local debug_sources = vim.list_extend(vim.deepcopy(default_sources), { "dap" })
 
 require("blink.cmp").setup({
@@ -57,6 +57,25 @@ require("blink.cmp").setup({
 				name = "LazyDev",
 				module = "lazydev.integrations.blink",
 				fallbacks = { "lsp" },
+			},
+			emoji = {
+				module = "blink-emoji",
+				name = "Emoji",
+				score_offset = 15,
+				opts = {
+					insert = true,
+					---@type string|table|fun():table
+					trigger = function()
+						return { ":" }
+					end,
+				},
+				should_show_items = function()
+					return vim.tbl_contains(
+						-- Enable emoji completion only for these filetypes.
+						{ "gitcommit", "markdown", "octo" },
+						vim.o.filetype
+					)
+				end,
 			},
 		},
 	},
