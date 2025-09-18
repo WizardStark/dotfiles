@@ -22,27 +22,36 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 fi
 
 if ! require brew; then
-    echo "Installing Hombrew"
-    export NONINTERACTIVE=1
+    echo "Attempting to configure Homebrew from standard locations..."
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if [ -d "/home/linuxbrew/.linuxbrew/bin/brew"]; then
-            alias brew='sudo -Hu linuxbrew brew'
-        else
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         fi
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-        if [ -d "/opt/homebrew/bin/brew"]; then
+        if [ -f "/opt/homebrew/bin/brew" ]; then
             eval "$(/opt/homebrew/bin/brew shellenv)"
-        else
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            eval "$(/opt/homebrew/bin/brew shellenv)"
+        elif [ -f "/usr/local/bin/brew" ]; then
+            eval "$(/usr/local/bin/brew shellenv)"
         fi
     fi
-    brew update
-else
-    echo "Updating Homebrew"
-    brew update
+
+    if ! require brew; then
+        echo "Installing Homebrew..."
+        export NONINTERACTIVE=1
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
+                eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+            fi
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+            if [ -f "/opt/homebrew/bin/brew" ]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [ -f "/usr/local/bin/brew" ]; then
+                eval "$(/usr/local/bin/brew shellenv)"
+            fi
+        fi
+    fi
 fi
 
 brew install bat dust eza ffind git-delta hyperfine jq jupytext nodejs npm nvim ripgrep stow tmux tokei vivid wget zoxide zsh
