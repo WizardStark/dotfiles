@@ -187,12 +187,4 @@ return {
 			require("config.editor.minifiles")
 		end,
 	},
-	{
-		"luckasRanarison/tailwind-tools.nvim",
-		event = "VeryLazy",
-		dependencies = {
-			"nvim-treesitter/nvim-treesitter",
-		},
-		opts = {},
-	},
 }

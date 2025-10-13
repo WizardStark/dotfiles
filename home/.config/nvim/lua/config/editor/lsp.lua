@@ -1,5 +1,3 @@
-local lspconfig = require("lspconfig")
-
 require("mason").setup({
 	ui = { border = "rounded" },
 	registries = {
@@ -14,7 +12,6 @@ require("mason-tool-installer").setup({
 		"prettier",
 		"prettierd",
 		"shfmt",
-		"checkstyle",
 		"stylua",
 		"jq",
 		"yamlfmt",
@@ -27,15 +24,12 @@ mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
 		"basedpyright",
-		"ts_ls",
 	},
 	automatic_installation = true,
 	automatic_enable = {
 		exclude = {
-			"basedpyright",
-			"lua_ls",
+			"stylua",
 			"jdtls",
-			"ts_ls",
 			"ruff",
 		},
 	},
@@ -82,7 +76,7 @@ require("typescript-tools").setup({
 	},
 })
 
-lspconfig.lua_ls.setup({
+vim.lsp.config("lua_ls", {
 	on_attach = on_attach,
 	capabilities = capabilities,
 	settings = {
@@ -94,7 +88,7 @@ lspconfig.lua_ls.setup({
 	},
 })
 
-lspconfig.basedpyright.setup({
+vim.lsp.config.basedpyright = {
 	on_attach = function(client, bufnr)
 		on_attach(client, bufnr)
 		local path = require("user.utils").get_python_venv()
@@ -124,9 +118,9 @@ lspconfig.basedpyright.setup({
 			},
 		},
 	},
-})
+}
 
-lspconfig.gopls.setup({
+vim.lsp.config.gopls = {
 	on_attach = on_attach,
 	capabilities = capabilities,
 	settings = {
@@ -142,28 +136,7 @@ lspconfig.gopls.setup({
 			},
 		},
 	},
-})
+}
 
-lspconfig.kotlin_language_server.setup({
-	on_attach = on_attach,
-	capabilities = capabilities,
-	init_options = {
-		storagePath = table.concat({ vim.fn.stdpath("data") }, "nvim-data"),
-	},
-	settings = {
-		kotlin = {
-			hints = {
-				typeHints = true,
-				parameterHints = true,
-				chaineHints = true,
-			},
-		},
-	},
-})
-
--- lspconfig.kulala_ls.setup({
--- 	-- capabilities = capabilities,
--- })
-
---as we lazy load this we need to trigger the ft event manually after everything is set up
+-- As we lazy load this we need to trigger the ft event manually after everything is set up
 vim.cmd("doautocmd FileType")
