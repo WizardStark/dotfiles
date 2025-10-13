@@ -28,6 +28,9 @@ mason_lspconfig.setup({
 	automatic_installation = true,
 	automatic_enable = {
 		exclude = {
+			"basedpyright",
+			"lua_ls",
+			"gopls",
 			"stylua",
 			"jdtls",
 			"ruff",
@@ -87,6 +90,7 @@ vim.lsp.config("lua_ls", {
 		},
 	},
 })
+vim.lsp.enable("lua_ls")
 
 vim.lsp.config.basedpyright = {
 	on_attach = function(client, bufnr)
@@ -120,6 +124,8 @@ vim.lsp.config.basedpyright = {
 	},
 }
 
+vim.lsp.enable("basedpyright")
+
 vim.lsp.config.gopls = {
 	on_attach = on_attach,
 	capabilities = capabilities,
@@ -138,5 +144,6 @@ vim.lsp.config.gopls = {
 	},
 }
 
+vim.lsp.enable("gopls")
 -- As we lazy load this we need to trigger the ft event manually after everything is set up
 vim.cmd("doautocmd FileType")
