@@ -35,7 +35,7 @@ require("conform").setup(
 			c = { "clang-format" },
 			scss = { "prettier" },
 			json = { "jq" },
-			go = { "gofumpt" },
+			go = { "gofumpt", "goimports" },
 			bash = { "shfmt" },
 			sh = { "shfmt" },
 			sql = { "sqlfmt" },
