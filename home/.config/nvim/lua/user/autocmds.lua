@@ -62,52 +62,52 @@ local imb = function()
 end
 
 local mappings = {
-	{
-		event = "BufAdd",
-		pattern = { "*.ipynb" },
-		callback = imb,
-	},
-	{
-		event = "BufEnter",
-		pattern = { "*.ipynb" },
-		callback = function()
-			if vim.api.nvim_get_vvar("vim_did_enter") ~= 1 then
-				imb()
-			end
-		end,
-	},
-	{
-		event = "BufEnter",
-		pattern = "*.py",
-		callback = function(e)
-			if string.match(e.file, ".otter.") then
-				return
-			end
-			if require("molten.status").initialized() == "Molten" then
-				vim.fn.MoltenUpdateOption("virt_lines_off_by_1", false)
-				vim.fn.MoltenUpdateOption("virt_text_output", false)
-			else
-				vim.g.molten_virt_lines_off_by_1 = false
-				vim.g.molten_virt_text_output = false
-			end
-		end,
-	},
-	{
-		event = "BufEnter",
-		pattern = { "*.qmd", "*.md", "*.ipynb" },
-		callback = function(e)
-			if string.match(e.file, ".otter.") then
-				return
-			end
-			if require("molten.status").initialized() == "Molten" then
-				vim.fn.MoltenUpdateOption("virt_lines_off_by_1", true)
-				vim.fn.MoltenUpdateOption("virt_text_output", true)
-			else
-				vim.g.molten_virt_lines_off_by_1 = true
-				vim.g.molten_virt_text_output = true
-			end
-		end,
-	},
+	-- {
+	-- 	event = "BufAdd",
+	-- 	pattern = { "*.ipynb" },
+	-- 	callback = imb,
+	-- },
+	-- {
+	-- 	event = "BufEnter",
+	-- 	pattern = { "*.ipynb" },
+	-- 	callback = function()
+	-- 		if vim.api.nvim_get_vvar("vim_did_enter") ~= 1 then
+	-- 			imb()
+	-- 		end
+	-- 	end,
+	-- },
+	-- {
+	-- 	event = "BufEnter",
+	-- 	pattern = "*.py",
+	-- 	callback = function(e)
+	-- 		if string.match(e.file, ".otter.") then
+	-- 			return
+	-- 		end
+	-- 		if require("molten.status").initialized() == "Molten" then
+	-- 			vim.fn.MoltenUpdateOption("virt_lines_off_by_1", false)
+	-- 			vim.fn.MoltenUpdateOption("virt_text_output", false)
+	-- 		else
+	-- 			vim.g.molten_virt_lines_off_by_1 = false
+	-- 			vim.g.molten_virt_text_output = false
+	-- 		end
+	-- 	end,
+	-- },
+	-- {
+	-- 	event = "BufEnter",
+	-- 	pattern = { "*.qmd", "*.md", "*.ipynb" },
+	-- 	callback = function(e)
+	-- 		if string.match(e.file, ".otter.") then
+	-- 			return
+	-- 		end
+	-- 		if require("molten.status").initialized() == "Molten" then
+	-- 			vim.fn.MoltenUpdateOption("virt_lines_off_by_1", true)
+	-- 			vim.fn.MoltenUpdateOption("virt_text_output", true)
+	-- 		else
+	-- 			vim.g.molten_virt_lines_off_by_1 = true
+	-- 			vim.g.molten_virt_text_output = true
+	-- 		end
+	-- 	end,
+	-- },
 	{
 		event = "BufEnter",
 		callback = function()
@@ -159,23 +159,23 @@ local mappings = {
 			vim.cmd("!bibtex main")
 		end,
 	},
-	{
-		event = "BufWritePost",
-		pattern = { "*.ipynb" },
-		callback = function()
-			if require("molten.status").initialized() == "Molten" then
-				vim.cmd("MoltenExportOutput!")
-			end
-		end,
-	},
-	{
-		event = "FileType",
-		pattern = "markdown",
-		callback = function()
-			vim.opt.wrap = false
-			require("quarto").activate()
-		end,
-	},
+	-- {
+	-- 	event = "BufWritePost",
+	-- 	pattern = { "*.ipynb" },
+	-- 	callback = function()
+	-- 		if require("molten.status").initialized() == "Molten" then
+	-- 			vim.cmd("MoltenExportOutput!")
+	-- 		end
+	-- 	end,
+	-- },
+	-- {
+	-- 	event = "FileType",
+	-- 	pattern = "markdown",
+	-- 	callback = function()
+	-- 		vim.opt.wrap = false
+	-- 		require("quarto").activate()
+	-- 	end,
+	-- },
 	{
 		event = "FileType",
 		pattern = { "dap-float" },
