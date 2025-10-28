@@ -71,3 +71,10 @@ curl -fsSL https://ollama.com/install.sh | sh
 ```
 And currently it appears that qwen2.5-coder is the best local model, so choose from https://ollama.com/library/qwen2.5-coder:7b-instruct
 (it has been prefilled with a decent choice for 8GB vram gpu's)
+
+## Windows specific tips
+
+To prevent the Hyper key in windows opening copilot, run the following reg-edit command:
+```
+REG ADD HKCU\Software\Classes\ms-officeapp\Shell\Open\Command /t REG_SZ /d rundll32
+```
