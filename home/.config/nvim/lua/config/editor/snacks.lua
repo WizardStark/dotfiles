@@ -185,6 +185,15 @@ require("snacks").setup({
 					},
 				},
 			},
+			gh_actions = {
+				layout = {
+					preset = "select",
+					preview = false,
+					layout = {
+						height = 25,
+					},
+				},
+			},
 		},
 		on_close = function(picker)
 			if picker.opts.source ~= "history_picker" then
@@ -202,6 +211,7 @@ require("snacks").setup({
 	statuscolumn = { enabled = true },
 	debug = { enabled = true },
 	git = { enabled = true },
+	gh = { enabled = true },
 })
 
 Snacks.indent.enable()
