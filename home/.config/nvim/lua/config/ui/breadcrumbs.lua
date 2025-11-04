@@ -119,7 +119,12 @@ local function lsp_callback(err, symbols, ctx, config)
 	end
 	find_symbol_path(symbols, cursor_line, cursor_char, breadcrumbs)
 
-	local breadcrumb_string = table.concat(breadcrumbs, "%#Comment#  %#Normal#")
+	local trimmed_crumbs = {}
+	for i = math.max(1, #breadcrumbs - 9), #breadcrumbs do
+		trimmed_crumbs[#trimmed_crumbs + 1] = breadcrumbs[i]
+	end
+
+	local breadcrumb_string = table.concat(trimmed_crumbs, "%#Comment#  %#Normal#")
 
 	if breadcrumb_string ~= "" then
 		vim.api.nvim_set_option_value("winbar", breadcrumb_string, { win = winnr })
