@@ -55,6 +55,7 @@ if ! require brew; then
 fi
 
 brew install bat dust eza ffind git-delta hyperfine jq jupytext nodejs npm nvim ripgrep stow tmux tokei vivid wget zoxide zsh
+npm install -g tree-sitter-cli
 
 mkdir -p ~/.config
 
