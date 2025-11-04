@@ -2272,6 +2272,101 @@ local mappings = {
 		description = "Show notification history",
 	},
 	{
+		mode = { "x", "o" },
+		keys = "af",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@function.outer", "textobjects")
+		end,
+		prefix = P.text,
+		description = "Around function",
+	},
+	{
+		mode = { "x", "o" },
+		keys = "if",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@function.inner", "textobjects")
+		end,
+		prefix = P.text,
+		description = "In function",
+	},
+	{
+		mode = { "x", "o" },
+		keys = "ac",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@class.outer", "textobjects")
+		end,
+		prefix = P.text,
+		description = "Around class",
+	},
+	{
+		mode = { "x", "o" },
+		keys = "ic",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@class.inner", "textobjects")
+		end,
+		prefix = P.text,
+		description = "In class",
+	},
+	{
+		mode = { "x", "o" },
+		keys = "as",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@locals.scope", "locals")
+		end,
+		prefix = P.text,
+		description = "Around scope",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = ";",
+		callback = function()
+			require("nvim-treesitter-textobjects.repeatable_move").repeat_last_move()
+		end,
+		prefix = P.nav,
+		description = "Repeat last move",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = ",",
+		callback = function()
+			require("nvim-treesitter-textobjects.repeatable_move").repeat_last_move_opposite()
+		end,
+		prefix = P.nav,
+		description = "Repeat last move (opposite direction)",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "f",
+		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_f_expr,
+		opts = { expr = true },
+		prefix = P.nav,
+		description = "Up to and including character forwards",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "F",
+		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_F_expr,
+		opts = { expr = true },
+		prefix = P.nav,
+		description = "Up to and including character backwards",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "t",
+		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_t_expr,
+		opts = { expr = true },
+		prefix = P.nav,
+		description = "Up to character forwards",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "T",
+		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_T_expr,
+		opts = { expr = true },
+		prefix = P.nav,
+		description = "Up to character backwards",
+	},
+	{
 		mode = { "n", "v" },
 		keys = "<C-S-j>",
 		callback = "<cmd>Treewalker Down<cr>",

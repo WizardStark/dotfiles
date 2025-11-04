@@ -142,8 +142,14 @@ local disabled = {
 
 local function breadcrumbs_set()
 	local bufnr = vim.api.nvim_get_current_buf()
+	local winnr = vim.api.nvim_get_current_win()
 	local filetype = vim.bo[bufnr].filetype
-	if disabled[filetype] or not vim.bo[bufnr].buflisted then
+	local win_config = vim.api.nvim_win_get_config(winnr)
+	if
+		disabled[filetype]
+		or (win_config.zindex ~= nil and (vim.bo[bufnr].buftype ~= "terminal" or vim.bo[bufnr].filetype ~= "terminal"))
+		or (not vim.bo[bufnr].buflisted or vim.bo[bufnr].buftype ~= "" or vim.api.nvim_buf_get_name(bufnr) == "")
+	then
 		vim.o.winbar = ""
 		return
 	end
@@ -181,28 +187,6 @@ local function breadcrumbs_set()
 end
 
 local breadcrumbs_augroup = vim.api.nvim_create_augroup("Breadcrumbs", { clear = true })
-
--- Old enable method
--- local enable = function(buf, win)
--- 	local filetype = vim.bo[buf].filetype
--- 	local disabled = {
--- 		["oil"] = true,
--- 		["trouble"] = true,
--- 		["qf"] = true,
--- 		["noice"] = true,
--- 		["dap-view"] = true,
--- 		["dap-view-term"] = true,
--- 		["dap-repl"] = true,
--- 		["neocomposer-menu"] = true,
--- 	}
--- 	if disabled[filetype] then
--- 		return false
--- 	end
--- 	if vim.api.nvim_win_get_config(win).zindex ~= nil then
--- 		return vim.bo[buf].buftype == "terminal" and vim.bo[buf].filetype == "terminal"
--- 	end
--- 	return vim.bo[buf].buflisted == true and vim.bo[buf].buftype == "" and vim.api.nvim_buf_get_name(buf) ~= ""
--- end
 
 vim.api.nvim_create_autocmd({ "CursorMoved" }, {
 	group = breadcrumbs_augroup,

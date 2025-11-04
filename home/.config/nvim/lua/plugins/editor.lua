@@ -3,16 +3,32 @@ return {
 	{
 		"nvim-treesitter/nvim-treesitter",
 		build = ":TSUpdate",
-		event = "UiEnter",
+		-- lazy = false,
+		event = "UIEnter",
+		branch = "main",
 		dependencies = {
-			"nvim-treesitter/nvim-treesitter-textobjects",
-			"nvim-treesitter/playground",
-			"RRethy/nvim-treesitter-textsubjects",
-			"RRethy/nvim-treesitter-endwise",
+			{ "nvim-treesitter/nvim-treesitter-textobjects", branch = "main" },
 		},
 		config = function()
 			require("config.editor.treesitter")
 		end,
+	},
+	{
+		"MeanderingProgrammer/treesitter-modules.nvim",
+		event = "UIEnter",
+		dependencies = { "nvim-treesitter/nvim-treesitter" },
+		opts = {
+			ensure_installed = {},
+			incremental_selection = {
+				enable = true,
+				keymaps = {
+					init_selection = "<M-i>",
+					node_incremental = "<M-i>",
+					scope_incremental = "<M-I>",
+					node_decremental = "<M-d>",
+				},
+			},
+		},
 	},
 	{
 		"aaronik/treewalker.nvim",
