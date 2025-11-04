@@ -1925,15 +1925,6 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>bp",
-		callback = function()
-			require("dropbar.api").pick()
-		end,
-		prefix = P.nav,
-		description = "Enter breadcrumb selection",
-	},
-	{
-		mode = { "n" },
 		keys = "<leader>w",
 		callback = function()
 			local win = require("window-picker").pick_window()

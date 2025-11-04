@@ -14,13 +14,6 @@ return {
 		end,
 	},
 	{
-		"Bekaboo/dropbar.nvim",
-		event = "UiEnter",
-		config = function()
-			require("config.ui.dropbar")
-		end,
-	},
-	{
 		"folke/noice.nvim",
 		event = "UiEnter",
 		dependencies = {

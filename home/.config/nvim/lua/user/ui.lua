@@ -138,6 +138,7 @@ return {
 		catppuccin_opts = vim.tbl_deep_extend("force", catppuccin_opts, vim.g.catppuccin_opts or {})
 		require("catppuccin").setup(catppuccin_opts)
 		vim.cmd("colorscheme " .. vim.g.colorscheme)
+		require("config.ui.breadcrumbs")
 
 		if vim.g.workspaces_disabled or next(vim.fn.argv()) ~= nil then
 			require("lualine")
