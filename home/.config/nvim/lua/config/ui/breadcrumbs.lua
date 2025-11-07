@@ -126,10 +126,12 @@ local function lsp_callback(err, symbols, ctx, config)
 
 	local breadcrumb_string = table.concat(trimmed_crumbs, "%#Comment#  %#Normal#")
 
-	if breadcrumb_string ~= "" then
-		vim.api.nvim_set_option_value("winbar", breadcrumb_string, { win = winnr })
-	else
-		vim.api.nvim_set_option_value("winbar", " ", { win = winnr })
+	if ctx.bufnr == vim.api.nvim_get_current_buf() then
+		if breadcrumb_string ~= "" then
+			vim.api.nvim_set_option_value("winbar", breadcrumb_string, { win = winnr })
+		else
+			vim.api.nvim_set_option_value("winbar", " ", { win = winnr })
+		end
 	end
 end
 
@@ -169,7 +171,7 @@ local function breadcrumbs_set()
 	---@type string
 	local uri = vim.lsp.util.make_text_document_params(bufnr)["uri"]
 	if not uri then
-		vim.print("Error: Could not get URI for buffer. Is it saved?")
+		vim.notify("Error: Could not get URI for buffer. Is it saved?")
 		return
 	end
 
