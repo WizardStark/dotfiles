@@ -48,6 +48,7 @@ local function on_attach(client, bufnr)
 	if vim.g.extra_lsp_actions ~= nil then
 		vim.g.extra_lsp_actions()
 	end
+	vim.treesitter.start()
 end
 
 vim.lsp.config("*", {

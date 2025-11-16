@@ -188,10 +188,6 @@ local mappings = {
 		event = "FileType",
 		callback = function(args)
 			vim.opt.foldcolumn = "0"
-			vim.opt.foldmethod = "expr"
-			vim.opt.foldtext = "v:lua.custom_foldtext()"
-			vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
-			vim.opt.foldenable = true
 
 			if require("user.utils").is_big_file(args.buf) then
 				return
@@ -207,8 +203,10 @@ local mappings = {
 
 			vim.wo.foldmethod = "expr"
 			vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
-			vim.treesitter.start(buf, language)
+			vim.wo.foldtext = "v:lua.custom_foldtext()"
+			vim.wo.foldenable = true
 			vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+			vim.treesitter.start(buf, language)
 		end,
 	},
 	{
