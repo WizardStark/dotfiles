@@ -1889,8 +1889,9 @@ local mappings = {
 		mode = { "x" },
 		keys = "<leader>re",
 		callback = function()
-			require("refactoring").refactor("Extract Function")
+			return require("refactoring").refactor("Extract Function")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Extract function",
 	},
@@ -1898,8 +1899,9 @@ local mappings = {
 		mode = { "x" },
 		keys = "<leader>rff",
 		callback = function()
-			require("refactoring").refactor("Extract Function To File")
+			return require("refactoring").refactor("Extract Function To File")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Extract function to file",
 	},
@@ -1907,8 +1909,9 @@ local mappings = {
 		mode = { "x" },
 		keys = "<leader>rv",
 		callback = function()
-			require("refactoring").refactor("Extract Variable")
+			return require("refactoring").refactor("Extract Variable")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Extract variable",
 	},
@@ -1916,8 +1919,9 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>rI",
 		callback = function()
-			require("refactoring").refactor("Inline Function")
+			return require("refactoring").refactor("Inline Function")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Inline function",
 	},
@@ -1925,8 +1929,9 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>ri",
 		callback = function()
-			require("refactoring").refactor("Inline Variable")
+			return require("refactoring").refactor("Inline Variable")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Inline variable",
 	},
@@ -1934,8 +1939,9 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>rb",
 		callback = function()
-			require("refactoring").refactor("Extract Block")
+			return require("refactoring").refactor("Extract Block")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Extract block",
 	},
@@ -1943,8 +1949,9 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>rfb",
 		callback = function()
-			require("refactoring").refactor("Extract Block To File")
+			return require("refactoring").refactor("Extract Block To File")
 		end,
+		opts = { expr = true },
 		prefix = P.code,
 		description = "Extract block to file",
 	},
@@ -1952,7 +1959,7 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>rl",
 		callback = function()
-			require("refactoring").get_refactors()
+			require("refactoring").select_refactor()
 		end,
 		prefix = P.code,
 		description = "List available refactors",
