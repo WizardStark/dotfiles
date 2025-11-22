@@ -52,39 +52,6 @@ local function open_in_non_dap_window(file, line)
 	end
 end
 
-local default_notebook = [[
-  {
-    "cells": [
-     {
-      "cell_type": "markdown",
-      "metadata": {},
-      "source": [
-        ""
-      ]
-     }
-    ],
-    "metadata": {
-     "kernelspec": {
-      "display_name": "Python 3",
-      "language": "python",
-      "name": "python3"
-     },
-     "language_info": {
-      "codemirror_mode": {
-        "name": "ipython"
-      },
-      "file_extension": ".py",
-      "mimetype": "text/x-python",
-      "name": "python",
-      "nbconvert_exporter": "python",
-      "pygments_lexer": "ipython3"
-     }
-    },
-    "nbformat": 4,
-    "nbformat_minor": 5
-  }
-]]
-
 local original_branch = nil
 
 local history_picker = function()
@@ -1598,24 +1565,6 @@ local mappings = {
 	},
 	{
 		mode = { "o", "x" },
-		keys = "iN",
-		callback = function()
-			require("various-textobjs").notebookCell("inner")
-		end,
-		prefix = P.text,
-		description = "In notebook cell",
-	},
-	{
-		mode = { "o", "x" },
-		keys = "aN",
-		callback = function()
-			require("various-textobjs").notebookCell("outer")
-		end,
-		prefix = P.text,
-		description = "Around notebook cell",
-	},
-	{
-		mode = { "o", "x" },
 		keys = "iv",
 		callback = function()
 			require("various-textobjs").value("inner")
@@ -1799,129 +1748,6 @@ local mappings = {
 		end,
 		prefix = P.misc,
 		description = "Open yank history",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>me",
-		callback = "<cmd>MoltenEvaluateOperator<CR>",
-		prefix = P.ipynb,
-		description = "evaluate operator",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>mo",
-		callback = "<cmd>noautocmd MoltenEnterOutput<CR>",
-		prefix = P.ipynb,
-		description = "open output window",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>mr",
-		callback = "<cmd>MoltenReevaluateCell<CR>",
-		prefix = P.ipynb,
-		description = "re-eval cell",
-		opts = { silent = true },
-	},
-	{
-		mode = { "v" },
-		keys = "<leader>r",
-		callback = "<cmd><C-u>MoltenEvaluateVisual<CR>gv",
-		prefix = P.ipynb,
-		description = "execute visual selection",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>mc",
-		callback = "<cmd>MoltenHideOutput<CR>",
-		prefix = P.ipynb,
-		description = "close output window",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>md",
-		callback = "<cmd>MoltenDelete<CR>",
-		prefix = P.ipynb,
-		description = "delete Molten cell",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>mx",
-		callback = ":MoltenOpenInBrowser<CR>",
-		prefix = P.ipynb,
-		description = "open output in browser",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>rc",
-		callback = function()
-			require("quarto.runner").run_cell()
-		end,
-		prefix = P.ipynb,
-		description = "run cell",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>ra",
-		callback = function()
-			require("quarto.runner").run_above()
-		end,
-		prefix = P.ipynb,
-		description = "run cell and above",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>rA",
-		callback = function()
-			require("quarto.runner").run_all()
-		end,
-		prefix = P.ipynb,
-		description = "run all cells",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>rl",
-		callback = function()
-			require("quarto.runner").run_line()
-		end,
-		prefix = P.ipynb,
-		description = "run line",
-	},
-	{
-		mode = { "v" },
-		keys = "<leader>rv",
-		callback = function()
-			require("quarto.runner").run_range()
-		end,
-		prefix = P.ipynb,
-		description = "run visual range",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>RA",
-		callback = function()
-			require("quarto.runner").run_all(true)
-		end,
-		prefix = P.ipynb,
-		description = "run all cells of all languages",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>nb",
-		callback = function()
-			vim.ui.input({ prompt = "Notebook Path: ", completion = "file" }, function(input)
-				-- local path = vim.fn.expand(input .. ".ipynb")
-				-- local file = io.open(path, "w")
-				-- if file then
-				-- 	file:write(default_notebook)
-				-- 	file:close()
-				-- 	vim.cmd("edit " .. path)
-				-- else
-				-- 	print("Error: Could not open new notebook file for writing.")
-				-- end
-			end)
-		end,
-		prefix = P.ipynb,
-		description = "Create new ipynb notebook",
 	},
 	{
 		mode = { "n" },
@@ -2221,33 +2047,6 @@ local mappings = {
 		description = 'Remove linebreaks from contents in " register',
 	},
 	{
-		mode = { "n", "v" },
-		keys = "<leader>mcc",
-		callback = function()
-			vim.cmd("CodeCreate")
-		end,
-		prefix = P.misc,
-		description = "Create code block in markdown",
-	},
-	{
-		mode = { "n", "v" },
-		keys = "<leader>mce",
-		callback = function()
-			vim.cmd("CodeEdit")
-		end,
-		prefix = P.misc,
-		description = "Edit markdown code block",
-	},
-	{
-		mode = { "n", "v" },
-		keys = "<leader>ms",
-		callback = function()
-			vim.cmd({ cmd = "Markview", args = { "splitToggle" } })
-		end,
-		prefix = P.misc,
-		description = "Toggle previewing markdown in a split",
-	},
-	{
 		mode = { "n" },
 		keys = "]]",
 		callback = function()
@@ -2273,21 +2072,6 @@ local mappings = {
 		end,
 		prefix = P.misc,
 		description = "Split/Join arguments",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>mt",
-		callback = function()
-			local wc_out = vim.fn.system("wc -L " .. vim.fn.expand("%:p"))
-			local longest_line = tonumber(string.sub(wc_out, wc_out:find("%d+")))
-			if longest_line < vim.o.columns then
-				vim.cmd("Markview toggle")
-			else
-				vim.notify("File contains lines longer than the viewport, aborting rendering")
-			end
-		end,
-		prefix = P.misc,
-		description = "Enable markdown rendering",
 	},
 	{
 		mode = { "n" },
@@ -2484,15 +2268,6 @@ local mappings = {
 		end,
 		prefix = P.hydra,
 		description = "Start git mode",
-	},
-	{
-		mode = { "n", "v" },
-		keys = "<leader><C-n>",
-		callback = function()
-			require("config.hydra").notebook_hydra:activate()
-		end,
-		prefix = P.hydra,
-		description = "Start notebook mode",
 	},
 	{
 		mode = { "n", "v" },

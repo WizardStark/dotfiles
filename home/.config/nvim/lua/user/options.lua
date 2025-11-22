@@ -66,7 +66,6 @@ return {
 		vim.filetype.add({
 			extension = {
 				["http"] = "http",
-				["ipynb"] = "ipynb",
 			},
 		})
 	end,

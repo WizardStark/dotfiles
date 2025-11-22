@@ -427,24 +427,4 @@ _q_: Exit]],
 	},
 })
 
-M.notebook_hydra = Hydra({
-	name = "Notebook",
-	mode = { "n" },
-	hint = [[
-_j_/_k_: move down/up  _r_: run cell
-_l_: run line        _R_: run above
-_q_: exit ]],
-	config = {
-		invoke_on_body = true,
-	},
-	heads = {
-		{ "j", keys("]b") },
-		{ "k", keys("[b") },
-		{ "r", "<cmd>MoltenReevaluateCell<CR>" },
-		{ "l", "<cmd>QuartoSendLine<CR>" },
-		{ "R", "<cmd>QuartoSendAbove<CR>" },
-		{ "q", nil, { exit = true } },
-	},
-})
-
 return M
