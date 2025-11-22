@@ -1,3 +1,4 @@
+local toggled_terms = false
 local last_refreshed_time = nil
 
 local function fold_virt_text(result, s, lnum, coloff)
@@ -139,6 +140,7 @@ local mappings = {
 			if vim.bo.bt == "terminal" then
 				vim.opt_local.number = false
 				vim.opt_local.relativenumber = false
+				vim.bo.buflisted = false
 			end
 			if vim.bo.ft == "help" then
 				vim.cmd("wincmd L")
@@ -182,6 +184,29 @@ local mappings = {
 		callback = function(e)
 			vim.keymap.set("n", "q", "<C-w>q", { buffer = e.buf })
 			vim.keymap.set("n", "<Esc>", "<C-w>q", { buffer = e.buf })
+		end,
+	},
+	{
+		event = "BufWinEnter",
+		pattern = { "COMMIT_EDITMSG" },
+		callback = function()
+			vim.bo.bufhidden = "delete"
+			if not toggled_terms then
+				toggled_terms = true
+				vim.defer_fn(function()
+					require("workspaces.toggleterms").close_visible_terms(true)
+				end, 100)
+			end
+		end,
+	},
+	{
+		event = "BufLeave",
+		pattern = { "COMMIT_EDITMSG" },
+		callback = function()
+			toggled_terms = false
+			vim.defer_fn(function()
+				require("workspaces.toggleterms").toggle_active_terms(true)
+			end, 100)
 		end,
 	},
 	{

@@ -1,5 +1,6 @@
 local M = {}
 
+local Terminal = require("toggleterm.terminal").Terminal
 local state = require("workspaces.state")
 require("toggleterm")
 
@@ -107,7 +108,11 @@ local function toggle_term(term, override_active, size)
 		term.size = size
 	end
 
-	vim.cmd(term.global_id .. "ToggleTerm direction=" .. term.term_direction .. " size=" .. term.size)
+	Terminal:new({
+		count = term.global_id,
+		direction = term.term_direction,
+		size = term.size,
+	}):toggle()
 
 	if not has_visible_terms and term.term_pos == "left" and term.should_display == false then
 		vim.cmd("wincmd H")

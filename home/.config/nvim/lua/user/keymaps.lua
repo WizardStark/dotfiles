@@ -1973,7 +1973,7 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>nr",
+		keys = "<leader>na",
 		callback = function()
 			require("neotest").run.run(vim.fn.expand("%"))
 		end,
@@ -1988,6 +1988,33 @@ local mappings = {
 		end,
 		prefix = P.test,
 		description = "Run nearest test",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>nd",
+		callback = function()
+			require("neotest").run.run_last({ strategy = "dap" })
+		end,
+		prefix = P.test,
+		description = "Run nearest test",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>nW",
+		callback = function()
+			require("neotest").watch.toggle(vim.fn.expand("%"))
+		end,
+		prefix = P.test,
+		description = "Toggle watching of all tests in file",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>nw",
+		callback = function()
+			require("neotest").watch.toggle()
+		end,
+		prefix = P.test,
+		description = "Toggle watching of this test",
 	},
 	{
 		mode = { "n" },

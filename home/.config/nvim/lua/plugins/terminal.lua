@@ -16,14 +16,14 @@ return {
 			mapping = { n = { s = false } },
 		},
 	},
-	{
-		"willothy/flatten.nvim",
-		lazy = false,
-		priority = 1001,
-		config = function()
-			require("config.terminal.flatten")
-		end,
-	},
+	-- {
+	-- 	"willothy/flatten.nvim",
+	-- 	lazy = false,
+	-- 	priority = 1001,
+	-- 	config = function()
+	-- 		require("config.terminal.flatten")
+	-- 	end,
+	-- },
 	{
 		"stevearc/overseer.nvim",
 		cmd = { "OverseerRun", "OverseerToggle" },

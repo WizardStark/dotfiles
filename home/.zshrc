@@ -120,6 +120,13 @@ lsd() { (
         ls
 ); }
 
+if [ -v NVIM ]; then
+    export GIT_EDITOR='nvr --remote-wait'
+    alias nvim="nvim --server $NVIM --remote"
+else
+    export GIT_EDITOR='nvim'
+fi
+
 export EDITOR='nvim'
 alias vim="nvim"
 alias cl="printf '\33c\e[3J'"
