@@ -111,7 +111,7 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>q",
+		keys = "<leader>m",
 		callback = function()
 			require("workspaces.marks").toggle_mark()
 		end,

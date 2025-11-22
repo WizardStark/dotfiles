@@ -2336,6 +2336,33 @@ local mappings = {
 		prefix = P.git,
 		description = "Open comment buffer",
 	},
+	{
+		mode = { "n" },
+		keys = "<leader>qt",
+		callback = function()
+			require("quicker").toggle()
+		end,
+		prefix = P.qf,
+		description = "Toggle quickfix list",
+	},
+	{
+		mode = { "n" },
+		keys = ">q",
+		callback = function()
+			require("quicker").expand({ before = 2, after = 2, add_to_existing = true })
+		end,
+		prefix = P.qf,
+		description = "Expand quickfix context",
+	},
+	{
+		mode = { "n" },
+		keys = "<q",
+		callback = function()
+			require("quicker").collapse()
+		end,
+		prefix = P.qf,
+		description = "Collapse quickfix context",
+	},
 }
 
 return {

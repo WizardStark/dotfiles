@@ -24,6 +24,7 @@ M.PREFIXES = {
 	nogroup = "Ungrouped",
 	window = "Window",
 	work = "Workspaces",
+	qf = "Quickfix",
 }
 
 M.special_windows = {
