@@ -101,7 +101,7 @@ local mappings = {
 	},
 	{
 		event = "BufWinEnter",
-		pattern = { "COMMIT_EDITMSG" },
+		pattern = { "COMMIT_EDITMSG", "git-rebase-todo" },
 		callback = function()
 			vim.bo.bufhidden = "delete"
 			if not toggled_terms then
@@ -114,7 +114,7 @@ local mappings = {
 	},
 	{
 		event = "BufLeave",
-		pattern = { "COMMIT_EDITMSG" },
+		pattern = { "COMMIT_EDITMSG", "git-rebase-todo" },
 		callback = function()
 			toggled_terms = false
 			vim.defer_fn(function()
@@ -204,7 +204,7 @@ local mappings = {
 			vim.keymap.set("n", "h", function()
 				MiniFiles.go_out()
 				MiniFiles.go_out()
-				MiniFiles.go_in({})
+				MiniFiles.go_in()
 			end, { buffer = buf_id })
 
 			vim.keymap.set("n", "<esc>", function()
