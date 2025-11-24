@@ -1,6 +1,7 @@
 local devicons_ok, devicons = pcall(require, "nvim-web-devicons")
 local folder_icon = "%#Conditional#" .. "󰉋" .. "%#Normal#"
 local file_icon = "󰈙"
+local last_refreshed_time = nil
 
 local kind_icons = {
 	"%#File#" .. "󰈙" .. "%#Normal#", -- file
@@ -148,6 +149,12 @@ local disabled = {
 }
 
 local function breadcrumbs_set()
+	if last_refreshed_time ~= nil and vim.loop.now() - last_refreshed_time < 300 then
+		return
+	end
+
+	last_refreshed_time = vim.loop.now()
+
 	local bufnr = vim.api.nvim_get_current_buf()
 	local winnr = vim.api.nvim_get_current_win()
 	local filetype = vim.bo[bufnr].filetype
