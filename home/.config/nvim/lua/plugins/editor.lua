@@ -203,4 +203,19 @@ return {
 			require("config.editor.minifiles")
 		end,
 	},
+	{
+		"folke/sidekick.nvim",
+		event = "InsertEnter",
+		config = function()
+			require("config.editor.sidekick")
+		end,
+	},
+	{
+		"zbirenbaum/copilot.lua",
+		cmd = "Copilot",
+		event = "InsertEnter",
+		config = function()
+			require("config.editor.copilot")
+		end,
+	},
 }

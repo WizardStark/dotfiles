@@ -647,7 +647,7 @@ local mappings = {
 		description = "Reset selection/object",
 	},
 	{
-		mode = { "n", "i" },
+		mode = { "n" },
 		keys = "<M-n>",
 		callback = function()
 			require("mini.diff").goto_hunk("next")
@@ -656,7 +656,7 @@ local mappings = {
 		description = "Go to next change/hunk",
 	},
 	{
-		mode = { "n", "i" },
+		mode = { "n" },
 		keys = "<M-t>",
 		callback = function()
 			require("mini.diff").goto_hunk("prev")
@@ -2369,6 +2369,63 @@ local mappings = {
 		end,
 		prefix = P.qf,
 		description = "Collapse quickfix context",
+	},
+	{
+		mode = { "n" },
+		keys = "<Tab>",
+		callback = function()
+			if not require("sidekick").nes_jump_or_apply() then
+				return "<Tab>"
+			end
+		end,
+		opts = { expr = true },
+		prefix = P.llm,
+		description = "Goto/Apply next edit suggestion",
+	},
+	{
+		mode = { "i" },
+		keys = "<M-a>",
+		callback = function()
+			require("copilot.suggestion").accept()
+		end,
+		prefix = P.llm,
+		description = "Accept inline suggestion",
+	},
+	{
+		mode = { "i" },
+		keys = "<M-n>",
+		callback = function()
+			require("copilot.suggestion").next()
+		end,
+		prefix = P.llm,
+		description = "Go to next inline suggestion",
+	},
+	{
+		mode = { "i" },
+		keys = "<M-t>",
+		callback = function()
+			require("copilot.suggestion").prev()
+		end,
+		prefix = P.llm,
+		description = "Go to previous inline suggestion",
+	},
+	{
+		mode = { "i" },
+		keys = "<M-c>",
+		callback = function()
+			require("copilot.suggestion").dismiss()
+		end,
+		prefix = P.llm,
+		description = "Clear inline suggestion",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>ct",
+		callback = function()
+			require("copilot.suggestion").toggle_auto_trigger()
+		end,
+		prefix = P.llm,
+		description = "Toggle inline suggestion",
 	},
 }
 
