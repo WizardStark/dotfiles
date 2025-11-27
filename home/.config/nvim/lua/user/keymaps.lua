@@ -1337,7 +1337,7 @@ local mappings = {
 			vim.lsp.codelens.run()
 		end,
 		prefix = P.code,
-		description = "Show code actions",
+		description = "Codelens actions",
 	},
 	{
 		mode = { "n" },
@@ -2383,6 +2383,42 @@ local mappings = {
 		description = "Goto/Apply next edit suggestion",
 	},
 	{
+		mode = { "n" },
+		keys = "<leader>cc",
+		callback = function()
+			require("sidekick.cli").toggle()
+		end,
+		prefix = P.llm,
+		description = "Toggle cli panel",
+	},
+	{
+		mode = { "x" },
+		keys = "<leader>cv",
+		callback = function()
+			require("sidekick.cli").send({ msg = "{selection}" })
+		end,
+		prefix = P.llm,
+		description = "Send visual selection to cli",
+	},
+	{
+		mode = { "x", "n" },
+		keys = "<leader>cf",
+		callback = function()
+			require("sidekick.cli").send({ msg = "{file}" })
+		end,
+		prefix = P.llm,
+		description = "Send file to cli",
+	},
+	{
+		mode = { "x", "n" },
+		keys = "<leader>cp",
+		callback = function()
+			require("sidekick.cli").prompt()
+		end,
+		prefix = P.llm,
+		description = "Select prompt for cli",
+	},
+	{
 		mode = { "i" },
 		keys = "<M-a>",
 		callback = function()
@@ -2420,7 +2456,7 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>ct",
+		keys = "<leader>ci",
 		callback = function()
 			require("copilot.suggestion").toggle_auto_trigger()
 		end,
