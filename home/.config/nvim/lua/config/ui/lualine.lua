@@ -104,14 +104,6 @@ local function get_startup_time()
 	return "󰅕 " .. string.format("%.2f", stats.startuptime) .. "ms"
 end
 
-local function is_auto_trigger_active()
-	return vim.b.copilot_suggestion_auto_trigger
-end
-
-local function copilot_auto_trigger()
-	return ""
-end
-
 local palette = require("catppuccin.palettes").get_palette("mocha")
 local theme = require("catppuccin.utils.lualine")("mocha")
 theme.normal.c.bg = "NONE"
@@ -140,7 +132,6 @@ require("lualine").setup(
 				{ "location", cond = is_not_toggleterm },
 				{ require("recorder").recordingStatus, cond = is_not_toggleterm },
 				{ require("recorder").displaySlots, cond = is_not_toggleterm },
-				{ copilot_auto_trigger, cond = is_auto_trigger_active },
 			},
 			lualine_z = { { clients_lsp, cond = is_not_toggleterm } },
 		},

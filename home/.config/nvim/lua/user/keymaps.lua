@@ -2427,6 +2427,15 @@ local mappings = {
 		prefix = P.llm,
 		description = "Toggle inline suggestion",
 	},
+	{
+		mode = { "n" },
+		keys = "<leader>ce",
+		callback = function()
+			require("sidekick.nes").toggle()
+		end,
+		prefix = P.llm,
+		description = "Toggle next edit suggestions",
+	},
 }
 
 return {
