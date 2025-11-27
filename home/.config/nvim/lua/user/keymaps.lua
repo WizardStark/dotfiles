@@ -2436,6 +2436,15 @@ local mappings = {
 		prefix = P.llm,
 		description = "Toggle next edit suggestions",
 	},
+	{
+		mode = { "n" },
+		keys = "<leader>bd",
+		callback = function()
+			require("snacks").bufdelete()
+		end,
+		prefix = P.nav,
+		description = "Delete buffer without closing window",
+	},
 }
 
 return {
