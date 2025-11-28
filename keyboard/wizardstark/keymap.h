@@ -35,7 +35,7 @@ enum custom_keycodes {
   SMTD_KEYCODES_END,
 };
 
-enum layers { BASE, SYM, NAV, GAME, MOUSE };
+enum layers { BASE, SYM, NAV, GAME, GAME2, MOUSE };
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -64,8 +64,15 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______,        KC_1,           KC_2,           KC_3,           KC_4,           KC_5,                                           KC_K,           KC_Y,           KC_J,           KC_P,           RALT(KC_F10),   TO(BASE),
     KC_GRV,         KC_TAB,         KC_Q,           KC_W,           KC_E,           KC_R,                                           KC_L,           KC_O,           KC_UP,          KC_N,           KC_VOLD,        KC_VOLU,
     KC_ESC,         KC_LSFT,        KC_A,           KC_S,           KC_D,           KC_F,                                           KC_U,           KC_LEFT,        KC_DOWN,        KC_RGHT,        KC_MPRV,        KC_MNXT,
-    KC_I,           KC_LCTL,        KC_Z,           KC_X,           KC_C,           KC_V,                                           KC_M,           KC_T,           KC_G,           KC_B,           KC_MUTE,        KC_H,
-                                                                    KC_SPC,         KC_LALT,                                        KC_MSTP,        KC_MPLY
+    KC_LALT,        KC_LCTL,        KC_Z,           KC_X,           KC_C,           KC_V,                                           KC_M,           KC_T,           KC_G,           KC_B,           KC_MUTE,        KC_H,
+                                                                    KC_SPC,         MO(GAME2),                                      KC_MSTP,        KC_MPLY
+  ),
+  [GAME2] = LAYOUT_voyager(
+    _______,        KC_1,           KC_2,           KC_3,           KC_4,           KC_5,                                           KC_K,           KC_Y,           KC_UP,          KC_P,           RALT(KC_F10),   TO(BASE),
+    KC_GRV,         KC_Z,           KC_H,           KC_M,           KC_G,           KC_J,                                           KC_L,           KC_DOT,         KC_UP,          KC_N,           KC_VOLD,        KC_VOLU,
+    KC_ESC,         KC_Y,           KC_O,           KC_N,           KC_T,           KC_K,                                           KC_LEFT,        KC_LEFT,        KC_DOWN,        KC_RGHT,        KC_SCLN,        KC_MNXT,
+    KC_LALT,        KC_B,           KC_P,           KC_L,           KC_U,           KC_U,                                           KC_M,           KC_U,           KC_G,           KC_B,           KC_MUTE,        KC_H,
+                                                                    _______,        _______,                                        KC_MSTP,        KC_MPLY
   ),
   [MOUSE] = LAYOUT_voyager(
     _______,        _______,        _______,        _______,        _______,        _______,                                        _______,        _______,        _______,        _______,        _______,        _______,
