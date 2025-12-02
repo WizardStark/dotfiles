@@ -1879,13 +1879,6 @@ local mappings = {
 		description = "Toggle summary tree",
 	},
 	{
-		mode = { "v" },
-		keys = "<leader>cs",
-		callback = "<cmd>CodeSnapASCII<cr>",
-		prefix = P.misc,
-		description = "Copy ASCII code snapshot to clipboard",
-	},
-	{
 		mode = { "x" },
 		keys = "<leader>re",
 		callback = function()
@@ -2390,6 +2383,15 @@ local mappings = {
 		end,
 		prefix = P.llm,
 		description = "Toggle cli panel",
+	},
+	{
+		mode = { "n", "x" },
+		keys = "<leader>ct",
+		callback = function()
+			require("sidekick.cli").send({ msg = "{this}" })
+		end,
+		prefix = P.llm,
+		description = "Send current context to cli",
 	},
 	{
 		mode = { "x" },
