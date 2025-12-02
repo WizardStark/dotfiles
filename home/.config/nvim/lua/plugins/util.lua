@@ -1,8 +1,9 @@
 return {
 	-- surround
 	{
-		"kylechui/nvim-surround",
+		"nvim-mini/mini.surround",
 		event = "VeryLazy",
+		version = false,
 		config = true,
 	},
 	-- undotree
