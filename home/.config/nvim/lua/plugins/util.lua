@@ -6,6 +6,12 @@ return {
 		version = false,
 		config = true,
 	},
+	{
+		"nvim-mini/mini.ai",
+		event = "VeryLazy",
+		version = false,
+		config = true,
+	},
 	-- undotree
 	{
 		"mbbill/undotree",
