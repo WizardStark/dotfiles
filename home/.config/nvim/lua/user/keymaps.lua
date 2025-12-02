@@ -1350,7 +1350,7 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x", "o" },
-		keys = "s",
+		keys = "S",
 		callback = function()
 			require("flash").jump()
 		end,
