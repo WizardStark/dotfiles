@@ -1819,10 +1819,10 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>nd",
 		callback = function()
-			require("neotest").run.run_last({ strategy = "dap" })
+			require("neotest").run.run({ strategy = "dap" })
 		end,
 		prefix = P.test,
-		description = "Run nearest test",
+		description = "Debug test",
 	},
 	{
 		mode = { "n" },
