@@ -320,7 +320,7 @@ function M.make_keymaps(maps)
 			vim.notify("Aborting setting mapping with no mode, with description: " .. opts.desc)
 		else
 			for _, mode in ipairs(mapping.mode) do
-				local ok, err = pcall(vim.api.nvim_set_keymap, mode, lhs, rhs, opts)
+				local ok, err = pcall(vim.keymap.set, mode, lhs, rhs, opts)
 				if not ok then
 					vim.notify("Error: " .. err .. " for keys :" .. lhs)
 				end
