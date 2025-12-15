@@ -161,6 +161,14 @@ return {
 		end,
 	},
 	{
+		"rachartier/tiny-inline-diagnostic.nvim",
+		event = "VeryLazy",
+		priority = 1000,
+		config = function()
+			require("config.editor.diagnostics")
+		end,
+	},
+	{
 		"pmizio/typescript-tools.nvim",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
