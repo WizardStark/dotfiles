@@ -205,6 +205,82 @@ autocmd("User", {
 	end,
 })
 
+local widths = { 50, 30, 10 }
+
+local ensure_center_layout = function(event)
+	local state = MiniFiles.get_explorer_state()
+	if state == nil then
+		return
+	end
+
+	local path_this = vim.api.nvim_buf_get_name(event.data.buf_id):match("^minifiles://%d+/(.*)$")
+	local depth_this
+	for i, path in ipairs(state.branch) do
+		if path == path_this then
+			depth_this = i
+		end
+	end
+	if depth_this == nil then
+		return
+	end
+	local depth_offset = depth_this - state.depth_focus
+
+	local i = math.abs(depth_offset) + 1
+	local win_config = vim.api.nvim_win_get_config(event.data.win_id)
+	win_config.width = i <= #widths and widths[i] or widths[#widths]
+
+	win_config.col = math.floor(0.5 * (vim.o.columns - widths[1]))
+	for j = 1, math.abs(depth_offset) do
+		local sign = depth_offset == 0 and 0 or (depth_offset > 0 and 1 or -1)
+		-- widths[j+1] for the negative case because we don't want to add the center window's width
+		local prev_win_width = (sign == -1 and widths[j + 1]) or widths[j] or widths[#widths]
+		-- Add an extra +2 each step to account for the border width
+		win_config.col = win_config.col + sign * (prev_win_width + 2)
+	end
+
+	win_config.height = depth_offset == 0 and 25 or 20
+	win_config.row = math.floor(0.5 * (vim.o.lines - win_config.height))
+	vim.api.nvim_win_set_config(event.data.win_id, win_config)
+end
+
+vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesWindowUpdate", callback = ensure_center_layout })
+
+local function create_backdrop_window()
+	vim.g.backdrop_buf = vim.api.nvim_create_buf(false, true)
+	vim.g.backdrop_win = vim.api.nvim_open_win(vim.g.backdrop_buf, false, {
+		relative = "editor",
+		width = vim.o.columns,
+		height = vim.o.lines,
+		row = 0,
+		col = 0,
+		style = "minimal",
+		focusable = false,
+		zindex = 98,
+		border = "none",
+	})
+	vim.api.nvim_set_hl(0, "LazyBackdrop", { bg = "#000000", default = true })
+	vim.api.nvim_set_option_value("winhighlight", "Normal:LazyBackdrop", { scope = "local", win = vim.g.backdrop_win })
+	vim.api.nvim_set_option_value("winblend", 40, { scope = "local", win = vim.g.backdrop_win })
+	vim.bo[vim.g.backdrop_buf].buftype = "nofile"
+	vim.bo[vim.g.backdrop_buf].filetype = "backdrop"
+end
+
+local function close_backdrop_window()
+	local backdrop_buf = vim.g.backdrop_buf
+	local backdrop_win = vim.g.backdrop_win
+	vim.g.backdrop_buf = nil
+	vim.g.backdrop_win = nil
+	if backdrop_win and vim.api.nvim_win_is_valid(backdrop_win) then
+		vim.api.nvim_win_close(backdrop_win, true)
+	end
+	if backdrop_buf and vim.api.nvim_buf_is_valid(backdrop_buf) then
+		vim.api.nvim_buf_delete(backdrop_buf, { force = true })
+	end
+end
+
+vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesExplorerOpen", callback = create_backdrop_window })
+vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesExplorerClose", callback = close_backdrop_window })
+
 MiniFiles.setup({
 	mappings = {
 		go_out = "H",
@@ -212,10 +288,6 @@ MiniFiles.setup({
 		synchronize = "s",
 	},
 	windows = {
-		max_number = 3,
 		preview = true,
-		width_nofocus = 30,
-		width_focus = 50,
-		width_preview = 75,
 	},
 })

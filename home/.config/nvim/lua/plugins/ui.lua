@@ -75,16 +75,6 @@ return {
 		end,
 	},
 	{
-		"mistricky/codesnap.nvim",
-		build = "make",
-		event = "VeryLazy",
-		cmd = { "CodeSnap", "CodeSnapSave", "CodeSnapASCII" },
-		lazy = true,
-		config = function()
-			require("config.ui.codesnap")
-		end,
-	},
-	{
 		"mistweaverco/kulala.nvim",
 		lazy = true,
 		config = function()

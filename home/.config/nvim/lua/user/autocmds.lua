@@ -181,15 +181,6 @@ local mappings = {
 	},
 	{
 		event = "User",
-		pattern = "MiniFilesWindowOpen",
-		callback = function(args)
-			if not vim.g.backdrop_buf then
-				require("user.utils").create_backdrop_window()
-			end
-		end,
-	},
-	{
-		event = "User",
 		pattern = "MiniFilesActionRename",
 		callback = function(event)
 			require("snacks").rename.on_rename_file(event.data.from, event.data.to)
@@ -266,14 +257,6 @@ local mappings = {
 		callback = function()
 			if vim.g.workspaces_loaded then
 				require("workspaces.workspaces").setup_lualine()
-			end
-		end,
-	},
-	{
-		event = "WinClosed",
-		callback = function()
-			if vim.g.backdrop_buf then
-				require("user.utils").close_backdrop_window()
 			end
 		end,
 	},
