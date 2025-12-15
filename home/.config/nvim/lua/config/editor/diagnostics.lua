@@ -19,9 +19,6 @@ require("tiny-inline-diagnostic").setup({
 			severity = nil,
 		},
 
-		show_all_diags_on_cursorline = true,
-		show_diags_only_under_cursor = false,
-
 		show_related = {
 			enabled = true,
 			max_count = 10,
