@@ -147,11 +147,13 @@ require("snacks").setup({
 		sources = {
 			select = {
 				layout = {
+					preview = false,
 					preset = "select",
 					layout = {
 						width = 0.5,
 						min_height = 12,
 						min_width = 70,
+						max_height = 50,
 					},
 				},
 			},
@@ -205,6 +207,9 @@ require("snacks").setup({
 				end
 				table.insert(Snacks_picker_hist, 1, opts)
 			end
+		end,
+		on_show = function(picker)
+			vim.notify(picker.opts.source)
 		end,
 	},
 	rename = { enabled = true },

@@ -51,24 +51,19 @@ return {
 		},
 	},
 	{
-		"pwntester/octo.nvim",
+		"otavioschwanck/github-pr-reviewer.nvim",
 		event = "VeryLazy",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"folke/snacks.nvim",
-			"echasnovski/mini.icons",
-		},
 		enabled = function()
 			return vim.fn.executable("gh") == 1
 		end,
-		config = function()
-			require("octo").setup({
-				use_local_fs = true,
-				picker = "snacks",
-				reviews = {
-					auto_show_threads = false,
-				},
-			})
-		end,
+		opts = {
+			mark_as_viewed_key = "<CR>",
+			diff_view_toggle_key = "<C-S-v>",
+			toggle_floats_key = "<C-r>",
+			next_hunk_key = "<M-n>",
+			prev_hunk_key = "<M-t>",
+			next_file_key = "]q",
+			prev_file_key = "[q",
+		},
 	},
 }

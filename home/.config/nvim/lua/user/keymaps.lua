@@ -1742,7 +1742,7 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>p",
+		keys = "<leader>Y",
 		callback = function()
 			Snacks.picker.yanky()
 		end,
@@ -2311,30 +2311,39 @@ local mappings = {
 	},
 	{
 		mode = { "n", "v" },
-		keys = "<leader>Ol",
+		keys = "<leader>pr",
 		callback = function()
-			vim.cmd("Octo pr list")
+			vim.cmd("PRReviewMenu")
 		end,
 		prefix = P.git,
-		description = "List github PR's",
+		description = "Open PR menu",
 	},
 	{
 		mode = { "n", "v" },
-		keys = "<leader>Oc",
+		keys = "<localleader>ca",
 		callback = function()
-			vim.cmd("Octo pr create")
+			vim.cmd("PRComment")
 		end,
 		prefix = P.git,
-		description = "Create a new github PR from the current branch",
+		description = "Add comment to PR",
 	},
 	{
 		mode = { "n", "v" },
-		keys = "<localleader>co",
+		keys = "<localleader>cs",
 		callback = function()
-			vim.cmd("Octo review thread")
+			vim.cmd("PRSuggestChange")
 		end,
 		prefix = P.git,
-		description = "Open comment buffer",
+		description = "Add suggestion comment to PR",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<localleader>cr",
+		callback = function()
+			vim.cmd("PRReply")
+		end,
+		prefix = P.git,
+		description = "Reply to comment under cursor",
 	},
 	{
 		mode = { "n" },
