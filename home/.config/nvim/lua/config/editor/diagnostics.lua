@@ -1,4 +1,5 @@
 require("tiny-inline-diagnostic").setup({
+	preset = "powerline",
 	options = {
 		show_source = {
 			enabled = true,
