@@ -208,9 +208,6 @@ require("snacks").setup({
 				table.insert(Snacks_picker_hist, 1, opts)
 			end
 		end,
-		on_show = function(picker)
-			vim.notify(picker.opts.source)
-		end,
 	},
 	rename = { enabled = true },
 	statuscolumn = { enabled = true },

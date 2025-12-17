@@ -131,13 +131,6 @@ local mappings = {
 		description = "Paste with OS key",
 	},
 	{
-		mode = { "i" },
-		keys = "<D-v>",
-		callback = [[<C-r>+]],
-		prefix = P.misc,
-		description = "Paste with OS key",
-	},
-	{
 		mode = { "n", "v", "t" },
 		keys = "<C-v>",
 		callback = [["+p]],
@@ -164,13 +157,6 @@ local mappings = {
 		callback = "r",
 		prefix = P.misc,
 		description = "Replace one character",
-	},
-	{
-		mode = { "i" },
-		keys = "<C-v>",
-		callback = [[<C-r>+]],
-		prefix = P.misc,
-		description = "Paste with ctrl",
 	},
 	{
 		mode = { "n", "v" },
@@ -2313,7 +2299,7 @@ local mappings = {
 		mode = { "n", "v" },
 		keys = "<leader>pr",
 		callback = function()
-			vim.cmd("PRReviewMenu")
+			vim.cmd("PR")
 		end,
 		prefix = P.git,
 		description = "Open PR menu",
