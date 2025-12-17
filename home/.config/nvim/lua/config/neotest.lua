@@ -2,7 +2,7 @@ require("neotest").setup({
 	adapters = {
 		require("neotest-python")({
 			dap = { justMyCode = false },
-			python = require("user.utils").get_python_venv(),
+			python = ".venv/bin/python",
 		}),
 		require("neotest-go")({
 			experimental = {

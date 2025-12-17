@@ -119,9 +119,7 @@ dap.configurations.svelte = {
 }
 
 require("dap-go").setup()
-
-require("dap-python").setup(require("user.utils").get_python_venv())
--- require("dap-python").resolve_python = require("user.utils").get_python_venv
+require("dap-python").setup("uv")
 
 table.insert(require("dap").configurations.python, {
 	type = "python",

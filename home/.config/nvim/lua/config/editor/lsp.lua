@@ -23,7 +23,8 @@ local mason_lspconfig = require("mason-lspconfig")
 mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
-		"basedpyright",
+		-- "basedpyright",
+		"ty",
 	},
 	automatic_installation = true,
 	automatic_enable = {
@@ -34,6 +35,7 @@ mason_lspconfig.setup({
 			"stylua",
 			"jdtls",
 			"ruff",
+			"ty",
 		},
 	},
 })
@@ -93,39 +95,15 @@ vim.lsp.config("lua_ls", {
 })
 vim.lsp.enable("lua_ls")
 
-vim.lsp.config.basedpyright = {
+vim.lsp.config.ty = {
 	on_attach = function(client, bufnr)
 		on_attach(client, bufnr)
-		local path = require("user.utils").get_python_venv()
-		require("dap-python").setup(path)
-
-		if client.settings then
-			client.settings.python = vim.tbl_deep_extend("force", client.settings.python, { pythonPath = path })
-		else
-			client.config.settings =
-				vim.tbl_deep_extend("force", client.config.settings, { python = { pythonPath = path } })
-		end
-		client.notify("workspace/didChangeConfiguration", { settings = nil })
+		require("dap-python").setup("uv")
 	end,
 	capabilities = capabilities,
-	settings = {
-		basedpyright = {
-			typeCheckingMode = "basic",
-		},
-		python = {
-			analysis = {
-				diagnosticSeverityOverrides = {
-					reportUnusedExpression = "none",
-				},
-				autoSearchPaths = true,
-				diagnosticMode = "openFilesOnly",
-				useLibraryCodeForTypes = true,
-			},
-		},
-	},
 }
 
-vim.lsp.enable("basedpyright")
+vim.lsp.enable("ty")
 
 vim.lsp.config.gopls = {
 	on_attach = on_attach,
