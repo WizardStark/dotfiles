@@ -2314,10 +2314,10 @@ local mappings = {
 		mode = { "n", "v" },
 		keys = "<localleader>ca",
 		callback = function()
-			vim.cmd("PRComment")
+			vim.cmd("PRPendingComment")
 		end,
 		prefix = P.git,
-		description = "Add comment to PR",
+		description = "Add pending comment to PR",
 	},
 	{
 		mode = { "n", "v" },
