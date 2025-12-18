@@ -24,6 +24,7 @@ mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
 		"ty",
+		"ruff",
 	},
 	automatic_installation = true,
 	automatic_enable = {
