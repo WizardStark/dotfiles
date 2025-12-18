@@ -30,12 +30,9 @@ return {
 		},
 	},
 	{
-		"sindrets/diffview.nvim",
-		cmd = { "DiffviewOpen", "DiffviewClose" },
-		config = true,
-		opts = {
-			enhanced_diff_hl = true,
-		},
+		"esmuellert/vscode-diff.nvim",
+		dependencies = { "MunifTanjim/nui.nvim" },
+		cmd = "CodeDiff",
 	},
 	{
 		"WizardStark/git-blame.nvim",

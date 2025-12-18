@@ -582,26 +582,34 @@ local mappings = {
 	{
 		mode = { "n" },
 		keys = "<leader>gd",
-		callback = [[<CMD>DiffviewOpen<CR>]],
+		callback = function()
+			vim.cmd("CodeDiff")
+		end,
 		prefix = P.git,
-		description = "Open Git diffview",
+		description = "Toggle Git diffview",
 	},
 	{
 		mode = { "n" },
 		keys = "<leader>gn",
 		callback = function()
 			local range = vim.fn.expand("<cWORD>")
-			vim.cmd("DiffviewOpen " .. range)
+			local found_one = false
+			for _, window in ipairs(vim.api.nvim_list_wins()) do
+				local buffer = vim.api.nvim_win_get_buf(window)
+				local valid_non_term = not found_one
+					and vim.api.nvim_buf_is_valid(buffer)
+					and vim.bo[buffer].bt ~= "terminal"
+				if valid_non_term then
+					found_one = true
+					-- focus the first non-terminal window found
+					vim.notify("Setting cursor in window " .. tostring(window) .. " to " .. range)
+					vim.api.nvim_set_current_win(window)
+				end
+			end
+			vim.cmd("CodeDiff " .. range)
 		end,
 		prefix = P.git,
 		description = "Open Git diffview",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>gq",
-		callback = [[<CMD>DiffviewClose<CR>]],
-		prefix = P.git,
-		description = "Close Git diffview",
 	},
 	{
 		mode = { "o", "v" },
