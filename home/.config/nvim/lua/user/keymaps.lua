@@ -592,7 +592,7 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>gn",
 		callback = function()
-			local range = vim.fn.expand("<cWORD>")
+			local range = vim.fn.expand("<cWORD>"):gsub("%.%.", " ")
 			local found_one = false
 			for _, window in ipairs(vim.api.nvim_list_wins()) do
 				local buffer = vim.api.nvim_win_get_buf(window)
