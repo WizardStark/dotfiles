@@ -609,7 +609,7 @@ local mappings = {
 			vim.cmd("CodeDiff " .. range)
 		end,
 		prefix = P.git,
-		description = "Open Git diffview",
+		description = "Open Git diffview with range under cursor",
 	},
 	{
 		mode = { "o", "v" },
