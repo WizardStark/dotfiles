@@ -23,7 +23,6 @@ local mason_lspconfig = require("mason-lspconfig")
 mason_lspconfig.setup({
 	ensure_installed = {
 		"lua_ls",
-		-- "basedpyright",
 		"ty",
 	},
 	automatic_installation = true,
@@ -34,7 +33,6 @@ mason_lspconfig.setup({
 			"gopls",
 			"stylua",
 			"jdtls",
-			"ruff",
 			"ty",
 		},
 	},
