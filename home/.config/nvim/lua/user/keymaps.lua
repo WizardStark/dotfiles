@@ -601,8 +601,6 @@ local mappings = {
 					and vim.bo[buffer].bt ~= "terminal"
 				if valid_non_term then
 					found_one = true
-					-- focus the first non-terminal window found
-					vim.notify("Setting cursor in window " .. tostring(window) .. " to " .. range)
 					vim.api.nvim_set_current_win(window)
 				end
 			end
