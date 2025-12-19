@@ -120,6 +120,32 @@ lsd() { (
         ls
 ); }
 
+git_grep_all() {
+    if [ $# -eq 0 ]; then
+        echo "Usage: git_grep_all <pattern>"
+        return 1
+    fi
+    
+    local pattern="$1"
+    local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    
+    if [ $? -ne 0 ]; then
+        echo "Not in a git repository"
+        return 1
+    fi
+    
+    for branch in $(git branch --format="%(refname:short)" 2>/dev/null); do
+        local matches=$(git grep -F "$pattern" "$branch" -- 2>/dev/null)
+        if [ -n "$matches" ]; then
+            echo "Branch: $branch"
+            echo "$matches" | sed 's/^/  /'
+            echo
+        fi
+    done
+    
+    return 0
+}
+
 if [ -v NVIM ]; then
     export GIT_EDITOR='nvr --remote-wait'
     alias nvim="nvim --server $NVIM --remote"
