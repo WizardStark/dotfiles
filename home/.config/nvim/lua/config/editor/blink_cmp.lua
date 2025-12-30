@@ -24,6 +24,7 @@ require("blink.cmp").setup({
 			end,
 			"fallback",
 		},
+		["<C-k>"] = {},
 	},
 	enabled = function()
 		if require("cmp_dap").is_dap_buffer() then
@@ -42,6 +43,9 @@ require("blink.cmp").setup({
 		default = default_sources,
 		per_filetype = { ["dap-repl"] = debug_sources, ["dap-view"] = debug_sources },
 		providers = {
+			lsp = {
+				async = true,
+			},
 			calc = {
 				name = "calc",
 				module = "blink.compat.source",
