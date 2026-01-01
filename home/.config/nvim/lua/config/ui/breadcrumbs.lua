@@ -67,7 +67,38 @@ local function find_symbol_path(symbol_list, line, char, path)
 	return false
 end
 
-local function lsp_callback(err, symbols, ctx, config)
+local function create_crumbs(relative_path)
+	local path_components = vim.split(relative_path or "", "[/\\]", { trimempty = true })
+	local num_components = #path_components
+
+	local breadcrumbs = {}
+	for i, component in ipairs(path_components) do
+		if i == num_components then
+			local icon
+			local icon_hl
+
+			if devicons_ok then
+				icon, icon_hl = devicons.get_icon(component)
+			end
+			table.insert(breadcrumbs, "%#" .. icon_hl .. "#" .. (icon or file_icon) .. "%#Normal#" .. " " .. component)
+		else
+			table.insert(breadcrumbs, folder_icon .. " " .. component)
+		end
+	end
+
+	return breadcrumbs
+end
+
+local function create_crumbs_string(breadcrumbs)
+	local trimmed_crumbs = {}
+	for i = math.max(1, #breadcrumbs - 9), #breadcrumbs do
+		trimmed_crumbs[#trimmed_crumbs + 1] = breadcrumbs[i]
+	end
+
+	return table.concat(trimmed_crumbs, "%#Comment#  %#Normal#")
+end
+
+local function lsp_callback(err, symbols, ctx)
 	if err or not symbols then
 		vim.o.winbar = ""
 		return
@@ -100,38 +131,15 @@ local function lsp_callback(err, symbols, ctx, config)
 		relative_path = vim.fs.relpath(root_dir, file_path)
 	end
 
-	local breadcrumbs = {}
-
-	local path_components = vim.split(relative_path or "", "[/\\]", { trimempty = true })
-	local num_components = #path_components
-
-	for i, component in ipairs(path_components) do
-		if i == num_components then
-			local icon
-			local icon_hl
-
-			if devicons_ok then
-				icon, icon_hl = devicons.get_icon(component)
-			end
-			table.insert(breadcrumbs, "%#" .. icon_hl .. "#" .. (icon or file_icon) .. "%#Normal#" .. " " .. component)
-		else
-			table.insert(breadcrumbs, folder_icon .. " " .. component)
-		end
-	end
+	local breadcrumbs = create_crumbs(relative_path)
 	find_symbol_path(symbols, cursor_line, cursor_char, breadcrumbs)
-
-	local trimmed_crumbs = {}
-	for i = math.max(1, #breadcrumbs - 9), #breadcrumbs do
-		trimmed_crumbs[#trimmed_crumbs + 1] = breadcrumbs[i]
-	end
-
-	local breadcrumb_string = table.concat(trimmed_crumbs, "%#Comment#  %#Normal#")
+	local breadcrumb_string = create_crumbs_string(breadcrumbs)
 
 	if ctx.bufnr == vim.api.nvim_get_current_buf() then
 		if breadcrumb_string ~= "" then
 			vim.api.nvim_set_option_value("winbar", breadcrumb_string, { win = winnr })
 		else
-			vim.api.nvim_set_option_value("winbar", " ", { win = winnr })
+			vim.api.nvim_set_option_value("winbar", "", { win = winnr })
 		end
 	end
 end
@@ -164,21 +172,28 @@ local function breadcrumbs_set()
 		or (win_config.zindex ~= nil and (vim.bo[bufnr].buftype ~= "terminal" or vim.bo[bufnr].filetype ~= "terminal"))
 		or (not vim.bo[bufnr].buflisted or vim.bo[bufnr].buftype ~= "" or vim.api.nvim_buf_get_name(bufnr) == "")
 	then
-		vim.o.winbar = ""
+		vim.api.nvim_set_option_value("winbar", "", { win = winnr })
 		return
 	end
 
 	local clients = vim.lsp.get_clients({ bufnr = bufnr })
-	if #clients == 0 then
-		return
-	elseif not clients[1]:supports_method("textDocument/documentSymbol", bufnr) then
+	if #clients == 0 or not clients[1]:supports_method("textDocument/documentSymbol", bufnr) then
+		vim.api.nvim_set_option_value(
+			"winbar",
+			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr))),
+			{ win = winnr }
+		)
 		return
 	end
 
 	---@type string
 	local uri = vim.lsp.util.make_text_document_params(bufnr)["uri"]
 	if not uri then
-		vim.notify("Error: Could not get URI for buffer. Is it saved?")
+		vim.api.nvim_set_option_value(
+			"winbar",
+			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr))),
+			{ win = winnr }
+		)
 		return
 	end
 
@@ -190,12 +205,17 @@ local function breadcrumbs_set()
 
 	local buf_src = uri:sub(1, uri:find(":") - 1)
 	if buf_src ~= "file" then
-		vim.o.winbar = ""
+		vim.api.nvim_set_option_value("winbar", "", { win = winnr })
 		return
 	end
 
 	local result, _ = pcall(vim.lsp.buf_request, bufnr, "textDocument/documentSymbol", params, lsp_callback)
 	if not result then
+		vim.api.nvim_set_option_value(
+			"winbar",
+			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr))),
+			{ win = winnr }
+		)
 		return
 	end
 end
