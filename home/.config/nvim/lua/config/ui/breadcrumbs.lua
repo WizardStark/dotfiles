@@ -80,7 +80,7 @@ local function create_crumbs(relative_path)
 			if devicons_ok then
 				icon, icon_hl = devicons.get_icon(component)
 			end
-			table.insert(breadcrumbs, "%#" .. icon_hl .. "#" .. (icon or file_icon) .. "%#Normal#" .. " " .. component)
+			table.insert(breadcrumbs, "%#" .. (icon_hl or "Normal").. "#" .. (icon or file_icon) .. "%#Normal#" .. " " .. component)
 		else
 			table.insert(breadcrumbs, folder_icon .. " " .. component)
 		end
