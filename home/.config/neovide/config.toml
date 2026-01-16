@@ -1,5 +1,4 @@
-frame = "buttonless"
+frame ='none'
 
 [box-drawing]
-# "font-glyph", "native" or "selected-native"
 mode = "native"

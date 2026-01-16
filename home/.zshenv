@@ -1,6 +1,6 @@
 # Utility to add to path without duplication
 pathmunge() {
-    if ! echo $PATH | /usr/bin/env egrep -q "(^|:)$1($|:)"; then
+    if ! echo $PATH | /usr/bin/env grep -E -q "(^|:)$1($|:)"; then
         if [ "$2" = "after" ]; then
             PATH=$PATH:$1
         else
