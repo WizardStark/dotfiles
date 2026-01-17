@@ -40,7 +40,7 @@ M.special_windows = {
 	dap = function()
 		require("dap-view").toggle()
 	end,
-	["vscode-diff-explorer"] = function()
+	["codediff-explorer"] = function()
 		vim.cmd("CodeDiff")
 	end,
 }
