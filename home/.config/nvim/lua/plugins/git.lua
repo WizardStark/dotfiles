@@ -59,8 +59,8 @@ return {
 			toggle_floats_key = "<C-r>",
 			next_hunk_key = "<M-n>",
 			prev_hunk_key = "<M-t>",
-			next_file_key = "]q",
-			prev_file_key = "[q",
+			next_file_key = "]f",
+			prev_file_key = "[f",
 		},
 	},
 }
