@@ -9,7 +9,6 @@ local opts = {
 	showmatch = true,
 	inccommand = "split",
 	incsearch = true,
-	hlsearch = false,
 	tabstop = 4,
 	expandtab = true,
 	shiftwidth = 4,
