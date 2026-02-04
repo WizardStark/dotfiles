@@ -68,6 +68,7 @@ local opts = {
 vim.api.nvim_create_autocmd("Filetype", {
 	pattern = "java",
 	callback = function()
+        require("jdtls").setup_dap({config_overrides={}, hotcodereplace = "auto" })
 		require("jdtls").start_or_attach(opts)
 
 		-- local timer = 5000

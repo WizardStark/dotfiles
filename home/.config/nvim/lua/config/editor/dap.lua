@@ -118,6 +118,16 @@ dap.configurations.svelte = {
 	},
 }
 
+dap.configurations.java = {
+  {
+    name = "Attach to remote JVM",
+    type = "java",
+    request = "attach",
+    hostName = "127.0.0.1",
+    port = 5005,
+  },
+}
+
 require("dap-go").setup()
 require("dap-python").setup("uv")
 
