@@ -10,6 +10,7 @@ local allowed_filetypes = {
 	"typescript",
 	"zsh",
 	"sql",
+    "rust"
 }
 
 local function is_allowed_ft(bufnr)
@@ -36,6 +37,7 @@ require("conform").setup(
 			scss = { "prettier" },
 			json = { "jq" },
 			go = { "gofumpt", "goimports" },
+            rust = { "rustfmt" },
 			bash = { "shfmt" },
 			sh = { "shfmt" },
 			sql = { "sqlfmt" },
