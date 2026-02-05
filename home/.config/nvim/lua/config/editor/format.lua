@@ -10,7 +10,8 @@ local allowed_filetypes = {
 	"typescript",
 	"zsh",
 	"sql",
-    "rust"
+	"rust",
+	"java",
 }
 
 local function is_allowed_ft(bufnr)
@@ -24,7 +25,7 @@ require("conform").setup(
 		formatters_by_ft = {
 			lua = { "stylua" },
 			python = { "ruff_format", "ruff_organize_imports", "ruff_fix" },
-			java = { "google-java-format" },
+			java = { "palantir-java-format" },
 			kotlin = { "ktlint" },
 			javascript = { "prettier" },
 			javascriptreact = { "prettier" },
@@ -37,7 +38,7 @@ require("conform").setup(
 			scss = { "prettier" },
 			json = { "jq" },
 			go = { "gofumpt", "goimports" },
-            rust = { "rustfmt" },
+			rust = { "rustfmt" },
 			bash = { "shfmt" },
 			sh = { "shfmt" },
 			sql = { "sqlfmt" },
