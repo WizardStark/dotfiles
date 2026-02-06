@@ -64,9 +64,6 @@ require("conform").setup(
 		end,
 
 		formatters = {
-			prettier = {
-				prepend_args = { "--tab-width", "4" },
-			},
 			shfmt = {
 				prepend_args = { "-i", "2" },
 			},
