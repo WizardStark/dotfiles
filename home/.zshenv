@@ -22,6 +22,10 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
+if require mise; then
+    eval "$(mise activate zsh)"
+fi
+
 [ -f ~/.lcl.zshenv ] && source ~/.lcl.zshenv
 
 if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
