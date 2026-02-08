@@ -66,7 +66,7 @@ require("conform").setup(
 		formatters = {
 			["palantir-java-format"] = {
 				command = "palantir-java-format",
-				args = { "-" },
+				args = { "--aosp", "-" },
 			},
 			shfmt = {
 				prepend_args = { "-i", "2" },
