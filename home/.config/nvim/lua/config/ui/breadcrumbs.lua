@@ -80,7 +80,10 @@ local function create_crumbs(relative_path)
 			if devicons_ok then
 				icon, icon_hl = devicons.get_icon(component)
 			end
-			table.insert(breadcrumbs, "%#" .. (icon_hl or "Normal").. "#" .. (icon or file_icon) .. "%#Normal#" .. " " .. component)
+			table.insert(
+				breadcrumbs,
+				"%#" .. (icon_hl or "Normal") .. "#" .. (icon or file_icon) .. "%#Normal#" .. " " .. component
+			)
 		else
 			table.insert(breadcrumbs, folder_icon .. " " .. component)
 		end
@@ -224,6 +227,8 @@ local breadcrumbs_augroup = vim.api.nvim_create_augroup("Breadcrumbs", { clear =
 
 vim.api.nvim_create_autocmd({ "CursorMoved" }, {
 	group = breadcrumbs_augroup,
-	callback = breadcrumbs_set,
+	callback = function()
+		vim.schedule(breadcrumbs_set)
+	end,
 	desc = "Set breadcrumbs.",
 })
