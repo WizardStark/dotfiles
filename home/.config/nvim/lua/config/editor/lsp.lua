@@ -31,6 +31,7 @@ mason_lspconfig.setup({
 		exclude = {
 			"basedpyright",
 			"lua_ls",
+			"ts_ls",
 			"gopls",
 			"stylua",
 			"jdtls",
