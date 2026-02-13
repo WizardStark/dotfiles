@@ -12,6 +12,7 @@ local allowed_filetypes = {
 	"sql",
 	"rust",
 	"java",
+	"json",
 }
 
 local function is_allowed_ft(bufnr)

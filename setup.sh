@@ -86,6 +86,7 @@ stow -v --adopt -t $HOME home
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
 nvim --headless "+Lazy! sync" +qa
+touch ~/.ssh/.agent_socket
 
 command -v zsh | sudo tee -a /etc/shells
 sudo chsh -s $(which zsh) $(whoami)
