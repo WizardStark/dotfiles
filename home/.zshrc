@@ -170,6 +170,10 @@ alias gsbl=show_blame
 alias gfc="git add . && gc --amend --no-edit"
 alias vup='nvim --headless "+Lazy! sync" +qa'
 
+if require mise && require usage; then
+    eval "$(mise completion zsh)"
+fi
+
 [ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
 
 if [ -d ~/dotfile-shards/ ]; then
