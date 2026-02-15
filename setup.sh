@@ -54,7 +54,7 @@ if ! require brew; then
     fi
 fi
 
-brew install bat dust eza ffind git-delta hyperfine jq jupytext mise nodejs npm nvim ripgrep stow tmux tokei uv vivid wget zoxide zsh
+brew install bat dust eza ffind git-delta hyperfine jq jupytext mise nodejs npm nvim ripgrep stow tmux tokei usage uv vivid wget zoxide zsh
 npm install -g tree-sitter-cli
 uv tool install neovim-remote
 
