@@ -26,7 +26,6 @@ if ! require brew; then
     fi
 fi
 
-npm install -g tree-sitter-cli
 uv tool install neovim-remote
 
 mkdir -p ~/.config
