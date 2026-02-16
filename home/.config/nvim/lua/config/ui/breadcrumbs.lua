@@ -1,8 +1,13 @@
+---@type boolean, table?
 local devicons_ok, devicons = pcall(require, "nvim-web-devicons")
+---@type string
 local folder_icon = "%#Conditional#" .. "󰉋" .. "%#Normal#"
+---@type string
 local file_icon = "󰈙"
+---@type number?
 local last_refreshed_time = nil
 
+---@type string[]
 local kind_icons = {
 	"%#File#" .. "󰈙" .. "%#Normal#", -- file
 	"%#Module#" .. "" .. "%#Normal#", -- module
@@ -32,6 +37,11 @@ local kind_icons = {
 	"󰅲", -- type-parameter
 }
 
+---Checks if a range contains a given position
+---@param range lsp.Range
+---@param line number
+---@param char number
+---@return boolean
 local function range_contains_pos(range, line, char)
 	local start = range.start
 	local stop = range["end"]
@@ -51,13 +61,31 @@ local function range_contains_pos(range, line, char)
 	return true
 end
 
+---Finds the symbol path for a given position
+---@param symbol_list (lsp.DocumentSymbol|lsp.SymbolInformation)[]?
+---@param line number
+---@param char number
+---@param path string[]
+---@return boolean
 local function find_symbol_path(symbol_list, line, char, path)
 	if not symbol_list or #symbol_list == 0 then
 		return false
 	end
 
 	for _, symbol in ipairs(symbol_list) do
-		if range_contains_pos(symbol.range, line, char) then
+		---@type lsp.Range
+		local range
+		if symbol.selectionRange then
+			-- It's a DocumentSymbol
+			range = symbol.range
+		elseif symbol.location then
+			-- It's a SymbolInformation
+			range = symbol.location.range
+		else
+			error("Unsupported symbol type: " .. vim.inspect(symbol))
+		end
+
+		if range_contains_pos(range, line, char) then
 			local icon = kind_icons[symbol.kind] or ""
 			table.insert(path, icon .. " " .. symbol.name)
 			find_symbol_path(symbol.children, line, char, path)
@@ -67,6 +95,9 @@ local function find_symbol_path(symbol_list, line, char, path)
 	return false
 end
 
+---Creates breadcrumb components from a relative path
+---@param relative_path string?
+---@return string[]
 local function create_crumbs(relative_path)
 	local path_components = vim.split(relative_path or "", "[/\\]", { trimempty = true })
 	local num_components = #path_components
@@ -92,6 +123,9 @@ local function create_crumbs(relative_path)
 	return breadcrumbs
 end
 
+---Creates a string from breadcrumb components
+---@param breadcrumbs string[]
+---@return string
 local function create_crumbs_string(breadcrumbs)
 	local trimmed_crumbs = {}
 	for i = math.max(1, #breadcrumbs - 9), #breadcrumbs do
@@ -101,6 +135,8 @@ local function create_crumbs_string(breadcrumbs)
 	return table.concat(trimmed_crumbs, "%#Comment#  %#Normal#")
 end
 
+---LSP handler for document symbols
+---@type lsp.Handler
 local function lsp_callback(err, symbols, ctx)
 	if err or not symbols then
 		vim.o.winbar = ""
@@ -147,6 +183,8 @@ local function lsp_callback(err, symbols, ctx)
 	end
 end
 
+---Table of disabled filetypes
+---@type table<string, boolean>
 local disabled = {
 	["trouble"] = true,
 	["toggleterm"] = true,
@@ -159,6 +197,8 @@ local disabled = {
 	["neocomposer-menu"] = true,
 }
 
+---Sets the breadcrumbs in the winbar
+---@return nil
 local function breadcrumbs_set()
 	if last_refreshed_time ~= nil and vim.loop.now() - last_refreshed_time < 300 then
 		return
