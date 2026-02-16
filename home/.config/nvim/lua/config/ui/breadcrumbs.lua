@@ -61,6 +61,20 @@ local function range_contains_pos(range, line, char)
 	return true
 end
 
+---Sanitizes and truncates symbol names
+---@param name string
+---@return string
+local function sanitize_symbol_name(name)
+	-- Remove unsupported characters like [ and ]
+	name = name:gsub("[%[%]]", "")
+
+	if #name > 20 then
+		return name:sub(1, 20) .. ".."
+	end
+
+	return name
+end
+
 ---Finds the symbol path for a given position
 ---@param symbol_list (lsp.DocumentSymbol|lsp.SymbolInformation)[]?
 ---@param line number
@@ -86,8 +100,9 @@ local function find_symbol_path(symbol_list, line, char, path)
 		end
 
 		if range_contains_pos(range, line, char) then
-			local icon = kind_icons[symbol.kind] or ""
-			table.insert(path, icon .. " " .. symbol.name)
+			local icon = kind_icons[symbol.kind] or ""
+			local sanitized_name = sanitize_symbol_name(symbol.name)
+			table.insert(path, icon .. " " .. sanitized_name)
 			find_symbol_path(symbol.children, line, char, path)
 			return true
 		end
