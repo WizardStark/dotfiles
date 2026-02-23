@@ -131,7 +131,7 @@ local mappings = {
 		description = "Paste with OS key",
 	},
 	{
-		mode = { "n", "v", "t" },
+		mode = { "n", "v" },
 		keys = "<C-v>",
 		callback = [["+p]],
 		prefix = P.misc,
