@@ -2484,6 +2484,15 @@ local mappings = {
 		prefix = P.nav,
 		description = "Delete buffer without closing window",
 	},
+	{
+		mode = { "n" },
+		keys = "<leader>st",
+		callback = function()
+			vim.treesitter.start()
+		end,
+		prefix = P.misc,
+		description = "Start treesitter",
+	},
 }
 
 return {
