@@ -2033,7 +2033,7 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>J",
 		callback = function()
-			vim.fn.setreg('"', vim.fn.getreg('"'):gsub("[\n\r]", " "))
+			vim.fn.setreg('"', vim.fn.getreg('"'):gsub("[\n\r]", ""))
 		end,
 		prefix = P.misc,
 		description = 'Remove linebreaks from contents in " register',

@@ -168,6 +168,7 @@ alias gst='git status -s'
 alias gsgp='gs && gp'
 alias gsbl=show_blame
 alias gfc="git add . && gc --amend --no-edit"
+alias glc="gwip && gunwip"
 alias vup='nvim --headless "+Lazy! sync" +qa'
 
 if require mise && require usage; then

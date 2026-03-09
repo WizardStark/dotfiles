@@ -48,7 +48,7 @@ return {
 		},
 	},
 	{
-		"otavioschwanck/github-pr-reviewer.nvim",
+		"WizardStark/github-pr-reviewer.nvim",
 		event = "VeryLazy",
 		enabled = function()
 			return vim.fn.executable("gh") == 1
