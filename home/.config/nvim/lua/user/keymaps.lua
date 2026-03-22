@@ -2112,6 +2112,24 @@ local mappings = {
 	},
 	{
 		mode = { "x", "o" },
+		keys = "aa",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@parameter.outer", "textobjects")
+		end,
+		prefix = P.text,
+		description = "Around argument/parameter",
+	},
+	{
+		mode = { "x", "o" },
+		keys = "ia",
+		callback = function()
+			require("nvim-treesitter-textobjects.select").select_textobject("@parameter.inner", "textobjects")
+		end,
+		prefix = P.text,
+		description = "In argument/parameter",
+	},
+	{
+		mode = { "x", "o" },
 		keys = "as",
 		callback = function()
 			require("nvim-treesitter-textobjects.select").select_textobject("@locals.scope", "locals")
@@ -2121,53 +2139,92 @@ local mappings = {
 	},
 	{
 		mode = { "n", "x", "o" },
-		keys = ";",
+		keys = "]m",
 		callback = function()
-			require("nvim-treesitter-textobjects.repeatable_move").repeat_last_move()
+			require("nvim-treesitter-textobjects.move").goto_next_start("@function.outer", "textobjects")
 		end,
-		prefix = P.nav,
-		description = "Repeat last move",
+		prefix = P.move,
+		description = "To next method start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "[m",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_previous_start("@function.outer", "textobjects")
+		end,
+		prefix = P.move,
+		description = "To previous method start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "]c",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_next_start("@class.outer", "textobjects")
+		end,
+		prefix = P.move,
+		description = "To next class start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "[c",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_previous_start("@class.outer", "textobjects")
+		end,
+		prefix = P.move,
+		description = "To previous class start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "]o",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_next_start({ "@loop.outer", "@loop.inner" }, "textobjects")
+		end,
+		prefix = P.move,
+		description = "To next loop start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "[o",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_previous_start(
+				{ "@loop.outer", "@loop.inner" },
+				"textobjects"
+			)
+		end,
+		prefix = P.move,
+		description = "To previous loop start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "]a",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_next_start("@parameter.outer", "textobjects")
+		end,
+		prefix = P.move,
+		description = "To next argument/parameter start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "[a",
+		callback = function()
+			require("nvim-treesitter-textobjects.move").goto_previous_start("@parameter.outer", "textobjects")
+		end,
+		prefix = P.move,
+		description = "To previous argument/parameter start",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = ";",
+		callback = require("demicolon.repeat_jump").forward,
+		prefix = P.move,
+		description = "Repeat last jump",
 	},
 	{
 		mode = { "n", "x", "o" },
 		keys = ",",
-		callback = function()
-			require("nvim-treesitter-textobjects.repeatable_move").repeat_last_move_opposite()
-		end,
-		prefix = P.nav,
-		description = "Repeat last move (opposite direction)",
-	},
-	{
-		mode = { "n", "x", "o" },
-		keys = "f",
-		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_f_expr,
-		opts = { expr = true },
-		prefix = P.nav,
-		description = "Up to and including character forwards",
-	},
-	{
-		mode = { "n", "x", "o" },
-		keys = "F",
-		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_F_expr,
-		opts = { expr = true },
-		prefix = P.nav,
-		description = "Up to and including character backwards",
-	},
-	{
-		mode = { "n", "x", "o" },
-		keys = "t",
-		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_t_expr,
-		opts = { expr = true },
-		prefix = P.nav,
-		description = "Up to character forwards",
-	},
-	{
-		mode = { "n", "x", "o" },
-		keys = "T",
-		callback = require("nvim-treesitter-textobjects.repeatable_move").builtin_T_expr,
-		opts = { expr = true },
-		prefix = P.nav,
-		description = "Up to character backwards",
+		callback = require("demicolon.repeat_jump").backward,
+		prefix = P.move,
+		description = "Repeat last jump in opposite direction",
 	},
 	{
 		mode = { "n", "v" },

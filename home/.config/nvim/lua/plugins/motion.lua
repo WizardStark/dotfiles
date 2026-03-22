@@ -31,4 +31,15 @@ return {
 			require("config.motion.window-picker")
 		end,
 	},
+	{
+		"mawkler/demicolon.nvim",
+		lazy = true,
+		dependencies = {
+			"nvim-treesitter/nvim-treesitter",
+			"nvim-treesitter/nvim-treesitter-textobjects",
+		},
+		config = function()
+			require("config.motion.demicolon")
+		end,
+	},
 }
