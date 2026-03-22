@@ -2129,15 +2129,6 @@ local mappings = {
 		description = "In argument/parameter",
 	},
 	{
-		mode = { "x", "o" },
-		keys = "as",
-		callback = function()
-			require("nvim-treesitter-textobjects.select").select_textobject("@locals.scope", "locals")
-		end,
-		prefix = P.text,
-		description = "Around scope",
-	},
-	{
 		mode = { "n", "x", "o" },
 		keys = "]m",
 		callback = function()
