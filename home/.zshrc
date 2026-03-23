@@ -174,18 +174,18 @@ git_worktree() {
 
     case "$action" in
         create)
-            if git show-ref --verify --quiet "refs/heads/$branch_name"; then
-                echo "Branch '$branch_name' already exists"
-                return 1
-            fi
-
             if [ -e "$worktree_path" ]; then
                 echo "Worktree path already exists: $worktree_path"
                 return 1
             fi
 
             mkdir -p "${worktree_path:h}" || return 1
-            git worktree add -b "$branch_name" "$worktree_path" || return 1
+
+            if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+                git worktree add "$worktree_path" "$branch_name" || return 1
+            else
+                git worktree add -b "$branch_name" "$worktree_path" || return 1
+            fi
             ;;
         delete)
             if [ -d "$worktree_path" ] || [ -f "$worktree_path/.git" ]; then
