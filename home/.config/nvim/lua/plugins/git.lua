@@ -38,6 +38,7 @@ return {
 				view = {
 					next_hunk = "<M-n>",
 					prev_hunk = "<M-t>",
+					toggle_layout = "<C-S-v>",
 				},
 			},
 		},
