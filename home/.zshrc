@@ -94,14 +94,6 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     # Allow comments in commandline
     setopt interactivecomments
 
-    _venv_completion() {
-        local -a venvs
-        venvs=($HOME/.virtualenvs/*(/:t))
-        compadd -a venvs
-    }
-
-    compdef _venv_completion venv rmvenv
-
     if require eza; then
         alias ls="eza --color=always -1 -a --icons=always"
     fi
@@ -362,16 +354,17 @@ _git_worktree_branch_names() {
     worktree_root="$HOME/projects/worktrees/$repo_name"
 
     local -a gitdirs branch_names
+    local expl
     gitdirs=("$worktree_root"/**/.git(N))
     branch_names=("${gitdirs[@]#$worktree_root/}")
     branch_names=("${branch_names[@]%/.git}")
 
     (( ${#branch_names[@]} )) || return 0
-    compadd -- "${branch_names[@]}"
+    _wanted worktrees expl 'git worktree' compadd -- "${branch_names[@]}"
 }
 
 _git_worktree_completion() {
-    _arguments \
+    _arguments -C \
         '1:action:(create delete)' \
         '2:branch name:->branch_name'
 
@@ -384,8 +377,23 @@ _git_worktree_completion() {
     esac
 }
 
+_gwtd_completion() {
+    local -a original_words
+    local original_current
+
+    original_words=("${words[@]}")
+    original_current=$CURRENT
+
+    words=(git_worktree delete "${original_words[@]:1}")
+    CURRENT=$(( original_current + 1 ))
+
+    _git_worktree_completion
+}
+
 compdef _git_worktree_completion git_worktree
-compdef _git_worktree_branch_names gwtd gwtcd
+compdef _git gwtc=git-checkout
+compdef _gwtd_completion gwtd
+compdef _git_worktree_branch_names gwtcd
 
 export EDITOR='nvim'
 alias vim="nvim"
