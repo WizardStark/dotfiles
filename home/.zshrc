@@ -153,6 +153,240 @@ else
     export GIT_EDITOR='nvim'
 fi
 
+git_worktree() {
+    if [ $# -ne 2 ]; then
+        echo "Usage: git_worktree <create|delete> <branch-name>"
+        return 1
+    fi
+
+    local action="$1"
+    local branch_name="$2"
+    local git_common_dir repo_name worktree_root worktree_path
+
+    git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+        echo "Not in a git repository"
+        return 1
+    }
+
+    repo_name="${git_common_dir:h:t}"
+    worktree_root="$HOME/projects/worktrees/$repo_name"
+    worktree_path="$worktree_root/$branch_name"
+
+    case "$action" in
+        create)
+            if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+                echo "Branch '$branch_name' already exists"
+                return 1
+            fi
+
+            if [ -e "$worktree_path" ]; then
+                echo "Worktree path already exists: $worktree_path"
+                return 1
+            fi
+
+            mkdir -p "${worktree_path:h}" || return 1
+            git worktree add -b "$branch_name" "$worktree_path" || return 1
+            ;;
+        delete)
+            if [ -d "$worktree_path" ] || [ -f "$worktree_path/.git" ]; then
+                git worktree remove "$worktree_path" || return 1
+            else
+                echo "Worktree path not found: $worktree_path"
+            fi
+
+            git branch -d "$branch_name"
+            ;;
+        *)
+            echo "Usage: git_worktree <create|delete> <branch-name>"
+            return 1
+            ;;
+    esac
+}
+
+gwtc() {
+    git_worktree create "$@"
+}
+
+gwtd() {
+    git_worktree delete "$@"
+}
+
+gwtcd() {
+    if [ $# -ne 1 ]; then
+        echo "Usage: gwtcd <branch-name>"
+        return 1
+    fi
+
+    local branch_name="$1"
+    local git_common_dir repo_name worktree_path
+
+    git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+        echo "Not in a git repository"
+        return 1
+    }
+
+    repo_name="${git_common_dir:h:t}"
+    worktree_path="$HOME/projects/worktrees/$repo_name/$branch_name"
+
+    if [ ! -d "$worktree_path" ]; then
+        echo "Worktree path not found: $worktree_path"
+        return 1
+    fi
+
+    cd "$worktree_path"
+}
+
+gwtm() {
+    local git_common_dir main_repo_dir
+
+    git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+        echo "Not in a git repository"
+        return 1
+    }
+
+    main_repo_dir="${git_common_dir:h}"
+
+    if [ ! -d "$main_repo_dir" ]; then
+        echo "Main repo path not found: $main_repo_dir"
+        return 1
+    fi
+
+    cd "$main_repo_dir"
+}
+
+_git_worktree_prune() {
+    local apply_changes=0
+    if [[ "$1" == "--apply" ]]; then
+        apply_changes=1
+        shift
+    fi
+
+    local base_ref="${1:-origin/main}"
+    local git_common_dir repo_name worktree_root current_dir remote_name
+
+    git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+        echo "Not in a git repository"
+        return 1
+    }
+
+    remote_name="${base_ref%%/*}"
+    if [[ "$base_ref" == */* ]] && git remote get-url "$remote_name" >/dev/null 2>&1; then
+        echo "Fetching $remote_name..."
+        git fetch "$remote_name" || return 1
+    fi
+
+    if ! git rev-parse --verify --quiet "$base_ref" >/dev/null; then
+        echo "Base ref not found: $base_ref"
+        echo "Try: git fetch origin"
+        return 1
+    fi
+
+    repo_name="${git_common_dir:h:t}"
+    worktree_root="$HOME/projects/worktrees/$repo_name"
+    current_dir="$PWD"
+
+    if [ ! -d "$worktree_root" ]; then
+        echo "No worktree directory found: $worktree_root"
+        return 0
+    fi
+
+    local -a gitdirs
+    gitdirs=("$worktree_root"/**/.git(N))
+
+    if (( ${#gitdirs[@]} == 0 )); then
+        echo "No linked worktrees found under $worktree_root"
+        return 0
+    fi
+
+    local found_candidates=0
+    local gitdir worktree_path branch_name status_output
+
+    for gitdir in "${gitdirs[@]}"; do
+        worktree_path="${gitdir:h}"
+        branch_name="${gitdir#$worktree_root/}"
+        branch_name="${branch_name%/.git}"
+
+        if ! git show-ref --verify --quiet "refs/heads/$branch_name"; then
+            echo "Skipping $branch_name (local branch missing)"
+            continue
+        fi
+
+        if ! git merge-base --is-ancestor "$branch_name" "$base_ref"; then
+            continue
+        fi
+
+        if [[ "$current_dir" == "$worktree_path" || "$current_dir" == "$worktree_path"/* ]]; then
+            echo "Skipping $branch_name (currently inside worktree)"
+            continue
+        fi
+
+        status_output=$(git -C "$worktree_path" status --porcelain 2>/dev/null)
+        if [ -n "$status_output" ]; then
+            echo "Skipping $branch_name (worktree has uncommitted changes)"
+            continue
+        fi
+
+        found_candidates=1
+        if (( apply_changes )); then
+            echo "Pruning $branch_name"
+            git worktree remove "$worktree_path" || continue
+            git branch -d "$branch_name" || continue
+        else
+            echo "Would prune $branch_name"
+        fi
+    done
+
+    if (( ! found_candidates )); then
+        echo "No merged worktrees eligible for pruning against $base_ref"
+        return 0
+    fi
+
+    if (( ! apply_changes )); then
+        echo
+        echo "Run 'gwtprune_apply $base_ref' to delete the worktrees listed above"
+    fi
+}
+
+gwtprune() {
+    _git_worktree_prune "$@"
+}
+
+gwtprune_apply() {
+    _git_worktree_prune --apply "$@"
+}
+
+_git_worktree_branch_names() {
+    local git_common_dir repo_name worktree_root
+    git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+    repo_name="${git_common_dir:h:t}"
+    worktree_root="$HOME/projects/worktrees/$repo_name"
+
+    local -a gitdirs branch_names
+    gitdirs=("$worktree_root"/**/.git(N))
+    branch_names=("${gitdirs[@]#$worktree_root/}")
+    branch_names=("${branch_names[@]%/.git}")
+
+    (( ${#branch_names[@]} )) || return 0
+    compadd -- "${branch_names[@]}"
+}
+
+_git_worktree_completion() {
+    _arguments \
+        '1:action:(create delete)' \
+        '2:branch name:->branch_name'
+
+    case "$state" in
+        branch_name)
+            if [[ "${words[2]}" == "delete" ]]; then
+                _git_worktree_branch_names
+            fi
+            ;;
+    esac
+}
+
+compdef _git_worktree_completion git_worktree
+compdef _git_worktree_branch_names gwtd gwtcd
+
 export EDITOR='nvim'
 alias vim="nvim"
 alias cl="printf '\33c\e[3J'"
