@@ -207,9 +207,6 @@ function M.persist_workspaces()
 	local workspaces_file = Path:new(M.workspaces_path .. Path.path.sep .. "workspaces.json")
 	workspaces_file:touch()
 
-	local marks_file = Path:new(M.workspaces_path .. Path.path.sep .. "marks.json")
-	marks_file:touch()
-
 	local current_state = state.get()
 	local workspace_data = {
 		current_workspace_name = current_state.current_workspace.name,
@@ -217,22 +214,7 @@ function M.persist_workspaces()
 		workspaces = current_state.workspaces,
 	}
 
-	marks_file:write(vim.fn.json_encode(current_state.marks), "w")
 	workspaces_file:write(vim.fn.json_encode(workspace_data), "w")
-end
-
-local function load_marks()
-	local marks_file = Path:new(M.workspaces_path .. Path.path.sep .. "marks.json")
-	local marks_data = nil
-	if marks_file:exists() then
-		marks_data = vim.fn.json_decode(marks_file:read())
-	end
-
-	if not marks_data then
-		return
-	end
-
-	state.get().marks = marks_data
 end
 
 local function normalize_session_targets(session)
@@ -362,7 +344,6 @@ function M.load_workspaces()
 	require("user.utils").toggle_special_buffers(state.get().current_target.toggled_types)
 	bps.apply_breakpoints(state.get().current_target.breakpoints)
 	toggleterms.toggle_active_terms(true)
-	load_marks()
 	keymaps.setup_keymaps()
 	vim.schedule(function()
 		require("workspaces.workspaces").sync_all_workspaces_targets()

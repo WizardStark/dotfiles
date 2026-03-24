@@ -24,15 +24,6 @@ local M = {}
 ---@field breakpoints table
 ---@field toggleterms SessionTerminal[]
 
----@class Mark
----@field name string
----@field display_name string | nil
----@field workspace_name string
----@field session_name string
----@field target_name string
----@field path string
----@field pos number[]
-
 ---@class SessionTerminal
 ---@field term_direction string
 ---@field size number
@@ -44,7 +35,6 @@ local M = {}
 
 ---@class State
 ---@field workspaces Workspace[]
----@field marks Mark[]
 ---@field term_count number
 ---@field current_workspace Workspace
 ---@field last_workspace Workspace | nil
@@ -90,7 +80,6 @@ M.default_workspace_data = {
 
 ---@type State
 local state = {
-	marks = {},
 	workspaces = {},
 	term_count = 0,
 	current_workspace = M.default_workspace,

@@ -1,7 +1,6 @@
 local M = {}
 local utils = require("workspaces.utils")
 local state = require("workspaces.state")
-local marks = require("workspaces.marks")
 local ws = require("workspaces.workspaces")
 local Path = require("plenary.path")
 
@@ -24,24 +23,6 @@ local function directory_completion()
 			end,
 		},
 	}
-end
-
-local function truncate_path(path)
-	local parts = {}
-
-	for part in string.gmatch(path, "([^\\/]+)") do
-		table.insert(parts, part)
-	end
-
-	local len = #parts
-	local file = parts[len]
-	local parents = ""
-
-	for i = 1, math.min(len - 1, 2) do
-		parents = parts[len - i] .. "/" .. parents
-	end
-
-	return { file = file, parents = parents:sub(1, -2) }
 end
 
 function M.create_session_input()
@@ -417,95 +398,6 @@ function M.delete_workspace_input()
 	renderer:render(body)
 end
 
-local mark_picker = function()
-	Snacks.picker.pick(
-		---@type snacks.picker.Config
-		{
-			source = "mark",
-			finder = function()
-				local items = {} ---@type snacks.picker.finder.Item
-				for _, mark in ipairs(state.get().marks) do
-					local pos_text = tostring(mark.pos[1]) .. "," .. tostring(mark.pos[2])
-					local truncated_elements = truncate_path(mark.path)
-					local display_name = mark.display_name and mark.display_name .. " " or "..." .. " "
-					local text = mark.workspace_name
-						.. "-"
-						.. mark.session_name
-						.. " "
-						.. display_name
-						.. truncated_elements.file
-						.. " "
-						.. truncated_elements.parents
-					table.insert(items, {
-						["data"] = {
-							mark = mark,
-							pos_text = pos_text,
-							truncated_elements = truncated_elements,
-						},
-						text = text,
-						file = mark.path,
-						pos = mark.pos,
-					})
-				end
-
-				return items
-			end,
-			confirm = function(picker, item)
-				picker:close()
-				if item then
-					marks.goto_mark(item.data.mark.name)
-				end
-			end,
-			format = function(item, _)
-				local ret = {}
-				ret[#ret + 1] = {
-					item.data.mark.workspace_name .. "-" .. item.data.mark.session_name .. " ",
-					"SnacksPickerSpecial",
-				}
-				ret[#ret + 1] =
-					{ item.data.mark.display_name and item.data.mark.display_name .. " " or "..." .. " ", "Type" }
-				ret[#ret + 1] = { item.data.truncated_elements.file .. " " }
-				ret[#ret + 1] = { item.data.truncated_elements.parents, "SnacksPickerComment" }
-
-				return ret
-			end,
-			preview = function(ctx)
-				if ctx.item.file then
-					Snacks.picker.preview.file(ctx)
-				else
-					ctx.preview:reset()
-					ctx.preview:set_title("No preview")
-				end
-			end,
-			layout = {
-				layout = {
-					backdrop = {
-						blend = 40,
-					},
-				},
-			},
-			actions = {
-				delete = function(picker, item)
-					marks.delete_mark(item.data.mark.name)
-					picker:find()
-				end,
-				rename = function(picker, item)
-					picker:close()
-					marks.rename_mark(item.data.mark.name)
-				end,
-			},
-			win = {
-				input = {
-					keys = {
-						["<Del>"] = { "delete", mode = { "n" } },
-						["r"] = { "rename", mode = { "n" } },
-					},
-				},
-			},
-		}
-	)
-end
-
 local workspace_picker = function()
 	Snacks.picker.pick(
 		---@type snacks.picker.Config
@@ -692,10 +584,6 @@ end
 
 function M.pick_target()
 	target_picker()
-end
-
-function M.pick_mark()
-	mark_picker()
 end
 
 return M

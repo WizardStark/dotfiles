@@ -41,15 +41,6 @@ end
 local mappings = {
 	{
 		event = "BufEnter",
-		callback = function()
-			if vim.g.workspaces_loaded then
-				require("workspaces.marks").clear_marks()
-				require("workspaces.marks").display_marks()
-			end
-		end,
-	},
-	{
-		event = "BufEnter",
 		pattern = { "*.zsh-theme", "*.zshrc", "*.zshenv", "*.zprofile" },
 		callback = function()
 			vim.cmd("setfiletype zsh")

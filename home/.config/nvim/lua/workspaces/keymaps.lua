@@ -129,24 +129,6 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>t",
-		callback = function()
-			require("workspaces.ui").pick_mark()
-		end,
-		prefix = P.work,
-		description = "Find mark",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>m",
-		callback = function()
-			require("workspaces.marks").toggle_mark()
-		end,
-		prefix = P.work,
-		description = "Toggle mark",
-	},
-	{
-		mode = { "n" },
 		keys = "<leader>scs",
 		callback = function()
 			require("workspaces.ui").create_session_input()
