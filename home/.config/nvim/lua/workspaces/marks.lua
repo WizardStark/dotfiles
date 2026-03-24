@@ -16,14 +16,16 @@ function M.create_mark()
 	local pos_string = tostring(pos[1]) .. "-" .. tostring(pos[2])
 	local workspace_name = state.get().current_workspace.name:gsub(" ", "-")
 	local session_name = state.get().current_session.name:gsub(" ", "-")
+	local target_name = ws.get_current_target().name:gsub(" ", "-")
 	local file_path = vim.fn.expand("%:p")
 	local cleaned_path = vim.trim(file_path:gsub("/", " ")):gsub(" ", "-")
-	local mark_name = workspace_name .. "_" .. session_name .. "_" .. cleaned_path .. "_" .. pos_string
+	local mark_name = workspace_name .. "_" .. session_name .. "_" .. target_name .. "_" .. cleaned_path .. "_" .. pos_string
 
 	---@type Mark
 	local mark = {
 		name = mark_name,
 		session_name = session_name,
+		target_name = target_name,
 		workspace_name = workspace_name,
 		path = file_path,
 		pos = pos,
@@ -48,14 +50,16 @@ end
 
 ---@param workspace_name string
 ---@param session_name string
+---@param target_name string
 ---@param path string
 ---@param pos number[]
 ---@return Mark | nil
-local function find_mark_by_metadata(workspace_name, session_name, path, pos)
+local function find_mark_by_metadata(workspace_name, session_name, target_name, path, pos)
 	for _, mark in ipairs(state.get().marks) do
 		if
 			mark.workspace_name == workspace_name
 			and mark.session_name == session_name
+			and (mark.target_name or "main") == target_name
 			and mark.path == path
 			and pos[1] == mark.pos[1]
 		then
@@ -87,7 +91,14 @@ function M.goto_mark(mark_name)
 		return
 	end
 
+	local target = utils.find_target(target_session, target_mark.target_name or "main")
+	if not target then
+		vim.notify(string.format("Target checkout for mark does not exist"), vim.log.levels.ERROR)
+		return
+	end
+
 	ws.switch_session(target_session, target_workspace)
+	ws.switch_target(target, target_session, target_workspace)
 
 	toggleterms.close_visible_terms(true)
 	local toggled_types = require("user.utils").toggle_special_buffers({})
@@ -122,6 +133,7 @@ function M.toggle_mark()
 	local target_mark = find_mark_by_metadata(
 		state.get().current_workspace.name,
 		state.get().current_workspace.current_session_name,
+		ws.get_current_target().name,
 		vim.fn.expand("%:p"),
 		pos
 	)
@@ -162,11 +174,13 @@ function M.display_marks()
 	local count = 1
 	local current_workspace = state.get().current_workspace.name
 	local current_session = state.get().current_workspace.current_session_name
+	local current_target = ws.get_current_target().name
 	local lines_with_marks = {}
 	for _, mark in ipairs(state.get().marks) do
 		if
 			mark.workspace_name == current_workspace
 			and mark.session_name == current_session
+			and (mark.target_name or "main") == current_target
 			and mark.path == vim.fn.expand("%:p")
 		then
 			table.insert(lines_with_marks, mark.pos[1])

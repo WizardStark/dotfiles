@@ -19,14 +19,242 @@ local function save_named_buffers()
 	vim.cmd.wa()
 end
 
+local function exit_hydras()
+	if _G.Hydra ~= {} then
+		require("config.hydra").dap_hydra:exit()
+		require("config.hydra").git_hydra:exit()
+		require("config.hydra").trouble_hydra:exit()
+		require("config.hydra").treewalker_hydra:exit()
+	end
+end
+
+local function stop_lsp_clients()
+	local clients = vim.lsp.get_clients()
+	if #clients == 0 then
+		return
+	end
+
+	local client_ids = {}
+	for _, client in ipairs(clients) do
+		if client.name ~= "copilot" then
+			table.insert(client_ids, client.id)
+		end
+	end
+
+	if #client_ids > 0 then
+		vim.lsp.stop_client(client_ids, true)
+	end
+end
+
+---@param target WorkspaceTarget
+---@return Path
+local function expanded_target_dir(target)
+	return Path:new(vim.fn.expand(target.dir))
+end
+
+---@param workspace Workspace
+---@param session WorkspaceSession
+---@return WorkspaceTarget
+---@return WorkspaceTarget[]
+---@return boolean
+---@return boolean
+local function sync_session_targets(session, workspace)
+	local discovered_targets = utils.list_git_targets(session.dir)
+	local removed_targets, current_target_removed, changed = utils.merge_session_targets(session, discovered_targets)
+
+	for _, target in ipairs(removed_targets) do
+		persist.delete_nvim_session_file(workspace, session, target)
+	end
+
+	return utils.get_current_target(session), removed_targets, current_target_removed, changed
+end
+
+---@param workspace Workspace
+---@return boolean
+local function sync_workspace_targets(workspace)
+	local changed = false
+
+	for _, session in ipairs(workspace.sessions) do
+		local _, _, _, session_changed = sync_session_targets(session, workspace)
+		changed = changed or session_changed
+	end
+
+	if utils.find_session(workspace, workspace.current_session_name) == nil and #workspace.sessions > 0 then
+		workspace.current_session_name = workspace.sessions[1].name
+		changed = true
+	end
+
+	if utils.find_session(workspace, workspace.last_session_name) == nil then
+		workspace.last_session_name = nil
+		changed = true
+	end
+
+	return changed
+end
+
+local function ensure_target_dir(target)
+	local target_dir = expanded_target_dir(target)
+	if target_dir:is_dir() then
+		return true
+	end
+
+	if target.kind == "directory" then
+		target_dir:mkdir({ parents = true })
+		vim.notify("Created missing directory: " .. target_dir.filename)
+		return true
+	end
+
+	return false
+end
+
+local function persist_current_state(skip_session_file)
+	local current_workspace = state.get().current_workspace
+	local current_session = state.get().current_session
+	if current_workspace == nil or current_session == nil then
+		return
+	end
+
+	local current_target = state.get().current_target or utils.get_current_target(current_session)
+
+	pcall(save_named_buffers)
+	toggleterms.close_visible_terms(true)
+	require("user.utils").close_terminal_buffers()
+
+	local toggled_types = require("user.utils").toggle_special_buffers({})
+	if not skip_session_file and ensure_target_dir(current_target) then
+		persist.write_nvim_session_file(current_workspace, current_session, current_target)
+	end
+
+	M.set_session_metadata(current_session, current_target, toggled_types)
+	require("user.utils").close_non_terminal_buffers()
+end
+
+---@param workspace Workspace
+---@param session WorkspaceSession
+---@param target WorkspaceTarget
+local function restore_target_state(workspace, session, target)
+	state.get().current_workspace = workspace
+	state.get().current_session = session
+	state.get().current_target = target
+	state.get().last_target = utils.find_target(session, session.last_target_name)
+	workspace.current_session_name = session.name
+	session.current_target_name = target.name
+	vim.cmd.cd(vim.fn.fnameescape(target.dir))
+
+	stop_lsp_clients()
+	persist.source_nvim_session_file(workspace, session, target)
+
+	local win = vim.api.nvim_get_current_win()
+	local pos = vim.api.nvim_win_get_cursor(win)
+
+	require("user.utils").toggle_special_buffers(target.toggled_types)
+	bps.apply_breakpoints(target.breakpoints)
+	M.set_session_metadata(session, target, {})
+	toggleterms.toggle_active_terms(true)
+
+	vim.api.nvim_set_current_win(win)
+	vim.api.nvim_win_set_cursor(win, pos)
+	vim.cmd.stopinsert()
+	M.setup_lualine()
+end
+
+---@param name string
+---@param dir string
+---@return WorkspaceTarget
+local function make_main_target(name, dir)
+	return {
+		name = name,
+		kind = "directory",
+		dir = utils.normalize_dir(dir),
+		branch = nil,
+		last_file = nil,
+		last_file_line = nil,
+		toggled_types = {},
+		breakpoints = {},
+		toggleterms = {},
+	}
+end
+
+---@param session WorkspaceSession
+---@param workspace Workspace
+---@param target WorkspaceTarget
+---@param persist_state boolean | nil
+local function switch_to_target(session, workspace, target, persist_state)
+	persist_current_state(false)
+
+	local previous_workspace = state.get().current_workspace
+	local previous_session = state.get().current_session
+	local previous_target = state.get().current_target
+	local workspace_changed = workspace ~= previous_workspace
+	local session_changed = workspace_changed or session ~= previous_session
+	local target_changed = session_changed or target ~= previous_target
+
+	if workspace_changed then
+		state.get().last_workspace = previous_workspace
+		state.get().last_session = utils.find_session(workspace, workspace.last_session_name)
+	elseif session_changed then
+		state.get().last_session = previous_session
+	end
+
+	if not session_changed and target_changed and previous_session ~= nil and previous_target ~= nil then
+		previous_session.last_target_name = previous_target.name
+	end
+
+	if not workspace_changed and session_changed and previous_workspace ~= nil and previous_session ~= nil then
+		previous_workspace.last_session_name = previous_session.name
+	end
+
+	if not workspace_changed and session_changed then
+		workspace.last_session_name = state.get().last_session and state.get().last_session.name or nil
+	end
+	state.get().current_workspace = workspace
+	state.get().current_session = session
+	state.get().current_target = target
+	state.get().last_target = nil
+	if not session_changed and previous_target ~= target then
+		state.get().last_target = previous_target
+	end
+
+	restore_target_state(workspace, session, target)
+
+	if persist_state ~= false then
+		persist.persist_workspaces()
+	end
+end
+
+---@param session WorkspaceSession
+---@param target WorkspaceTarget | nil
+---@return WorkspaceTarget | nil
+local function resolve_synced_target(session, target)
+	if target == nil then
+		return nil
+	end
+
+	local matched_target = utils.find_target(session, target.name)
+	if matched_target ~= nil then
+		return matched_target
+	end
+
+	local normalized_dir = utils.normalize_dir(target.dir)
+	for _, value in ipairs(session.targets or {}) do
+		if utils.normalize_dir(value.dir) == normalized_dir then
+			return value
+		end
+	end
+
+	return nil
+end
+
 -- This function needs to be called whenever the tabs change
 function M.setup_lualine()
 	local tabs = {}
+	local targets = {}
 	local current_workspace = state.get().current_workspace
+	local current_session = state.get().current_session
 
-	for i, v in ipairs(current_workspace.sessions) do
-		local is_selected = v.name == current_workspace.current_session_name
-		local is_last_session = v.name == current_workspace.last_session_name
+	for i, session in ipairs(current_workspace.sessions) do
+		local is_selected = session.name == current_workspace.current_session_name
+		local is_last_session = session.name == current_workspace.last_session_name
 
 		tabs[i] = {
 			mode = 2,
@@ -34,13 +262,37 @@ function M.setup_lualine()
 				return { fg = is_selected and colors.blue or colors.text }
 			end,
 			on_click = function()
-				M.switch_session(v, current_workspace)
+				M.switch_session(session, current_workspace)
 			end,
 			function()
-				local res = tostring(i) .. " " .. v.name
+				local res = tostring(i) .. " " .. session.name
 				if is_selected then
 					return utils.icons.cur .. " " .. res
 				elseif is_last_session then
+					return utils.icons.last .. " " .. res
+				end
+				return res
+			end,
+		}
+	end
+
+	for i, target in ipairs((current_session and current_session.targets) or {}) do
+		local is_selected = current_session.current_target_name == target.name
+		local is_last_target = current_session.last_target_name == target.name
+
+		targets[i] = {
+			mode = 2,
+			color = function()
+				return { fg = is_selected and colors.green or colors.subtext1 }
+			end,
+			on_click = function()
+				M.switch_target(target, current_session, current_workspace)
+			end,
+			function()
+				local res = target.name
+				if is_selected then
+					return utils.icons.cur .. " " .. res
+				elseif is_last_target then
 					return utils.icons.last .. " " .. res
 				end
 				return res
@@ -56,46 +308,46 @@ function M.setup_lualine()
 				end,
 			},
 			lualine_b = tabs,
+			lualine_y = targets,
 		},
 	})
 end
 
----Sets session metadata such as last file and line num
 ---@param session WorkspaceSession
+---@param target WorkspaceTarget | nil
 ---@param toggled_types string[]
-function M.set_session_metadata(session, toggled_types)
+function M.set_session_metadata(session, target, toggled_types)
+	target = target or utils.get_current_target(session)
 	local buf_path = vim.fn.expand("%:p")
-	---@cast buf_path string:
+	---@cast buf_path string
 
 	if buf_path ~= "" and Path:new(buf_path):exists() then
-		session.last_file_line = unpack(vim.fn.getcurpos(), 2, 2)
-		session.last_file = buf_path
+		target.last_file_line = unpack(vim.fn.getcurpos(), 2, 2)
+		target.last_file = buf_path
 	else
-		session.last_file_line = nil
-		session.last_file = nil
+		target.last_file_line = nil
+		target.last_file = nil
 	end
 
-	session.toggled_types = toggled_types
-	session.breakpoints = bps.get_breakpoints()
+	target.toggled_types = toggled_types
+	target.breakpoints = bps.get_breakpoints()
 end
 
---- Switch to target session, does nothing if it is equal to current session
 ---@param target_session WorkspaceSession | nil
 ---@param target_workspace Workspace
 function M.switch_session(target_session, target_workspace)
-	-- No target session passed in, we will default to the target workspace current values
+	sync_workspace_targets(target_workspace)
+
 	if target_session == nil then
 		if #target_workspace.sessions == 0 then
 			vim.notify(
 				string.format("Cannot switch to '%s', it has no sessions", target_workspace.name),
 				vim.log.levels.ERROR
 			)
-
 			return
 		end
 
 		target_session = utils.find_session(target_workspace, target_workspace.current_session_name)
-
 		if target_session == nil then
 			vim.notify(
 				string.format(
@@ -109,68 +361,126 @@ function M.switch_session(target_session, target_workspace)
 		end
 	end
 
-	-- After defaulting nil sessions stop execution if no change is needed
-	if target_session == state.get().current_session then
+	local target_target = utils.get_current_target(target_session)
+	if target_session == state.get().current_session and target_target == state.get().current_target then
 		return
 	end
 
-	if _G.Hydra ~= {} then
-		require("config.hydra").dap_hydra:exit()
-		require("config.hydra").git_hydra:exit()
-		require("config.hydra").trouble_hydra:exit()
-		require("config.hydra").treewalker_hydra:exit()
+	exit_hydras()
+	switch_to_target(target_session, target_workspace, target_target)
+end
+
+---@param target WorkspaceTarget | nil
+---@param target_session WorkspaceSession | nil
+---@param target_workspace Workspace | nil
+function M.switch_target(target, target_session, target_workspace)
+	target_workspace = target_workspace or state.get().current_workspace
+	target_session = target_session or state.get().current_session
+	if target_workspace == nil or target_session == nil then
+		vim.notify("No current session", vim.log.levels.ERROR)
+		return
 	end
 
-	-- Save current session before switching
-	pcall(save_named_buffers)
-	-- hide all toggleterms
-	toggleterms.close_visible_terms(true)
-	require("user.utils").close_terminal_buffers()
-
-	local session_dir = Path:new(vim.fn.expand(state.get().current_session.dir))
-
-	if not session_dir:is_dir() then
-		session_dir:mkdir()
-		vim.notify("Created missing directory: " .. session_dir.filename)
+	local previous_target = target
+	local current_target, _, current_target_removed = sync_session_targets(target_session, target_workspace)
+	target = resolve_synced_target(target_session, previous_target)
+		or current_target
+		or utils.get_current_target(target_session)
+	if current_target_removed and target.kind == "directory" then
+		vim.notify("Current worktree target was removed, switched back to main", vim.log.levels.WARN)
 	end
 
-	local toggled_types = require("user.utils").toggle_special_buffers({})
-
-	persist.write_nvim_session_file(state.get().current_workspace, state.get().current_session)
-	M.set_session_metadata(state.get().current_session, toggled_types)
-	require("user.utils").close_non_terminal_buffers()
-
-	-- Switch to new session and workspace
-	if target_workspace ~= state.get().current_workspace then
-		state.get().last_workspace = state.get().current_workspace
-		state.get().current_workspace = target_workspace
-
-		-- When swapping workspaces we need to load the last session instead of setting it to current session
-		-- otherwise alternate session will not be within the same workspace
-		state.get().last_session = utils.find_session(target_workspace, target_workspace.last_session_name)
-	else
-		state.get().last_session = state.get().current_session
+	if target_session == state.get().current_session and target == state.get().current_target then
+		return
 	end
 
-	state.get().current_session = target_session
-	state.get().current_workspace.last_session_name = state.get().last_session and state.get().last_session.name
-	state.get().current_workspace.current_session_name = state.get().current_session.name
+	exit_hydras()
+	switch_to_target(target_session, target_workspace, target)
+end
 
-	persist.source_nvim_session_file(state.get().current_workspace, target_session)
+function M.sync_current_session_targets()
+	return M.refresh_current_session_targets(true)
+end
 
-	local win = vim.api.nvim_get_current_win()
-	local pos = vim.api.nvim_win_get_cursor(win)
+---@param persist_current boolean | nil
+function M.refresh_current_session_targets(persist_current)
+	local workspace = state.get().current_workspace
+	local session = state.get().current_session
+	if workspace == nil or session == nil then
+		return
+	end
 
-	require("user.utils").toggle_special_buffers(target_session.toggled_types)
-	bps.apply_breakpoints(target_session.breakpoints)
-	M.set_session_metadata(target_session, {})
-	toggleterms.toggle_active_terms(true)
+	local current_target = state.get().current_target or utils.get_current_target(session)
+	if persist_current == true and current_target ~= nil and current_target.kind == "git_worktree" then
+		persist_current_state(true)
+	end
+	local fallback_target, removed_targets, current_target_removed, changed = sync_session_targets(session, workspace)
 
-	vim.api.nvim_set_current_win(win)
-	vim.api.nvim_win_set_cursor(win, pos)
-	vim.cmd.stopinsert()
+	if current_target_removed then
+		switch_to_target(session, workspace, fallback_target, false)
+		persist.persist_workspaces()
+		vim.notify("Current worktree target was removed, switched back to main", vim.log.levels.WARN)
+		return
+	end
 
-	M.setup_lualine()
+	if changed or #removed_targets > 0 or current_target ~= fallback_target then
+		state.get().current_target = fallback_target
+		M.setup_lualine()
+		persist.persist_workspaces()
+	end
+end
+
+function M.sync_all_workspaces_targets()
+	local changed = false
+	for _, workspace in ipairs(state.get().workspaces) do
+		changed = sync_workspace_targets(workspace) or changed
+	end
+
+	local current_session = state.get().current_session
+	if current_session ~= nil then
+		state.get().current_target = utils.get_current_target(current_session)
+		state.get().last_target = utils.find_target(current_session, current_session.last_target_name)
+	end
+
+	if changed then
+		M.setup_lualine()
+		persist.persist_workspaces()
+	end
+end
+
+function M.get_current_target()
+	local current_session = state.get().current_session
+	if current_session == nil then
+		return nil
+	end
+
+	state.get().current_target = state.get().current_target or utils.get_current_target(current_session)
+	return state.get().current_target
+end
+
+function M.get_current_target_display_name()
+	local target = M.get_current_target()
+	if target == nil or target.name == "main" then
+		return nil
+	end
+
+	return target.name
+end
+
+function M.alternate_target()
+	local session = state.get().current_session
+	if session == nil then
+		vim.notify("No current session", vim.log.levels.ERROR)
+		return
+	end
+
+	local last_target = utils.find_target(session, session.last_target_name)
+	if last_target == nil then
+		vim.notify("No alternate target", vim.log.levels.ERROR)
+		return
+	end
+
+	M.switch_target(last_target, session, state.get().current_workspace)
 end
 
 function M.rename_current_session(name)
@@ -196,7 +506,6 @@ function M.create_session(name, dir)
 	end
 
 	local path = Path:new(vim.fn.expand(dir))
-
 	if not path:exists() then
 		vim.notify("That directory does not exist, creating it", vim.log.levels.INFO)
 		path:mkdir({ parents = true })
@@ -210,14 +519,13 @@ function M.create_session(name, dir)
 	---@type WorkspaceSession
 	local session = {
 		name = name,
-		dir = dir,
-		toggled_types = {},
-		breakpoints = {},
-		toggleterms = {},
+		dir = utils.normalize_dir(dir),
+		current_target_name = "main",
+		last_target_name = nil,
+		targets = { make_main_target("main", dir) },
 	}
 
 	table.insert(state.get().current_workspace.sessions, session)
-
 	M.switch_session(session, state.get().current_workspace)
 end
 
@@ -229,30 +537,28 @@ function M.delete_session(name)
 	end
 
 	local workspace = state.get().current_workspace
-
 	if #workspace.sessions == 1 then
 		M.delete_workspace(workspace.name)
+		return
+	end
+
+	for i, value in ipairs(workspace.sessions) do
+		if value.name == name then
+			table.remove(workspace.sessions, i)
+			break
+		end
+	end
+
+	for _, target in ipairs(session.targets or {}) do
+		persist.delete_nvim_session_file(workspace, session, target)
+	end
+
+	if name == workspace.current_session_name then
+		M.switch_session(workspace.sessions[1], workspace)
 	else
-		for i, v in ipairs(workspace.sessions) do
-			if v.name == name then
-				table.remove(workspace.sessions, i)
-				break
-			end
-		end
-		if name == workspace.current_session_name then
-			M.switch_session(workspace.sessions[1], workspace)
-		end
+		M.setup_lualine()
+		persist.persist_workspaces()
 	end
-
-	local session_filename = persist.get_nvim_session_filename(workspace, session)
-	local session_file = Path:new(persist.sessions_path):joinpath(session_filename .. ".vim")
-
-	if session_file:exists() then
-		session_file:rm()
-	end
-
-	M.setup_lualine()
-	persist.persist_workspaces()
 end
 
 ---@param name string
@@ -265,7 +571,6 @@ function M.create_workspace(name, session_name, dir)
 	end
 
 	local path = Path:new(vim.fn.expand(dir))
-
 	if not path:exists() then
 		vim.notify("That directory does not exist, creating it", vim.log.levels.INFO)
 		path:mkdir({ parents = true })
@@ -275,19 +580,19 @@ function M.create_workspace(name, session_name, dir)
 	local workspace = {
 		name = name,
 		current_session_name = session_name,
+		last_session_name = nil,
 		sessions = {
 			{
 				name = session_name,
-				dir = dir,
-				toggled_types = {},
-				breakpoints = {},
-				toggleterms = {},
+				dir = utils.normalize_dir(dir),
+				current_target_name = "main",
+				last_target_name = nil,
+				targets = { make_main_target("main", dir) },
 			},
 		},
 	}
 
 	table.insert(state.get().workspaces, workspace)
-
 	persist.persist_workspaces()
 end
 
@@ -302,7 +607,6 @@ function M.rename_current_workspace(name)
 	end
 
 	state.get().current_workspace.name = name
-
 	M.setup_lualine()
 	persist.persist_workspaces()
 end
@@ -313,24 +617,24 @@ function M.delete_workspace(name)
 		return
 	end
 
-	for i, v in ipairs(state.get().workspaces) do
-		if v.name == name then
+	for i, workspace in ipairs(state.get().workspaces) do
+		if workspace.name == name then
 			table.remove(state.get().workspaces, i)
 			break
 		end
 	end
 
 	if name == state.get().current_workspace.name then
-		-- If the current session is the last one delete the local file and recreate it
 		if #state.get().workspaces == 0 then
-			M.purge_workspaces()
+			persist.purge_workspaces()
 			persist.load_workspaces()
+			return
 		end
 
 		M.switch_session(nil, state.get().workspaces[1])
 	end
 
-	if name == state.get().last_workspace.name then
+	if state.get().last_workspace and name == state.get().last_workspace.name then
 		state.get().last_workspace = nil
 	end
 
@@ -367,14 +671,12 @@ function M.next_session()
 	end
 
 	local current_session_index = utils.find_session_index(current_workspace, current_session)
-
 	if current_session_index == nil then
 		vim.notify("Could not find index of current session", vim.log.levels.ERROR)
 		return
 	end
 
 	local target_session_index = current_session_index % #current_workspace.sessions + 1
-
 	M.switch_session(current_workspace.sessions[target_session_index], current_workspace)
 end
 
@@ -387,7 +689,6 @@ function M.previous_session()
 	end
 
 	local current_session_index = utils.find_session_index(current_workspace, current_session)
-
 	if current_session_index == nil then
 		vim.notify("Could not find index of current session", vim.log.levels.ERROR)
 		return
@@ -405,7 +706,6 @@ end
 ---@param name string
 function M.switch_workspace_by_name(name)
 	local target_workspace = utils.find_workspace(name)
-
 	if target_workspace == nil then
 		vim.notify("Could not find a workspace with that name", vim.log.levels.ERROR)
 		return

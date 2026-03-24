@@ -252,6 +252,14 @@ local mappings = {
 		end,
 	},
 	{
+		event = { "BufEnter", "FocusGained", "DirChanged" },
+		callback = function()
+			if vim.g.workspaces_loaded then
+				require("workspaces.workspaces").refresh_current_session_targets(false)
+			end
+		end,
+	},
+	{
 		event = "User",
 		pattern = "LazyReload",
 		callback = function()
@@ -268,9 +276,10 @@ local mappings = {
 				local persist = require("workspaces.persistence")
 				local workspaces = require("workspaces.workspaces")
 				local current_session = state.get().current_session
-				persist.write_nvim_session_file(state.get().current_workspace, current_session)
+				local current_target = workspaces.get_current_target()
+				persist.write_nvim_session_file(state.get().current_workspace, current_session, current_target)
 				local toggled_types = require("user.utils").toggle_special_buffers({})
-				workspaces.set_session_metadata(current_session, toggled_types)
+				workspaces.set_session_metadata(current_session, current_target, toggled_types)
 				persist.persist_workspaces()
 			end
 		end,

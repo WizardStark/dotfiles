@@ -113,76 +113,6 @@ local history_picker = function()
 	)
 end
 
-local function current_repo_worktree_root()
-	local git_common_dir = vim.fn.system("git rev-parse --path-format=absolute --git-common-dir 2>/dev/null")
-		:gsub("^%s*(.-)%s*$", "%1")
-	if git_common_dir == "" then
-		return nil
-	end
-
-	local repo_name = vim.fn.fnamemodify(git_common_dir, ":h:t")
-	return vim.fn.expand("~/projects/worktrees/" .. repo_name)
-end
-
-local function worktree_picker()
-	local worktree_root = current_repo_worktree_root()
-	if not worktree_root then
-		vim.notify("Not in a git repository", vim.log.levels.WARN)
-		return
-	end
-
-	if vim.fn.isdirectory(worktree_root) == 0 then
-		vim.notify("No worktrees found for this repository", vim.log.levels.INFO)
-		return
-	end
-
-	local gitdirs = vim.fn.globpath(worktree_root, "**/.git", false, true)
-
-	local items = {}
-	for _, gitdir in ipairs(gitdirs) do
-		if vim.fn.filereadable(gitdir) == 1 then
-			local worktree_path = vim.fn.fnamemodify(gitdir, ":h")
-			local branch_name = worktree_path:gsub("^" .. vim.pesc(worktree_root .. "/"), "")
-			items[#items + 1] = {
-				text = branch_name,
-				file = worktree_path,
-			}
-		end
-	end
-
-	table.sort(items, function(a, b)
-		return a.text < b.text
-	end)
-
-	if vim.tbl_isempty(items) then
-		vim.notify("No worktrees found for this repository", vim.log.levels.INFO)
-		return
-	end
-
-	Snacks.picker.pick({
-		source = "git_worktrees",
-		finder = function()
-			return items
-		end,
-		format = function(item, _)
-			return { { item.text } }
-		end,
-		layout = {
-			preset = "select",
-			preview = false,
-		},
-		confirm = function(picker, item)
-			picker:close()
-			if not item then
-				return
-			end
-
-			vim.cmd("tcd " .. vim.fn.fnameescape(item.file))
-			vim.notify("Changed directory to " .. item.text)
-		end,
-	})
-end
-
 local P = require("user.utils").PREFIXES
 
 local mappings = {
@@ -768,13 +698,6 @@ local mappings = {
 		end,
 		prefix = P.git,
 		description = "Commit history for current buffer",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>gw",
-		callback = worktree_picker,
-		prefix = P.git,
-		description = "Change to a git worktree",
 	},
 	{
 		mode = { "n" },

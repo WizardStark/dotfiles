@@ -1,4 +1,4 @@
-M = {}
+local M = {}
 local P = require("user.utils").PREFIXES
 local mappings = {
 	{
@@ -72,6 +72,33 @@ local mappings = {
 		end,
 		prefix = P.work,
 		description = "Pick session",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>sst",
+		callback = function()
+			require("workspaces.ui").pick_target()
+		end,
+		prefix = P.work,
+		description = "Pick target",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>ssz",
+		callback = function()
+			require("workspaces.workspaces").alternate_target()
+		end,
+		prefix = P.work,
+		description = "Alternate target",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>srt",
+		callback = function()
+			require("workspaces.workspaces").sync_current_session_targets()
+		end,
+		prefix = P.work,
+		description = "Refresh targets",
 	},
 	{
 		mode = { "n" },

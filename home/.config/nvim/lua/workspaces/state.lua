@@ -9,6 +9,15 @@ local M = {}
 ---@class WorkspaceSession
 ---@field name string
 ---@field dir string
+---@field current_target_name string
+---@field last_target_name string | nil
+---@field targets WorkspaceTarget[]
+
+---@class WorkspaceTarget
+---@field name string
+---@field kind string
+---@field dir string
+---@field branch string | nil
 ---@field last_file string | nil
 ---@field last_file_line number | nil
 ---@field toggled_types string[]
@@ -20,6 +29,7 @@ local M = {}
 ---@field display_name string | nil
 ---@field workspace_name string
 ---@field session_name string
+---@field target_name string
 ---@field path string
 ---@field pos number[]
 
@@ -40,6 +50,8 @@ local M = {}
 ---@field last_workspace Workspace | nil
 ---@field current_session WorkspaceSession
 ---@field last_session WorkspaceSession | nil
+---@field current_target WorkspaceTarget
+---@field last_target WorkspaceTarget | nil
 
 ---@type Workspace
 M.default_workspace = {
@@ -50,9 +62,21 @@ M.default_workspace = {
 		{
 			name = "nvim",
 			dir = vim.fn.stdpath("config") --[[@as string]],
-			toggled_types = {},
-			breakpoints = {},
-			toggleterms = {},
+			current_target_name = "main",
+			last_target_name = nil,
+			targets = {
+				{
+					name = "main",
+					kind = "directory",
+					dir = vim.fn.stdpath("config") --[[@as string]],
+					branch = nil,
+					last_file = nil,
+					last_file_line = nil,
+					toggled_types = {},
+					breakpoints = {},
+					toggleterms = {},
+				},
+			},
 		},
 	},
 }
@@ -71,8 +95,10 @@ local state = {
 	term_count = 0,
 	current_workspace = M.default_workspace,
 	last_workspace = nil,
-	current_session = M.default_workspace.sessions[0],
+	current_session = M.default_workspace.sessions[1],
 	last_session = nil,
+	current_target = M.default_workspace.sessions[1].targets[1],
+	last_target = nil,
 }
 
 function M.get()

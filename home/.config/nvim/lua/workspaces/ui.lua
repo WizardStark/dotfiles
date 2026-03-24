@@ -172,7 +172,11 @@ function M.change_current_session_directory_input()
 						return
 					end
 
-					state.get().current_session.dir = session_dir.value:get_value()
+					local utils = require("workspaces.utils")
+					local normalized_dir = utils.normalize_dir(session_dir.value:get_value())
+					state.get().current_session.dir = normalized_dir
+					local main_target = utils.get_main_target(state.get().current_session)
+					main_target.dir = normalized_dir
 					renderer:close()
 				else
 					vim.notify("Please fill in all fields")
@@ -568,22 +572,23 @@ local session_picker = function()
 
 				-- Update current session metadata so it displays correctly
 				if state.get().current_session ~= nil then
-					ws.set_session_metadata(state.get().current_session, {})
+					ws.set_session_metadata(state.get().current_session, ws.get_current_target(), {})
 				end
 
 				for _, workspace in ipairs(state.get().workspaces) do
 					for _, session in ipairs(workspace.sessions) do
+						local target = require("workspaces.utils").get_current_target(session)
 						table.insert(items, {
-							["data"] = { workspace = workspace, session = session },
+							data = { workspace = workspace, session = session, target = target },
 							text = workspace.name .. ": " .. session.name,
-							file = session.last_file and session.last_file or nil,
-							pos = { session.last_file_line, 1 },
+							file = target.last_file,
+							pos = target.last_file_line and { target.last_file_line, 1 } or nil,
 						})
 					end
 				end
 
 				if state.get().current_session ~= nil then
-					ws.set_session_metadata(state.get().current_session, {})
+					ws.set_session_metadata(state.get().current_session, ws.get_current_target(), {})
 				end
 
 				return items
@@ -598,6 +603,10 @@ local session_picker = function()
 				local ret = {}
 				ret[#ret + 1] = { item.data.workspace.name .. ": ", "SnacksPickerSpecial" }
 				ret[#ret + 1] = { item.data.session.name, "Type" }
+				local target = item.data.target
+				if target.name ~= "main" then
+					ret[#ret + 1] = { " [" .. target.name .. "]", "SnacksPickerComment" }
+				end
 				return ret
 			end,
 			preview = function(ctx)
@@ -619,12 +628,70 @@ local session_picker = function()
 	)
 end
 
+local target_picker = function()
+	ws.refresh_current_session_targets(false)
+	local session = state.get().current_session
+	local current_target = ws.get_current_target()
+	if session == nil then
+		vim.notify("No current session", vim.log.levels.ERROR)
+		return
+	end
+
+	Snacks.picker.pick(
+		---@type snacks.picker.Config
+		{
+			source = "target",
+			finder = function()
+				local items = {} ---@type snacks.picker.finder.Item
+				for _, target in ipairs(session.targets or {}) do
+					local text = target.name
+					if target == current_target then
+						text = utils.icons.cur .. " " .. text
+					elseif session.last_target_name ~= nil and target.name == session.last_target_name then
+						text = utils.icons.last .. " " .. text
+					end
+
+					items[#items + 1] = {
+						data = { target = target },
+						text = text,
+						file = target.dir,
+					}
+				end
+
+				return items
+			end,
+			confirm = function(picker, item)
+				picker:close()
+				if item then
+					ws.switch_target(item.data.target)
+				end
+			end,
+			format = function(item, _)
+				local ret = {}
+				ret[#ret + 1] = { item.text }
+				return ret
+			end,
+			preview = function(ctx)
+				ctx.preview:set_title(ctx.item.file)
+			end,
+			layout = {
+				preset = "select",
+				preview = false,
+			},
+		}
+	)
+end
+
 function M.pick_workspace()
 	workspace_picker()
 end
 
 function M.pick_session()
 	session_picker()
+end
+
+function M.pick_target()
+	target_picker()
 end
 
 function M.pick_mark()

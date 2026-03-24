@@ -5,7 +5,7 @@ local state = require("workspaces.state")
 require("toggleterm")
 
 function M.get_session_terms()
-	return state.get().current_session.toggleterms
+	return state.get().current_target.toggleterms
 end
 
 ---@param session_terms SessionTerminal[]
@@ -37,7 +37,7 @@ function M.delete_term(local_id)
 	local target_term = find_term_by_local_id(toggleterms, local_id)
 	if target_term then
 		table.remove(toggleterms, target_term[1])
-		state.get().current_session.toggleterms = toggleterms
+		state.get().current_target.toggleterms = toggleterms
 	end
 end
 
@@ -177,7 +177,7 @@ function M.toggle_term(local_id, direction, size, term_pos)
 			return a.local_id < b.local_id
 		end)
 
-		state.get().current_session.toggleterms = toggleterms
+		state.get().current_target.toggleterms = toggleterms
 	else
 		vim.cmd(
 			":" .. local_id .. "ToggleTerm direction=" .. direction
