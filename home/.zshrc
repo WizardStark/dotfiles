@@ -199,6 +199,14 @@ gwtc() {
     git_worktree create "$@"
 }
 
+git_worktree_session() {
+    ~/.config/tmux/create_worktree_session.sh "$@"
+}
+
+gwtcs() {
+    git_worktree_session "$@"
+}
+
 gwtd() {
     git_worktree delete "$@"
 }
@@ -392,6 +400,7 @@ _gwtd_completion() {
 
 compdef _git_worktree_completion git_worktree
 compdef _git gwtc=git-checkout
+compdef _git gwtcs=git-checkout
 compdef _gwtd_completion gwtd
 compdef _git_worktree_branch_names gwtcd
 
