@@ -1,0 +1,25 @@
+min_version = "2025.1.0"
+
+[tasks.bootstrap]
+description = "Bootstrap a new machine with Homebrew, dotfiles, and extras"
+run = "./sync.sh --with-sudo --bootstrap-brew --adopt --launch-shell"
+
+[tasks.sync]
+description = "Sync dependencies and dotfiles on an existing machine"
+run = "./sync.sh"
+
+[tasks.sync-sudo]
+description = "Sync dependencies and update login shell with sudo"
+run = "./sync.sh --with-sudo"
+
+[tasks.sync-adopt]
+description = "Sync dependencies and adopt unmanaged files with stow"
+run = "./sync.sh --adopt"
+
+[tasks.sync-adopt-sudo]
+description = "Sync dependencies, adopt unmanaged files, and update login shell with sudo"
+run = "./sync.sh --with-sudo --adopt"
+
+[tasks.check]
+description = "Check whether dependencies and stow links are in sync"
+run = "./sync.sh --check"

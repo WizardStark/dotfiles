@@ -1,0 +1,6 @@
+# type	field1	field2	field3
+npm	tree-sitter-cli
+uv	nvr	neovim-remote
+git	https://github.com/catppuccin/zsh-syntax-highlighting.git	$HOME/.zsh-catpuccin
+git	https://github.com/junegunn/fzf.git	$HOME/.fzf	--depth=1
+git	https://github.com/tmux-plugins/tpm	$HOME/.config/tmux/plugins/tpm

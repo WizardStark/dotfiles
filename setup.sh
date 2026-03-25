@@ -1,94 +1,94 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
 
-sudo echo "Shell elevated with su permissions"
+set -euo pipefail
 
-require() {
-    command -v "${1}" &>/dev/null && return 0
-    printf 'Missing required application: %s\n' "${1}" >&2
-    return 1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/scripts/setup_lib.sh"
+
+print_usage() {
+  cat <<'EOF'
+Usage: ./setup.sh [options]
+
+Options:
+  --post-brew       Skip Homebrew bootstrap and assume brew is already installed
+  --no-sudo         Do not request sudo or update login shell via sudo
+  --no-adopt        Restow without --adopt
+  --no-launch-shell Do not exec into a new login shell at the end
+  --help            Show this help text
+
+Examples:
+  ./setup.sh
+  ./setup.sh --post-brew
+  ./setup.sh --post-brew --no-sudo
+EOF
 }
 
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    # install linuxbrew dependencies
-    # these need to be installed with apt to allow installation of brew
-    if require apt; then
-        sudo apt update
-        sudo apt-get install -y build-essential procps curl file git
-    elif require yum; then
-        sudo yum groupinstall 'Development Tools'
-        sudo yum install procps-ng curl file git
-    fi
-fi
+main() {
+  local post_brew=0
+  local with_sudo=1
+  local adopt=1
+  local launch_shell=1
+  local -a sync_args=()
 
-if ! require brew; then
-    echo "Attempting to configure Homebrew from standard locations..."
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
-            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-        fi
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        if [ -f "/opt/homebrew/bin/brew" ]; then
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-        elif [ -f "/usr/local/bin/brew" ]; then
-            eval "$(/usr/local/bin/brew shellenv)"
-        fi
-    fi
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --post-brew)
+        post_brew=1
+        ;;
+      --no-sudo)
+        with_sudo=0
+        ;;
+      --no-adopt)
+        adopt=0
+        ;;
+      --no-launch-shell)
+        launch_shell=0
+        ;;
+      --help)
+        print_usage
+        exit 0
+        ;;
+      *)
+        printf 'Unknown option: %s\n' "$1" >&2
+        print_usage >&2
+        exit 1
+        ;;
+    esac
+    shift
+  done
 
-    if ! require brew; then
-        echo "Installing Homebrew..."
-        export NONINTERACTIVE=1
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  if (( with_sudo )); then
+    ensure_sudo
+  elif (( post_brew == 0 )); then
+    printf '--no-sudo is only supported together with --post-brew\n' >&2
+    exit 1
+  fi
 
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            if [ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
-                eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-            fi
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            if [ -f "/opt/homebrew/bin/brew" ]; then
-                eval "$(/opt/homebrew/bin/brew shellenv)"
-            elif [ -f "/usr/local/bin/brew" ]; then
-                eval "$(/usr/local/bin/brew shellenv)"
-            fi
-        fi
-    fi
-fi
+  backup_existing_zshrc
 
-brew install bat dust eza ffind git-delta hyperfine jq jupytext mise nodejs npm nvim ripgrep stow tmux tokei usage uv vivid wget zoxide zsh
-npm install -g tree-sitter-cli
-uv tool install neovim-remote
+  if (( post_brew )); then
+    ensure_homebrew_available
+  else
+    install_platform_prereqs
+    ensure_homebrew_installed
+    sync_args+=(--bootstrap-brew)
+  fi
 
-mkdir -p ~/.config
+  ensure_homebrew_formula mise
 
-(
-    git clone https://github.com/catppuccin/zsh-syntax-highlighting.git ~/.zsh-catpuccin
-)
+  if (( with_sudo )); then
+    sync_args+=(--with-sudo)
+  fi
 
-(
-    mkdir -p "$(bat --config-dir)/themes"
-    wget -P "$(bat --config-dir)/themes" https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme
-    bat cache --build
-)
+  if (( adopt )); then
+    sync_args+=(--adopt)
+  fi
 
-(
-    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-    ~/.fzf/install --key-bindings --completion --update-rc
-)
+  if (( launch_shell )); then
+    sync_args+=(--launch-shell)
+  fi
 
-(
-    git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
-)
+  exec "$SCRIPT_DIR/sync.sh" "${sync_args[@]}"
+}
 
-echo "Moving existing ~/.zshrc to ~/.zshrc_old"
-mv ~/.zshrc ~/.zshrc_old
-stow -v --adopt -t $HOME home
-
-~/.config/tmux/plugins/tpm/bin/install_plugins
-
-nvim --headless "+Lazy! sync" +qa
-touch ~/.ssh/.agent_socket
-
-command -v zsh | sudo tee -a /etc/shells
-sudo chsh -s $(which zsh) $(whoami)
-zsh -l
-echo "Done!"
+main "$@"

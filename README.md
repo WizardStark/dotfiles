@@ -22,6 +22,52 @@ cd dotfiles
 ./setup.sh
 ```
 
+## Syncing an existing machine
+
+Use `./sync.sh` after changing dotfiles-managed scripts or adding dependencies.
+
+```bash
+./sync.sh
+```
+
+`./sync.sh` applies changes by default; use `--check` for verification only.
+
+Useful variants:
+
+```bash
+./sync.sh --check      # verify Brewfile, extra tools, and stow state
+./sync.sh --check --verbose
+./sync.sh --with-sudo  # also update login shell with sudo-backed chsh
+```
+
+Setup script variants depending on machine state:
+
+```bash
+./setup.sh                    # new machine bootstrap
+./setup.sh --post-brew       # brew already installed
+./setup.sh --post-brew --no-sudo
+```
+
+## Mise tasks
+
+The repo now uses a hybrid approach:
+
+- Homebrew still installs system packages from `Brewfile`
+- `stow` still manages the dotfiles under `home/`
+- `mise` runs the repo tasks declared in `mise.toml`
+- `scripts/manifest.tsv` tracks the non-brew extras managed by the sync flow
+
+Common task entrypoints:
+
+```bash
+mise run bootstrap   # new machine after setup.sh bootstraps mise itself
+mise run sync        # sync an existing machine
+mise run sync-sudo   # sync and update login shell with sudo
+mise run sync-adopt  # sync and let stow adopt existing unmanaged files
+mise run sync-adopt-sudo
+mise run check       # verify current machine state
+```
+
 ## Notes for tweaking
 
 The best sources to consult for understanding the nvim config:
@@ -34,43 +80,6 @@ The most important keybinds are `<space><space>` in Neovim for the command palet
 wherein you can fuzzy find your way through most available commands, and `<C-a>?` for
 a list of tmux binds - this is much less nice to use as I have not found a way to add
 descriptions, but the commands are pretty self explanatory.
-
-## Python dev
-I have a venv wrapper script that places all venvs at `~/.virtualenvs`.
-Relevant commands are `lsvenv`, `mkvenv` and `rmvenv` - they do what you think, and have autocomplete.
-Then to activate a venv just do `venv my_venv`
-
-For full nvim compatibility, I would recommend the following:
-```sh
-mkvenv nvim
-venv nvim
-pip install pynvim jupyter_client
-```
-And add the following to `~/.config/nvim/lua/lcl/options.lua`
-```lua
-vim.g.python3_host_prog = vim.fn.expand("~/.virtualenvs/nvim/bin/python3")
-```
-
-Should you then also want to run jupyter notebooks in vim, for each project do the following (I will 
-probably write a ui wrapper in nvim for this at some point):
-```sh
-venv project_name # activate the project venv
-pip install ipykernel
-python -m ipykernel install --user --name project_name
-```
-
-Recent versions of `jupyter_client` also do not create their runtime directory for some reason, so
-if you see an error to the effect of "file/directory does not exist /some/path/Jupyter/runtime/kernel-someid",
-simply create the directory.
-
-## LLM integration
-
-Install Ollama:
-```
-curl -fsSL https://ollama.com/install.sh | sh
-```
-And currently it appears that qwen2.5-coder is the best local model, so choose from https://ollama.com/library/qwen2.5-coder:7b-instruct
-(it has been prefilled with a decent choice for 8GB vram gpu's)
 
 ## Windows specific tips
 
