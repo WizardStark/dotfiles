@@ -115,9 +115,9 @@ run_apply() {
   ensure_manifest_git_clones
   ensure_bat_theme
   ensure_fzf
+  restow_home "$adopt_stow"
   ensure_tmux_plugins
   ensure_agent_socket
-  restow_home "$adopt_stow"
   ensure_nvim_plugins
 
   if (( with_sudo || launch_shell )); then

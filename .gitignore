@@ -2,5 +2,6 @@
 **/lcl/**
 **/tmux/plugins/**
 **/spell
+home/.config/opencode/opencode.lcl.json
 .aider*
 !.aider.conf.yml

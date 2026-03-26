@@ -26,6 +26,8 @@ if require mise; then
     eval "$(mise activate zsh)"
 fi
 
+[ -f ~/.config/opencode/opencode.lcl.json ] && export OPENCODE_CONFIG="$HOME/.config/opencode/opencode.lcl.json"
+
 [ -f ~/.lcl.zshenv ] && source ~/.lcl.zshenv
 
 if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
