@@ -2434,6 +2434,15 @@ local mappings = {
 		description = "Toggle cli panel",
 	},
 	{
+		mode = { "n" },
+		keys = "<leader>cd",
+		callback = function()
+			require("sidekick.cli").close()
+		end,
+		prefix = P.llm,
+		description = "Disconnet from cli",
+	},
+	{
 		mode = { "n", "x" },
 		keys = "<leader>ct",
 		callback = function()
