@@ -153,7 +153,7 @@ git_worktree() {
 
     local action="$1"
     local branch_name="$2"
-    local git_common_dir repo_name worktree_root worktree_path
+    local git_common_dir repo_name worktree_root worktree_path tmux_window_name
 
     git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
         echo "Not in a git repository"
@@ -163,6 +163,7 @@ git_worktree() {
     repo_name="${git_common_dir:h:t}"
     worktree_root="$HOME/projects/worktrees/$repo_name"
     worktree_path="$worktree_root/$branch_name"
+    tmux_window_name="$(printf '%s' "$branch_name" | tr '/:.' '-')"
 
     case "$action" in
         create)
@@ -182,6 +183,12 @@ git_worktree() {
         delete)
             if [ -d "$worktree_path" ] || [ -f "$worktree_path/.git" ]; then
                 git worktree remove "$worktree_path" || return 1
+
+                if tmux has-session -t "$repo_name" 2>/dev/null; then
+                    if tmux list-windows -t "$repo_name" -F '#W' | grep -Fx "$tmux_window_name" >/dev/null 2>&1; then
+                        tmux kill-window -t "$repo_name:$tmux_window_name" || return 1
+                    fi
+                fi
             else
                 echo "Worktree path not found: $worktree_path"
             fi
