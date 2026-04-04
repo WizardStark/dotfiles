@@ -187,9 +187,6 @@ return {
 		},
 	},
 	{
-		src = "https://github.com/artemave/workspace-diagnostics.nvim",
-	},
-	{
 		src = "https://github.com/stevearc/conform.nvim",
 		config = function()
 			require("config.editor.format")

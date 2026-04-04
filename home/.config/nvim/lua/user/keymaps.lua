@@ -472,7 +472,7 @@ local mappings = {
 			Snacks.picker.undo()
 		end,
 		prefix = P.misc,
-		description = "Show change history (undotree)",
+		description = "Show undo history",
 	},
 	{
 		mode = { "n" },
@@ -1977,17 +1977,6 @@ local mappings = {
 		end,
 		prefix = P.code,
 		description = "Clean up all automated print statements",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>lw",
-		callback = function()
-			for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
-				require("workspace-diagnostics").populate_workspace_diagnostics(client, 0)
-			end
-		end,
-		prefix = P.lsp,
-		description = "Load all workspace files for diagnostics",
 	},
 	{
 		mode = { "n" },

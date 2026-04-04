@@ -12,10 +12,6 @@ return {
 			require("mini.ai").setup()
 		end,
 	},
-	-- undotree
-	{
-		src = "https://github.com/mbbill/undotree",
-	},
 	--toggle booleans
 	{
 		src = "https://github.com/rmagatti/alternate-toggler",

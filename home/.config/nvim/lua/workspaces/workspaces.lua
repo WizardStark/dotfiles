@@ -34,15 +34,10 @@ local function stop_lsp_clients()
 		return
 	end
 
-	local client_ids = {}
 	for _, client in ipairs(clients) do
 		if client.name ~= "copilot" then
-			table.insert(client_ids, client.id)
+			client:stop(true)
 		end
-	end
-
-	if #client_ids > 0 then
-		vim.lsp.stop_client(client_ids, true)
 	end
 end
 
