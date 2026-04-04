@@ -186,11 +186,13 @@ function M.close_non_terminal_buffers(close_current)
 			and buffer ~= current_buffer
 			and vim.bo[buffer].bt ~= "terminal"
 		if should_delete then
+			pcall(vim.diagnostic.hide, nil, buffer)
 			pcall(vim.api.nvim_buf_delete, buffer, { force = true })
 		end
 	end
 
 	if close_current and vim.bo[current_buffer].bt ~= "terminal" then
+		pcall(vim.diagnostic.hide, nil, current_buffer)
 		pcall(vim.api.nvim_buf_delete, current_buffer, { force = true })
 	end
 end

@@ -76,12 +76,6 @@ return {
 		end,
 	},
 	{
-		src = "https://github.com/mistweaverco/kulala.nvim",
-		config = function()
-			require("kulala").setup()
-		end,
-	},
-	{
 		src = "https://github.com/xzbdmw/colorful-menu.nvim",
 		config = function()
 			require("colorful-menu").setup({})

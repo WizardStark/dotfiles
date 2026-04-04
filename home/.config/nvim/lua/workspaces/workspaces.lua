@@ -13,7 +13,8 @@ local function save_named_buffers()
 	local buflist = vim.api.nvim_list_bufs()
 	for _, bufnr in ipairs(buflist) do
 		if vim.api.nvim_buf_get_name(bufnr) == nil then
-			vim.cmd("bd! " .. tostring(bufnr))
+			pcall(vim.diagnostic.hide, nil, bufnr)
+			pcall(vim.cmd, "bd! " .. tostring(bufnr))
 		end
 	end
 	vim.cmd.wa()
