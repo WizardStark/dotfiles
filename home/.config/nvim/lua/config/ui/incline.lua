@@ -3,7 +3,6 @@ local special_filetypes = {
 	"neotest-summary",
 	"noice",
 	"trouble",
-	"OverseerList",
 }
 
 local special_ft_titles = {
@@ -11,7 +10,6 @@ local special_ft_titles = {
 	["neotest-summary"] = "neotest",
 	noice = "noice",
 	trouble = "trouble",
-	OverseerList = "overseer",
 }
 local function is_special_group(props)
 	return vim.tbl_contains(special_filetypes, vim.bo[props.buf].filetype)

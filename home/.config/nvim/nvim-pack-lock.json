@@ -247,10 +247,6 @@
       "rev": "a455e68a99d395889ab30a25ac3846a135e93c46",
       "src": "https://github.com/jmbuhr/otter.nvim"
     },
-    "overseer.nvim": {
-      "rev": "f818eefff81f4b12fb7cf236f1b6c16768a2fcbc",
-      "src": "https://github.com/stevearc/overseer.nvim"
-    },
     "paren-hint.nvim": {
       "rev": "6d38236faf4eb19ab0ae001de6e2a1c7b88e2ad2",
       "src": "https://github.com/briangwaltney/paren-hint.nvim"

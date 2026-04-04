@@ -16,10 +16,4 @@ return {
 			})
 		end,
 	},
-	{
-		src = "https://github.com/stevearc/overseer.nvim",
-		config = function()
-			require("config.terminal.overseer")
-		end,
-	},
 }

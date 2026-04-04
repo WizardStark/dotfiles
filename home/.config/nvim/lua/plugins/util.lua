@@ -24,7 +24,6 @@ return {
 			require("alternate-toggler").setup({})
 		end,
 	},
-	--overseer tasks
 	{
 		src = "https://github.com/stevearc/stickybuf.nvim",
 		config = function()

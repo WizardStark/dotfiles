@@ -10,7 +10,6 @@ local catppuccin_opts = {
 		dap_ui = true,
 		diffview = true,
 		treesitter = true,
-		overseer = true,
 		lsp_trouble = true,
 	},
 }
