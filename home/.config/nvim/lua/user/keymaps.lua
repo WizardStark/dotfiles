@@ -138,6 +138,32 @@ local mappings = {
 		description = "Paste with ctrl",
 	},
 	{
+		mode = { "n", "x", "o" },
+		keys = "<M-o>",
+		callback = function()
+			if vim.treesitter.get_parser(nil, nil, { error = false }) then
+				require("vim.treesitter._select").select_parent(vim.v.count1)
+			else
+				vim.lsp.buf.selection_range(vim.v.count1)
+			end
+		end,
+		prefix = P.code,
+		description = "Select parent treesitter node or outer incremental lsp selections",
+	},
+	{
+		mode = { "n", "x", "o" },
+		keys = "<M-i>",
+		callback = function()
+			if vim.treesitter.get_parser(nil, nil, { error = false }) then
+				require("vim.treesitter._select").select_child(vim.v.count1)
+			else
+				vim.lsp.buf.selection_range(-vim.v.count1)
+			end
+		end,
+		prefix = P.code,
+		description = "Select child treesitter node or inner incremental lsp selections",
+	},
+	{
 		mode = { "t" },
 		keys = "<S-BS>",
 		callback = "<BS>",

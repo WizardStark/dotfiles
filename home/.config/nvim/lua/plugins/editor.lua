@@ -13,25 +13,6 @@ return {
 		end,
 	},
 	{
-		src = "https://github.com/MeanderingProgrammer/treesitter-modules.nvim",
-		event = "UIEnter",
-		dependencies = { { src = "https://github.com/nvim-treesitter/nvim-treesitter" } },
-		config = function()
-			require("treesitter-modules").setup({
-				ensure_installed = {},
-				incremental_selection = {
-					enable = true,
-					keymaps = {
-						init_selection = "<M-i>",
-						node_incremental = "<M-i>",
-						scope_incremental = "<M-I>",
-						node_decremental = "<M-d>",
-					},
-				},
-			})
-		end,
-	},
-	{
 		src = "https://github.com/aaronik/treewalker.nvim",
 		config = function()
 			require("treewalker").setup({

@@ -314,10 +314,6 @@
       "src": "https://github.com/akinsho/toggleterm.nvim",
       "version": "'*'"
     },
-    "treesitter-modules.nvim": {
-      "rev": "34e50df1c49376592788dcb245683e2f43444444",
-      "src": "https://github.com/MeanderingProgrammer/treesitter-modules.nvim"
-    },
     "treewalker.nvim": {
       "rev": "a37a12b6ae937c616d4cb16b5c26c07a85899b44",
       "src": "https://github.com/aaronik/treewalker.nvim"
