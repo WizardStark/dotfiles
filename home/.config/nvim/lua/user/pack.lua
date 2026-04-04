@@ -235,6 +235,35 @@ local function create_pack_commands()
 	vim.api.nvim_create_user_command("PackUpdate", function()
 		vim.pack.update(nil, { force = true })
 	end, {})
+
+	vim.api.nvim_create_user_command("PackClean", function()
+		local defined = {}
+		for _, name in ipairs(state.order) do
+			defined[name] = true
+		end
+
+		local extras = {}
+		for _, pkg in ipairs(vim.pack.get()) do
+			local name = pkg.spec.name
+			if name and not defined[name] then
+				table.insert(extras, name)
+			end
+		end
+
+		table.sort(extras)
+
+		if #extras == 0 then
+			notify("No undefined packages to clean")
+			return
+		end
+
+		local ok, err = pcall(vim.pack.del, extras)
+		if ok then
+			notify("Cleaned packages: " .. table.concat(extras, ", "))
+		else
+			notify("Failed to clean packages:\n" .. tostring(err), vim.log.levels.ERROR)
+		end
+	end, {})
 end
 
 local function setup_batches()

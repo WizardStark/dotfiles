@@ -1718,57 +1718,6 @@ local mappings = {
 		description = "Dismiss all notifications",
 	},
 	{
-		mode = { "n", "x" },
-		keys = "p",
-		callback = "<Plug>(YankyPutAfter)",
-		prefix = P.misc,
-		description = "Paste after cursor",
-	},
-	{
-		mode = { "n", "x" },
-		keys = "P",
-		callback = "<Plug>(YankyPutBefore)",
-		prefix = P.misc,
-		description = "Paste before cursor",
-	},
-	{
-		mode = { "n", "x" },
-		keys = "gp",
-		callback = "<Plug>(YankyGPutAfter)",
-		prefix = P.misc,
-		description = "Paste after selection",
-	},
-	{
-		mode = { "n", "x" },
-		keys = "gP",
-		callback = "<Plug>(YankyGPutBefore)",
-		prefix = P.misc,
-		description = "Paste after selection",
-	},
-	{
-		mode = { "n" },
-		keys = "<c-t>",
-		callback = "<Plug>(YankyPreviousEntry)",
-		prefix = P.misc,
-		description = "Cycle to next item in yank history",
-	},
-	{
-		mode = { "n" },
-		keys = "<c-n>",
-		callback = "<Plug>(YankyNextEntry)",
-		prefix = P.misc,
-		description = "Cycle to next item in yank history",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>Y",
-		callback = function()
-			Snacks.picker.yanky()
-		end,
-		prefix = P.misc,
-		description = "Open yank history",
-	},
-	{
 		mode = { "n" },
 		keys = "<leader>w",
 		callback = function()
@@ -1782,13 +1731,24 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<leader>ll",
-		callback = function()
-			local path = require("user.pack").root()
-			require("mini.files").open(path, true)
-		end,
+		keys = "<leader>pu",
+		callback = "<CMD>PackUpdate<CR>",
 		prefix = P.misc,
-		description = "Open package directory",
+		description = "Update plugins",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>pd",
+		callback = "<CMD>PackDelete<CR>",
+		prefix = P.misc,
+		description = "Delete plugin",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>pc",
+		callback = "<CMD>PackClean<CR>",
+		prefix = P.misc,
+		description = "Clean plugins",
 	},
 	{
 		mode = { "n" },

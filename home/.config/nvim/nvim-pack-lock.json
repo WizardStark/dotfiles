@@ -173,10 +173,6 @@
       "rev": "de740991c12411b663994b2860f1a4fd0937c130",
       "src": "https://github.com/MunifTanjim/nui.nvim"
     },
-    "nvim-colorizer.lua": {
-      "rev": "a065833f35a3a7cc3ef137ac88b5381da2ba302e",
-      "src": "https://github.com/norcalli/nvim-colorizer.lua.git"
-    },
     "nvim-coverage": {
       "rev": "a939e425e363319d952a6c35fb3f38b34041ded2",
       "src": "https://github.com/andythigpen/nvim-coverage"
@@ -332,7 +328,7 @@
     },
     "vim-wakatime": {
       "rev": "d7973b157a632d1edeff01818f18d67e584eeaff",
-      "src": "https://github.com/wakatime/vim-wakatime.git"
+      "src": "https://github.com/wakatime/vim-wakatime"
     },
     "vimtex": {
       "rev": "9306903316c3ddd250676b7cf97c84a84c9c8f99",
@@ -342,10 +338,6 @@
       "rev": "6382540b2ae5de6c793d4aa2e3fe6dbb518505ec",
       "src": "https://github.com/s1n7ax/nvim-window-picker",
       "version": "'2.*'"
-    },
-    "yanky.nvim": {
-      "rev": "784188e0a7363e762e53140f39124d786aec0832",
-      "src": "https://github.com/gbprod/yanky.nvim"
     }
   }
 }

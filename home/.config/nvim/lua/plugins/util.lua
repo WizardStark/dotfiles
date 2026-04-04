@@ -60,16 +60,6 @@ return {
 		end,
 	},
 	{
-		src = "https://github.com/gbprod/yanky.nvim",
-		config = function()
-			require("yanky").setup({
-				highlight = {
-					timer = 350,
-				},
-			})
-		end,
-	},
-	{
 		src = "https://github.com/NStefan002/screenkey.nvim",
 		version = "*",
 		config = function()
