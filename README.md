@@ -68,13 +68,6 @@ mise run sync-adopt-sudo
 mise run check       # verify current machine state
 ```
 
-## Notes for tweaking
-
-The best sources to consult for understanding the nvim config:
-
-- [Lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
-- [Legendary.nvim](https://github.com/mrjones2014/legendary.nvim) - Command palette
-
 ## Usage
 The most important keybinds are `<space><space>` in Neovim for the command palette,
 wherein you can fuzzy find your way through most available commands, and `<C-a>?` for

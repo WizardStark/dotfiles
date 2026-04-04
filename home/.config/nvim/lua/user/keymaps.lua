@@ -1326,7 +1326,8 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>cl",
 		callback = function()
-			vim.lsp.codelens.run()
+			-- Disabled on Neovim 0.12 for now.
+			-- vim.lsp.codelens.run()
 		end,
 		prefix = P.code,
 		description = "Codelens actions",
@@ -1757,10 +1758,11 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>ll",
 		callback = function()
-			require("lazy").home()
+			local path = require("user.pack").root()
+			require("mini.files").open(path, true)
 		end,
 		prefix = P.misc,
-		description = "Open plugin manager",
+		description = "Open package directory",
 	},
 	{
 		mode = { "n" },

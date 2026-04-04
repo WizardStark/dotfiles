@@ -1,24 +1,23 @@
 return {
 	{
-		"akinsho/toggleterm.nvim",
-		cmd = "ToggleTerm",
+		src = "https://github.com/akinsho/toggleterm.nvim",
 		version = "*",
 		config = function()
 			require("config.terminal.toggleterm")
 		end,
 	},
 	{
-		"chomosuke/term-edit.nvim",
-		ft = "toggleterm",
+		src = "https://github.com/chomosuke/term-edit.nvim",
 		version = "1.*",
-		opts = {
-			prompt_end = "╰─",
-			mapping = { n = { s = false } },
-		},
+		config = function()
+			require("term-edit").setup({
+				prompt_end = "╰─",
+				mapping = { n = { s = false } },
+			})
+		end,
 	},
 	{
-		"stevearc/overseer.nvim",
-		cmd = { "OverseerRun", "OverseerToggle" },
+		src = "https://github.com/stevearc/overseer.nvim",
 		config = function()
 			require("config.terminal.overseer")
 		end,

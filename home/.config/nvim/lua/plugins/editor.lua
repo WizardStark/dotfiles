@@ -1,93 +1,95 @@
 return {
 	-- UTILS
 	{
-		"nvim-treesitter/nvim-treesitter",
+		src = "https://github.com/nvim-treesitter/nvim-treesitter",
 		build = ":TSUpdate",
-		-- lazy = false,
 		event = "UIEnter",
-		branch = "main",
+		version = "main",
 		dependencies = {
-			{ "nvim-treesitter/nvim-treesitter-textobjects", branch = "main" },
+			{ src = "https://github.com/nvim-treesitter/nvim-treesitter-textobjects", version = "main" },
 		},
 		config = function()
 			require("config.editor.treesitter")
 		end,
 	},
 	{
-		"MeanderingProgrammer/treesitter-modules.nvim",
+		src = "https://github.com/MeanderingProgrammer/treesitter-modules.nvim",
 		event = "UIEnter",
-		dependencies = { "nvim-treesitter/nvim-treesitter" },
-		opts = {
-			ensure_installed = {},
-			incremental_selection = {
-				enable = true,
-				keymaps = {
-					init_selection = "<M-i>",
-					node_incremental = "<M-i>",
-					scope_incremental = "<M-I>",
-					node_decremental = "<M-d>",
+		dependencies = { { src = "https://github.com/nvim-treesitter/nvim-treesitter" } },
+		config = function()
+			require("treesitter-modules").setup({
+				ensure_installed = {},
+				incremental_selection = {
+					enable = true,
+					keymaps = {
+						init_selection = "<M-i>",
+						node_incremental = "<M-i>",
+						scope_incremental = "<M-I>",
+						node_decremental = "<M-d>",
+					},
 				},
-			},
-		},
+			})
+		end,
 	},
 	{
-		"aaronik/treewalker.nvim",
-		event = "VeryLazy",
-		opts = {
-			highlight = false,
-			highlight_duration = 250,
-			highlight_group = "CursorLine",
-		},
+		src = "https://github.com/aaronik/treewalker.nvim",
+		config = function()
+			require("treewalker").setup({
+				highlight = false,
+				highlight_duration = 250,
+				highlight_group = "CursorLine",
+			})
+		end,
 	},
 	{
-		"echasnovski/mini.pairs",
-		event = { "InsertEnter" },
-		config = true,
+		src = "https://github.com/echasnovski/mini.pairs",
+		config = function()
+			require("mini.pairs").setup()
+		end,
 	},
 	{
-		"windwp/nvim-ts-autotag",
-		event = { "InsertEnter", "CmdlineEnter" },
-		config = true,
+		src = "https://github.com/windwp/nvim-ts-autotag",
+		config = function()
+			require("nvim-ts-autotag").setup()
+		end,
 	},
 	{
-		"ThePrimeagen/refactoring.nvim",
-		lazy = true,
-		cmd = "Refactor",
+		src = "https://github.com/ThePrimeagen/refactoring.nvim",
 		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-treesitter/nvim-treesitter",
+			{ src = "https://github.com/nvim-lua/plenary.nvim" },
+			{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
 		},
 		config = function()
 			require("refactoring").setup()
 		end,
 	},
 	{
-		"SCJangra/table-nvim",
-		ft = { "markdown", "tex" },
-		opts = {
-			padd_column_separators = true,
-			mappings = {
-				next = "<TAB>", -- Go to next cell.
-				prev = "<S-TAB>", -- Go to previous cell.
-				insert_row_up = "<M-S-k>", -- Insert a row above the current row.
-				insert_row_down = "<M-S-j>", -- Insert a row below the current row.
-				insert_column_left = "<M-S-h>", -- Insert a column to the left of current column.
-				insert_column_right = "<M-S-l>", -- Insert a column to the right of current column.
-				insert_table = "<M-S-t>", -- Insert a new table.
-				insert_table_alt = "<C-M-S-t>", -- Insert a new table that is not surrounded by pipes.
-				move_row_up = "<M-S-u>", -- Move the current row down.
-				move_row_down = "<M-S-d>", -- Move the current row down.
-				move_column_left = "<A-S-y>", -- Move the current column to the left.
-				move_column_right = "<A-S-f>", -- Move the current column to the right.
-				delete_column = "<A-d>",
-			},
-		},
+		src = "https://github.com/SCJangra/table-nvim",
+		config = function()
+			require("table-nvim").setup({
+				padd_column_separators = true,
+				mappings = {
+					next = "<TAB>",
+					prev = "<S-TAB>",
+					insert_row_up = "<M-S-k>",
+					insert_row_down = "<M-S-j>",
+					insert_column_left = "<M-S-h>",
+					insert_column_right = "<M-S-l>",
+					insert_table = "<M-S-t>",
+					insert_table_alt = "<C-M-S-t>",
+					move_row_up = "<M-S-u>",
+					move_row_down = "<M-S-d>",
+					move_column_left = "<A-S-y>",
+					move_column_right = "<A-S-f>",
+					delete_column = "<A-d>",
+				},
+			})
+		end,
 	},
 	{
-		"jmbuhr/otter.nvim",
-		event = "VeryLazy",
+		src = "https://github.com/jmbuhr/otter.nvim",
 		dependencies = {
-			"nvim-treesitter/nvim-treesitter",
+			{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
 		},
 		config = function()
 			vim.api.nvim_create_autocmd({ "FileType" }, {
@@ -101,14 +103,13 @@ return {
 	},
 	-- COMPLETION
 	{
-		"saghen/blink.cmp",
-		event = { "InsertEnter", "CmdlineEnter" },
+		src = "https://github.com/saghen/blink.cmp",
 		dependencies = {
-			"rafamadriz/friendly-snippets",
-			"saghen/blink.compat",
-			"rcarriga/cmp-dap",
-			"moyiz/blink-emoji.nvim",
-			"hrsh7th/cmp-calc",
+			{ src = "https://github.com/rafamadriz/friendly-snippets" },
+			{ src = "https://github.com/saghen/blink.compat" },
+			{ src = "https://github.com/rcarriga/cmp-dap" },
+			{ src = "https://github.com/moyiz/blink-emoji.nvim" },
+			{ src = "https://github.com/hrsh7th/cmp-calc" },
 		},
 		version = "v1.*",
 		config = function()
@@ -117,96 +118,85 @@ return {
 	},
 	-- DAP
 	{
-		"mfussenegger/nvim-dap",
-		lazy = true,
+		src = "https://github.com/mfussenegger/nvim-dap",
 		dependencies = {
-			"theHamsta/nvim-dap-virtual-text",
-			"neovim/nvim-lspconfig",
-			"igorlfs/nvim-dap-view",
-			"jay-babu/mason-nvim-dap.nvim",
+			{ src = "https://github.com/theHamsta/nvim-dap-virtual-text" },
+			{ src = "https://github.com/neovim/nvim-lspconfig" },
+			{ src = "https://github.com/igorlfs/nvim-dap-view" },
+			{ src = "https://github.com/jay-babu/mason-nvim-dap.nvim" },
 		},
 		config = function()
 			require("config.editor.dap")
 		end,
 	},
 	{
-		"leoluz/nvim-dap-go",
-		lazy = true,
+		src = "https://github.com/leoluz/nvim-dap-go",
 	},
 	{
-		"mfussenegger/nvim-dap-python",
-		lazy = true,
+		src = "https://github.com/mfussenegger/nvim-dap-python",
 	},
 	{
-		"jbyuki/one-small-step-for-vimkind",
+		src = "https://github.com/jbyuki/one-small-step-for-vimkind",
 		dependencies = {
-			"mfussenegger/nvim-dap",
+			{ src = "https://github.com/mfussenegger/nvim-dap" },
 		},
-		lazy = true,
 	},
 	-- LSP
 	{
-		"mfussenegger/nvim-jdtls",
+		src = "https://github.com/mfussenegger/nvim-jdtls",
 		dependencies = {
-			"mfussenegger/nvim-dap",
+			{ src = "https://github.com/mfussenegger/nvim-dap" },
 		},
-		ft = "java",
 		config = function()
 			require("config.editor.java")
 		end,
 	},
 	{
-		"folke/lazydev.nvim",
-		ft = "lua",
-		opts = {
-			library = {
-				{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
-			},
-		},
+		src = "https://github.com/folke/lazydev.nvim",
+		config = function()
+			require("lazydev").setup({
+				library = {
+					{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
+				},
+			})
+		end,
 	},
 	{
-		"neovim/nvim-lspconfig",
-		event = "VeryLazy",
+		src = "https://github.com/neovim/nvim-lspconfig",
 		dependencies = {
-			"williamboman/mason.nvim",
-			"williamboman/mason-lspconfig.nvim",
-			"WhoIsSethDaniel/mason-tool-installer.nvim",
+			{ src = "https://github.com/williamboman/mason.nvim" },
+			{ src = "https://github.com/williamboman/mason-lspconfig.nvim" },
+			{ src = "https://github.com/WhoIsSethDaniel/mason-tool-installer.nvim" },
 		},
 		config = function()
 			require("config.editor.lsp")
 		end,
 	},
 	{
-		"rachartier/tiny-inline-diagnostic.nvim",
-		event = "VeryLazy",
+		src = "https://github.com/rachartier/tiny-inline-diagnostic.nvim",
 		priority = 1000,
 		config = function()
 			require("config.editor.diagnostics")
 		end,
 	},
 	{
-		"pmizio/typescript-tools.nvim",
+		src = "https://github.com/pmizio/typescript-tools.nvim",
 		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"neovim/nvim-lspconfig",
+			{ src = "https://github.com/nvim-lua/plenary.nvim" },
+			{ src = "https://github.com/neovim/nvim-lspconfig" },
 		},
-		lazy = true,
 	},
 	{
-		"artemave/workspace-diagnostics.nvim",
-		lazy = true,
+		src = "https://github.com/artemave/workspace-diagnostics.nvim",
 	},
 	{
-		"stevearc/conform.nvim",
-		event = "BufWritePre",
-		cmd = "ConformInfo",
+		src = "https://github.com/stevearc/conform.nvim",
 		config = function()
 			require("config.editor.format")
 		end,
 	},
 	{
-		"mfussenegger/nvim-lint",
-		event = "VeryLazy",
+		src = "https://github.com/mfussenegger/nvim-lint",
 		config = function()
 			require("lint").linters_by_ft = {
 				javascript = { "eslint" },
@@ -217,24 +207,19 @@ return {
 		end,
 	},
 	{
-		"echasnovski/mini.files",
-		lazy = true,
-		version = false,
+		src = "https://github.com/echasnovski/mini.files",
 		config = function()
 			require("config.editor.minifiles")
 		end,
 	},
 	{
-		"folke/sidekick.nvim",
-		event = "InsertEnter",
+		src = "https://github.com/folke/sidekick.nvim",
 		config = function()
 			require("config.editor.sidekick")
 		end,
 	},
 	{
-		"zbirenbaum/copilot.lua",
-		cmd = "Copilot",
-		event = "InsertEnter",
+		src = "https://github.com/zbirenbaum/copilot.lua",
 		config = function()
 			require("config.editor.copilot")
 		end,

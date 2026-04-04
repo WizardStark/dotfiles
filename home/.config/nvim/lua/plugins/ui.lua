@@ -1,96 +1,98 @@
 return {
 	{
-		"catppuccin/nvim",
+		src = "https://github.com/catppuccin/nvim",
 		name = "catppuccin",
-		priority = true,
-		lazy = true,
-		config = true,
+		priority = 1000,
+		config = function()
+			require("catppuccin").setup()
+		end,
 	},
 	{
-		"nvim-lualine/lualine.nvim",
-		lazy = true,
+		src = "https://github.com/nvim-lualine/lualine.nvim",
+		event = "UiEnter",
 		config = function()
 			require("config.ui.lualine")
 		end,
 	},
 	{
-		"folke/noice.nvim",
+		src = "https://github.com/folke/noice.nvim",
 		event = "UiEnter",
 		dependencies = {
-			"MunifTanjim/nui.nvim",
+			{ src = "https://github.com/MunifTanjim/nui.nvim" },
 		},
 		config = function()
 			require("config.ui.noice")
 		end,
 	},
 	{
-		"MeanderingProgrammer/render-markdown.nvim",
-		opts = {
-			file_types = { "markdown" },
-		},
-		ft = { "markdown" },
+		src = "https://github.com/MeanderingProgrammer/render-markdown.nvim",
+		config = function()
+			require("render-markdown").setup({
+				file_types = { "markdown" },
+			})
+		end,
 	},
 	{
-		"folke/trouble.nvim",
-		lazy = true,
-		cmd = "Trouble",
+		src = "https://github.com/folke/trouble.nvim",
 		config = function()
 			require("config.ui.trouble")
 		end,
 	},
 	{
-		"echasnovski/mini.icons",
-		lazy = true,
+		src = "https://github.com/echasnovski/mini.icons",
+		event = "UiEnter",
 		config = function()
 			require("mini.icons").setup()
 			MiniIcons.mock_nvim_web_devicons()
 		end,
 	},
 	{
-		"folke/todo-comments.nvim",
+		src = "https://github.com/folke/todo-comments.nvim",
 		event = "UiEnter",
-		dependencies = { "nvim-lua/plenary.nvim" },
-		config = true,
+		dependencies = { { src = "https://github.com/nvim-lua/plenary.nvim" } },
+		config = function()
+			require("todo-comments").setup()
+		end,
 	},
 	{
-		"grapp-dev/nui-components.nvim",
+		src = "https://github.com/grapp-dev/nui-components.nvim",
 		dependencies = {
-			"MunifTanjim/nui.nvim",
+			{ src = "https://github.com/MunifTanjim/nui.nvim" },
 		},
-		lazy = true,
 	},
 	{
-		"kwkarlwang/bufresize.nvim",
+		src = "https://github.com/kwkarlwang/bufresize.nvim",
 		event = "UiEnter",
 		config = function()
 			require("config.ui.bufresize")
 		end,
 	},
 	{
-		"b0o/incline.nvim",
+		src = "https://github.com/b0o/incline.nvim",
 		event = "UiEnter",
-		dependencies = "echasnovski/mini.icons",
+		dependencies = { { src = "https://github.com/echasnovski/mini.icons" } },
 		config = function()
 			require("config.ui.incline")
 		end,
 	},
 	{
-		"mistweaverco/kulala.nvim",
-		lazy = true,
+		src = "https://github.com/mistweaverco/kulala.nvim",
 		config = function()
 			require("kulala").setup()
 		end,
 	},
 	{
-		"xzbdmw/colorful-menu.nvim",
-		event = { "InsertEnter", "CmdlineEnter" },
-		opts = {},
+		src = "https://github.com/xzbdmw/colorful-menu.nvim",
+		config = function()
+			require("colorful-menu").setup({})
+		end,
 	},
 	{
-		"stevearc/quicker.nvim",
-		ft = "qf",
+		src = "https://github.com/stevearc/quicker.nvim",
 		---@module "quicker"
 		---@type quicker.SetupOptions
-		opts = {},
+		config = function()
+			require("quicker").setup({})
+		end,
 	},
 }

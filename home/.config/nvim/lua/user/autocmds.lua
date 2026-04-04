@@ -71,7 +71,8 @@ local mappings = {
 	{
 		event = { "BufEnter", "BufWritePost" },
 		callback = function()
-			vim.lsp.codelens.refresh({ bufnr = 0 })
+			-- Disabled on Neovim 0.12 for now.
+			-- vim.lsp.codelens.refresh({ bufnr = 0 })
 			last_refreshed_time = vim.loop.now()
 		end,
 	},
@@ -142,7 +143,8 @@ local mappings = {
 		event = "InsertLeave",
 		callback = function()
 			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
-				vim.lsp.codelens.refresh({ bufnr = 0 })
+				-- Disabled on Neovim 0.12 for now.
+				-- vim.lsp.codelens.refresh({ bufnr = 0 })
 				last_refreshed_time = vim.loop.now()
 			end
 		end,
@@ -157,6 +159,14 @@ local mappings = {
 	{
 		event = "QuitPre",
 		callback = function()
+			if not package.loaded["toggleterm"] and not package.loaded["toggleterm.terminal"] then
+				return
+			end
+
+			if not package.loaded["workspaces.toggleterms"] then
+				return
+			end
+
 			local terms = require("toggleterm.terminal").get_all()
 			for _, term in ipairs(terms) do
 				if vim.fn.win_id2win(term.window) == vim.fn.winnr() then

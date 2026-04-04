@@ -1,24 +1,24 @@
 return {
 	{
-		"nvim-neotest/neotest",
-		cmd = { "Neotest" },
+		src = "https://github.com/nvim-neotest/neotest",
 		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-treesitter/nvim-treesitter",
-			"nvim-neotest/neotest-python",
-			"nvim-neotest/neotest-go",
-			"rcasia/neotest-java",
-			"nvim-neotest/neotest-vim-test",
-			"nvim-neotest/nvim-nio",
-			"weilbith/neotest-gradle",
+			{ src = "https://github.com/nvim-lua/plenary.nvim" },
+			{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
+			{ src = "https://github.com/nvim-neotest/neotest-python" },
+			{ src = "https://github.com/nvim-neotest/neotest-go" },
+			{ src = "https://github.com/rcasia/neotest-java" },
+			{ src = "https://github.com/nvim-neotest/neotest-vim-test" },
+			{ src = "https://github.com/nvim-neotest/nvim-nio" },
+			{ src = "https://github.com/weilbith/neotest-gradle" },
 		},
 		config = function()
 			require("config.neotest")
 		end,
 	},
 	{
-		"andythigpen/nvim-coverage",
-		cmd = { "CoverageShow", "CoverageHide", "CoverageLoad", "CoverageSummary" },
-		config = true,
+		src = "https://github.com/andythigpen/nvim-coverage",
+		config = function()
+			require("coverage").setup()
+		end,
 	},
 }

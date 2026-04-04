@@ -94,16 +94,6 @@ local function get_term_name()
 	end
 end
 
-local function get_plugin_info()
-	local stats = require("lazy").stats()
-	return "󰚥 " .. stats.loaded .. "/" .. stats.count
-end
-
-local function get_startup_time()
-	local stats = require("lazy").stats()
-	return "󰅕 " .. string.format("%.2f", stats.startuptime) .. "ms"
-end
-
 local palette = require("catppuccin.palettes").get_palette("mocha")
 local theme = require("catppuccin.utils.lualine")("mocha")
 theme.normal.c.bg = "NONE"
@@ -125,7 +115,6 @@ require("lualine").setup(
 				{ "branch", icon = "" },
 				"diagnostics",
 			},
-			lualine_c = { { get_plugin_info }, { get_startup_time } },
 			lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 			lualine_y = {
 				{ "progress", cond = is_not_toggleterm },
@@ -137,7 +126,6 @@ require("lualine").setup(
 		},
 		extensions = {
 			"mason",
-			"lazy",
 			"trouble",
 		},
 	}

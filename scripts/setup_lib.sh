@@ -411,7 +411,7 @@ ensure_fzf() {
 ensure_nvim_plugins() {
   if require_cmd nvim; then
     log_step "Syncing Neovim plugins"
-    nvim --headless "+Lazy! sync" +qa
+    nvim --headless "+PackUpdate" +qa
   fi
 }
 

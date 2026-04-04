@@ -4,20 +4,6 @@ vim.g.loaded_netrwPlugin = 1
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-	vim.fn.system({
-		"git",
-		"clone",
-		"--filter=blob:none",
-		"https://github.com/folke/lazy.nvim.git",
-		"--branch=stable",
-		lazypath,
-	})
-end
-vim.opt.rtp:prepend(lazypath)
-
--- lazy load shada and editorconfig (this is such an unnecessary 'optimisation')
 vim.api.nvim_create_autocmd("User", {
 	pattern = "VeryLazy",
 	callback = function()
@@ -27,7 +13,6 @@ vim.api.nvim_create_autocmd("User", {
 	end,
 })
 
--- setup local entrypoint
 local configpath = vim.fn.stdpath("config") --[[@as string]]
 vim.g.lclpath = configpath .. "/lua/lcl"
 
@@ -58,60 +43,12 @@ vim.g.backdrop_buf = nil
 vim.g.backdrop_win = nil
 vim.g.colorscheme = "catppuccin-mocha"
 
-require("lazy").setup({
-	{ import = "plugins" },
-	{
-		name = "user.init",
-		main = "user",
-		dir = configpath .. "/lua/user",
-		lazy = false,
-		config = function()
-			require("user.init").setup()
-			require("user.options").setup()
-		end,
+require("user.pack").setup({
+	spec = {
+		{ import = "plugins" },
+		{ import = "lcl.plugins" },
 	},
-	{ import = "lcl.plugins", event = "VeryLazy" },
-}, {
-	install = {
-		colorscheme = { "catppuccin-mocha", "habamax" },
-	},
-	ui = {
-		border = "rounded",
-	},
-	diff = {
-		cmd = "diffview.nvim",
-	},
-	-- profiling = {
-	-- 	loader = true,
-	-- 	require = true,
-	-- },
-	performance = {
-		cache = {
-			enabled = true,
-			disable_events = { "UiEnter" },
-		},
-		reset_packpath = true,
-		rtp = {
-			reset = true,
-			disabled_plugins = {
-				"editorconfig",
-				"shada",
-				"gzip",
-				"matchit",
-				"netrwPlugin",
-				"tarPlugin",
-				"tohtml",
-				"tutor",
-				"zipPlugin",
-				"man",
-				"osc52",
-				"spellfile",
-			},
-		},
-	},
-	checker = { enabled = false },
-	rocks = {
-		enabled = false,
-	},
-	-- debug = true,
 })
+
+require("user.init").setup()
+require("user.options").setup()

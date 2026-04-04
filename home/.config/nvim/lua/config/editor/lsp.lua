@@ -63,7 +63,8 @@ require("typescript-tools").setup({
 	capabilities = capabilities,
 	settings = {
 		expose_as_code_action = "all",
-		code_lens = "all",
+		-- Disabled on Neovim 0.12 for now.
+		-- code_lens = "all",
 		tsserver_file_preferences = {
 			inlayHints = {
 				includeInlayParameterNameHints = "all",
