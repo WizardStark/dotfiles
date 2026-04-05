@@ -24,7 +24,6 @@ return {
 	{
 		src = "https://github.com/s1n7ax/nvim-window-picker",
 		name = "window-picker",
-		version = "2.*",
 		config = function()
 			require("config.motion.window-picker")
 		end,

@@ -10,8 +10,7 @@
     },
     "blink.cmp": {
       "rev": "451168851e8e2466bc97ee3e026c3dcb9141ce07",
-      "src": "https://github.com/saghen/blink.cmp",
-      "version": "'v1.*'"
+      "src": "https://github.com/saghen/blink.cmp"
     },
     "blink.compat": {
       "rev": "1454f14a8d855a578ceeba77c62538fa1459a67c",
@@ -248,13 +247,12 @@
       "src": "https://github.com/ThePrimeagen/refactoring.nvim"
     },
     "render-markdown.nvim": {
-      "rev": "2247dcd1ff0c223cfa7e317783f89b8d00457ce6",
+      "rev": "687de727de91a63b0bff9cff4e71d73f9d40fa77",
       "src": "https://github.com/MeanderingProgrammer/render-markdown.nvim"
     },
     "screenkey.nvim": {
       "rev": "72cf1e62a29e5f9fa8c5cc0ee2bb649b92324434",
-      "src": "https://github.com/NStefan002/screenkey.nvim",
-      "version": "'*'"
+      "src": "https://github.com/NStefan002/screenkey.nvim"
     },
     "sidekick.nvim": {
       "rev": "17447a05f9385e5f8372b61530f6f9329cb82421",
@@ -282,8 +280,7 @@
     },
     "term-edit.nvim": {
       "rev": "b190a91178ef98beefac2ec0823db047978ea327",
-      "src": "https://github.com/chomosuke/term-edit.nvim",
-      "version": "'1.*'"
+      "src": "https://github.com/chomosuke/term-edit.nvim"
     },
     "tiny-inline-diagnostic.nvim": {
       "rev": "57a0eb84b2008c76e77930639890d9874195b1e1",
@@ -295,8 +292,7 @@
     },
     "toggleterm.nvim": {
       "rev": "9a88eae817ef395952e08650b3283726786fb5fb",
-      "src": "https://github.com/akinsho/toggleterm.nvim",
-      "version": "'*'"
+      "src": "https://github.com/akinsho/toggleterm.nvim"
     },
     "treewalker.nvim": {
       "rev": "a37a12b6ae937c616d4cb16b5c26c07a85899b44",
@@ -324,8 +320,7 @@
     },
     "window-picker": {
       "rev": "6382540b2ae5de6c793d4aa2e3fe6dbb518505ec",
-      "src": "https://github.com/s1n7ax/nvim-window-picker",
-      "version": "'2.*'"
+      "src": "https://github.com/s1n7ax/nvim-window-picker"
     }
   }
 }

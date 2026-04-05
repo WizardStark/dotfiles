@@ -1,79 +1,6 @@
 local default_sources = { "lsp", "path", "calc", "snippets", "buffer", "lazydev", "emoji" }
 local debug_sources = vim.list_extend(vim.deepcopy(default_sources), { "dap" })
 
-local function patch_external_cmdline_positioning()
-	local menu = require("blink.cmp.completion.windows.menu")
-	local menu_config = require("blink.cmp.config").completion.menu
-	local win = require("blink.cmp.lib.window")
-	local original_get_cursor_screen_position = win.get_cursor_screen_position
-
-	win.get_cursor_screen_position = function()
-		if vim.g.ui_cmdline_pos ~= nil then
-			local screen_height = vim.o.lines
-			local screen_width = vim.o.columns
-			local cmdline_position = menu_config.cmdline_position()
-
-			return {
-				distance_from_top = cmdline_position[1],
-				distance_from_bottom = screen_height - cmdline_position[1] - 1,
-				distance_from_left = cmdline_position[2],
-				distance_from_right = screen_width - cmdline_position[2],
-			}
-		end
-
-		return original_get_cursor_screen_position()
-	end
-
-	function menu.update_position()
-		local context = menu.context
-		if context == nil then
-			return
-		end
-
-		local window = menu.win
-		if not window:is_open() then
-			return
-		end
-
-		window:update_size()
-
-		local border_size = window:get_border_size()
-		local pos = window:get_vertical_direction_and_height(menu_config.direction_priority, menu_config.max_height)
-		if not pos then
-			window:close()
-			return
-		end
-
-		local alignment_start_col = menu.renderer:get_alignment_start_col()
-		local row = pos.direction == "s" and 1 or -pos.height - border_size.vertical
-
-		if vim.api.nvim_get_mode().mode == "c" or vim.g.ui_cmdline_pos ~= nil then
-			local cmdline_position = menu_config.cmdline_position()
-			window:set_win_config({
-				relative = "editor",
-				row = cmdline_position[1] + row,
-				col = math.max(cmdline_position[2] + context.bounds.start_col - alignment_start_col, 0),
-			})
-		else
-			local cursor_row, cursor_col = unpack(context.get_cursor())
-			local virt_cursor_col = vim.fn.virtcol({ cursor_row, cursor_col })
-			local col = vim.fn.virtcol({ cursor_row, context.bounds.start_col - 1 })
-				- alignment_start_col
-				- virt_cursor_col
-				- border_size.left
-
-			if menu_config.draw.align_to == "cursor" then
-				col = 0
-			end
-
-			window:set_win_config({ relative = "cursor", row = row, col = col })
-		end
-
-		window:set_height(pos.height)
-		menu.position_update_emitter:emit()
-	end
-end
-
 require("blink.cmp").setup({
 	keymap = {
 		preset = "enter",
@@ -240,5 +167,3 @@ require("blink.cmp").setup({
 		},
 	},
 })
-
-patch_external_cmdline_positioning()

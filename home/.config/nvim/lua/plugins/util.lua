@@ -61,7 +61,6 @@ return {
 	},
 	{
 		src = "https://github.com/NStefan002/screenkey.nvim",
-		version = "*",
 		config = function()
 			require("screenkey").setup({
 				win_opts = {

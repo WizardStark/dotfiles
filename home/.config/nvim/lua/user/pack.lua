@@ -97,9 +97,7 @@ local function register_spec(raw)
 		return
 	end
 
-	local existing = state.specs[spec.name]
-		and merge_spec(state.specs[spec.name], spec)
-		or spec
+	local existing = state.specs[spec.name] and merge_spec(state.specs[spec.name], spec) or spec
 
 	if not state.specs[spec.name] then
 		state.specs[spec.name] = existing
@@ -233,7 +231,7 @@ local function create_pack_commands()
 	end, {})
 
 	vim.api.nvim_create_user_command("PackUpdate", function()
-		vim.pack.update(nil, { force = true })
+		vim.pack.update()
 	end, {})
 
 	vim.api.nvim_create_user_command("PackClean", function()
