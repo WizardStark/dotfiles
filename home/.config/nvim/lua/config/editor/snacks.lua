@@ -74,7 +74,7 @@ require("snacks").setup({
 	scope = { enabled = false },
 
 	bigfile = { enabled = true },
-	notifier = { enabled = true, timeout = 3000 },
+	notifier = { enabled = false, timeout = 3000 },
 	words = {
 		enabled = true,
 		debounce = 30,

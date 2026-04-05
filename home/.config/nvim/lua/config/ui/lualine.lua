@@ -115,6 +115,7 @@ require("lualine").setup(
 				{ "branch", icon = "" },
 				"diagnostics",
 			},
+			lualine_c = {},
 			lualine_x = { { "filesize", cond = is_not_toggleterm }, { "filetype", cond = is_not_toggleterm } },
 			lualine_y = {
 				{ "progress", cond = is_not_toggleterm },

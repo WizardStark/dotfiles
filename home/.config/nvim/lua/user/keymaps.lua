@@ -1709,15 +1709,6 @@ local mappings = {
 		description = "Substitute visual selection",
 	},
 	{
-		mode = { "n", "v" },
-		keys = "<leader><BS>",
-		callback = function()
-			Snacks.notifier.hide()
-		end,
-		prefix = P.misc,
-		description = "Dismiss all notifications",
-	},
-	{
 		mode = { "n" },
 		keys = "<leader>w",
 		callback = function()
@@ -1749,6 +1740,24 @@ local mappings = {
 		callback = "<CMD>PackClean<CR>",
 		prefix = P.misc,
 		description = "Clean plugins",
+	},
+	{
+		mode = { "n" },
+		keys = "<leader>nh",
+		callback = function()
+			require("user.cmdline").show_messages()
+		end,
+		prefix = P.misc,
+		description = "Show message history",
+	},
+	{
+		mode = { "n", "v" },
+		keys = "<leader><BS>",
+		callback = function()
+			require("user.cmdline").clear_messages()
+		end,
+		prefix = P.misc,
+		description = "Clear messages",
 	},
 	{
 		mode = { "n" },
@@ -2041,15 +2050,6 @@ local mappings = {
 		end,
 		prefix = P.misc,
 		description = "Split/Join arguments",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>nh",
-		callback = function()
-			Snacks.notifier.show_history()
-		end,
-		prefix = P.misc,
-		description = "Show notification history",
 	},
 	{
 		mode = { "x", "o" },

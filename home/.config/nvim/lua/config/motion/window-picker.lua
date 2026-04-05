@@ -7,9 +7,6 @@ require("window-picker").setup(
 			autoselect_one = false,
 			include_current_win = false,
 			bo = {
-				filetype = {
-					"noice",
-				},
 				buftype = {
 					"nofile",
 					"nowrite",

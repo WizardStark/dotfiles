@@ -150,16 +150,12 @@
       "src": "https://github.com/rcasia/neotest-java"
     },
     "neotest-python": {
-      "rev": "06d71bea813e8edb1bbe5da2687146c7a536885e",
+      "rev": "e6df4f1892f6137f58135917db24d1655937d831",
       "src": "https://github.com/nvim-neotest/neotest-python"
     },
     "neotest-vim-test": {
       "rev": "75c4228882ae4883b11bfce9b8383e637eb44192",
       "src": "https://github.com/nvim-neotest/neotest-vim-test"
-    },
-    "noice.nvim": {
-      "rev": "7bfd942445fb63089b59f97ca487d605e715f155",
-      "src": "https://github.com/folke/noice.nvim"
     },
     "nui-components.nvim": {
       "rev": "1654dd709f13874089eefc80d82e0eb667f7fdfb",
@@ -256,7 +252,7 @@
       "src": "https://github.com/ThePrimeagen/refactoring.nvim"
     },
     "render-markdown.nvim": {
-      "rev": "c7188a8f9d2953696b6303caccbf39c51fa2c1b1",
+      "rev": "2247dcd1ff0c223cfa7e317783f89b8d00457ce6",
       "src": "https://github.com/MeanderingProgrammer/render-markdown.nvim"
     },
     "screenkey.nvim": {
@@ -294,7 +290,7 @@
       "version": "'1.*'"
     },
     "tiny-inline-diagnostic.nvim": {
-      "rev": "ba133b3e932416e4b9507095731a6d7276878fe8",
+      "rev": "57a0eb84b2008c76e77930639890d9874195b1e1",
       "src": "https://github.com/rachartier/tiny-inline-diagnostic.nvim"
     },
     "todo-comments.nvim": {

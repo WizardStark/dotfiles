@@ -4,6 +4,8 @@ vim.g.loaded_netrwPlugin = 1
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
+require("user.cmdline").setup()
+
 vim.api.nvim_create_autocmd("User", {
 	pattern = "VeryLazy",
 	callback = function()

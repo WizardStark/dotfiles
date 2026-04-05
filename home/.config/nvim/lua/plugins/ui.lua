@@ -15,16 +15,6 @@ return {
 		end,
 	},
 	{
-		src = "https://github.com/folke/noice.nvim",
-		event = "UiEnter",
-		dependencies = {
-			{ src = "https://github.com/MunifTanjim/nui.nvim" },
-		},
-		config = function()
-			require("config.ui.noice")
-		end,
-	},
-	{
 		src = "https://github.com/MeanderingProgrammer/render-markdown.nvim",
 		config = function()
 			require("render-markdown").setup({

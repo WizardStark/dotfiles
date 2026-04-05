@@ -1,14 +1,12 @@
 local special_filetypes = {
 	"neotest-output-panel",
 	"neotest-summary",
-	"noice",
 	"trouble",
 }
 
 local special_ft_titles = {
 	["neotest-output-panel"] = "neotest",
 	["neotest-summary"] = "neotest",
-	noice = "noice",
 	trouble = "trouble",
 }
 local function is_special_group(props)

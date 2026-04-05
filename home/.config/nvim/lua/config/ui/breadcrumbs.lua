@@ -205,7 +205,6 @@ local disabled = {
 	["toggleterm"] = true,
 	["terminal"] = true,
 	["qf"] = true,
-	["noice"] = true,
 	["dap-view"] = true,
 	["dap-view-term"] = true,
 	["dap-repl"] = true,

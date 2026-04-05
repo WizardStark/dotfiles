@@ -125,6 +125,14 @@ require("blink.cmp").setup({
 		menu = {
 			min_width = 20,
 			border = "rounded",
+			cmdline_position = function()
+				if vim.g.ui_cmdline_pos ~= nil then
+					local pos = vim.g.ui_cmdline_pos
+					return { pos[1] - 1, pos[2] }
+				end
+				local height = (vim.o.cmdheight == 0) and 1 or vim.o.cmdheight
+				return { vim.o.lines - height, 0 }
+			end,
 			winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:BlinkCmpMenuSelection,Search:None",
 			draw = {
 				columns = { { "kind_icon" }, { "label", gap = 1 }, { "source" } },

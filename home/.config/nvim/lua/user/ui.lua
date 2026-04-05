@@ -4,7 +4,6 @@ local catppuccin_opts = {
 		gitsigns = true,
 		mason = true,
 		neotest = true,
-		noice = true,
 		blink_cmp = true,
 		dap = true,
 		dap_ui = true,
