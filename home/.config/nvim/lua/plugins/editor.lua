@@ -196,10 +196,4 @@ return {
 			require("config.editor.sidekick")
 		end,
 	},
-	{
-		src = "https://github.com/zbirenbaum/copilot.lua",
-		config = function()
-			require("config.editor.copilot")
-		end,
-	},
 }

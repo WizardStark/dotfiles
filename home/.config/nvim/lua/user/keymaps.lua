@@ -2459,7 +2459,7 @@ local mappings = {
 		mode = { "i" },
 		keys = "<M-a>",
 		callback = function()
-			require("copilot.suggestion").accept()
+			vim.lsp.inline_completion.get()
 		end,
 		prefix = P.llm,
 		description = "Accept inline suggestion",
@@ -2468,7 +2468,7 @@ local mappings = {
 		mode = { "i" },
 		keys = "<M-n>",
 		callback = function()
-			require("copilot.suggestion").next()
+			vim.lsp.inline_completion.select({ count = 1 })
 		end,
 		prefix = P.llm,
 		description = "Go to next inline suggestion",
@@ -2477,25 +2477,16 @@ local mappings = {
 		mode = { "i" },
 		keys = "<M-t>",
 		callback = function()
-			require("copilot.suggestion").prev()
+			vim.lsp.inline_completion.select({ count = -1 })
 		end,
 		prefix = P.llm,
 		description = "Go to previous inline suggestion",
 	},
 	{
-		mode = { "i" },
-		keys = "<M-c>",
-		callback = function()
-			require("copilot.suggestion").dismiss()
-		end,
-		prefix = P.llm,
-		description = "Clear inline suggestion",
-	},
-	{
 		mode = { "n" },
 		keys = "<leader>ci",
 		callback = function()
-			require("copilot.suggestion").toggle_auto_trigger()
+			vim.lsp.inline_completion.enable(not vim.lsp.inline_completion.is_enabled())
 		end,
 		prefix = P.llm,
 		description = "Toggle inline suggestion",

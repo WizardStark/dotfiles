@@ -45,10 +45,6 @@
       "rev": "086a40dc7ed8242c03be9f47fbcee68699cc2395",
       "src": "https://github.com/stevearc/conform.nvim"
     },
-    "copilot.lua": {
-      "rev": "07aa57148ac28986bab9f55e87ee3d929e2726b1",
-      "src": "https://github.com/zbirenbaum/copilot.lua"
-    },
     "demicolon.nvim": {
       "rev": "a9ca137474b3a02e1d6ac48bfdb1985172e2ec9a",
       "src": "https://github.com/mawkler/demicolon.nvim"

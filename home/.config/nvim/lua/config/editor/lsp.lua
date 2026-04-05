@@ -55,6 +55,29 @@ vim.lsp.config("*", {
 	on_attach = on_attach,
 })
 
+vim.lsp.config("copilot", {
+	cmd = { "copilot-language-server", "--stdio" },
+	root_markers = { ".git" },
+	init_options = {
+		editorInfo = {
+			name = "Neovim",
+			version = tostring(vim.version()),
+		},
+		editorPluginInfo = {
+			name = "Neovim",
+			version = tostring(vim.version()),
+		},
+	},
+	settings = {
+		telemetry = {
+			telemetryLevel = "off",
+		},
+	},
+})
+
+vim.lsp.enable("copilot")
+vim.lsp.inline_completion.enable()
+
 require("typescript-tools").setup({
 	on_attach = function(client, bufnr)
 		on_attach(client, bufnr)
