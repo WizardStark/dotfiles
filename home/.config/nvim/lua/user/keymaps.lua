@@ -2391,69 +2391,99 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "<Tab>",
-		callback = function()
-			if not require("sidekick").nes_jump_or_apply() then
-				return "<Tab>"
-			end
-		end,
-		opts = { expr = true },
-		prefix = P.llm,
-		description = "Goto/Apply next edit suggestion",
-	},
-	{
-		mode = { "n" },
 		keys = "<leader>cc",
 		callback = function()
-			require("sidekick.cli").toggle()
+			require("opencode").select_server()
 		end,
 		prefix = P.llm,
-		description = "Toggle cli panel",
+		description = "Select opencode server",
 	},
 	{
 		mode = { "n" },
 		keys = "<leader>cd",
 		callback = function()
-			require("sidekick.cli").close()
+			require("opencode.events").disconnect()
 		end,
 		prefix = P.llm,
-		description = "Disconnet from cli",
+		description = "Disconnect from opencode",
 	},
 	{
 		mode = { "n", "x" },
 		keys = "<leader>ct",
 		callback = function()
-			require("sidekick.cli").send({ msg = "{this}" })
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").prompt("send_this")
+				end,
+			})
 		end,
 		prefix = P.llm,
-		description = "Send current context to cli",
+		description = "Send current context to opencode",
 	},
 	{
 		mode = { "x" },
 		keys = "<leader>cv",
 		callback = function()
-			require("sidekick.cli").send({ msg = "{selection}" })
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").prompt("send_this")
+				end,
+			})
 		end,
 		prefix = P.llm,
-		description = "Send visual selection to cli",
+		description = "Send visual selection to opencode",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cf",
 		callback = function()
-			require("sidekick.cli").send({ msg = "{file}" })
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").prompt("send_buffer")
+				end,
+			})
 		end,
 		prefix = P.llm,
-		description = "Send file to cli",
+		description = "Send file to opencode",
 	},
 	{
 		mode = { "x", "n" },
-		keys = "<leader>cp",
+		keys = "<leader>cs",
 		callback = function()
-			require("sidekick.cli").prompt()
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").select_session()
+				end,
+			})
 		end,
 		prefix = P.llm,
-		description = "Select prompt for cli",
+		description = "Select opencode session",
+	},
+	{
+		mode = { "x", "n" },
+		keys = "<leader>cq",
+		callback = function()
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").ask("@this: ", { submit = true })
+				end,
+			})
+		end,
+		prefix = P.llm,
+		description = "Ask opencode about current context",
+	},
+	{
+		mode = { "x", "n" },
+		keys = "<leader>co",
+		callback = function()
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").select()
+				end,
+			})
+		end,
+		prefix = P.llm,
+		description = "Select opencode action",
 	},
 	{
 		mode = { "i" },
@@ -2492,13 +2522,17 @@ local mappings = {
 		description = "Toggle inline suggestion",
 	},
 	{
-		mode = { "n" },
+		mode = { "n", "x" },
 		keys = "<leader>ce",
 		callback = function()
-			require("sidekick.nes").toggle()
+			require("config.editor.opencode").ensure_current_server({
+				on_ready = function()
+					require("opencode").prompt("review_this")
+				end,
+			})
 		end,
 		prefix = P.llm,
-		description = "Toggle next edit suggestions",
+		description = "Review current context with opencode",
 	},
 	{
 		mode = { "n" },

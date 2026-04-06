@@ -226,6 +226,10 @@
       "rev": "1af6ffb9b5229a856e8090fa2f690e0931a5aace",
       "src": "https://github.com/jbyuki/one-small-step-for-vimkind"
     },
+    "opencode.nvim": {
+      "rev": "fa0a495fa2c229115404cb3c1970578f9c6d2f76",
+      "src": "https://github.com/nickjvandyke/opencode.nvim"
+    },
     "otter.nvim": {
       "rev": "a455e68a99d395889ab30a25ac3846a135e93c46",
       "src": "https://github.com/jmbuhr/otter.nvim"
@@ -253,10 +257,6 @@
     "screenkey.nvim": {
       "rev": "72cf1e62a29e5f9fa8c5cc0ee2bb649b92324434",
       "src": "https://github.com/NStefan002/screenkey.nvim"
-    },
-    "sidekick.nvim": {
-      "rev": "17447a05f9385e5f8372b61530f6f9329cb82421",
-      "src": "https://github.com/folke/sidekick.nvim"
     },
     "smart-splits.nvim": {
       "rev": "0bd02161ee5c5378bf4133fcedf53d1fc4179e1d",

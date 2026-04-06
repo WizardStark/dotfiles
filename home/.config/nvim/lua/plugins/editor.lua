@@ -190,9 +190,12 @@ return {
 		end,
 	},
 	{
-		src = "https://github.com/folke/sidekick.nvim",
+		src = "https://github.com/nickjvandyke/opencode.nvim",
+		init = function()
+			vim.g.opencode_opts = require("config.editor.opencode").opts
+		end,
 		config = function()
-			require("config.editor.sidekick")
+			require("config.editor.opencode")
 		end,
 	},
 }

@@ -37,14 +37,14 @@ fi
 if tmux has-session -t "$session_name" 2>/dev/null; then
   if tmux list-windows -t "$session_name" -F '#W' | grep -Fx "$window_name" >/dev/null 2>&1; then
     echo "Tmux window already exists: $session_name:$window_name" >&2
-    echo "Created worktree: $worktree_path"
-    exit 0
+  else
+    tmux new-window -d -t "$session_name" -n "$window_name" -c "$worktree_path"
   fi
-
-  tmux new-window -d -t "$session_name" -n "$window_name" -c "$worktree_path"
 else
   tmux new-session -d -s "$session_name" -n "$window_name" -c "$worktree_path"
 fi
+
+tmux send-keys -t "$session_name:$window_name" "opencode --port" C-m
 
 echo "Created worktree: $worktree_path"
 echo "Using tmux session: $session_name"
