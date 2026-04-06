@@ -1,15 +1,22 @@
 local M = {}
 
-local function load_module(module_name)
-	local module = require(module_name)
-	for k, v in pairs(module) do
-		M[k] = v
-	end
-end
+local modules = {
+	"workspaces.ui",
+	"workspaces.toggleterms",
+	"workspaces.workspaces",
+	"workspaces.persistence",
+}
 
-load_module("workspaces.ui")
-load_module("workspaces.toggleterms")
-load_module("workspaces.workspaces")
-load_module("workspaces.persistence")
+setmetatable(M, {
+	__index = function(_, key)
+		for _, module_name in ipairs(modules) do
+			local module = require(module_name)
+			if module[key] ~= nil then
+				rawset(M, key, module[key])
+				return module[key]
+			end
+		end
+	end,
+})
 
 return M

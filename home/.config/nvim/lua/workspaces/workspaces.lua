@@ -1,13 +1,33 @@
 local M = {}
 
-local Path = require("plenary.path")
 local state = require("workspaces.state")
 local utils = require("workspaces.utils")
 local bps = require("workspaces.breakpoints")
-local persist = require("workspaces.persistence")
-local toggleterms = require("workspaces.toggleterms")
 
-local _, colors = pcall(require("catppuccin.palettes").get_palette, "mocha")
+local function Path()
+	return require("plenary.path")
+end
+
+local function persist()
+	return require("workspaces.persistence")
+end
+
+local function toggleterms()
+	return require("workspaces.toggleterms")
+end
+
+local function colors()
+	local ok, palette = pcall(require("catppuccin.palettes").get_palette, "mocha")
+	if ok then
+		return palette
+	end
+	return {
+		blue = nil,
+		text = nil,
+		green = nil,
+		subtext1 = nil,
+	}
+end
 
 local function save_named_buffers()
 	local buflist = vim.api.nvim_list_bufs()
@@ -21,11 +41,9 @@ local function save_named_buffers()
 end
 
 local function exit_hydras()
-	if _G.Hydra ~= {} then
-		require("config.hydra").dap_hydra:exit()
-		require("config.hydra").git_hydra:exit()
-		require("config.hydra").trouble_hydra:exit()
-		require("config.hydra").treewalker_hydra:exit()
+	local hydra = package.loaded["config.hydra"]
+	if hydra and hydra.exit_all then
+		hydra.exit_all()
 	end
 end
 
@@ -45,7 +63,7 @@ end
 ---@param target WorkspaceTarget
 ---@return Path
 local function expanded_target_dir(target)
-	return Path:new(vim.fn.expand(target.dir))
+	return Path():new(vim.fn.expand(target.dir))
 end
 
 ---@param workspace Workspace
@@ -59,7 +77,7 @@ local function sync_session_targets(session, workspace)
 	local removed_targets, current_target_removed, changed = utils.merge_session_targets(session, discovered_targets)
 
 	for _, target in ipairs(removed_targets) do
-		persist.delete_nvim_session_file(workspace, session, target)
+		persist().delete_nvim_session_file(workspace, session, target)
 	end
 
 	return utils.get_current_target(session), removed_targets, current_target_removed, changed
@@ -113,12 +131,12 @@ local function persist_current_state(skip_session_file)
 	local current_target = state.get().current_target or utils.get_current_target(current_session)
 
 	pcall(save_named_buffers)
-	toggleterms.close_visible_terms(true)
+	toggleterms().close_visible_terms(true)
 	require("user.utils").close_terminal_buffers()
 
 	local toggled_types = require("user.utils").toggle_special_buffers({})
 	if not skip_session_file and ensure_target_dir(current_target) then
-		persist.write_nvim_session_file(current_workspace, current_session, current_target)
+		persist().write_nvim_session_file(current_workspace, current_session, current_target)
 	end
 
 	M.set_session_metadata(current_session, current_target, toggled_types)
@@ -138,7 +156,7 @@ local function restore_target_state(workspace, session, target)
 	vim.cmd.cd(vim.fn.fnameescape(target.dir))
 
 	stop_lsp_clients()
-	persist.source_nvim_session_file(workspace, session, target)
+	persist().source_nvim_session_file(workspace, session, target)
 
 	local win = vim.api.nvim_get_current_win()
 	local pos = vim.api.nvim_win_get_cursor(win)
@@ -146,7 +164,7 @@ local function restore_target_state(workspace, session, target)
 	require("user.utils").toggle_special_buffers(target.toggled_types)
 	bps.apply_breakpoints(target.breakpoints)
 	M.set_session_metadata(session, target, {})
-	toggleterms.toggle_active_terms(true)
+	toggleterms().toggle_active_terms(true)
 
 	vim.api.nvim_set_current_win(win)
 	vim.api.nvim_win_set_cursor(win, pos)
@@ -214,7 +232,7 @@ local function switch_to_target(session, workspace, target, persist_state)
 	restore_target_state(workspace, session, target)
 
 	if persist_state ~= false then
-		persist.persist_workspaces()
+		persist().persist_workspaces()
 	end
 end
 
@@ -243,6 +261,7 @@ end
 
 -- This function needs to be called whenever the tabs change
 function M.setup_lualine()
+	local palette = colors()
 	local tabs = {}
 	local targets = {}
 	local current_workspace = state.get().current_workspace
@@ -252,11 +271,11 @@ function M.setup_lualine()
 		local is_selected = session.name == current_workspace.current_session_name
 		local is_last_session = session.name == current_workspace.last_session_name
 
-		tabs[i] = {
-			mode = 2,
-			color = function()
-				return { fg = is_selected and colors.blue or colors.text }
-			end,
+			tabs[i] = {
+				mode = 2,
+				color = function()
+					return { fg = is_selected and palette.blue or palette.text }
+				end,
 			on_click = function()
 				M.switch_session(session, current_workspace)
 			end,
@@ -279,7 +298,7 @@ function M.setup_lualine()
 		targets[i] = {
 			mode = 2,
 			color = function()
-				return { fg = is_selected and colors.green or colors.subtext1 }
+				return { fg = is_selected and palette.green or palette.subtext1 }
 			end,
 			on_click = function()
 				M.switch_target(target, current_session, current_workspace)
@@ -317,7 +336,7 @@ function M.set_session_metadata(session, target, toggled_types)
 	local buf_path = vim.fn.expand("%:p")
 	---@cast buf_path string
 
-	if buf_path ~= "" and Path:new(buf_path):exists() then
+	if buf_path ~= "" and Path():new(buf_path):exists() then
 		target.last_file_line = unpack(vim.fn.getcurpos(), 2, 2)
 		target.last_file = buf_path
 	else
@@ -414,7 +433,7 @@ function M.refresh_current_session_targets(persist_current)
 
 	if current_target_removed then
 		switch_to_target(session, workspace, fallback_target, false)
-		persist.persist_workspaces()
+		persist().persist_workspaces()
 		vim.notify("Current worktree target was removed, switched back to main", vim.log.levels.WARN)
 		return
 	end
@@ -422,7 +441,7 @@ function M.refresh_current_session_targets(persist_current)
 	if changed or #removed_targets > 0 or current_target ~= fallback_target then
 		state.get().current_target = fallback_target
 		M.setup_lualine()
-		persist.persist_workspaces()
+		persist().persist_workspaces()
 	end
 end
 
@@ -440,7 +459,7 @@ function M.sync_all_workspaces_targets()
 
 	if changed then
 		M.setup_lualine()
-		persist.persist_workspaces()
+		persist().persist_workspaces()
 	end
 end
 
@@ -501,7 +520,7 @@ function M.create_session(name, dir)
 		return
 	end
 
-	local path = Path:new(vim.fn.expand(dir))
+	local path = Path():new(vim.fn.expand(dir))
 	if not path:exists() then
 		vim.notify("That directory does not exist, creating it", vim.log.levels.INFO)
 		path:mkdir({ parents = true })
@@ -546,14 +565,14 @@ function M.delete_session(name)
 	end
 
 	for _, target in ipairs(session.targets or {}) do
-		persist.delete_nvim_session_file(workspace, session, target)
+		persist().delete_nvim_session_file(workspace, session, target)
 	end
 
 	if name == workspace.current_session_name then
 		M.switch_session(workspace.sessions[1], workspace)
 	else
 		M.setup_lualine()
-		persist.persist_workspaces()
+		persist().persist_workspaces()
 	end
 end
 
@@ -566,7 +585,7 @@ function M.create_workspace(name, session_name, dir)
 		return
 	end
 
-	local path = Path:new(vim.fn.expand(dir))
+	local path = Path():new(vim.fn.expand(dir))
 	if not path:exists() then
 		vim.notify("That directory does not exist, creating it", vim.log.levels.INFO)
 		path:mkdir({ parents = true })
@@ -589,7 +608,7 @@ function M.create_workspace(name, session_name, dir)
 	}
 
 	table.insert(state.get().workspaces, workspace)
-	persist.persist_workspaces()
+	persist().persist_workspaces()
 end
 
 function M.rename_current_workspace(name)
@@ -604,7 +623,7 @@ function M.rename_current_workspace(name)
 
 	state.get().current_workspace.name = name
 	M.setup_lualine()
-	persist.persist_workspaces()
+	persist().persist_workspaces()
 end
 
 function M.delete_workspace(name)
@@ -622,8 +641,8 @@ function M.delete_workspace(name)
 
 	if name == state.get().current_workspace.name then
 		if #state.get().workspaces == 0 then
-			persist.purge_workspaces()
-			persist.load_workspaces()
+			persist().purge_workspaces()
+			persist().load_workspaces()
 			return
 		end
 
@@ -634,7 +653,7 @@ function M.delete_workspace(name)
 		state.get().last_workspace = nil
 	end
 
-	persist.persist_workspaces()
+	persist().persist_workspaces()
 end
 
 ---@param idx number

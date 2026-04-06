@@ -1,6 +1,8 @@
 local P = require("user.utils").PREFIXES
-M = {}
-M.functions = {}
+
+local M = {
+	functions = {},
+}
 local mappings = {
 	{
 		callback = function()
@@ -53,13 +55,15 @@ local mappings = {
 	},
 }
 
-local prefixifier = require("user.utils").prefixifier
-prefixifier(function(maps)
-	for _, map in ipairs(maps) do
-		map.desc = map.description
-		map.type = "unmapped"
-	end
-	M.functions = maps
-end)(mappings)
+function M.setup()
+	local prefixifier = require("user.utils").prefixifier
+	prefixifier(function(maps)
+		for _, map in ipairs(maps) do
+			map.desc = map.description
+			map.type = "unmapped"
+		end
+		M.functions = maps
+	end)(mappings)
+end
 
 return M

@@ -1,6 +1,6 @@
 local M = {}
 
-local ns = vim.api.nvim_create_namespace("user.cmdline")
+local ns = nil
 
 local state = {
 	cmd = {
@@ -335,6 +335,7 @@ local function on_msg_showcmd(_) end
 local function on_msg_ruler(_) end
 
 function M.setup()
+	ns = ns or vim.api.nvim_create_namespace("user.cmdline")
 	vim.ui_attach(ns, { ext_messages = true, ext_popupmenu = true, set_cmdheight = false }, function(event, ...)
 		if event == "cmdline_show" then
 			on_cmdline_show(...)

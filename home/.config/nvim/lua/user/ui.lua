@@ -21,27 +21,6 @@ local dap_signs = {
 	DapStopped = "󰁕",
 }
 
-for type, icon in pairs(dap_signs) do
-	vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
-end
-
-vim.diagnostic.config({
-	signs = {
-		text = {
-			[vim.diagnostic.severity.HINT] = "󰌶 ",
-			[vim.diagnostic.severity.INFO] = " ",
-			[vim.diagnostic.severity.WARN] = "󰀪 ",
-			[vim.diagnostic.severity.ERROR] = "󰅚 ",
-		},
-		numhl = {
-			[vim.diagnostic.severity.HINT] = "DiagnosticSignHint",
-			[vim.diagnostic.severity.INFO] = "DiagnosticSignInfo",
-			[vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
-			[vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
-		},
-	},
-})
-
 local presets = {
 	bush = {
 		color_overrides = {
@@ -126,6 +105,27 @@ local presets = {
 
 return {
 	setup = function()
+		for type, icon in pairs(dap_signs) do
+			vim.fn.sign_define(type, { text = icon, texthl = type, numhl = type })
+		end
+
+		vim.diagnostic.config({
+			signs = {
+				text = {
+					[vim.diagnostic.severity.HINT] = "󰌶 ",
+					[vim.diagnostic.severity.INFO] = " ",
+					[vim.diagnostic.severity.WARN] = "󰀪 ",
+					[vim.diagnostic.severity.ERROR] = "󰅚 ",
+				},
+				numhl = {
+					[vim.diagnostic.severity.HINT] = "DiagnosticSignHint",
+					[vim.diagnostic.severity.INFO] = "DiagnosticSignInfo",
+					[vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
+					[vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
+				},
+			},
+		})
+
 		for key, value in pairs(presets) do
 			if vim.g[key] then
 				catppuccin_opts = vim.tbl_deep_extend("force", catppuccin_opts, value)

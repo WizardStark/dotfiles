@@ -1,8 +1,10 @@
 local M = {}
 
-local Terminal = require("toggleterm.terminal").Terminal
 local state = require("workspaces.state")
-require("toggleterm")
+
+local function terminal_module()
+	return require("toggleterm.terminal")
+end
 
 function M.get_session_terms()
 	return state.get().current_target.toggleterms
@@ -56,7 +58,7 @@ end
 ---@param target_term SessionTerminal
 ---@return number
 local function get_term_size(target_term)
-	local terms = require("toggleterm.terminal").get_all()
+	local terms = terminal_module().get_all()
 	local size
 
 	for _, term in ipairs(terms) do
@@ -108,7 +110,7 @@ local function toggle_term(term, override_active, size)
 		term.size = size
 	end
 
-	Terminal:new({
+	terminal_module().Terminal:new({
 		count = term.global_id,
 		direction = term.term_direction,
 		size = term.size,

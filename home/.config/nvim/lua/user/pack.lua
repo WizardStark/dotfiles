@@ -8,8 +8,6 @@ local state = {
 	loaded = {},
 }
 
-local augroup = vim.api.nvim_create_augroup("UserPack", { clear = true })
-
 local function notify(message, level)
 	vim.notify(message, level or vim.log.levels.INFO, { title = "vim.pack" })
 end
@@ -265,6 +263,7 @@ local function create_pack_commands()
 end
 
 local function setup_batches()
+	local augroup = vim.api.nvim_create_augroup("UserPack", { clear = true })
 	vim.api.nvim_create_autocmd("UIEnter", {
 		group = augroup,
 		once = true,

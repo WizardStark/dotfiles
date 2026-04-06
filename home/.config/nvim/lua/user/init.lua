@@ -9,7 +9,7 @@ return {
 			pattern = "VeryLazy",
 			callback = function()
 				require("user.autocmds").setup()
-				require("user.functions")
+				require("user.functions").setup()
 				require("user.keymaps").setup()
 				require("mini.diff").enable(0)
 			end,

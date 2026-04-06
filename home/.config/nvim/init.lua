@@ -52,5 +52,5 @@ require("user.pack").setup({
 	},
 })
 
-require("user.init").setup()
 require("user.options").setup()
+require("user.init").setup()

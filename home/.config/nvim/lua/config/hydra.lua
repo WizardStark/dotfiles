@@ -1,14 +1,23 @@
-local Hydra = require("hydra")
 local M = {}
 
-Hydra.setup({
-	color = "pink",
-	hint = {
-		type = "window",
-		offset = 2,
-		position = { "bottom", "right" },
-	},
-})
+local hydras = {}
+local hydra_setup_done = false
+
+local function get_hydra()
+	local Hydra = require("hydra")
+	if not hydra_setup_done then
+		Hydra.setup({
+			color = "pink",
+			hint = {
+				type = "window",
+				offset = 2,
+				position = { "bottom", "right" },
+			},
+		})
+		hydra_setup_done = true
+	end
+	return Hydra
+end
 
 local last_git_traversed_at
 local hunk_starts
@@ -168,7 +177,8 @@ local function keys(str)
 	end
 end
 
-M.treewalker_hydra = Hydra({
+local function create_treewalker_hydra()
+	return get_hydra()({
 	name = "Treewalker",
 	mode = { "n", "x" },
 	hint = [[
@@ -193,8 +203,10 @@ _q_: Exit]],
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
 	},
 })
+end
 
-M.dap_hydra = Hydra({
+local function create_dap_hydra()
+	return get_hydra()({
 	name = "Dap",
 	mode = { "n", "x" },
 	hint = [[
@@ -332,8 +344,10 @@ _q_: Exit]],
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
 	},
 })
+end
 
-M.trouble_hydra = Hydra({
+local function create_trouble_hydra()
+	return get_hydra()({
 	name = "Trouble",
 	mode = { "n", "x" },
 	hint = [[
@@ -358,8 +372,10 @@ _q_: Exit]],
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
 	},
 })
+end
 
-M.git_hydra = Hydra({
+local function create_git_hydra()
+	return get_hydra()({
 	name = "Git",
 	mode = { "n", "x" },
 	hint = [[
@@ -425,6 +441,36 @@ _q_: Exit]],
 		},
 		{ "q", nil, { exit = true, nowait = true, desc = false } },
 	},
+})
+end
+
+local factories = {
+	treewalker_hydra = create_treewalker_hydra,
+	dap_hydra = create_dap_hydra,
+	trouble_hydra = create_trouble_hydra,
+	git_hydra = create_git_hydra,
+}
+
+function M.exit_all()
+	for _, hydra in pairs(hydras) do
+		pcall(function()
+			hydra:exit()
+		end)
+	end
+end
+
+setmetatable(M, {
+	__index = function(_, key)
+		local factory = factories[key]
+		if not factory then
+			return nil
+		end
+
+		local hydra = factory()
+		hydras[key] = hydra
+		rawset(M, key, hydra)
+		return hydra
+	end,
 })
 
 return M

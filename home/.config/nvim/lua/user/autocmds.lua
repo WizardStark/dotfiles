@@ -27,7 +27,7 @@ local function fold_virt_text(result, s, lnum, coloff)
 	table.insert(result, { text, hl })
 end
 
-function _G.custom_foldtext()
+local function custom_foldtext()
 	local start = vim.fn.getline(vim.v.foldstart):gsub("\t", string.rep(" ", vim.o.tabstop))
 	local end_str = vim.fn.getline(vim.v.foldend)
 	local end_ = vim.trim(end_str)
@@ -289,6 +289,7 @@ local mappings = {
 
 return {
 	setup = function()
+		_G.custom_foldtext = custom_foldtext
 		for _, cmd in ipairs(mappings) do
 			vim.api.nvim_create_autocmd(cmd.event, {
 				pattern = cmd.pattern and cmd.pattern or nil,

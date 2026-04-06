@@ -2,10 +2,7 @@ local M = {}
 
 local Path = require("plenary.path")
 local state = require("workspaces.state")
-local bps = require("workspaces.breakpoints")
 local utils = require("workspaces.utils")
-local toggleterms = require("workspaces.toggleterms")
-local keymaps = require("workspaces.keymaps")
 
 ---@type string
 M.workspaces_path = vim.fn.stdpath("data") .. Path.path.sep .. "workspaces"
@@ -342,9 +339,9 @@ function M.load_workspaces()
 
 	M.source_nvim_session_file(state.get().current_workspace, state.get().current_session, state.get().current_target)
 	require("user.utils").toggle_special_buffers(state.get().current_target.toggled_types)
-	bps.apply_breakpoints(state.get().current_target.breakpoints)
-	toggleterms.toggle_active_terms(true)
-	keymaps.setup_keymaps()
+	require("workspaces.breakpoints").apply_breakpoints(state.get().current_target.breakpoints)
+	require("workspaces.toggleterms").toggle_active_terms(true)
+	require("workspaces.keymaps").setup_keymaps()
 	vim.schedule(function()
 		require("workspaces.workspaces").sync_all_workspaces_targets()
 	end)
