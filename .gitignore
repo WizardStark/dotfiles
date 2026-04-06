@@ -1,4 +1,5 @@
 **/lazy-lock.json
+**/nvim-pack-lock.json
 **/lcl/**
 **/tmux/plugins/**
 **/spell
