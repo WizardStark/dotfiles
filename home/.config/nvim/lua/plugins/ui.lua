@@ -30,7 +30,7 @@ return {
 	},
 	{
 		src = "https://github.com/echasnovski/mini.icons",
-		event = "UIEnter",
+		priority = 900,
 		config = function()
 			require("mini.icons").setup()
 			MiniIcons.mock_nvim_web_devicons()

@@ -1,5 +1,5 @@
 ---@type boolean, table?
-local devicons_ok, devicons = pcall(require, "nvim-web-devicons")
+local mini_icons_ok, mini_icons = pcall(require, "mini.icons")
 ---@type string
 local folder_icon = "%#Conditional#" .. "󰉋" .. "%#Normal#"
 ---@type string
@@ -112,8 +112,10 @@ end
 
 ---Creates breadcrumb components from a relative path
 ---@param relative_path string?
+---@param file_path string?
+---@param bufnr integer?
 ---@return string[]
-local function create_crumbs(relative_path)
+local function create_crumbs(relative_path, file_path, bufnr)
 	local path_components = vim.split(relative_path or "", "[/\\]", { trimempty = true })
 	local num_components = #path_components
 
@@ -123,8 +125,8 @@ local function create_crumbs(relative_path)
 			local icon
 			local icon_hl
 
-			if devicons_ok then
-				icon, icon_hl = devicons.get_icon(component)
+			if mini_icons_ok then
+				icon, icon_hl = mini_icons.get("file", file_path or component)
 			end
 			table.insert(
 				breadcrumbs,
@@ -143,18 +145,48 @@ end
 ---@return string
 local function create_crumbs_string(breadcrumbs)
 	local trimmed_crumbs = {}
-	for i = math.max(1, #breadcrumbs - 9), #breadcrumbs do
+	local start_idx = math.max(1, #breadcrumbs - 9)
+	if start_idx > 1 then
+		trimmed_crumbs[#trimmed_crumbs + 1] = "%#Comment#…%#Normal#"
+	end
+
+	for i = start_idx, #breadcrumbs do
 		trimmed_crumbs[#trimmed_crumbs + 1] = breadcrumbs[i]
 	end
 
 	return table.concat(trimmed_crumbs, "%#Comment#  %#Normal#")
 end
 
+---@param bufnr integer
+---@return vim.lsp.Client?
+local function get_symbol_client(bufnr)
+	local clients = vim.lsp.get_clients({ bufnr = bufnr, method = "textDocument/documentSymbol" })
+	return clients[1]
+end
+
+---@param client vim.lsp.Client?
+---@return string?
+local function get_client_root_dir(client)
+	if not client then
+		return nil
+	end
+
+	if client.config and client.config.root_dir then
+		return client.config.root_dir
+	end
+
+	local workspace = client.workspace_folders and client.workspace_folders[1]
+	if workspace and workspace.uri then
+		return vim.uri_to_fname(workspace.uri)
+	end
+
+	return nil
+end
+
 ---LSP handler for document symbols
 ---@type lsp.Handler
 local function lsp_callback(err, symbols, ctx)
 	if err or not symbols then
-		vim.o.winbar = ""
 		return
 	end
 
@@ -171,21 +203,16 @@ local function lsp_callback(err, symbols, ctx)
 
 	local relative_path
 
-	local clients = vim.lsp.get_clients({ bufnr = ctx.bufnr })
+	local client = vim.lsp.get_client_by_id(ctx.client_id)
+	local root_dir = get_client_root_dir(client)
 
-	if #clients > 0 and clients[1].root_dir then
-		local root_dir = clients[1].root_dir
-		if root_dir == nil then
-			relative_path = file_path
-		else
-			relative_path = vim.fs.relpath(root_dir, file_path)
-		end
-	else
-		local root_dir = vim.fn.getcwd(0)
+	if root_dir then
 		relative_path = vim.fs.relpath(root_dir, file_path)
+	else
+		relative_path = vim.fs.relpath(vim.fn.getcwd(0), file_path)
 	end
 
-	local breadcrumbs = create_crumbs(relative_path)
+	local breadcrumbs = create_crumbs(relative_path, file_path, ctx.bufnr)
 	find_symbol_path(symbols, cursor_line, cursor_char, breadcrumbs)
 	local breadcrumb_string = create_crumbs_string(breadcrumbs)
 
@@ -214,7 +241,7 @@ local disabled = {
 ---Sets the breadcrumbs in the winbar
 ---@return nil
 local function breadcrumbs_set()
-	if last_refreshed_time ~= nil and vim.loop.now() - last_refreshed_time < 300 then
+	if last_refreshed_time ~= nil and vim.loop.now() - last_refreshed_time < 450 then
 		return
 	end
 
@@ -233,11 +260,11 @@ local function breadcrumbs_set()
 		return
 	end
 
-	local clients = vim.lsp.get_clients({ bufnr = bufnr })
-	if #clients == 0 or not clients[1]:supports_method("textDocument/documentSymbol", bufnr) then
+	local client = get_symbol_client(bufnr)
+	if not client then
 		vim.api.nvim_set_option_value(
 			"winbar",
-			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr))),
+			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr), vim.fn.bufname(bufnr), bufnr)),
 			{ win = winnr }
 		)
 		return
@@ -248,7 +275,7 @@ local function breadcrumbs_set()
 	if not uri then
 		vim.api.nvim_set_option_value(
 			"winbar",
-			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr))),
+			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr), vim.fn.bufname(bufnr), bufnr)),
 			{ win = winnr }
 		)
 		return
@@ -270,7 +297,7 @@ local function breadcrumbs_set()
 	if not result then
 		vim.api.nvim_set_option_value(
 			"winbar",
-			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr))),
+			create_crumbs_string(create_crumbs(vim.fn.bufname(bufnr), vim.fn.bufname(bufnr), bufnr)),
 			{ win = winnr }
 		)
 		return
