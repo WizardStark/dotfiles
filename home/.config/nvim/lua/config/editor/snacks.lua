@@ -14,7 +14,7 @@ local keymaps_config = {
 			lhs = Snacks.util.normkey(k.lhs)
 		end
 
-		ret[#ret + 1] = { a(k.mode, 1), "SnacksPickerKeymapMode" }
+		ret[#ret + 1] = { a(k.mode, 11), "SnacksPickerKeymapMode" }
 		ret[#ret + 1] = { " │ " }
 		ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
 		ret[#ret + 1] = { " " }
@@ -161,10 +161,46 @@ require("snacks").setup({
 				format = keymaps_config.format,
 				confirm = keymaps_config.confirm,
 				finder = function(opts, ctx)
-					local items = require("snacks.picker.source.vim").keymaps(keymaps_config)
+					local raw_items = require("snacks.picker.source.vim").keymaps(keymaps_config)
+					local items = {}
+					local grouped = {}
+					local mode_order = {}
+
+					for index, mode in ipairs(keymaps_config.modes) do
+						mode_order[mode] = index
+					end
+
+					local function mode_sort(a, b)
+						return (mode_order[a] or math.huge) < (mode_order[b] or math.huge)
+					end
+
+					for _, item in ipairs(raw_items) do
+						item.type = "keymap"
+						local keymap = item.item
+						local signature = table.concat({
+							keymap.lhs or "",
+							keymap.desc or "",
+							tostring(keymap.buffer or 0),
+							keymap.rhs or "",
+							tostring(keymap.callback),
+						}, "\0")
+
+						local existing = grouped[signature]
+						if existing then
+							existing._modes[keymap.mode] = true
+						else
+							item.item = vim.deepcopy(keymap)
+							item.item._modes = { [keymap.mode] = true }
+							grouped[signature] = item.item
+							table.insert(items, item)
+						end
+					end
 
 					for _, item in ipairs(items) do
-						item.type = "keymap"
+						local modes = vim.tbl_keys(item.item._modes)
+						table.sort(modes, mode_sort)
+						item.item.mode = table.concat(modes, ",")
+						item.item._modes = nil
 					end
 
 					for _, item in ipairs(require("user.functions").functions) do
