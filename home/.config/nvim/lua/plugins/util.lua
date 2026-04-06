@@ -101,7 +101,7 @@ return {
 	},
 	{
 		src = "https://github.com/folke/snacks.nvim",
-		event = "UiEnter",
+		event = "UIEnter",
 		config = function()
 			require("config.editor.snacks")
 		end,

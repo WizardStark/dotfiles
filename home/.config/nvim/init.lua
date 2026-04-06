@@ -1,3 +1,5 @@
+require("user.startup")
+
 vim.loader.enable()
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
@@ -6,17 +8,7 @@ vim.g.maplocalleader = "\\"
 
 require("user.cmdline").setup()
 
-vim.api.nvim_create_autocmd("User", {
-	pattern = "VeryLazy",
-	callback = function()
-		vim.o.shada = vim.o.shada .. ",:100"
-		pcall(vim.cmd.rshada, { bang = true })
-		pcall(vim.cmd.source, "runtime/plugin/editorconfig.vim")
-	end,
-})
-
-local configpath = vim.fn.stdpath("config") --[[@as string]]
-vim.g.lclpath = configpath .. "/lua/lcl"
+vim.g.lclpath = vim.fn.stdpath("config") .. "/lua/lcl"
 
 if not vim.loop.fs_stat(vim.g.lclpath) then
 	vim.fn.system(

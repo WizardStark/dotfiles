@@ -20,7 +20,7 @@ local function spec_batch(spec)
 	if spec.priority then
 		return "startup"
 	end
-	if spec.event == "UiEnter" or spec.event == "UIEnter" then
+	if spec.event == "UIEnter" then
 		return "ui_enter"
 	end
 	return "post_ui"
@@ -163,6 +163,15 @@ local function run_build(spec)
 	end
 end
 
+local function run_builds(names)
+	for _, name in ipairs(names or state.order) do
+		local spec = state.specs[name]
+		if spec and spec.build ~= nil then
+			run_build(spec)
+		end
+	end
+end
+
 local function load_plugin(name)
 	local spec = state.specs[name]
 	if not spec or state.loaded[name] then
@@ -188,8 +197,6 @@ local function load_plugin(name)
 			notify("Failed to configure " .. spec.name .. ":\n" .. tostring(config_err), vim.log.levels.ERROR)
 		end
 	end
-
-	run_build(spec)
 end
 
 local function load_batch(batch)
@@ -230,6 +237,7 @@ local function create_pack_commands()
 
 	vim.api.nvim_create_user_command("PackUpdate", function()
 		vim.pack.update()
+		run_builds()
 	end, {})
 
 	vim.api.nvim_create_user_command("PackClean", function()
@@ -271,7 +279,10 @@ local function setup_batches()
 			load_batch("ui_enter")
 			vim.schedule(function()
 				load_batch("post_ui")
-				vim.api.nvim_exec_autocmds("User", { pattern = "VeryLazy" })
+				require("user.autocmds").setup()
+				require("user.functions").setup()
+				require("user.keymaps").setup()
+				require("mini.diff").enable(0)
 			end)
 		end,
 	})

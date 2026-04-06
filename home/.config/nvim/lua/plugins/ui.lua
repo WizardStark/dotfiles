@@ -9,7 +9,7 @@ return {
 	},
 	{
 		src = "https://github.com/nvim-lualine/lualine.nvim",
-		event = "UiEnter",
+		event = "UIEnter",
 		config = function()
 			require("config.ui.lualine")
 		end,
@@ -30,7 +30,7 @@ return {
 	},
 	{
 		src = "https://github.com/echasnovski/mini.icons",
-		event = "UiEnter",
+		event = "UIEnter",
 		config = function()
 			require("mini.icons").setup()
 			MiniIcons.mock_nvim_web_devicons()
@@ -38,7 +38,6 @@ return {
 	},
 	{
 		src = "https://github.com/folke/todo-comments.nvim",
-		event = "UiEnter",
 		dependencies = { { src = "https://github.com/nvim-lua/plenary.nvim" } },
 		config = function()
 			require("todo-comments").setup()
@@ -52,14 +51,12 @@ return {
 	},
 	{
 		src = "https://github.com/kwkarlwang/bufresize.nvim",
-		event = "UiEnter",
 		config = function()
 			require("config.ui.bufresize")
 		end,
 	},
 	{
 		src = "https://github.com/b0o/incline.nvim",
-		event = "UiEnter",
 		dependencies = { { src = "https://github.com/echasnovski/mini.icons" } },
 		config = function()
 			require("config.ui.incline")

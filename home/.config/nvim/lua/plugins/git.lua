@@ -1,7 +1,7 @@
 return {
 	{
 		src = "https://github.com/echasnovski/mini.diff",
-		event = "UiEnter",
+		event = "UIEnter",
 		config = function()
 			require("mini.diff").setup({
 				view = {
