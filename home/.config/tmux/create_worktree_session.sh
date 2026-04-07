@@ -2,9 +2,21 @@
 
 set -euo pipefail
 
-git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
-  echo "Not in a git repository" >&2
+fail() {
+  echo "$1" >&2
   exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || fail "Required command not found on PATH: $1"
+}
+
+require_command git
+require_command tmux
+require_command opencode
+
+git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+  fail "Not in a git repository"
 }
 
 repo_name="$(basename "$(dirname "$git_common_dir")")"
@@ -17,30 +29,53 @@ sanitize_window_name() {
 ensure_tmux_window() {
   local workdir="$1"
   local window_name="$2"
+  local target="$session_name:$window_name"
+  local pane_id=""
+  local first_pane_id=""
+  local pane_dead=""
+  local pane_command=""
 
   if tmux has-session -t "$session_name" 2>/dev/null; then
     if tmux list-windows -t "$session_name" -F '#W' | grep -Fx "$window_name" >/dev/null 2>&1; then
-      echo "Tmux window already exists: $session_name:$window_name" >&2
+      echo "Using existing tmux window: $target"
     else
       tmux new-window -d -t "$session_name" -n "$window_name" -c "$workdir"
+      echo "Created tmux window: $target"
     fi
   else
     tmux new-session -d -s "$session_name" -n "$window_name" -c "$workdir"
+    echo "Created tmux session: $session_name"
+    echo "Created tmux window: $target"
   fi
 
-  if tmux list-panes -t "$session_name:$window_name" -F '#{pane_dead} #{pane_current_command}' \
-    | grep -Fx '0 opencode' >/dev/null 2>&1; then
-    echo "Opencode already running in: $session_name:$window_name"
-    return
+  while IFS=' ' read -r pane_id pane_dead pane_command; do
+    if [[ -z "$first_pane_id" ]]; then
+      first_pane_id="$pane_id"
+    fi
+
+    if [[ "$pane_dead" == "0" && "$pane_command" == "opencode" ]]; then
+      echo "Opencode already running in: $target"
+      return
+    fi
+  done < <(tmux list-panes -t "$target" -F '#{pane_id} #{pane_dead} #{pane_current_command}')
+
+  pane_id="$first_pane_id"
+  [[ -n "$pane_id" ]] || fail "No tmux pane available in $target"
+
+  read -r _ pane_dead pane_command < <(tmux list-panes -t "$pane_id" -F '#{pane_id} #{pane_dead} #{pane_current_command}')
+
+  if [[ "$pane_dead" == "1" ]]; then
+    tmux respawn-pane -k -t "$pane_id" -c "$workdir"
+    echo "Respawned dead tmux pane in: $target"
   fi
 
-  tmux send-keys -t "$session_name:$window_name" "opencode --port" C-m
+  tmux send-keys -t "$pane_id" "opencode --port" C-m
+  echo "Launching opencode in: $target"
 }
 
 if [[ $# -eq 0 ]]; then
   current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || {
-    echo "Unable to determine current branch" >&2
-    exit 1
+    fail "Unable to determine current branch"
   }
 
   workdir="$(pwd)"
@@ -55,8 +90,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 if [[ $# -gt 2 ]]; then
-  echo "Usage: create_worktree_session.sh [branch-name] [window-name]" >&2
-  exit 1
+  fail "Usage: create_worktree_session.sh [branch-name] [window-name]"
 fi
 
 branch_name="$1"

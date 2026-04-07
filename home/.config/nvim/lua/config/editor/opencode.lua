@@ -59,6 +59,23 @@ local function notify(message, level)
 	vim.notify(message, level, { title = "opencode" })
 end
 
+local function trim_output(result)
+	if result == nil then
+		return ""
+	end
+
+	return vim.trim(result.stderr ~= "" and result.stderr or result.stdout or "")
+end
+
+local function run_system(cmd, opts)
+	local result = vim.system(cmd, opts or { text = true }):wait()
+	return result, trim_output(result)
+end
+
+local function sanitize_tmux_name(name)
+	return (name or ""):gsub("[/:.]", "-")
+end
+
 local function connect_server(server)
 	require("opencode.events").connect(server)
 	-- `opencode.nvim` only sets this after the first SSE arrives, which is too late
@@ -123,6 +140,111 @@ local function get_managed_worktree_branch(cwd)
 	return top_level_dir:sub(#prefix + 1)
 end
 
+local function get_repo_tmux_target(cwd)
+	local common_dir = vim.system(
+		{ "git", "rev-parse", "--path-format=absolute", "--git-common-dir" },
+		{ text = true, cwd = cwd }
+	):wait()
+	if common_dir.code ~= 0 then
+		return nil, "Not in a git repository"
+	end
+
+	local common_dir_path = vim.trim(common_dir.stdout)
+	local session_name = vim.fs.basename(vim.fs.dirname(common_dir_path))
+	local worktree_branch = get_managed_worktree_branch(cwd)
+	local branch_result = vim.system({ "git", "rev-parse", "--abbrev-ref", "HEAD" }, { text = true, cwd = cwd }):wait()
+	if branch_result.code ~= 0 then
+		return nil, trim_output(branch_result)
+	end
+
+	local branch_name = worktree_branch or vim.trim(branch_result.stdout)
+	if branch_name == "" then
+		return nil, "Unable to determine git branch"
+	end
+
+	return {
+		session_name = session_name,
+		window_name = sanitize_tmux_name(branch_name),
+		branch_name = branch_name,
+	}, nil
+end
+
+local function format_tmux_target(target)
+	if target == nil then
+		return "<unknown tmux target>"
+	end
+
+	return string.format("%s:%s", target.session_name, target.window_name)
+end
+
+local function diagnose_tmux_target(cwd)
+	if vim.fn.executable("tmux") ~= 1 then
+		return "tmux is not installed or not on PATH"
+	end
+
+	if vim.fn.executable("opencode") ~= 1 then
+		return "opencode is not installed or not on PATH"
+	end
+
+	local bootstrap_script = vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "create_worktree_session.sh")
+	if vim.fn.executable(bootstrap_script) ~= 1 then
+		return string.format("tmux bootstrap script is not executable: %s", bootstrap_script)
+	end
+
+	local target, target_err = get_repo_tmux_target(cwd)
+	if target == nil then
+		return target_err or "Unable to determine tmux target"
+	end
+
+	local session_check = vim.system({ "tmux", "has-session", "-t", target.session_name }, { text = true }):wait()
+	if session_check.code ~= 0 then
+		return string.format("tmux session %s was not created", target.session_name)
+	end
+
+	local windows, windows_output = run_system({ "tmux", "list-windows", "-t", target.session_name, "-F", "#W" }, { text = true })
+	if windows.code ~= 0 then
+		return string.format("unable to inspect tmux session %s: %s", target.session_name, windows_output)
+	end
+
+	local window_exists = vim.iter(vim.split(windows.stdout or "", "\n", { trimempty = true })):any(function(window)
+		return window == target.window_name
+	end)
+	if not window_exists then
+		return string.format("tmux target %s was not created", format_tmux_target(target))
+	end
+
+	local panes, panes_output = run_system(
+		{ "tmux", "list-panes", "-t", format_tmux_target(target), "-F", "#{pane_dead} #{pane_current_command}" },
+		{ text = true }
+	)
+	if panes.code ~= 0 then
+		return string.format("unable to inspect tmux target %s: %s", format_tmux_target(target), panes_output)
+	end
+
+	local pane_lines = vim.split(panes.stdout or "", "\n", { trimempty = true })
+	if #pane_lines == 0 then
+		return string.format("tmux target %s has no panes", format_tmux_target(target))
+	end
+
+	for _, line in ipairs(pane_lines) do
+		if line == "0 opencode" then
+			return string.format("opencode is still starting in tmux target %s", format_tmux_target(target))
+		end
+	end
+
+	for _, line in ipairs(pane_lines) do
+		if vim.startswith(line, "1 ") then
+			return string.format("opencode pane exited in tmux target %s", format_tmux_target(target))
+		end
+	end
+
+	return string.format(
+		"tmux target %s exists, but its active pane command is %s instead of opencode",
+		format_tmux_target(target),
+		pane_lines[1]
+	)
+end
+
 local function ensure_worktree_opencode_session(cwd)
 	local branch = get_managed_worktree_branch(cwd)
 	if branch == nil or branch == "" then
@@ -132,25 +254,30 @@ local function ensure_worktree_opencode_session(cwd)
 	local result = vim.system({ "zsh", "-ic", "gwtcs " .. vim.fn.shellescape(branch) }, { text = true, cwd = cwd })
 		:wait()
 	if result.code ~= 0 then
-		return false, vim.trim(result.stderr ~= "" and result.stderr or result.stdout)
+		return false, trim_output(result)
 	end
 
-	return true, branch
+	local target, _ = get_repo_tmux_target(cwd)
+	return true, {
+		kind = "worktree",
+		label = branch,
+		tmux_target = target,
+	}
 end
 
 local function ensure_repo_opencode_session(cwd)
 	local result = vim.system({ vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "create_worktree_session.sh") }, { text = true, cwd = cwd })
 		:wait()
 	if result.code ~= 0 then
-		return false, vim.trim(result.stderr ~= "" and result.stderr or result.stdout)
+		return false, trim_output(result)
 	end
 
-	local branch = vim.system({ "git", "rev-parse", "--abbrev-ref", "HEAD" }, { text = true, cwd = cwd }):wait()
-	if branch.code == 0 then
-		return true, vim.trim(branch.stdout)
-	end
-
-	return true, cwd
+	local target, _ = get_repo_tmux_target(cwd)
+	return true, {
+		kind = "repo",
+		label = target and target.branch_name or cwd,
+		tmux_target = target,
+	}
 end
 
 local function ensure_opencode_session(cwd)
@@ -170,6 +297,64 @@ local function select_best_server_for_cwd(servers, cwd)
 	return vim.iter(servers):find(function(server)
 		return server_matches_cwd(server.cwd, cwd)
 	end)
+end
+
+local function wait_for_server(cwd, startup, opts, attempt)
+	attempt = attempt or 1
+	local max_attempts = 8
+	local retry_delay_ms = 1000
+
+	require("opencode.server")
+		.get_all()
+		:next(function(servers)
+			local target_server = select_best_server_for_cwd(servers, cwd)
+			if target_server ~= nil then
+				connect_server(target_server)
+				notify(
+					string.format(
+						"Started opencode session for %s and connected to %s",
+						startup.label,
+						format_server(target_server)
+					),
+					vim.log.levels.INFO
+				)
+				if opts.on_ready then
+					opts.on_ready(target_server)
+				end
+				return
+			end
+
+			if attempt < max_attempts then
+				vim.defer_fn(function()
+					wait_for_server(cwd, startup, opts, attempt + 1)
+				end, retry_delay_ms)
+				return
+			end
+
+			local diagnosis = diagnose_tmux_target(cwd)
+			local waited_seconds = attempt * retry_delay_ms / 1000
+			notify(
+				string.format(
+					"Started tmux target %s for %s, but no opencode server registered for %s after %ds. %s",
+					format_tmux_target(startup.tmux_target),
+					startup.label,
+					cwd,
+					waited_seconds,
+					diagnosis
+				),
+				vim.log.levels.WARN
+			)
+		end)
+		:catch(function(err)
+			notify(
+				string.format(
+					"Failed to inspect opencode servers while waiting for %s: %s",
+					startup.label,
+					err or "unknown error"
+				),
+				vim.log.levels.WARN
+			)
+		end)
 end
 
 function M.ensure_current_server(opts)
@@ -247,54 +432,27 @@ function M.ensure_current_server(opts)
 			end
 
 			if not ensure_session then
-				notify(string.format("No opencode server matches %s", cwd), vim.log.levels.WARN)
+				notify(string.format("No running opencode server matches %s", cwd), vim.log.levels.WARN)
 				return
 			end
 
-			notify(string.format("Starting opencode session for %s...", cwd), vim.log.levels.INFO)
+			notify(string.format("No opencode server matches %s; starting a tmux-backed opencode session", cwd), vim.log.levels.INFO)
 
 			local started, detail = ensure_opencode_session(cwd)
 			if not started then
-				notify(string.format("Unable to start opencode session: %s", detail), vim.log.levels.WARN)
+				notify(string.format("Unable to start tmux-backed opencode session for %s: %s", cwd, detail), vim.log.levels.WARN)
 				return
 			end
 
-			vim.defer_fn(function()
-				require("opencode.server")
-					.get_all()
-					:next(function(retry_servers)
-					local retry_target = select_best_server_for_cwd(retry_servers, cwd)
-					if retry_target == nil then
-						notify(
-							string.format(
-								"Started opencode session for %s but no matching opencode server was found",
-								detail
-							),
-							vim.log.levels.WARN
-						)
-							return
-						end
-
-						connect_server(retry_target)
-						notify(
-							string.format(
-								"Started opencode session for %s and switched connection to %s",
-								detail,
-								format_server(retry_target)
-							),
-							vim.log.levels.INFO
-						)
-						if opts.on_ready then
-							opts.on_ready(retry_target)
-						end
-					end)
-					:catch(function(err)
-						notify(
-							string.format("Failed to inspect opencode servers: %s", err or "unknown error"),
-							vim.log.levels.WARN
-						)
-					end)
-			end, 2000)
+			notify(
+				string.format(
+					"Started tmux target %s for %s; waiting for the opencode server to register",
+					format_tmux_target(detail.tmux_target),
+					detail.label
+				),
+				vim.log.levels.INFO
+			)
+			wait_for_server(cwd, detail, opts)
 		end)
 		:catch(function(err)
 			notify(string.format("Failed to inspect opencode servers: %s", err or "unknown error"), vim.log.levels.WARN)
