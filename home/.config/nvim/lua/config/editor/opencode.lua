@@ -1,5 +1,7 @@
 local M = {}
 local known_servers_by_cwd = {}
+local manual_server_override = false
+local manual_override_server = nil
 
 M.opts = {
 	server = {
@@ -65,6 +67,36 @@ local function connect_server(server)
 	known_servers_by_cwd[server.cwd] = server
 end
 
+local function clear_manual_server_override()
+	manual_server_override = false
+	manual_override_server = nil
+end
+
+local function clear_cached_server(cwd, server)
+	if cwd ~= nil then
+		known_servers_by_cwd[cwd] = nil
+	end
+
+	if manual_override_server ~= nil and server ~= nil and manual_override_server.port == server.port then
+		clear_manual_server_override()
+	end
+
+	local connected_server = require("opencode.events").connected_server
+	if connected_server ~= nil and server ~= nil and connected_server.port == server.port then
+		require("opencode.events").disconnect()
+	end
+end
+
+local function find_running_server(servers, server)
+	if server == nil then
+		return nil
+	end
+
+	return vim.iter(servers):find(function(candidate)
+		return candidate.port == server.port
+	end)
+end
+
 local function get_managed_worktree_branch(cwd)
 	local top_level = vim.system({ "git", "rev-parse", "--show-toplevel" }, { text = true, cwd = cwd }):wait()
 	if top_level.code ~= 0 then
@@ -85,10 +117,6 @@ local function get_managed_worktree_branch(cwd)
 		vim.fs.joinpath(vim.env.HOME, "projects", "worktrees", vim.fs.basename(vim.fs.dirname(common_dir_path)))
 	local prefix = worktree_root .. "/"
 	if top_level_dir:find(prefix, 1, true) ~= 1 then
-		local branch = vim.fs.basename(top_level_dir)
-		if branch ~= nil and branch ~= "" then
-			return branch
-		end
 		return nil
 	end
 
@@ -110,6 +138,30 @@ local function ensure_worktree_opencode_session(cwd)
 	return true, branch
 end
 
+local function ensure_repo_opencode_session(cwd)
+	local result = vim.system({ vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "create_worktree_session.sh") }, { text = true, cwd = cwd })
+		:wait()
+	if result.code ~= 0 then
+		return false, vim.trim(result.stderr ~= "" and result.stderr or result.stdout)
+	end
+
+	local branch = vim.system({ "git", "rev-parse", "--abbrev-ref", "HEAD" }, { text = true, cwd = cwd }):wait()
+	if branch.code == 0 then
+		return true, vim.trim(branch.stdout)
+	end
+
+	return true, cwd
+end
+
+local function ensure_opencode_session(cwd)
+	local worktree_branch = get_managed_worktree_branch(cwd)
+	if worktree_branch ~= nil and worktree_branch ~= "" then
+		return ensure_worktree_opencode_session(cwd)
+	end
+
+	return ensure_repo_opencode_session(cwd)
+end
+
 local function server_matches_cwd(server_cwd, cwd)
 	return server_cwd == cwd
 end
@@ -123,30 +175,62 @@ end
 function M.ensure_current_server(opts)
 	opts = opts or {}
 	local cwd = vim.fn.getcwd()
-	local connected_server = require("opencode.events").connected_server
 	local ensure_session = opts.ensure_session ~= false
-	local cached_server = known_servers_by_cwd[cwd]
-
-	if connected_server ~= nil and connected_server.cwd == cwd then
-		known_servers_by_cwd[cwd] = connected_server
-		if opts.on_ready then
-			opts.on_ready(connected_server)
-		end
-		return
-	end
-
-	if cached_server ~= nil then
-		connect_server(cached_server)
-		notify(string.format("Switched opencode connection to %s", format_server(cached_server)), vim.log.levels.INFO)
-		if opts.on_ready then
-			opts.on_ready(cached_server)
-		end
-		return
-	end
 
 	require("opencode.server")
 		.get_all()
 		:next(function(servers)
+			local connected_server = require("opencode.events").connected_server
+			local cached_server = known_servers_by_cwd[cwd]
+			local override_server = connected_server or manual_override_server
+
+			if manual_server_override and override_server ~= nil then
+				local live_override_server = find_running_server(servers, override_server)
+				if live_override_server ~= nil then
+					if connected_server == nil or connected_server.port ~= live_override_server.port then
+						connect_server(live_override_server)
+					end
+					if opts.on_ready then
+						opts.on_ready(live_override_server)
+					end
+					return
+				end
+
+				clear_cached_server(cwd, override_server)
+				override_server = nil
+				connected_server = require("opencode.events").connected_server
+			elseif manual_server_override then
+				clear_manual_server_override()
+			end
+
+			if connected_server ~= nil and connected_server.cwd == cwd then
+				local live_connected_server = find_running_server(servers, connected_server)
+				if live_connected_server ~= nil then
+					known_servers_by_cwd[cwd] = live_connected_server
+					if opts.on_ready then
+						opts.on_ready(live_connected_server)
+					end
+					return
+				end
+
+				clear_cached_server(cwd, connected_server)
+				connected_server = nil
+			end
+
+			if cached_server ~= nil then
+				local live_cached_server = find_running_server(servers, cached_server)
+				if live_cached_server ~= nil then
+					connect_server(live_cached_server)
+					notify(string.format("Switched opencode connection to %s", format_server(live_cached_server)), vim.log.levels.INFO)
+					if opts.on_ready then
+						opts.on_ready(live_cached_server)
+					end
+					return
+				end
+
+				clear_cached_server(cwd, cached_server)
+			end
+
 			local target_server = select_best_server_for_cwd(servers, cwd)
 			if target_server ~= nil then
 				if connected_server == nil or connected_server.port ~= target_server.port then
@@ -169,7 +253,7 @@ function M.ensure_current_server(opts)
 
 			notify(string.format("Starting opencode session for %s...", cwd), vim.log.levels.INFO)
 
-			local started, detail = ensure_worktree_opencode_session(cwd)
+			local started, detail = ensure_opencode_session(cwd)
 			if not started then
 				notify(string.format("Unable to start opencode session: %s", detail), vim.log.levels.WARN)
 				return
@@ -179,15 +263,15 @@ function M.ensure_current_server(opts)
 				require("opencode.server")
 					.get_all()
 					:next(function(retry_servers)
-						local retry_target = select_best_server_for_cwd(retry_servers, cwd)
-						if retry_target == nil then
-							notify(
-								string.format(
-									"Started worktree session for %s but no opencode server was found",
-									detail
-								),
-								vim.log.levels.WARN
-							)
+					local retry_target = select_best_server_for_cwd(retry_servers, cwd)
+					if retry_target == nil then
+						notify(
+							string.format(
+								"Started opencode session for %s but no matching opencode server was found",
+								detail
+							),
+							vim.log.levels.WARN
+						)
 							return
 						end
 
@@ -215,6 +299,21 @@ function M.ensure_current_server(opts)
 		:catch(function(err)
 			notify(string.format("Failed to inspect opencode servers: %s", err or "unknown error"), vim.log.levels.WARN)
 		end)
+end
+
+function M.select_server()
+	return require("opencode")
+		.select_server()
+		:next(function(server)
+			manual_server_override = true
+			manual_override_server = server
+			require("opencode.events").connected_server = server
+			known_servers_by_cwd[server.cwd] = server
+		end)
+end
+
+function M.reset_manual_server_override()
+	clear_manual_server_override()
 end
 
 return M

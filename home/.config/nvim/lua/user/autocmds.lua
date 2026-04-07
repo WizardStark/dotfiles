@@ -253,6 +253,12 @@ local mappings = {
 		end,
 	},
 	{
+		event = "DirChangedPre",
+		callback = function()
+			require("config.editor.opencode").reset_manual_server_override()
+		end,
+	},
+	{
 		event = { "BufEnter", "FocusGained", "DirChanged" },
 		callback = function()
 			if vim.g.workspaces_loaded then

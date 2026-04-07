@@ -2393,7 +2393,7 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>cc",
 		callback = function()
-			require("opencode").select_server()
+			require("config.editor.opencode").select_server()
 		end,
 		prefix = P.llm,
 		description = "Select opencode server",
@@ -2403,6 +2403,7 @@ local mappings = {
 		keys = "<leader>cd",
 		callback = function()
 			require("opencode.events").disconnect()
+			require("config.editor.opencode").reset_manual_server_override()
 		end,
 		prefix = P.llm,
 		description = "Disconnect from opencode",
