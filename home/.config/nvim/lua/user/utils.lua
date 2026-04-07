@@ -251,7 +251,10 @@ end
 function M.toggle_special_buffers(toggled_types)
 	if #toggled_types ~= 0 then
 		for _, type in ipairs(toggled_types) do
-			M.special_windows[type]()
+			local toggle = M.special_windows[type]
+			if toggle then
+				toggle()
+			end
 		end
 	else
 		local visible_window_filetypes = M.get_visible_window_filetypes()

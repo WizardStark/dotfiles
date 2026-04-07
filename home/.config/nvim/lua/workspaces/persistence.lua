@@ -339,6 +339,12 @@ function M.load_workspaces()
 
 	M.source_nvim_session_file(state.get().current_workspace, state.get().current_session, state.get().current_target)
 	require("user.utils").toggle_special_buffers(state.get().current_target.toggled_types)
+	if vim.list_contains(state.get().current_target.toggled_types, "pr-review") then
+		local ok, reviewer = pcall(require, "github-pr-reviewer")
+		if ok then
+			reviewer.resume_review_session()
+		end
+	end
 	require("workspaces.breakpoints").apply_breakpoints(state.get().current_target.breakpoints)
 	require("workspaces.toggleterms").toggle_active_terms(true)
 	require("workspaces.keymaps").setup_keymaps()

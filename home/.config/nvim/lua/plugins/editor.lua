@@ -92,6 +92,7 @@ return {
 			{ src = "https://github.com/moyiz/blink-emoji.nvim" },
 			{ src = "https://github.com/hrsh7th/cmp-calc" },
 		},
+		version = vim.version.range("1.*"),
 		config = function()
 			require("config.editor.blink_cmp")
 		end,

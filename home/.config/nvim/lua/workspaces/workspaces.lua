@@ -29,6 +29,25 @@ local function colors()
 	}
 end
 
+local function toggle_pr_review(toggled_types)
+	local ok, reviewer = pcall(require, "github-pr-reviewer")
+	if not ok then
+		return toggled_types
+	end
+
+	if vim.g.pr_review_number then
+		table.insert(toggled_types, "pr-review")
+		reviewer.suspend_review_session()
+		return toggled_types
+	end
+
+	if vim.list_contains(toggled_types, "pr-review") then
+		reviewer.resume_review_session()
+	end
+
+	return toggled_types
+end
+
 local function save_named_buffers()
 	local buflist = vim.api.nvim_list_bufs()
 	for _, bufnr in ipairs(buflist) do
@@ -135,6 +154,7 @@ local function persist_current_state(skip_session_file)
 	require("user.utils").close_terminal_buffers()
 
 	local toggled_types = require("user.utils").toggle_special_buffers({})
+	toggled_types = toggle_pr_review(toggled_types)
 	if not skip_session_file and ensure_target_dir(current_target) then
 		persist().write_nvim_session_file(current_workspace, current_session, current_target)
 	end
@@ -162,6 +182,7 @@ local function restore_target_state(workspace, session, target)
 	local pos = vim.api.nvim_win_get_cursor(win)
 
 	require("user.utils").toggle_special_buffers(target.toggled_types)
+	toggle_pr_review(target.toggled_types)
 	bps.apply_breakpoints(target.breakpoints)
 	M.set_session_metadata(session, target, {})
 	toggleterms().toggle_active_terms(true)
