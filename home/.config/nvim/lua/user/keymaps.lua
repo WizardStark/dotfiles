@@ -2422,19 +2422,6 @@ local mappings = {
 		description = "Send current context to opencode",
 	},
 	{
-		mode = { "x" },
-		keys = "<leader>cv",
-		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").prompt("send_this")
-				end,
-			})
-		end,
-		prefix = P.llm,
-		description = "Send visual selection to opencode",
-	},
-	{
 		mode = { "x", "n" },
 		keys = "<leader>cf",
 		callback = function()
