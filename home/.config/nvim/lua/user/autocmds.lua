@@ -150,6 +150,12 @@ local mappings = {
 		end,
 	},
 	{
+		event = "TextYankPost",
+		callback = function()
+			vim.hl.on_yank({ higroup = "Visual", timeout = 200 })
+		end,
+	},
+	{
 		event = "TermOpen",
 		callback = function()
 			vim.opt_local.number = false
