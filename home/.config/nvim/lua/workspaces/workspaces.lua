@@ -140,6 +140,49 @@ local function ensure_target_dir(target)
 	return false
 end
 
+---@param session WorkspaceSession
+---@param target WorkspaceTarget
+local function ensure_worktree_env_file(session, target)
+	if target.kind ~= "git_worktree" then
+		return
+	end
+
+	if type(target.dir) ~= "string" or target.dir == "" then
+		return
+	end
+
+	local target_dir = utils.normalize_dir(target.dir)
+	if type(target_dir) ~= "string" or target_dir == "" then
+		return
+	end
+
+	local target_env = target_dir .. "/.env"
+	if vim.uv.fs_stat(target_env) ~= nil then
+		return
+	end
+
+	local main_target = utils.get_main_target(session)
+	if main_target == nil or type(main_target.dir) ~= "string" or main_target.dir == "" then
+		return
+	end
+
+	local main_dir = utils.normalize_dir(main_target.dir)
+	if type(main_dir) ~= "string" or main_dir == "" then
+		return
+	end
+
+	local main_env = main_dir .. "/.env"
+	if vim.uv.fs_stat(main_env) == nil then
+		return
+	end
+
+	local relative_source = vim.fs.relpath(target_dir, main_env) or main_env
+	local ok, err = pcall(vim.uv.fs_symlink, relative_source, target_env)
+	if not ok then
+		vim.notify("Failed to link .env into worktree: " .. tostring(err), vim.log.levels.WARN)
+	end
+end
+
 local function persist_current_state(skip_session_file)
 	local current_workspace = state.get().current_workspace
 	local current_session = state.get().current_session
@@ -174,6 +217,7 @@ local function restore_target_state(workspace, session, target)
 	workspace.current_session_name = session.name
 	session.current_target_name = target.name
 	vim.cmd.cd(vim.fn.fnameescape(target.dir))
+	ensure_worktree_env_file(session, target)
 
 	stop_lsp_clients()
 	persist().source_nvim_session_file(workspace, session, target)
