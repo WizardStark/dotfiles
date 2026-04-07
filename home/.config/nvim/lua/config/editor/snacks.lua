@@ -144,19 +144,19 @@ require("snacks").setup({
 				},
 			},
 		},
-		sources = {
-			select = {
-				layout = {
-					preview = false,
-					preset = "select",
+			sources = {
+				select = {
 					layout = {
-						width = 0.5,
-						min_height = 12,
-						min_width = 70,
-						max_height = 50,
+						preview = false,
+						preset = "select",
+						layout = {
+							width = 0.35,
+							min_height = 8,
+							min_width = 50,
+							max_height = 18,
+						},
 					},
 				},
-			},
 			keymaps = {
 				format = keymaps_config.format,
 				confirm = keymaps_config.confirm,

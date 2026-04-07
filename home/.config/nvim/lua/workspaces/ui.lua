@@ -567,8 +567,22 @@ local target_picker = function()
 				ctx.preview:set_title(ctx.item.file)
 			end,
 			layout = {
-				preset = "select",
 				preview = false,
+				layout = {
+					backdrop = {
+						blend = 40,
+					},
+					width = 0.3,
+					min_width = 60,
+					height = 0.2,
+					min_height = 8,
+					box = "vertical",
+					border = "rounded",
+					title = " Target ",
+					title_pos = "center",
+					{ win = "list", border = "none" },
+					{ win = "input", height = 1, border = "top" },
+				},
 			},
 		}
 	)
