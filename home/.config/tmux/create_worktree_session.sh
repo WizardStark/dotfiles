@@ -28,6 +28,12 @@ ensure_tmux_window() {
     tmux new-session -d -s "$session_name" -n "$window_name" -c "$workdir"
   fi
 
+  if tmux list-panes -t "$session_name:$window_name" -F '#{pane_dead} #{pane_current_command}' \
+    | grep -Fx '0 opencode' >/dev/null 2>&1; then
+    echo "Opencode already running in: $session_name:$window_name"
+    return
+  fi
+
   tmux send-keys -t "$session_name:$window_name" "opencode --port" C-m
 }
 
