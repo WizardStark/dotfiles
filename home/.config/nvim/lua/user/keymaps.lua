@@ -2001,7 +2001,7 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>ls",
 		callback = function()
-			vim.cmd("LspStart")
+			vim.cmd("lsp start")
 		end,
 		prefix = P.lsp,
 		description = "Start",
@@ -2010,7 +2010,7 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>lr",
 		callback = function()
-			vim.cmd("LspRestart")
+			vim.cmd("lsp restart")
 		end,
 		prefix = P.lsp,
 		description = "Restart",
