@@ -299,6 +299,16 @@ local function select_best_server_for_cwd(servers, cwd)
 	end)
 end
 
+local function is_absence_error(err)
+	if type(err) ~= "string" then
+		return false
+	end
+
+	return err:find("No `opencode` processes found", 1, true) ~= nil
+		or err:find("No `opencode` servers found", 1, true) ~= nil
+		or err:find("No `opencode` responding on port:", 1, true) ~= nil
+end
+
 local function wait_for_server(cwd, startup, opts, attempt)
 	attempt = attempt or 1
 	local max_attempts = 8
@@ -346,6 +356,30 @@ local function wait_for_server(cwd, startup, opts, attempt)
 			)
 		end)
 		:catch(function(err)
+			if is_absence_error(err) then
+				if attempt < max_attempts then
+					vim.defer_fn(function()
+						wait_for_server(cwd, startup, opts, attempt + 1)
+					end, retry_delay_ms)
+					return
+				end
+
+				local diagnosis = diagnose_tmux_target(cwd)
+				local waited_seconds = attempt * retry_delay_ms / 1000
+				notify(
+					string.format(
+						"Started tmux target %s for %s, but no opencode server registered for %s after %ds. %s",
+						format_tmux_target(startup.tmux_target),
+						startup.label,
+						cwd,
+						waited_seconds,
+						diagnosis
+					),
+					vim.log.levels.WARN
+				)
+				return
+			end
+
 			notify(
 				string.format(
 					"Failed to inspect opencode servers while waiting for %s: %s",
@@ -455,6 +489,32 @@ function M.ensure_current_server(opts)
 			wait_for_server(cwd, detail, opts)
 		end)
 		:catch(function(err)
+			if is_absence_error(err) then
+				if not ensure_session then
+					notify(string.format("No running opencode server matches %s", cwd), vim.log.levels.WARN)
+					return
+				end
+
+				notify(string.format("No opencode server matches %s; starting a tmux-backed opencode session", cwd), vim.log.levels.INFO)
+
+				local started, detail = ensure_opencode_session(cwd)
+				if not started then
+					notify(string.format("Unable to start tmux-backed opencode session for %s: %s", cwd, detail), vim.log.levels.WARN)
+					return
+				end
+
+				notify(
+					string.format(
+						"Started tmux target %s for %s; waiting for the opencode server to register",
+						format_tmux_target(detail.tmux_target),
+						detail.label
+					),
+					vim.log.levels.INFO
+				)
+				wait_for_server(cwd, detail, opts)
+				return
+			end
+
 			notify(string.format("Failed to inspect opencode servers: %s", err or "unknown error"), vim.log.levels.WARN)
 		end)
 end
