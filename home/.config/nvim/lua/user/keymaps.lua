@@ -2540,6 +2540,15 @@ local mappings = {
 		prefix = P.misc,
 		description = "Start treesitter",
 	},
+	{
+		mode = { "n" },
+		keys = "<leader>R",
+		callback = function()
+			vim.cmd("restart")
+		end,
+		prefix = P.misc,
+		description = "Restart Neovim",
+	},
 }
 
 return {
