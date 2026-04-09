@@ -47,6 +47,9 @@ local function on_attach(client, bufnr)
 	if vim.g.extra_lsp_actions ~= nil then
 		vim.g.extra_lsp_actions()
 	end
+	if client:supports_method(vim.lsp.protocol.Methods.textDocument_codeLens) then
+		vim.lsp.codelens.enable(true, { bufnr = bufnr })
+	end
 	vim.treesitter.start()
 end
 
@@ -86,8 +89,7 @@ require("typescript-tools").setup({
 	capabilities = capabilities,
 	settings = {
 		expose_as_code_action = "all",
-		-- Disabled on Neovim 0.12 for now.
-		-- code_lens = "all",
+		code_lens = "all",
 		tsserver_file_preferences = {
 			inlayHints = {
 				includeInlayParameterNameHints = "all",

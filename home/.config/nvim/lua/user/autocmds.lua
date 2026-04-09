@@ -1,5 +1,4 @@
 local toggled_terms = false
-local last_refreshed_time = nil
 
 local function fold_virt_text(result, s, lnum, coloff)
 	if not coloff then
@@ -69,14 +68,6 @@ local mappings = {
 		end,
 	},
 	{
-		event = { "BufEnter", "BufWritePost" },
-		callback = function()
-			-- Disabled on Neovim 0.12 for now.
-			-- vim.lsp.codelens.refresh({ bufnr = 0 })
-			last_refreshed_time = vim.loop.now()
-		end,
-	},
-	{
 		event = "BufWritePost",
 		pattern = "*.bib",
 		callback = function()
@@ -137,16 +128,6 @@ local mappings = {
 			vim.wo.foldenable = true
 			vim.bo[buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
 			vim.treesitter.start(buf, language)
-		end,
-	},
-	{
-		event = "InsertLeave",
-		callback = function()
-			if last_refreshed_time == nil or vim.loop.now() - last_refreshed_time > 15000 then
-				-- Disabled on Neovim 0.12 for now.
-				-- vim.lsp.codelens.refresh({ bufnr = 0 })
-				last_refreshed_time = vim.loop.now()
-			end
 		end,
 	},
 	{

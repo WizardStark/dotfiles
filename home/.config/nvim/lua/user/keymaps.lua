@@ -1352,8 +1352,7 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>cl",
 		callback = function()
-			-- Disabled on Neovim 0.12 for now.
-			-- vim.lsp.codelens.run()
+			vim.lsp.codelens.run()
 		end,
 		prefix = P.code,
 		description = "Codelens actions",
