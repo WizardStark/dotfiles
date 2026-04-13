@@ -101,7 +101,6 @@ return {
 	{
 		src = "https://github.com/mfussenegger/nvim-dap",
 		dependencies = {
-			{ src = "https://github.com/theHamsta/nvim-dap-virtual-text" },
 			{ src = "https://github.com/neovim/nvim-lspconfig" },
 			{ src = "https://github.com/igorlfs/nvim-dap-view" },
 			{ src = "https://github.com/jay-babu/mason-nvim-dap.nvim" },

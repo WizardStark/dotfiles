@@ -1,21 +1,20 @@
 local dap = require("dap")
 local dapview = require("dap-view")
 
-require("nvim-dap-virtual-text").setup({
-	automatic_installation = true,
-	handlers = {
-		function(config)
-			require("mason-nvim-dap").default_setup(config)
-		end,
-	},
-})
-
 dapview.setup({
 	auto_toggle = true,
 	winbar = {
 		sections = { "watches", "scopes", "exceptions", "breakpoints", "threads", "repl", "console" },
 	},
 	switchbuf = "usetab",
+	virtual_text = {
+		-- Control with `DapViewVirtualTextToggle`
+		enabled = true,
+		format = function(variable, _, _)
+			-- Strip out excessive whitespace
+			return " " .. variable.value:gsub("%s+", " ")
+		end,
+	},
 })
 
 vim.api.nvim_set_hl(0, "DapStopped", { ctermbg = 0, fg = "#1f1d2e", bg = "#f6c177" })
@@ -119,13 +118,13 @@ dap.configurations.svelte = {
 }
 
 dap.configurations.java = {
-  {
-    name = "Attach to remote JVM",
-    type = "java",
-    request = "attach",
-    hostName = "127.0.0.1",
-    port = 5005,
-  },
+	{
+		name = "Attach to remote JVM",
+		type = "java",
+		request = "attach",
+		hostName = "127.0.0.1",
+		port = 5005,
+	},
 }
 
 require("dap-go").setup()

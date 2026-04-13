@@ -179,9 +179,9 @@ end
 
 local function create_treewalker_hydra()
 	return get_hydra()({
-	name = "Treewalker",
-	mode = { "n", "x" },
-	hint = [[
+		name = "Treewalker",
+		mode = { "n", "x" },
+		hint = [[
 Move       Swap
 _h_: Left  _H_: Left
 _l_: Right _L_: Right
@@ -189,27 +189,27 @@ _j_: Down  _J_: Down
 _k_: Up    _K_: Up
 
 _q_: Exit]],
-	heads = {
-		{ "h", "<cmd>Treewalker Left<cr>" },
-		{ "l", "<cmd>Treewalker Right<cr>" },
-		{ "j", "<cmd>Treewalker Down<cr>" },
-		{ "k", "<cmd>Treewalker Up<cr>" },
+		heads = {
+			{ "h", "<cmd>Treewalker Left<cr>" },
+			{ "l", "<cmd>Treewalker Right<cr>" },
+			{ "j", "<cmd>Treewalker Down<cr>" },
+			{ "k", "<cmd>Treewalker Up<cr>" },
 
-		{ "H", "<cmd>Treewalker SwapLeft<cr>" },
-		{ "L", "<cmd>Treewalker SwapRight<cr>" },
-		{ "K", "<cmd>Treewalker SwapUp<cr>" },
-		{ "J", "<cmd>Treewalker SwapDown<cr>" },
+			{ "H", "<cmd>Treewalker SwapLeft<cr>" },
+			{ "L", "<cmd>Treewalker SwapRight<cr>" },
+			{ "K", "<cmd>Treewalker SwapUp<cr>" },
+			{ "J", "<cmd>Treewalker SwapDown<cr>" },
 
-		{ "q", nil, { exit = true, nowait = true, desc = false } },
-	},
-})
+			{ "q", nil, { exit = true, nowait = true, desc = false } },
+		},
+	})
 end
 
 local function create_dap_hydra()
 	return get_hydra()({
-	name = "Dap",
-	mode = { "n", "x" },
-	hint = [[
+		name = "Dap",
+		mode = { "n", "x" },
+		hint = [[
 _<C-b>_: Toggle breakpoint _O_: Step over
 _<C-c>_: Continue          _I_: Step into
 _<C-w>_: Add to watches    _U_: Step out
@@ -221,164 +221,163 @@ _<C-S-c>_: Run to cursor
 _<C-r>_: Rerun last debug
 _<C-v>_: Toggle virtual text
 _q_: Exit]],
-	config = {
-		hint = {
-			offset = 3,
-			position = "top-right",
+		config = {
+			hint = {
+				offset = 3,
+				position = "top-right",
+			},
+			foreign_keys = "run",
+			invoke_on_body = true,
 		},
-		foreign_keys = "run",
-		invoke_on_body = true,
-	},
-	heads = {
-		{
-			"<C-b>",
-			function()
-				require("dap").toggle_breakpoint()
-			end,
-			{ desc = false },
+		heads = {
+			{
+				"<C-b>",
+				function()
+					require("dap").toggle_breakpoint()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-S-b>",
+				function()
+					require("dap").clear_breakpoints()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-r>",
+				function()
+					trigger_dap(require("dap").run_last)
+				end,
+				{ desc = false },
+			},
+			{
+				"O",
+				function()
+					require("dap").step_over()
+				end,
+				{ desc = false },
+			},
+			{
+				"I",
+				function()
+					require("dap").step_into({ askForTargets = true })
+				end,
+				{ desc = false },
+			},
+			{
+				"U",
+				function()
+					require("dap").step_out()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-S-c>",
+				function()
+					require("dap").run_to_cursor()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-S-r>",
+				function()
+					local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
+					if mode == "n" then
+						require("dap").repl.execute(vim.fn.expand("<cword>"))
+					elseif mode == "V" or mode == "v" then
+						vim.cmd([[normal! vv]])
+						local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
+						require("dap").repl.execute(text)
+					end
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-w>",
+				function()
+					require("dap-view").add_expr()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-e>",
+				function()
+					local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
+					if mode == "n" then
+						require("dap.ui.widgets").hover(vim.fn.expand("<cword>"))
+					elseif mode == "V" or mode == "v" then
+						vim.cmd([[normal! vv]])
+						local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
+						require("dap.ui.widgets").hover(text)
+					end
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-c>",
+				continue,
+				{ desc = false },
+			},
+			{
+				"Q",
+				function()
+					require("dap").terminate()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-v>",
+				function()
+					require("dap-view").virtual_text_toggle()
+				end,
+				{ desc = false },
+			},
+			{
+				"<C-t>",
+				function()
+					require("dap-view").toggle()
+				end,
+				{ desc = false },
+			},
+			{ "q", nil, { exit = true, nowait = true, desc = false } },
 		},
-		{
-			"<C-S-b>",
-			function()
-				require("dap").clear_breakpoints()
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-r>",
-			function()
-				trigger_dap(require("dap").run_last)
-			end,
-			{ desc = false },
-		},
-		{
-			"O",
-			function()
-				require("dap").step_over()
-			end,
-			{ desc = false },
-		},
-		{
-			"I",
-			function()
-				require("dap").step_into({ askForTargets = true })
-			end,
-			{ desc = false },
-		},
-		{
-			"U",
-			function()
-				require("dap").step_out()
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-S-c>",
-			function()
-				require("dap").run_to_cursor()
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-S-r>",
-			function()
-				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
-				if mode == "n" then
-					require("dap").repl.execute(vim.fn.expand("<cword>"))
-				elseif mode == "V" or mode == "v" then
-					vim.cmd([[normal! vv]])
-					local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
-					require("dap").repl.execute(text)
-				end
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-w>",
-			function()
-				require("dap-view").add_expr()
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-e>",
-			function()
-				local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
-				if mode == "n" then
-					require("dap.ui.widgets").hover(vim.fn.expand("<cword>"))
-				elseif mode == "V" or mode == "v" then
-					vim.cmd([[normal! vv]])
-					local text = table.concat(vim.fn.getregion(vim.fn.getpos("'<"), vim.fn.getpos("'>")), "\n")
-					require("dap.ui.widgets").hover(text)
-				end
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-c>",
-			continue,
-			{ desc = false },
-		},
-		{
-			"Q",
-			function()
-				require("dap").terminate()
-				require("nvim-dap-virtual-text").refresh()
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-v>",
-			function()
-				require("nvim-dap-virtual-text").toggle()
-			end,
-			{ desc = false },
-		},
-		{
-			"<C-t>",
-			function()
-				require("dap-view").toggle()
-			end,
-			{ desc = false },
-		},
-		{ "q", nil, { exit = true, nowait = true, desc = false } },
-	},
-})
+	})
 end
 
 local function create_trouble_hydra()
 	return get_hydra()({
-	name = "Trouble",
-	mode = { "n", "x" },
-	hint = [[
+		name = "Trouble",
+		mode = { "n", "x" },
+		hint = [[
 _N_: Next item
 _T_: Prev item
 
 _q_: Exit]],
-	heads = {
-		{
-			"N",
-			function()
-				require("trouble").next({ jump = true })
-			end,
-		},
-		{
-			"T",
-			function()
-				require("trouble").prev({ jump = true })
-			end,
-		},
+		heads = {
+			{
+				"N",
+				function()
+					require("trouble").next({ jump = true })
+				end,
+			},
+			{
+				"T",
+				function()
+					require("trouble").prev({ jump = true })
+				end,
+			},
 
-		{ "q", nil, { exit = true, nowait = true, desc = false } },
-	},
-})
+			{ "q", nil, { exit = true, nowait = true, desc = false } },
+		},
+	})
 end
 
 local function create_git_hydra()
 	return get_hydra()({
-	name = "Git",
-	mode = { "n", "x" },
-	hint = [[
+		name = "Git",
+		mode = { "n", "x" },
+		hint = [[
 _N_: Next hunk  _<C-n>_: Next file
 _T_: Prev hunk  _<C-t>_: Prev file
 _S_: Stage hunk
@@ -386,62 +385,62 @@ _R_: Reset hunk
 _O_: Toggle diff
 
 _q_: Exit]],
-	config = {
-		color = "pink",
-		hint = {
-			type = "window",
-			offset = 2,
-			position = "bottom-right",
+		config = {
+			color = "pink",
+			hint = {
+				type = "window",
+				offset = 2,
+				position = "bottom-right",
+			},
 		},
-	},
-	heads = {
-		{
-			"S",
-			function()
-				return require("mini.diff").operator("apply")
-			end,
-			{ expr = true },
+		heads = {
+			{
+				"S",
+				function()
+					return require("mini.diff").operator("apply")
+				end,
+				{ expr = true },
+			},
+			{
+				"R",
+				function()
+					return require("mini.diff").operator("reset")
+				end,
+				{ expr = true },
+			},
+			{
+				"N",
+				function()
+					traverse_changes(true)
+				end,
+			},
+			{
+				"T",
+				function()
+					traverse_changes(false)
+				end,
+			},
+			{
+				"<C-n>",
+				function()
+					next_changed_file(true)
+				end,
+			},
+			{
+				"<C-t>",
+				function()
+					next_changed_file(false)
+				end,
+			},
+			{
+				"O",
+				function()
+					require("mini.diff").toggle_overlay(0)
+				end,
+			},
+			{ "q", nil, { exit = true, nowait = true, desc = false } },
 		},
-		{
-			"R",
-			function()
-				return require("mini.diff").operator("reset")
-			end,
-			{ expr = true },
-		},
-		{
-			"N",
-			function()
-				traverse_changes(true)
-			end,
-		},
-		{
-			"T",
-			function()
-				traverse_changes(false)
-			end,
-		},
-		{
-			"<C-n>",
-			function()
-				next_changed_file(true)
-			end,
-		},
-		{
-			"<C-t>",
-			function()
-				next_changed_file(false)
-			end,
-		},
-		{
-			"O",
-			function()
-				require("mini.diff").toggle_overlay(0)
-			end,
-		},
-		{ "q", nil, { exit = true, nowait = true, desc = false } },
-	},
-})
+	})
 end
 
 local factories = {

@@ -1153,7 +1153,6 @@ local mappings = {
 		keys = "<leader>de",
 		callback = function()
 			require("dap").terminate()
-			require("nvim-dap-virtual-text").refresh()
 		end,
 		prefix = P.debug,
 		description = "Stop debug session",
@@ -1171,10 +1170,10 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>dv",
 		callback = function()
-			require("nvim-dap-virtual-text").toggle()
+			require("dap-view").virtual_text_toggle()
 		end,
 		prefix = P.debug,
-		description = "Reset and toggle ui",
+		description = "Toggle virtual text",
 	},
 	{
 		mode = { "n" },
@@ -1976,6 +1975,16 @@ local mappings = {
 		mode = { "n" },
 		keys = "K",
 		callback = function()
+			local clients = vim.lsp.get_clients({
+				bufnr = 0,
+				method = vim.lsp.protocol.Methods.textDocument_hover,
+			})
+
+			if #clients == 0 then
+				vim.cmd("normal! K")
+				return
+			end
+
 			vim.lsp.buf.hover({
 				close_events = {
 					"CursorMoved",
