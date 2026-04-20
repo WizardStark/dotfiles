@@ -1297,24 +1297,6 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "gt",
-		callback = function()
-			require("snacks").picker.lsp_type_definitions()
-		end,
-		prefix = P.code,
-		description = "Go to type definition",
-	},
-	{
-		mode = { "n" },
-		keys = "<leader>rn",
-		callback = function()
-			require("config.editor.rename").rename({ insert = true })
-		end,
-		prefix = P.code,
-		description = "Rename",
-	},
-	{
-		mode = { "n" },
 		keys = "<leader>gf",
 		callback = function()
 			require("grug-far").toggle_instance({
@@ -1337,24 +1319,6 @@ local mappings = {
 		end,
 		prefix = P.code,
 		description = "Search and replace visual selection",
-	},
-	{
-		mode = { "n", "x" },
-		keys = "<leader>ca",
-		callback = function()
-			vim.lsp.buf.code_action()
-		end,
-		prefix = P.code,
-		description = "Show code actions",
-	},
-	{
-		mode = { "n", "x" },
-		keys = "<leader>cl",
-		callback = function()
-			vim.lsp.codelens.run()
-		end,
-		prefix = P.code,
-		description = "Codelens actions",
 	},
 	{
 		mode = { "n" },
