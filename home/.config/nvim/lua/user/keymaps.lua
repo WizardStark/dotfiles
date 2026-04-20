@@ -1743,19 +1743,10 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>nh",
 		callback = function()
-			require("user.cmdline").show_messages()
+			vim.cmd("messages")
 		end,
 		prefix = P.misc,
 		description = "Show message history",
-	},
-	{
-		mode = { "n", "v" },
-		keys = "<leader><BS>",
-		callback = function()
-			require("user.cmdline").clear_messages()
-		end,
-		prefix = P.misc,
-		description = "Clear messages",
 	},
 	{
 		mode = { "n" },

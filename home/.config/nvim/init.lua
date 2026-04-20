@@ -6,8 +6,7 @@ vim.g.loaded_netrwPlugin = 1
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
-require("user.cmdline").setup()
-
+require("vim._core.ui2").enable({})
 vim.g.lclpath = vim.fn.stdpath("config") .. "/lua/lcl"
 
 if not vim.loop.fs_stat(vim.g.lclpath) then

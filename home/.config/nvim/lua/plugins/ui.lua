@@ -76,9 +76,8 @@ return {
 			require("quicker").setup({})
 		end,
 	},
-	-- TODO: Migrate when ui2 is stable
-	-- {
-	-- 	src = "https://github.com/rachartier/tiny-cmdline.nvim",
-	-- 	config = function() end,
-	-- },
+	{
+		src = "https://github.com/rachartier/tiny-cmdline.nvim",
+		config = function() end,
+	},
 }
