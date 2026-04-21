@@ -3,7 +3,7 @@
 if [[ $# -eq 1 ]]; then
   selected=$1
 else
-  selected=$(tmux ls | fzf 2>/dev/tty)
+  selected=$(tmux ls | fzf --layout=reverse --border=none --prompt='sessions > ' 2>/dev/tty)
 fi
 
 if [[ -z $selected ]]; then
@@ -11,5 +11,5 @@ if [[ -z $selected ]]; then
 fi
 
 selected_name="${selected%%:*}"
-tmux switch -t $selected_name
+tmux switch-client -t "$selected_name"
 exit 0
