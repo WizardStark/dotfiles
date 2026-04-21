@@ -16,6 +16,9 @@ return {
 	},
 	{
 		src = "https://github.com/MeanderingProgrammer/render-markdown.nvim",
+		dependencies = {
+			{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
+		},
 		config = function()
 			require("render-markdown").setup({
 				file_types = { "markdown" },

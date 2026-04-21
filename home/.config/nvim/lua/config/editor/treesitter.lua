@@ -1,4 +1,14 @@
-local ensureInstalled = { "lua", "python" }
+local ensureInstalled = {
+	"go",
+	"html",
+	"java",
+	"lua",
+	"markdown",
+	"markdown_inline",
+	"python",
+	"toml",
+	"yaml",
+}
 local alreadyInstalled = require("nvim-treesitter.config").get_installed()
 local parsersToInstall = vim.iter(ensureInstalled)
 	:filter(function(parser)
