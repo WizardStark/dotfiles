@@ -114,30 +114,18 @@ local function find_running_server(servers, server)
 	end)
 end
 
-local function get_managed_worktree_branch(cwd)
-	local top_level = vim.system({ "git", "rev-parse", "--show-toplevel" }, { text = true, cwd = cwd }):wait()
-	if top_level.code ~= 0 then
-		return nil
+local function get_branch_name(cwd)
+	local branch_result = vim.system({ "git", "rev-parse", "--abbrev-ref", "HEAD" }, { text = true, cwd = cwd }):wait()
+	if branch_result.code ~= 0 then
+		return nil, trim_output(branch_result)
 	end
 
-	local common_dir = vim.system(
-		{ "git", "rev-parse", "--path-format=absolute", "--git-common-dir" },
-		{ text = true, cwd = cwd }
-	):wait()
-	if common_dir.code ~= 0 then
-		return nil
+	local branch = vim.trim(branch_result.stdout)
+	if branch == "" or branch == "HEAD" then
+		return nil, "Unable to determine git branch"
 	end
 
-	local top_level_dir = vim.trim(top_level.stdout)
-	local common_dir_path = vim.trim(common_dir.stdout)
-	local worktree_root =
-		vim.fs.joinpath(vim.env.HOME, "projects", "worktrees", vim.fs.basename(vim.fs.dirname(common_dir_path)))
-	local prefix = worktree_root .. "/"
-	if top_level_dir:find(prefix, 1, true) ~= 1 then
-		return nil
-	end
-
-	return top_level_dir:sub(#prefix + 1)
+	return branch, nil
 end
 
 local function get_repo_tmux_target(cwd)
@@ -151,15 +139,9 @@ local function get_repo_tmux_target(cwd)
 
 	local common_dir_path = vim.trim(common_dir.stdout)
 	local session_name = vim.fs.basename(vim.fs.dirname(common_dir_path))
-	local worktree_branch = get_managed_worktree_branch(cwd)
-	local branch_result = vim.system({ "git", "rev-parse", "--abbrev-ref", "HEAD" }, { text = true, cwd = cwd }):wait()
-	if branch_result.code ~= 0 then
-		return nil, trim_output(branch_result)
-	end
-
-	local branch_name = worktree_branch or vim.trim(branch_result.stdout)
-	if branch_name == "" then
-		return nil, "Unable to determine git branch"
+	local branch_name, branch_err = get_branch_name(cwd)
+	if branch_name == nil then
+		return nil, branch_err or "Unable to determine git branch"
 	end
 
 	return {
@@ -186,7 +168,11 @@ local function diagnose_tmux_target(cwd)
 		return "opencode is not installed or not on PATH"
 	end
 
-	local bootstrap_script = vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "create_worktree_session.sh")
+	if vim.fn.executable("wt") ~= 1 then
+		return "worktrunk is not installed or not on PATH"
+	end
+
+	local bootstrap_script = vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "ensure_opencode_tmux_session.sh")
 	if vim.fn.executable(bootstrap_script) ~= 1 then
 		return string.format("tmux bootstrap script is not executable: %s", bootstrap_script)
 	end
@@ -245,14 +231,16 @@ local function diagnose_tmux_target(cwd)
 	)
 end
 
-local function ensure_worktree_opencode_session(cwd)
-	local branch = get_managed_worktree_branch(cwd)
-	if branch == nil or branch == "" then
-		return false, "directory is not a managed worktree"
+local function ensure_existing_opencode_session(cwd)
+	local branch, branch_err = get_branch_name(cwd)
+	if branch == nil then
+		return false, branch_err or "Unable to determine git branch"
 	end
 
-	local result = vim.system({ "zsh", "-ic", "gwtcs " .. vim.fn.shellescape(branch) }, { text = true, cwd = cwd })
-		:wait()
+	local result = vim.system(
+		{ vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "ensure_opencode_tmux_session.sh") },
+		{ text = true, cwd = cwd }
+	):wait()
 	if result.code ~= 0 then
 		return false, trim_output(result)
 	end
@@ -260,33 +248,14 @@ local function ensure_worktree_opencode_session(cwd)
 	local target, _ = get_repo_tmux_target(cwd)
 	return true, {
 		kind = "worktree",
-		label = branch,
+		label = target and target.branch_name or branch,
 		tmux_target = target,
-	}
-end
-
-local function ensure_repo_opencode_session(cwd)
-	local result = vim.system({ vim.fs.joinpath(vim.env.HOME, ".config", "tmux", "create_worktree_session.sh") }, { text = true, cwd = cwd })
-		:wait()
-	if result.code ~= 0 then
-		return false, trim_output(result)
-	end
-
-	local target, _ = get_repo_tmux_target(cwd)
-	return true, {
-		kind = "repo",
-		label = target and target.branch_name or cwd,
-		tmux_target = target,
+		cwd = cwd,
 	}
 end
 
 local function ensure_opencode_session(cwd)
-	local worktree_branch = get_managed_worktree_branch(cwd)
-	if worktree_branch ~= nil and worktree_branch ~= "" then
-		return ensure_worktree_opencode_session(cwd)
-	end
-
-	return ensure_repo_opencode_session(cwd)
+	return ensure_existing_opencode_session(cwd)
 end
 
 local function server_matches_cwd(server_cwd, cwd)
@@ -478,6 +447,8 @@ function M.ensure_current_server(opts)
 				return
 			end
 
+			local session_cwd = detail.cwd or cwd
+
 			notify(
 				string.format(
 					"Started tmux target %s for %s; waiting for the opencode server to register",
@@ -486,7 +457,7 @@ function M.ensure_current_server(opts)
 				),
 				vim.log.levels.INFO
 			)
-			wait_for_server(cwd, detail, opts)
+			wait_for_server(session_cwd, detail, opts)
 		end)
 		:catch(function(err)
 			if is_absence_error(err) then
@@ -503,6 +474,8 @@ function M.ensure_current_server(opts)
 					return
 				end
 
+				local session_cwd = detail.cwd or cwd
+
 				notify(
 					string.format(
 						"Started tmux target %s for %s; waiting for the opencode server to register",
@@ -511,7 +484,7 @@ function M.ensure_current_server(opts)
 					),
 					vim.log.levels.INFO
 				)
-				wait_for_server(cwd, detail, opts)
+				wait_for_server(session_cwd, detail, opts)
 				return
 			end
 

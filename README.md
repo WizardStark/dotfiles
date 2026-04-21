@@ -26,6 +26,10 @@ cd dotfiles
 
 Use `./sync.sh` after changing dotfiles-managed scripts or adding dependencies.
 
+That includes newly added CLI dependencies such as `worktrunk`: keep them in the
+repo-managed install sources (`Brewfile` or `scripts/manifest.tsv`) so `setup.sh`
+and `sync.sh` bootstrap them automatically.
+
 ```bash
 ./sync.sh
 ```

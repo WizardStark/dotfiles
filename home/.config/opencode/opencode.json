@@ -3,7 +3,7 @@
     "command": {
         "wts": {
             "description": "Create a git worktree and tmux session",
-            "template": "Create a git worktree and tmux workspace for the current repository by running `~/.config/tmux/create_worktree_session.sh $ARGUMENTS`. Treat the first argument as the branch name and the optional second argument as the tmux window name. Reuse one tmux session per repository, add one window per feature/worktree, report the created worktree path plus tmux session/window names, and surface any failure clearly."
+            "template": "Create or switch to a git worktree and ensure the tmux-backed opencode session exists by running `zsh -ic 'gwtcs $ARGUMENTS'`. Treat the first argument as the branch name, rely on the dotfiles-managed `gwtcs` alias which uses worktrunk behind the scenes, report the active worktree path plus tmux session/window names, and surface any failure clearly."
         }
     },
     "mcp": {

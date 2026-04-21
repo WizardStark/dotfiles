@@ -3,7 +3,7 @@
 set -euo pipefail
 
 fail() {
-  echo "$1" >&2
+  printf '%s\n' "$1" >&2
   exit 1
 }
 
@@ -37,15 +37,15 @@ ensure_tmux_window() {
 
   if tmux has-session -t "$session_name" 2>/dev/null; then
     if tmux list-windows -t "$session_name" -F '#W' | grep -Fx "$window_name" >/dev/null 2>&1; then
-      echo "Using existing tmux window: $target"
+      printf 'Using existing tmux window: %s\n' "$target"
     else
       tmux new-window -d -t "$session_name" -n "$window_name" -c "$workdir"
-      echo "Created tmux window: $target"
+      printf 'Created tmux window: %s\n' "$target"
     fi
   else
     tmux new-session -d -s "$session_name" -n "$window_name" -c "$workdir"
-    echo "Created tmux session: $session_name"
-    echo "Created tmux window: $target"
+    printf 'Created tmux session: %s\n' "$session_name"
+    printf 'Created tmux window: %s\n' "$target"
   fi
 
   while IFS=' ' read -r pane_id pane_dead pane_command; do
@@ -54,7 +54,7 @@ ensure_tmux_window() {
     fi
 
     if [[ "$pane_dead" == "0" && "$pane_command" == "opencode" ]]; then
-      echo "Opencode already running in: $target"
+      printf 'Opencode already running in: %s\n' "$target"
       return
     fi
   done < <(tmux list-panes -t "$target" -F '#{pane_id} #{pane_dead} #{pane_current_command}')
@@ -66,54 +66,26 @@ ensure_tmux_window() {
 
   if [[ "$pane_dead" == "1" ]]; then
     tmux respawn-pane -k -t "$pane_id" -c "$workdir"
-    echo "Respawned dead tmux pane in: $target"
+    printf 'Respawned dead tmux pane in: %s\n' "$target"
   fi
 
   tmux send-keys -t "$pane_id" "opencode --port" C-m
-  echo "Launching opencode in: $target"
+  printf 'Launching opencode in: %s\n' "$target"
 }
 
-if [[ $# -eq 0 ]]; then
-  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || {
-    fail "Unable to determine current branch"
-  }
+branch_name=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || {
+  fail "Unable to determine current branch"
+}
 
-  workdir="$(pwd)"
-  window_name="$(sanitize_window_name "$current_branch")"
-
-  ensure_tmux_window "$workdir" "$window_name"
-
-  echo "Using repository path: $workdir"
-  echo "Using tmux session: $session_name"
-  echo "Created tmux window: $window_name"
-  exit 0
+if [[ "$branch_name" == "HEAD" || -z "$branch_name" ]]; then
+  fail "Unable to determine git branch"
 fi
 
-if [[ $# -gt 2 ]]; then
-  fail "Usage: create_worktree_session.sh [branch-name] [window-name]"
-fi
+workdir="$(pwd)"
+window_name="$(sanitize_window_name "$branch_name")"
 
-branch_name="$1"
-requested_window_name="${2:-}"
-worktree_root="$HOME/projects/worktrees/$repo_name"
-worktree_path="$worktree_root/$branch_name"
-default_window_name="$(sanitize_window_name "$branch_name")"
-window_name="${requested_window_name:-$default_window_name}"
+ensure_tmux_window "$workdir" "$window_name"
 
-mkdir -p "$worktree_root"
-
-if [[ -e "$worktree_path" ]]; then
-  echo "Using existing worktree: $worktree_path"
-else
-  if git show-ref --verify --quiet "refs/heads/$branch_name"; then
-    git worktree add "$worktree_path" "$branch_name"
-  else
-    git worktree add -b "$branch_name" "$worktree_path"
-  fi
-fi
-
-ensure_tmux_window "$worktree_path" "$window_name"
-
-echo "Created worktree: $worktree_path"
-echo "Using tmux session: $session_name"
-echo "Created tmux window: $window_name"
+printf 'Using repository path: %s\n' "$workdir"
+printf 'Using tmux session: %s\n' "$session_name"
+printf 'Using tmux window: %s\n' "$window_name"
