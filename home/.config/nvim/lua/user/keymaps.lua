@@ -1692,7 +1692,9 @@ local mappings = {
 	{
 		mode = { "n" },
 		keys = "<leader>pd",
-		callback = "<CMD>PackDelete<CR>",
+		callback = function()
+			vim.cmd.PackDelete()
+		end,
 		prefix = P.misc,
 		description = "Delete plugin",
 	},

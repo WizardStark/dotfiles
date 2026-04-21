@@ -224,7 +224,7 @@ local function create_pack_commands()
 				return
 			end
 
-			local ok, err = pcall(vim.pack.del, { choice })
+			local ok, err = pcall(vim.pack.del, { choice }, { force = true })
 			if ok then
 				vim.notify("Deleted: " .. choice, vim.log.levels.INFO, { title = "Package manager" })
 			else
