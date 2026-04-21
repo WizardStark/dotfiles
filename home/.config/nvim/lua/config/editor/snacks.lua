@@ -1,72 +1,5 @@
 Snacks_picker_hist = {}
 
-local keymaps_config = {
-	format = function(item, picker)
-		local ret = {} ---@type snacks.picker.Highlight[]
-		---@type vim.api.keyset.get_keymap
-		local k = item.item
-		local a = Snacks.picker.util.align
-		local lhs
-
-		if item.item.type == "unmapped" then
-			lhs = ""
-		elseif item.type == "keymap" then
-			lhs = Snacks.util.normkey(k.lhs)
-		end
-
-		ret[#ret + 1] = { a(k.mode, 11), "SnacksPickerKeymapMode" }
-		ret[#ret + 1] = { " │ " }
-		ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
-		ret[#ret + 1] = { " " }
-
-		if k.buffer and k.buffer > 0 then
-			ret[#ret + 1] = { a("buf:" .. k.buffer, 6), "SnacksPickerBufNr" }
-		else
-			ret[#ret + 1] = { a("", 6) }
-		end
-		ret[#ret + 1] = { " │ " }
-		ret[#ret + 1] = { a(k.desc or "", 20) }
-
-		return ret
-	end,
-	preview = false,
-	global = true,
-	plugs = false,
-	["local"] = true,
-	modes = { "n", "v", "x", "s", "o", "i", "c", "t" },
-	---@param picker snacks.Picker
-	confirm = function(picker, item)
-		picker:norm(function()
-			if item then
-				picker:close()
-				if item.type == "keymap" then
-					vim.api.nvim_input(item.item.lhs)
-				elseif item.item.type == "unmapped" then
-					item.item.callback()
-				end
-			end
-		end)
-	end,
-	actions = {
-		toggle_global = function(picker)
-			picker.opts.global = not picker.opts.global
-			picker:find()
-		end,
-		toggle_buffer = function(picker)
-			picker.opts["local"] = not picker.opts["local"]
-			picker:find()
-		end,
-	},
-	win = {
-		input = {
-			keys = {
-				["<a-g>"] = { "toggle_global", mode = { "n", "i" }, desc = "Toggle Global Keymaps" },
-				["<a-b>"] = { "toggle_buffer", mode = { "n", "i" }, desc = "Toggle Buffer Keymaps" },
-			},
-		},
-	},
-}
-
 require("snacks").setup({
 	dashboard = { enabled = false },
 	quickfile = { enabled = false },
@@ -144,29 +77,309 @@ require("snacks").setup({
 				},
 			},
 		},
-			sources = {
-				select = {
+		sources = {
+			select = {
+				layout = {
+					preview = false,
+					preset = "select",
 					layout = {
-						preview = false,
-						preset = "select",
-						layout = {
-							width = 0.35,
-							min_height = 8,
-							min_width = 50,
-							max_height = 18,
-						},
+						width = 0.35,
+						min_height = 8,
+						min_width = 50,
+						max_height = 18,
 					},
 				},
+			},
 			keymaps = {
-				format = keymaps_config.format,
-				confirm = keymaps_config.confirm,
+				format = ({
+					format = function(item, picker)
+						local ret = {} ---@type snacks.picker.Highlight[]
+						---@type vim.api.keyset.get_keymap
+						local k = item.item
+						local a = Snacks.picker.util.align
+						local lhs
+
+						if item.item.type == "unmapped" then
+							lhs = ""
+						elseif item.type == "keymap" then
+							lhs = Snacks.util.normkey(k.lhs)
+						end
+
+						ret[#ret + 1] = { a(k.mode, 11), "SnacksPickerKeymapMode" }
+						ret[#ret + 1] = { " │ " }
+						ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
+						ret[#ret + 1] = { " " }
+
+						if k.buffer and k.buffer > 0 then
+							ret[#ret + 1] = { a("buf:" .. k.buffer, 6), "SnacksPickerBufNr" }
+						else
+							ret[#ret + 1] = { a("", 6) }
+						end
+						ret[#ret + 1] = { " │ " }
+						ret[#ret + 1] = { a(k.desc or "", 20) }
+
+						return ret
+					end,
+					preview = false,
+					global = true,
+					plugs = false,
+					["local"] = true,
+					modes = { "n", "v", "x", "s", "o", "i", "c", "t" },
+					---@param picker snacks.Picker
+					confirm = function(picker, item)
+						picker:norm(function()
+							if item then
+								picker:close()
+								if item.type == "keymap" then
+									vim.api.nvim_input(item.item.lhs)
+								elseif item.item.type == "unmapped" then
+									item.item.callback()
+								end
+							end
+						end)
+					end,
+					actions = {
+						toggle_global = function(picker)
+							picker.opts.global = not picker.opts.global
+							picker:find()
+						end,
+						toggle_buffer = function(picker)
+							picker.opts["local"] = not picker.opts["local"]
+							picker:find()
+						end,
+					},
+					win = {
+						input = {
+							keys = {
+								["<a-g>"] = { "toggle_global", mode = { "n", "i" }, desc = "Toggle Global Keymaps" },
+								["<a-b>"] = { "toggle_buffer", mode = { "n", "i" }, desc = "Toggle Buffer Keymaps" },
+							},
+						},
+					},
+				}).format,
+				confirm = ({
+					format = function(item, picker)
+						local ret = {} ---@type snacks.picker.Highlight[]
+						---@type vim.api.keyset.get_keymap
+						local k = item.item
+						local a = Snacks.picker.util.align
+						local lhs
+
+						if item.item.type == "unmapped" then
+							lhs = ""
+						elseif item.type == "keymap" then
+							lhs = Snacks.util.normkey(k.lhs)
+						end
+
+						ret[#ret + 1] = { a(k.mode, 11), "SnacksPickerKeymapMode" }
+						ret[#ret + 1] = { " │ " }
+						ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
+						ret[#ret + 1] = { " " }
+
+						if k.buffer and k.buffer > 0 then
+							ret[#ret + 1] = { a("buf:" .. k.buffer, 6), "SnacksPickerBufNr" }
+						else
+							ret[#ret + 1] = { a("", 6) }
+						end
+						ret[#ret + 1] = { " │ " }
+						ret[#ret + 1] = { a(k.desc or "", 20) }
+
+						return ret
+					end,
+					preview = false,
+					global = true,
+					plugs = false,
+					["local"] = true,
+					modes = { "n", "v", "x", "s", "o", "i", "c", "t" },
+					---@param picker snacks.Picker
+					confirm = function(picker, item)
+						picker:norm(function()
+							if item then
+								picker:close()
+								if item.type == "keymap" then
+									vim.api.nvim_input(item.item.lhs)
+								elseif item.item.type == "unmapped" then
+									item.item.callback()
+								end
+							end
+						end)
+					end,
+					actions = {
+						toggle_global = function(picker)
+							picker.opts.global = not picker.opts.global
+							picker:find()
+						end,
+						toggle_buffer = function(picker)
+							picker.opts["local"] = not picker.opts["local"]
+							picker:find()
+						end,
+					},
+					win = {
+						input = {
+							keys = {
+								["<a-g>"] = { "toggle_global", mode = { "n", "i" }, desc = "Toggle Global Keymaps" },
+								["<a-b>"] = { "toggle_buffer", mode = { "n", "i" }, desc = "Toggle Buffer Keymaps" },
+							},
+						},
+					},
+				}).confirm,
 				finder = function(opts, ctx)
-					local raw_items = require("snacks.picker.source.vim").keymaps(keymaps_config)
+					local raw_items = require("snacks.picker.source.vim").keymaps(
+						{
+							format = function(item, picker)
+								local ret = {} ---@type snacks.picker.Highlight[]
+								---@type vim.api.keyset.get_keymap
+								local k = item.item
+								local a = Snacks.picker.util.align
+								local lhs
+
+								if item.item.type == "unmapped" then
+									lhs = ""
+								elseif item.type == "keymap" then
+									lhs = Snacks.util.normkey(k.lhs)
+								end
+
+								ret[#ret + 1] = { a(k.mode, 11), "SnacksPickerKeymapMode" }
+								ret[#ret + 1] = { " │ " }
+								ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
+								ret[#ret + 1] = { " " }
+
+								if k.buffer and k.buffer > 0 then
+									ret[#ret + 1] = { a("buf:" .. k.buffer, 6), "SnacksPickerBufNr" }
+								else
+									ret[#ret + 1] = { a("", 6) }
+								end
+								ret[#ret + 1] = { " │ " }
+								ret[#ret + 1] = { a(k.desc or "", 20) }
+
+								return ret
+							end,
+							preview = false,
+							global = true,
+							plugs = false,
+							["local"] = true,
+							modes = { "n", "v", "x", "s", "o", "i", "c", "t" },
+							---@param picker snacks.Picker
+							confirm = function(picker, item)
+								picker:norm(function()
+									if item then
+										picker:close()
+										if item.type == "keymap" then
+											vim.api.nvim_input(item.item.lhs)
+										elseif item.item.type == "unmapped" then
+											item.item.callback()
+										end
+									end
+								end)
+							end,
+							actions = {
+								toggle_global = function(picker)
+									picker.opts.global = not picker.opts.global
+									picker:find()
+								end,
+								toggle_buffer = function(picker)
+									picker.opts["local"] = not picker.opts["local"]
+									picker:find()
+								end,
+							},
+							win = {
+								input = {
+									keys = {
+										["<a-g>"] = {
+											"toggle_global",
+											mode = { "n", "i" },
+											desc = "Toggle Global Keymaps",
+										},
+										["<a-b>"] = {
+											"toggle_buffer",
+											mode = { "n", "i" },
+											desc = "Toggle Buffer Keymaps",
+										},
+									},
+								},
+							},
+						}
+					)
 					local items = {}
 					local grouped = {}
 					local mode_order = {}
 
-					for index, mode in ipairs(keymaps_config.modes) do
+					for index, mode in
+						ipairs(({
+							format = function(item, picker)
+								local ret = {} ---@type snacks.picker.Highlight[]
+								---@type vim.api.keyset.get_keymap
+								local k = item.item
+								local a = Snacks.picker.util.align
+								local lhs
+
+								if item.item.type == "unmapped" then
+									lhs = ""
+								elseif item.type == "keymap" then
+									lhs = Snacks.util.normkey(k.lhs)
+								end
+
+								ret[#ret + 1] = { a(k.mode, 11), "SnacksPickerKeymapMode" }
+								ret[#ret + 1] = { " │ " }
+								ret[#ret + 1] = { a(lhs, 15), "SnacksPickerKeymapLhs" }
+								ret[#ret + 1] = { " " }
+
+								if k.buffer and k.buffer > 0 then
+									ret[#ret + 1] = { a("buf:" .. k.buffer, 6), "SnacksPickerBufNr" }
+								else
+									ret[#ret + 1] = { a("", 6) }
+								end
+								ret[#ret + 1] = { " │ " }
+								ret[#ret + 1] = { a(k.desc or "", 20) }
+
+								return ret
+							end,
+							preview = false,
+							global = true,
+							plugs = false,
+							["local"] = true,
+							modes = { "n", "v", "x", "s", "o", "i", "c", "t" },
+							---@param picker snacks.Picker
+							confirm = function(picker, item)
+								picker:norm(function()
+									if item then
+										picker:close()
+										if item.type == "keymap" then
+											vim.api.nvim_input(item.item.lhs)
+										elseif item.item.type == "unmapped" then
+											item.item.callback()
+										end
+									end
+								end)
+							end,
+							actions = {
+								toggle_global = function(picker)
+									picker.opts.global = not picker.opts.global
+									picker:find()
+								end,
+								toggle_buffer = function(picker)
+									picker.opts["local"] = not picker.opts["local"]
+									picker:find()
+								end,
+							},
+							win = {
+								input = {
+									keys = {
+										["<a-g>"] = {
+											"toggle_global",
+											mode = { "n", "i" },
+											desc = "Toggle Global Keymaps",
+										},
+										["<a-b>"] = {
+											"toggle_buffer",
+											mode = { "n", "i" },
+											desc = "Toggle Buffer Keymaps",
+										},
+									},
+								},
+							},
+						}).modes)
+					do
 						mode_order[mode] = index
 					end
 

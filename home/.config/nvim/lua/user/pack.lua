@@ -235,10 +235,19 @@ local function create_pack_commands()
 		end)
 	end, {})
 
-	vim.api.nvim_create_user_command("PackUpdate", function()
-		vim.pack.update()
+	vim.api.nvim_create_user_command("PackUpdate", function(opts)
+		local force = opts.fargs[1] == "force"
+		if opts.fargs[1] ~= nil and not force then
+			notify("PackUpdate only supports the optional 'force' argument", vim.log.levels.ERROR)
+			return
+		end
+
+		vim.pack.update(nil, { force = force })
 		run_builds()
-	end, {})
+	end, {
+		nargs = "?",
+		desc = "Update packages, optionally skipping confirmation with 'force'",
+	})
 
 	vim.api.nvim_create_user_command("PackClean", function()
 		local defined = {}
