@@ -37,8 +37,7 @@ return {
 	{
 		src = "https://github.com/ThePrimeagen/refactoring.nvim",
 		dependencies = {
-			{ src = "https://github.com/nvim-lua/plenary.nvim" },
-			{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
+			{ src = "https://github.com/lewis6991/async.nvim" },
 		},
 		config = function()
 			require("refactoring").setup()
