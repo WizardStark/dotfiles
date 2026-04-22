@@ -4,12 +4,12 @@ local allowed_filetypes = {
 	"lua",
 	"python",
 	"go",
+	"dart",
 	"sh",
 	"svelte",
 	"toml",
 	"typescript",
 	"zsh",
-	"sql",
 	"rust",
 	"java",
 	"json",
@@ -65,6 +65,10 @@ require("conform").setup(
 		end,
 
 		formatters = {
+			["dart-format"] = {
+				command = "dart format",
+				args = { "format", "--stdin" },
+			},
 			["palantir-java-format"] = {
 				command = "palantir-java-format",
 				args = { "--aosp", "-" },
