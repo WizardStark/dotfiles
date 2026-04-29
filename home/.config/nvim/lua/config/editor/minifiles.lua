@@ -207,7 +207,38 @@ autocmd("User", {
 
 local widths = { 50, 30, 10 }
 
+local function ensure_parent_column()
+	local state = MiniFiles.get_explorer_state()
+	if state == nil or state.depth_focus ~= 1 then
+		return false
+	end
+
+	local focused_path = state.branch[state.depth_focus]
+	if focused_path == nil then
+		return false
+	end
+
+	local parent_path = vim.fs.dirname(focused_path)
+	if parent_path == nil or parent_path == focused_path then
+		return false
+	end
+
+	local focused_name = vim.fs.basename(focused_path)
+	if (parent_path .. "/" .. focused_name) ~= focused_path then
+		return false
+	end
+
+	local branch = vim.deepcopy(state.branch)
+	table.insert(branch, 1, parent_path)
+	MiniFiles.set_branch(branch, { depth_focus = 2 })
+	return true
+end
+
 local ensure_center_layout = function(event)
+	if ensure_parent_column() then
+		return
+	end
+
 	local state = MiniFiles.get_explorer_state()
 	if state == nil then
 		return
@@ -283,8 +314,8 @@ vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesExplorerClose", callba
 
 MiniFiles.setup({
 	mappings = {
-		go_out = "H",
-		go_out_plus = "",
+		go_out = "h",
+		go_out_plus = "H",
 		synchronize = "s",
 	},
 	windows = {
