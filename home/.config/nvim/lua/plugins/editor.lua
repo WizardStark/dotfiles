@@ -197,4 +197,13 @@ return {
 			require("config.editor.opencode")
 		end,
 	},
+	{
+		src = "https://github.com/nvim-flutter/flutter-tools.nvim",
+		dependencies = {
+			{ src = "https://github.com/nvim-lua/plenary.nvim" },
+		},
+		config = function()
+			require("flutter-tools").setup({})
+		end,
+	},
 }
