@@ -104,6 +104,38 @@ local function clear_cached_server(cwd, server)
 	end
 end
 
+local function with_current_server(callback, opts)
+	opts = opts or {}
+	M.ensure_current_server({
+		ensure_session = opts.ensure_session,
+		on_ready = function(server)
+			callback(server)
+		end,
+	})
+end
+
+local function resolve_prompt(prompt, opts)
+	opts = opts or {}
+	local configured_prompt = type(prompt) == "string" and M.opts.prompts[prompt] or nil
+	if configured_prompt == nil then
+		return prompt, opts
+	end
+
+	local resolved_opts = vim.tbl_deep_extend("force", vim.deepcopy(configured_prompt), opts)
+	return configured_prompt.prompt, resolved_opts
+end
+
+local function with_captured_context(opts)
+	opts = opts or {}
+	if opts.context ~= nil then
+		return opts
+	end
+
+	local resolved_opts = vim.deepcopy(opts)
+	resolved_opts.context = require("opencode.context").new()
+	return resolved_opts
+end
+
 local function find_running_server(servers, server)
 	if server == nil then
 		return nil
@@ -501,6 +533,34 @@ function M.select_server()
 			require("opencode.events").connected_server = server
 			known_servers_by_cwd[server.cwd] = server
 		end)
+end
+
+function M.prompt(prompt, opts)
+	local resolved_prompt, resolved_opts = resolve_prompt(prompt, opts)
+	resolved_opts = with_captured_context(resolved_opts)
+	with_current_server(function()
+		require("opencode").prompt(resolved_prompt, resolved_opts)
+	end, resolved_opts)
+end
+
+function M.ask(prompt, opts)
+	local resolved_prompt, resolved_opts = resolve_prompt(prompt, opts)
+	resolved_opts = with_captured_context(resolved_opts)
+	with_current_server(function()
+		require("opencode").ask(resolved_prompt, resolved_opts)
+	end, resolved_opts)
+end
+
+function M.select_session(opts)
+	with_current_server(function()
+		require("opencode").select_session()
+	end, opts)
+end
+
+function M.select(opts)
+	with_current_server(function()
+		require("opencode").select(opts)
+	end, opts)
 end
 
 function M.reset_manual_server_override()

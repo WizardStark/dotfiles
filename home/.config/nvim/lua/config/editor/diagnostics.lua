@@ -1,5 +1,11 @@
 require("tiny-inline-diagnostic").setup({
 	preset = "powerline",
+	hi = {
+		error = "DiagnosticVirtualTextError",
+		warn = "DiagnosticVirtualTextWarn",
+		info = "DiagnosticVirtualTextInfo",
+		hint = "DiagnosticVirtualTextHint",
+	},
 	options = {
 		show_source = {
 			enabled = true,

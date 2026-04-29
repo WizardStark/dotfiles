@@ -2356,11 +2356,7 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>ct",
 		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").prompt("send_this")
-				end,
-			})
+			require("config.editor.opencode").prompt("send_this")
 		end,
 		prefix = P.llm,
 		description = "Send current context to opencode",
@@ -2369,11 +2365,7 @@ local mappings = {
 		mode = { "x", "n" },
 		keys = "<leader>cf",
 		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").prompt("send_buffer")
-				end,
-			})
+			require("config.editor.opencode").prompt("send_buffer")
 		end,
 		prefix = P.llm,
 		description = "Send file to opencode",
@@ -2382,11 +2374,7 @@ local mappings = {
 		mode = { "x", "n" },
 		keys = "<leader>cs",
 		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").select_session()
-				end,
-			})
+			require("config.editor.opencode").select_session()
 		end,
 		prefix = P.llm,
 		description = "Select opencode session",
@@ -2395,11 +2383,7 @@ local mappings = {
 		mode = { "x", "n" },
 		keys = "<leader>cq",
 		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").ask("@this: ", { submit = true })
-				end,
-			})
+			require("config.editor.opencode").ask("@this: ", { submit = true })
 		end,
 		prefix = P.llm,
 		description = "Ask opencode about current context",
@@ -2408,11 +2392,7 @@ local mappings = {
 		mode = { "x", "n" },
 		keys = "<leader>co",
 		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").select()
-				end,
-			})
+			require("config.editor.opencode").select()
 		end,
 		prefix = P.llm,
 		description = "Select opencode action",
@@ -2457,11 +2437,7 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>ce",
 		callback = function()
-			require("config.editor.opencode").ensure_current_server({
-				on_ready = function()
-					require("opencode").prompt("review_this")
-				end,
-			})
+			require("config.editor.opencode").prompt("review_this")
 		end,
 		prefix = P.llm,
 		description = "Review current context with opencode",
