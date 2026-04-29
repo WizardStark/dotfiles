@@ -48,7 +48,28 @@ local mappings = {
 	},
 	{
 		callback = function()
-			require("lint").try_lint()
+			local lint = require("lint")
+			-- TODO: probably move this to config/lint.lua if more overrides like this are needed in the future
+			-- Inject custom golangci-lint if it exists in the project
+			if vim.bo.filetype == "go" then
+				local found = false
+				local dir = vim.fn.expand("%:p:h")
+				while dir ~= "/" do
+					if vim.fn.isdirectory(dir .. "/.git") == 1 then
+						local candidate = dir .. "/bin/custom-gcl"
+						if vim.fn.executable(candidate) == 1 then
+							lint.linters.golangcilint.cmd = candidate
+							found = true
+						end
+						break
+					end
+					dir = vim.fn.fnamemodify(dir, ":h")
+				end
+				if not found then
+					lint.linters.golangcilint.cmd = "golangci-lint"
+				end
+			end
+			lint.try_lint()
 		end,
 		prefix = P.code,
 		description = "Run linter",
