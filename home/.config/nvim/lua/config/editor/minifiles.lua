@@ -207,8 +207,26 @@ autocmd("User", {
 
 local widths = { 50, 30, 10 }
 
+local function get_explorer_state_safe()
+	local ok, state = pcall(MiniFiles.get_explorer_state)
+	if not ok then
+		return nil
+	end
+
+	return state
+end
+
+local function get_window_path(buf_id)
+	local buf_name = vim.api.nvim_buf_get_name(buf_id)
+	if buf_name == "" then
+		return nil
+	end
+
+	return buf_name:match("^minifiles://%d+/(.*)$") or buf_name
+end
+
 local function ensure_parent_column()
-	local state = MiniFiles.get_explorer_state()
+	local state = get_explorer_state_safe()
 	if state == nil or state.depth_focus ~= 1 then
 		return false
 	end
@@ -230,34 +248,66 @@ local function ensure_parent_column()
 
 	local branch = vim.deepcopy(state.branch)
 	table.insert(branch, 1, parent_path)
-	MiniFiles.set_branch(branch, { depth_focus = 2 })
+	pcall(MiniFiles.set_branch, branch, { depth_focus = 2 })
 	return true
 end
 
-local ensure_center_layout = function(event)
+local function ensure_center_layout(win_id, buf_id)
+	if not win_id or not vim.api.nvim_win_is_valid(win_id) then
+		return
+	end
+	if not buf_id or not vim.api.nvim_buf_is_valid(buf_id) then
+		return
+	end
+
 	if ensure_parent_column() then
 		return
 	end
 
-	local state = MiniFiles.get_explorer_state()
+	local state = get_explorer_state_safe()
 	if state == nil then
 		return
 	end
 
-	local path_this = vim.api.nvim_buf_get_name(event.data.buf_id):match("^minifiles://%d+/(.*)$")
+	local path_this = get_window_path(buf_id)
+	if path_this == nil then
+		return
+	end
+
 	local depth_this
 	for i, path in ipairs(state.branch) do
 		if path == path_this then
 			depth_this = i
+			break
 		end
 	end
+
+	if depth_this == nil then
+		for _, window in ipairs(state.windows or {}) do
+			if window.win_id == win_id then
+				for i, path in ipairs(state.branch) do
+					if path == window.path then
+						depth_this = i
+						break
+					end
+				end
+				break
+			end
+		end
+	end
+
 	if depth_this == nil then
 		return
 	end
+
 	local depth_offset = depth_this - state.depth_focus
 
 	local i = math.abs(depth_offset) + 1
-	local win_config = vim.api.nvim_win_get_config(event.data.win_id)
+	local ok, win_config = pcall(vim.api.nvim_win_get_config, win_id)
+	if not ok then
+		return
+	end
+
 	win_config.width = i <= #widths and widths[i] or widths[#widths]
 
 	win_config.col = math.floor(0.5 * (vim.o.columns - widths[1]))
@@ -271,10 +321,15 @@ local ensure_center_layout = function(event)
 
 	win_config.height = depth_offset == 0 and 25 or 20
 	win_config.row = math.floor(0.5 * (vim.o.lines - win_config.height))
-	vim.api.nvim_win_set_config(event.data.win_id, win_config)
+	pcall(vim.api.nvim_win_set_config, win_id, win_config)
 end
 
-vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesWindowUpdate", callback = ensure_center_layout })
+vim.api.nvim_create_autocmd("User", {
+	pattern = "MiniFilesWindowUpdate",
+	callback = function(event)
+		ensure_center_layout(event.data and event.data.win_id, event.data and event.data.buf_id)
+	end,
+})
 
 local function create_backdrop_window()
 	vim.g.backdrop_buf = vim.api.nvim_create_buf(false, true)
