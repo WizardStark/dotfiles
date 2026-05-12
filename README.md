@@ -78,6 +78,25 @@ wherein you can fuzzy find your way through most available commands, and `<C-a>?
 a list of tmux binds - this is much less nice to use as I have not found a way to add
 descriptions, but the commands are pretty self explanatory.
 
+## Tmux clipboard over SSH
+
+The tmux config is set up to use OSC 52 clipboard sync so `tmux -> ssh -> tmux`
+copy operations update the local machine clipboard through the outer tmux client.
+
+Requirements:
+
+- tmux 3.6 or newer on both the local and remote machine
+- a terminal that supports OSC 52 clipboard writes and clipboard reads; this is
+  what tmux uses for `set-clipboard`, `refresh-client -l`, and nested passthrough
+- reload tmux or reattach clients after updating the config so the terminal
+  feature detection is refreshed
+
+Useful tmux clipboard actions:
+
+- copy from copy-mode updates the local clipboard through OSC 52
+- `<C-a> y` requests the current terminal clipboard and stores it in a new tmux
+  paste buffer
+
 ## Windows specific tips
 
 To prevent the Hyper key in windows opening copilot, run the following reg-edit command:
