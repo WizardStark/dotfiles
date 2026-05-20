@@ -202,6 +202,18 @@ local function capture_buffer_context()
 	}
 end
 
+local function leave_visual_mode_if_needed()
+	local mode = vim.fn.mode()
+	if not vim.tbl_contains({ "v", "V", "\22" }, mode) then
+		return
+	end
+
+	local esc = vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
+	vim.schedule(function()
+		vim.api.nvim_feedkeys(esc, "nx", false)
+	end)
+end
+
 local function collect_capture(mode)
 	if mode == "buffer" then
 		return capture_buffer_context()
@@ -542,6 +554,7 @@ function M.prompt(prompt, opts)
 	local resolved_prompt, resolved_opts = resolve_prompt(prompt, opts)
 	local cwd = current_target_cwd(resolved_opts)
 	local context = collect_capture(resolved_opts.capture)
+	leave_visual_mode_if_needed()
 	local references = {}
 	local reference = format_context_reference(context, resolved_opts.reference_mode)
 	if reference ~= nil then
@@ -602,6 +615,7 @@ function M.ask(prompt, opts)
 end
 
 function M.select_session(opts)
+	leave_visual_mode_if_needed()
 	local cwd = current_target_cwd(opts)
 	send_command_to_tmux("/resume", {
 		cwd = cwd,
@@ -610,6 +624,7 @@ function M.select_session(opts)
 end
 
 function M.select_server()
+	leave_visual_mode_if_needed()
 	list_worktrees(current_target_cwd(), function(worktrees)
 		local current_cwd = current_target_cwd({ cwd = vim.fn.getcwd() })
 		local items = {
@@ -698,6 +713,7 @@ function M.interrupt()
 end
 
 function M.select()
+	leave_visual_mode_if_needed()
 	local actions = {
 		{
 			label = "Paste file/line reference",
