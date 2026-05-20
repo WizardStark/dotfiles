@@ -2337,65 +2337,73 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>cc",
 		callback = function()
-			require("config.editor.opencode").select_server()
+			require("config.editor.pi").select_server()
 		end,
 		prefix = P.llm,
-		description = "Select opencode server",
+		description = "Select Pi target worktree",
 	},
 	{
 		mode = { "n" },
 		keys = "<leader>cd",
 		callback = function()
-			require("opencode.events").disconnect()
-			require("config.editor.opencode").reset_manual_server_override()
+			require("config.editor.pi").disconnect()
 		end,
 		prefix = P.llm,
-		description = "Disconnect from opencode",
+		description = "Clear Pi target override",
 	},
 	{
 		mode = { "n", "x" },
 		keys = "<leader>ct",
 		callback = function()
-			require("config.editor.opencode").prompt("send_this")
+			require("config.editor.pi").prompt("send_this")
 		end,
 		prefix = P.llm,
-		description = "Send current context to opencode",
+		description = "Paste file/line reference and focus Pi tmux",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cf",
 		callback = function()
-			require("config.editor.opencode").prompt("send_buffer")
+			require("config.editor.pi").prompt("send_buffer")
 		end,
 		prefix = P.llm,
-		description = "Send file to opencode",
+		description = "Paste file reference and focus Pi tmux",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cs",
 		callback = function()
-			require("config.editor.opencode").select_session()
+			require("config.editor.pi").select_session()
 		end,
 		prefix = P.llm,
-		description = "Select opencode session",
+		description = "Open Pi session picker and focus tmux",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cq",
 		callback = function()
-			require("config.editor.opencode").ask("@this: ", { submit = true })
+			require("config.editor.pi").ask("ask_this")
 		end,
 		prefix = P.llm,
-		description = "Ask opencode about current context",
+		description = "Paste Pi question, reference, and focus tmux",
+	},
+	{
+		mode = { "x", "n" },
+		keys = "<leader>cv",
+		callback = function()
+			require("config.editor.pi").prompt("verbatim")
+		end,
+		prefix = P.llm,
+		description = "Paste raw content and focus Pi tmux",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>co",
 		callback = function()
-			require("config.editor.opencode").select()
+			require("config.editor.pi").select()
 		end,
 		prefix = P.llm,
-		description = "Select opencode action",
+		description = "Select Pi tmux action",
 	},
 	{
 		mode = { "i" },
@@ -2437,10 +2445,10 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>ce",
 		callback = function()
-			require("config.editor.opencode").prompt("review_this")
+			require("config.editor.pi").prompt("review_this")
 		end,
 		prefix = P.llm,
-		description = "Review current context with opencode",
+		description = "Paste review prompt, reference, and focus tmux",
 	},
 	{
 		mode = { "n" },

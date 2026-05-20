@@ -30,6 +30,13 @@ That includes newly added CLI dependencies such as `worktrunk`: keep them in the
 repo-managed install sources (`Brewfile` or `scripts/manifest.tsv`) so `setup.sh`
 and `sync.sh` bootstrap them automatically.
 
+Pi is part of that reproducible setup:
+
+- the Pi CLI is installed from `scripts/manifest.tsv`
+- repo-local Pi extensions live under `home/.pi/agent/extensions/`
+- public Pi packages/extensions are declared in `home/.pi/agent/settings.json`
+  and `./sync.sh` installs any missing entries via `pi install`
+
 ```bash
 ./sync.sh
 ```
@@ -39,7 +46,7 @@ and `sync.sh` bootstrap them automatically.
 Useful variants:
 
 ```bash
-./sync.sh --check      # verify Brewfile, extra tools, and stow state
+./sync.sh --check      # verify Brewfile, extra tools, Pi packages, and stow state
 ./sync.sh --check --verbose
 ./sync.sh --with-sudo  # also update login shell with sudo-backed chsh
 ```

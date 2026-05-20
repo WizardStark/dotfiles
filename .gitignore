@@ -3,6 +3,7 @@
 **/lcl/**
 **/tmux/plugins/**
 **/spell
+home/.gitconfig
 home/.config/opencode/opencode.lcl.json
 .aider*
 !.aider.conf.yml

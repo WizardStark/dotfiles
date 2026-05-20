@@ -189,15 +189,6 @@ return {
 		end,
 	},
 	{
-		src = "https://github.com/nickjvandyke/opencode.nvim",
-		init = function()
-			vim.g.opencode_opts = require("config.editor.opencode").opts
-		end,
-		config = function()
-			require("config.editor.opencode")
-		end,
-	},
-	{
 		src = "https://github.com/nvim-flutter/flutter-tools.nvim",
 		dependencies = {
 			{ src = "https://github.com/nvim-lua/plenary.nvim" },

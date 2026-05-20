@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+MODEL="${PI_WORKTRUNK_MODEL:-github-copilot/gpt-5.4-mini}"
+
+if [[ $# -gt 0 ]]; then
+  PROMPT="$*"
+else
+  PROMPT="$(cat)"
+fi
+
+exec pi --no-session --no-tools --offline --model "$MODEL" -p "$PROMPT"

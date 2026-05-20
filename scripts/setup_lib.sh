@@ -6,6 +6,7 @@ DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BREWFILE_PATH="$DOTFILES_ROOT/Brewfile"
 MISE_CONFIG_PATH="$DOTFILES_ROOT/mise.toml"
 MANIFEST_PATH="$DOTFILES_ROOT/scripts/manifest.tsv"
+PI_SETTINGS_PATH="$DOTFILES_ROOT/home/.pi/agent/settings.json"
 BAT_THEME_URL="https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
 
 require_cmd() {
@@ -209,14 +210,31 @@ npm_package_installed() {
   npm list -g --depth=0 "$1" >/dev/null 2>&1
 }
 
+refresh_npm_global_bin_path() {
+  local npm_prefix npm_bin_dir
+
+  npm_prefix="$(npm prefix -g 2>/dev/null || true)"
+  [[ -n "$npm_prefix" ]] || return 0
+
+  npm_bin_dir="$npm_prefix/bin"
+  case ":$PATH:" in
+    *":$npm_bin_dir:"*) ;;
+    *)
+      export PATH="$npm_bin_dir:$PATH"
+      ;;
+  esac
+}
+
 ensure_npm_package() {
   local package_name="$1"
   if npm_package_installed "$package_name"; then
+    refresh_npm_global_bin_path
     return 0
   fi
 
   log_step "Installing npm package $package_name"
   npm install -g "$package_name"
+  refresh_npm_global_bin_path
 }
 
 check_npm_package() {
@@ -246,6 +264,103 @@ missing_manifest_npm_packages() {
   while IFS=$'\t' read -r package_name _unused1 _unused2; do
     check_npm_package "$package_name" || printf '%s\n' "$package_name"
   done < <(manifest_entries npm)
+}
+
+pi_settings_packages() {
+  local settings_path="${1:-$PI_SETTINGS_PATH}"
+
+  [[ -f "$settings_path" ]] || return 0
+  require_cmd node || return 1
+
+  node - "$settings_path" <<'NODE'
+const fs = require('node:fs');
+
+const settingsPath = process.argv[2];
+
+try {
+  const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  const packages = Array.isArray(parsed.packages) ? parsed.packages : [];
+  for (const pkg of packages) {
+    if (typeof pkg === 'string' && pkg.trim()) {
+      console.log(pkg.trim());
+    }
+  }
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Failed to parse ${settingsPath}: ${message}`);
+  process.exit(1);
+}
+NODE
+}
+
+pi_package_installed() {
+  local package_name="$1"
+
+  require_cmd pi || return 1
+  pi list 2>/dev/null | awk '/^  [^ ]/ { print $1 }' | grep -Fx -- "$package_name" >/dev/null 2>&1
+}
+
+ensure_pi_package() {
+  local package_name="$1"
+
+  if pi_package_installed "$package_name"; then
+    return 0
+  fi
+
+  log_step "Installing Pi package $package_name"
+  pi install "$package_name"
+}
+
+ensure_pi_packages_from_settings() {
+  local settings_path="${1:-$PI_SETTINGS_PATH}"
+  local package_name package_list
+
+  [[ -f "$settings_path" ]] || return 0
+  require_cmd pi || return 1
+
+  package_list="$(pi_settings_packages "$settings_path")" || return 1
+  [[ -n "$package_list" ]] || return 0
+
+  while IFS= read -r package_name; do
+    [[ -n "$package_name" ]] || continue
+    ensure_pi_package "$package_name"
+  done <<< "$package_list"
+}
+
+check_pi_packages_from_settings() {
+  local settings_path="${1:-$PI_SETTINGS_PATH}"
+  local package_name package_list
+
+  [[ -f "$settings_path" ]] || return 0
+  require_cmd pi || return 1
+
+  package_list="$(pi_settings_packages "$settings_path")" || return 1
+  [[ -n "$package_list" ]] || return 0
+
+  while IFS= read -r package_name; do
+    [[ -n "$package_name" ]] || continue
+    if ! pi_package_installed "$package_name"; then
+      return 1
+    fi
+  done <<< "$package_list"
+
+  return 0
+}
+
+missing_pi_packages_from_settings() {
+  local settings_path="${1:-$PI_SETTINGS_PATH}"
+  local package_name package_list
+
+  [[ -f "$settings_path" ]] || return 0
+  require_cmd pi || return 1
+
+  package_list="$(pi_settings_packages "$settings_path")" || return 1
+  [[ -n "$package_list" ]] || return 0
+
+  while IFS= read -r package_name; do
+    [[ -n "$package_name" ]] || continue
+    pi_package_installed "$package_name" || printf '%s\n' "$package_name"
+  done <<< "$package_list"
 }
 
 ensure_uv_tool() {

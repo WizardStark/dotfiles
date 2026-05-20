@@ -200,7 +200,7 @@ gwtcs() {
         wt switch --create "$1" || wt switch "$1" || return 1
     fi
 
-    ~/.config/tmux/ensure_opencode_tmux_session.sh
+    ~/.config/tmux/ensure_pi_tmux_session.sh
 }
 
 gwtd() {

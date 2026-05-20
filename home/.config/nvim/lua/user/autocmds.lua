@@ -237,7 +237,7 @@ local mappings = {
 	{
 		event = "DirChangedPre",
 		callback = function()
-			require("config.editor.opencode").reset_manual_server_override()
+			require("config.editor.pi").reset_manual_server_override()
 		end,
 	},
 	{

@@ -1,7 +1,7 @@
 worktree-path = "~/projects/worktrees/{{ repo }}/{{ branch }}"
 
 [commit.generation]
-command = "opencode run -m anthropic/claude-haiku-4.5 --variant fast"
+command = "pi-worktrunk-commit"
 
 [pre-start]
 env = "if [ ! -e .env ] && [ -e {{ primary_worktree_path }}/.env ]; then ln -s {{ primary_worktree_path }}/.env .env; fi"

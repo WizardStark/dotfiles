@@ -1,4 +1,5 @@
 # type	field1	field2	field3
+npm	@earendil-works/pi-coding-agent
 npm	tree-sitter-cli
 uv	nvr	neovim-remote
 git	https://github.com/catppuccin/zsh-syntax-highlighting.git	$HOME/.zsh-catpuccin

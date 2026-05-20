@@ -47,6 +47,17 @@ run_checks() {
     issues=$((issues + 1))
   fi
 
+  if check_pi_packages_from_settings; then
+    printf 'OK   Pi packages from home/.pi/agent/settings.json are installed\n'
+  else
+    printf 'MISS Pi packages from home/.pi/agent/settings.json are missing\n'
+    if (( verbose )); then
+      missing="$(missing_pi_packages_from_settings || true)"
+      [[ -n "$missing" ]] && printf '%s\n' "$missing" | while IFS= read -r line; do printf '  - %s\n' "$line"; done
+    fi
+    issues=$((issues + 1))
+  fi
+
   if check_manifest_uv_tools; then
     printf 'OK   uv tools from manifest are installed\n'
   else
@@ -116,6 +127,7 @@ run_apply() {
   ensure_bat_theme
   ensure_fzf
   restow_home "$adopt_stow"
+  ensure_pi_packages_from_settings
   ensure_tmux_plugins
   ensure_agent_socket
   ensure_nvim_plugins
