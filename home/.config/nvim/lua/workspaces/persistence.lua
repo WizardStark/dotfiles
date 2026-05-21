@@ -46,17 +46,22 @@ end
 ---@param session WorkspaceSession
 ---@param target WorkspaceTarget
 function M.write_nvim_session_file(workspace, session, target)
-	vim.cmd.cd(target.dir)
+	local previous_suppress_disconnect = vim.g.pi_suppress_disconnect
+	vim.g.pi_suppress_disconnect = true
 
-	local sessions_dir = Path:new(M.sessions_path)
+	local ok, res = xpcall(function()
+		vim.cmd.cd(target.dir)
 
-	if not sessions_dir:is_dir() then
-		sessions_dir:mkdir()
-	end
+		local sessions_dir = Path:new(M.sessions_path)
+		if not sessions_dir:is_dir() then
+			sessions_dir:mkdir()
+		end
 
-	local file = sessions_dir:joinpath(Path:new(M.get_nvim_session_filename(workspace, session, target)) .. ".vim")
+		local file = sessions_dir:joinpath(Path:new(M.get_nvim_session_filename(workspace, session, target)) .. ".vim")
+		vim.api.nvim_command("mksession! " .. file.filename)
+	end, debug.traceback)
 
-	local ok, res = pcall(vim.api.nvim_command, "mksession! " .. file.filename)
+	vim.g.pi_suppress_disconnect = previous_suppress_disconnect
 
 	if not ok then
 		vim.notify(

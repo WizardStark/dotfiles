@@ -2,12 +2,20 @@ local M = {}
 
 local EXCERPT_RADIUS = 20
 local MAX_BUFFER_BYTES = 50000
+local TMUX_SCAN_CACHE_TTL_MS = 1000
+local WORKTREE_LIST_CACHE_TTL_MS = 2000
 
 local state = {
 	manual_cwd = nil,
 	selected_target = nil,
 	git_roots = {},
+	tmux_scan = nil,
+	worktree_lists = {},
 }
+
+local function cache_is_fresh(entry, ttl_ms)
+	return entry ~= nil and (vim.uv.now() - entry.ts) < ttl_ms
+end
 
 local function notify(message, level)
 	vim.notify(message, level or vim.log.levels.INFO, { title = "Pi" })
@@ -445,6 +453,11 @@ end
 local list_active_tmux_targets
 
 list_active_tmux_targets = function(callback)
+	if cache_is_fresh(state.tmux_scan, TMUX_SCAN_CACHE_TTL_MS) then
+		callback(vim.deepcopy(state.tmux_scan.items))
+		return
+	end
+
 	vim.system(
 		{
 			"tmux",
@@ -479,7 +492,8 @@ list_active_tmux_targets = function(callback)
 						end
 					end
 				end
-				callback(items)
+				state.tmux_scan = { ts = vim.uv.now(), items = items }
+				callback(vim.deepcopy(items))
 			end)
 		end
 	)
@@ -491,6 +505,13 @@ local function list_worktrees(cwd, callback)
 		callback({})
 		return
 	end
+
+	local cached = state.worktree_lists[repo_root]
+	if cache_is_fresh(cached, WORKTREE_LIST_CACHE_TTL_MS) then
+		callback(vim.deepcopy(cached.items))
+		return
+	end
+
 	vim.system({ "git", "-C", repo_root, "worktree", "list", "--porcelain" }, { text = true }, function(result)
 		vim.schedule(function()
 			if result.code ~= 0 then
@@ -512,7 +533,8 @@ local function list_worktrees(cwd, callback)
 			if current ~= nil then
 				table.insert(items, current)
 			end
-			callback(items)
+			state.worktree_lists[repo_root] = { ts = vim.uv.now(), items = items }
+			callback(vim.deepcopy(items))
 		end)
 	end)
 end
@@ -557,6 +579,7 @@ local function ensure_tmux_target(cwd, opts, callback)
 	local function finish(info)
 		local stored = vim.tbl_extend("force", info, { cwd = normalize_path(info.cwd or cwd) })
 		state.selected_target = stored
+		state.tmux_scan = nil
 		if opts.focus then
 			focus_tmux_target(stored, function(focus_ok)
 				if focus_ok and opts.notify_success then
@@ -692,6 +715,7 @@ end
 function M.disconnect()
 	state.manual_cwd = nil
 	state.selected_target = nil
+	state.tmux_scan = nil
 	notify("Cleared the Pi target override")
 end
 

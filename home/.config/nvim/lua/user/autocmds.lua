@@ -237,12 +237,18 @@ local mappings = {
 	{
 		event = "DirChangedPre",
 		callback = function()
+			if vim.g.pi_suppress_disconnect == true then
+				return
+			end
 			require("config.editor.pi").disconnect()
 		end,
 	},
 	{
-		event = { "BufEnter", "FocusGained", "DirChanged" },
+		event = { "DirChanged" },
 		callback = function()
+			if vim.g.pi_suppress_disconnect == true then
+				return
+			end
 			if vim.g.workspaces_loaded then
 				require("workspaces.workspaces").refresh_current_session_targets(false)
 			end
