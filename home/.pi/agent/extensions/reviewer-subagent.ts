@@ -1,14 +1,14 @@
-import { complete, type Message } from "@earendil-works/pi-ai";
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { ExtensionAPI, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { Message } from "@earendil-works/pi-ai";
+import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
+import { Box, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { readFile } from "node:fs/promises";
-import { relative } from "node:path";
-
-const execFileAsync = promisify(execFile);
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join, relative } from "node:path";
 
 const REVIEW_REPORT_TYPE = "reviewer-report";
 const MAX_CONTEXT_CHARS = 12_000;
@@ -49,11 +49,24 @@ type ReviewResult = {
   report: string;
   repoRoot?: string;
   changedFiles: string[];
+  reviewerModel: string;
 };
 
 type ReviewParams = {
   context?: string;
   focus?: string;
+};
+
+type ReviewRunState = {
+  messages: Message[];
+  streamedText: string;
+  lastAssistantPartial?: Message;
+  turnEndMessage?: Message;
+  agentEndMessage?: Message;
+  stderr: string;
+  exitCode: number;
+  stopReason?: string;
+  errorMessage?: string;
 };
 
 function truncate(text: string, maxChars: number): string {
@@ -139,14 +152,89 @@ function buildConversationContext(branch: SessionEntry[]): string {
   return truncate(serializeConversation(llmMessages), MAX_CONTEXT_CHARS);
 }
 
+function getPiInvocation(args: string[]): { command: string; args: string[] } {
+  const currentScript = process.argv[1];
+  const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
+  if (currentScript && !isBunVirtualScript && existsSync(currentScript)) {
+    return { command: process.execPath, args: [currentScript, ...args] };
+  }
+
+  const execName = basename(process.execPath).toLowerCase();
+  const isGenericRuntime = /^(node|bun)(\.exe)?$/.test(execName);
+  if (!isGenericRuntime) {
+    return { command: process.execPath, args };
+  }
+
+  return { command: "pi", args };
+}
+
+function extractFinalAssistantText(
+  messages: Message[],
+  streamedText = "",
+): { text: string; stopReason?: string; errorMessage?: string } {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+
+    const text = msg.content
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
+      .map((part) => part.text)
+      .join("\n")
+      .trim();
+
+    return {
+      text: text || streamedText.trim(),
+      stopReason: msg.stopReason,
+      errorMessage: msg.errorMessage,
+    };
+  }
+
+  return { text: "" };
+}
+
 async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
-  const result = await execFileAsync("git", args, {
-    cwd,
-    signal,
-    timeout,
-    maxBuffer: 2 * 1024 * 1024,
+  return await new Promise<string>((resolve) => {
+    const proc = spawn("git", args, {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    let stdout = "";
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = (value: string) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      resolve(value);
+    };
+
+    if (timeout > 0) {
+      timer = setTimeout(() => {
+        proc.kill("SIGTERM");
+        finish("");
+      }, timeout);
+    }
+
+    proc.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    proc.on("close", (code) => {
+      finish(code === 0 ? stdout.trim() : "");
+    });
+    proc.on("error", () => finish(""));
+
+    if (signal) {
+      const onAbort = () => {
+        proc.kill("SIGTERM");
+        finish("");
+      };
+      if (signal.aborted) onAbort();
+      else signal.addEventListener("abort", onAbort, { once: true });
+    }
   });
-  return result.stdout.trim();
 }
 
 async function maybeRunGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
@@ -166,8 +254,7 @@ async function collectUntrackedSnippets(cwd: string, repoRoot: string, files: st
   for (const file of selected) {
     try {
       const content = await readFile(`${repoRoot}/${file}`, "utf8");
-      parts.push(`### ${file}\n\n\
-\`\`\`\n${truncate(content, MAX_UNTRACKED_FILE_CHARS)}\n\`\`\``);
+      parts.push(`### ${file}\n\n\`\`\`\n${truncate(content, MAX_UNTRACKED_FILE_CHARS)}\n\`\`\``);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       parts.push(`### ${file}\n\n(unable to read file: ${message})`);
@@ -274,8 +361,152 @@ function buildReviewPrompt(input: {
   ].join("\n\n");
 }
 
+async function runReviewerSubagent(
+  cwd: string,
+  prompt: string,
+  modelArg: string,
+  apiKey: string | undefined,
+  signal?: AbortSignal,
+): Promise<ReviewRunState> {
+  const tempDir = await mkdtemp(join(tmpdir(), "pi-reviewer-"));
+  const systemPromptPath = join(tempDir, "system-prompt.md");
+  await writeFile(systemPromptPath, REVIEW_SYSTEM_PROMPT, "utf8");
+
+  try {
+    const args = [
+      "--mode",
+      "json",
+      "-p",
+      "--no-session",
+      "--model",
+      modelArg,
+      ...(apiKey ? ["--api-key", apiKey] : []),
+      "--append-system-prompt",
+      systemPromptPath,
+      prompt,
+    ];
+    const invocation = getPiInvocation(args);
+
+    return await new Promise<ReviewRunState>((resolve) => {
+      const proc = spawn(invocation.command, invocation.args, {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      const state: ReviewRunState = {
+        messages: [],
+        streamedText: "",
+        stderr: "",
+        exitCode: 1,
+      };
+      let buffer = "";
+      let settled = false;
+      const streamedTextParts: string[] = [];
+
+      const finish = (exitCode: number) => {
+        if (settled) return;
+        settled = true;
+        state.exitCode = exitCode;
+        state.streamedText = streamedTextParts.map((part) => part ?? "").join("").trim();
+        const final = extractFinalAssistantText(
+          [
+            ...state.messages,
+            ...(state.turnEndMessage ? [state.turnEndMessage] : []),
+            ...(state.agentEndMessage ? [state.agentEndMessage] : []),
+            ...(state.lastAssistantPartial ? [state.lastAssistantPartial] : []),
+          ],
+          state.streamedText,
+        );
+        state.stopReason = final.stopReason;
+        state.errorMessage = final.errorMessage;
+        resolve(state);
+      };
+
+      const processLine = (line: string) => {
+        if (!line.trim()) return;
+        try {
+          const event = JSON.parse(line);
+          if (event.type === "message_update") {
+            const assistantEvent = event.assistantMessageEvent;
+            if (assistantEvent?.partial) {
+              state.lastAssistantPartial = assistantEvent.partial as Message;
+            }
+            if (assistantEvent?.type === "text_start") {
+              streamedTextParts[assistantEvent.contentIndex] ??= "";
+            }
+            if (assistantEvent?.type === "text_delta") {
+              const index = assistantEvent.contentIndex;
+              streamedTextParts[index] = `${streamedTextParts[index] ?? ""}${assistantEvent.delta ?? ""}`;
+            }
+            if (assistantEvent?.type === "text_end") {
+              streamedTextParts[assistantEvent.contentIndex] = assistantEvent.content ?? "";
+            }
+          }
+          if (event.type === "message_end" && event.message) {
+            state.messages.push(event.message as Message);
+          }
+          if (event.type === "turn_end" && event.message) {
+            state.turnEndMessage = event.message as Message;
+          }
+          if (event.type === "agent_end" && Array.isArray(event.messages)) {
+            for (let i = event.messages.length - 1; i >= 0; i--) {
+              if (event.messages[i]?.role === "assistant") {
+                state.agentEndMessage = event.messages[i] as Message;
+                break;
+              }
+            }
+          }
+          if (event.type === "error" && typeof event.error === "string") {
+            state.stderr += `${event.error}\n`;
+          }
+        } catch {
+          // ignore malformed lines
+        }
+      };
+
+      proc.stdout.on("data", (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) processLine(line);
+      });
+
+      proc.stderr.on("data", (chunk) => {
+        state.stderr += chunk.toString();
+      });
+
+      proc.on("close", (code) => {
+        if (buffer.trim()) processLine(buffer);
+        finish(code ?? 1);
+      });
+      proc.on("error", (error) => {
+        state.stderr += `${error instanceof Error ? error.message : String(error)}\n`;
+        finish(1);
+      });
+
+      if (signal) {
+        const onAbort = () => {
+          proc.kill("SIGTERM");
+          setTimeout(() => {
+            try {
+              proc.kill("SIGKILL");
+            } catch {
+              // ignore
+            }
+          }, 5000);
+        };
+        if (signal.aborted) onAbort();
+        else signal.addEventListener("abort", onAbort, { once: true });
+      }
+    });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+}
+
 async function generateReview(
-  ctx: Parameters<ExtensionAPI["registerCommand"]>[1]["handler"] extends (args: any, ctx: infer T) => any ? T : never,
+  ctx: ExtensionContext,
+  thinkingLevel: ThinkingLevel,
   input: ReviewParams,
   signal?: AbortSignal,
 ): Promise<ReviewResult> {
@@ -296,56 +527,77 @@ async function generateReview(
     gitContext: git.gitContext,
   });
 
+  const modelArg =
+    thinkingLevel === "off" ? `${ctx.model.provider}/${ctx.model.id}` : `${ctx.model.provider}/${ctx.model.id}:${thinkingLevel}`;
   const auth = await ctx.modelRegistry.getApiKeyAndHeaders(ctx.model);
-  if (!auth.ok || !auth.apiKey) {
-    throw new Error(auth.ok ? `No API key for ${ctx.model.provider}` : auth.error);
+  if (!auth.ok) {
+    throw new Error(`Unable to resolve auth for reviewer subagent: ${auth.error}`);
   }
-
-  const response = await complete(
-    ctx.model,
-    {
-      systemPrompt: REVIEW_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: [{ type: "text", text: prompt }],
-          timestamp: Date.now(),
-        } satisfies Message,
-      ],
-    },
-    {
-      apiKey: auth.apiKey,
-      headers: auth.headers,
-      maxTokens: 4096,
-      signal,
-    },
+  if (auth.headers && Object.keys(auth.headers).length > 0) {
+    throw new Error(
+      "Reviewer subagent cannot inherit current-session auth headers for this model; strict same-model subprocess review is not supported for header-based auth.",
+    );
+  }
+  const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth.apiKey, signal);
+  const final = extractFinalAssistantText(
+    [
+      ...run.messages,
+      ...(run.turnEndMessage ? [run.turnEndMessage] : []),
+      ...(run.agentEndMessage ? [run.agentEndMessage] : []),
+      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
+    ],
+    run.streamedText,
   );
-
-  const report = response.content
-    .filter((part): part is { type: "text"; text: string } => part.type === "text")
-    .map((part) => part.text)
-    .join("\n")
-    .trim();
-
-  if (!report) {
-    throw new Error("Reviewer subagent returned an empty report.");
+  if (final.text) {
+    return {
+      report: final.text,
+      repoRoot: git.repoRoot,
+      changedFiles: git.changedFiles,
+      reviewerModel: modelArg,
+    };
   }
 
-  return {
-    report,
-    repoRoot: git.repoRoot,
-    changedFiles: git.changedFiles,
-  };
+  const stderr = run.stderr.trim();
+  const errorSuffix = final.errorMessage ? `; error: ${final.errorMessage}` : stderr ? `; stderr: ${stderr}` : "";
+  const streamedPreview = run.streamedText.trim();
+  const streamedSuffix = streamedPreview ? `; streamedText: ${JSON.stringify(truncate(streamedPreview, 400))}` : "";
+  const contentTypes = [run.lastAssistantPartial, run.turnEndMessage, run.agentEndMessage]
+    .filter((message): message is Message => Boolean(message))
+    .map((message) => `${message.role}:${message.content.map((part) => part.type).join(",") || "(none)"}`)
+    .join(" | ");
+  const contentSuffix = contentTypes ? `; fallbackMessages: ${contentTypes}` : "";
+  throw new Error(
+    `Reviewer subagent returned no text content (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${errorSuffix}${streamedSuffix}${contentSuffix}).`,
+  );
 }
 
 export default function (pi: ExtensionAPI) {
+  pi.registerMessageRenderer(REVIEW_REPORT_TYPE, (message, { expanded }, theme) => {
+    const details = (message.details ?? {}) as { changedFiles?: string[]; reviewer?: string };
+    const body = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+    const lines = [body];
+
+    if (expanded) {
+      if (Array.isArray(details.changedFiles) && details.changedFiles.length > 0) {
+        lines.push("", theme.fg("dim", `Changed files: ${details.changedFiles.join(", ")}`));
+      }
+      if (typeof details.reviewer === "string") {
+        lines.push(theme.fg("dim", `Reviewer model: ${details.reviewer}`));
+      }
+    }
+
+    const box = new Box(1, 1, (text) => theme.bg("customMessageBg", text));
+    box.addChild(new Text(lines.join("\n"), 0, 0));
+    return box;
+  });
+
   pi.registerTool({
     name: "review_changes",
     label: "Review changes",
     description:
-      "Spawn a reviewer subagent that inspects current git changes, checks them against recent session context, and reports issues, improvements, and style drift.",
+      "Spawn a reviewer subagent in a fresh no-session pi process using the exact current model to inspect current git changes and report issues, improvements, and style drift.",
     promptSnippet:
-      "Spawn a reviewer subagent to inspect current code changes and report problems, improvement opportunities, and style drift.",
+      "Spawn a reviewer subagent in a fresh isolated pi process using the exact current model to inspect code changes and report issues.",
     promptGuidelines: [
       "Use review_changes when the user explicitly asks for review, or after large/risky changes such as multi-file edits, refactors, migrations, non-trivial behavior changes, or broad code generation.",
       "Do not use review_changes for tiny, obvious, or single-line changes unless the user specifically asks for a review.",
@@ -365,25 +617,25 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }] });
-      const result = await generateReview(ctx as any, params, signal);
+      const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal);
       onUpdate?.({ content: [{ type: "text", text: "Reviewer subagent finished." }] });
       return {
         content: [{ type: "text", text: result.report }],
         details: {
           repoRoot: result.repoRoot,
           changedFiles: result.changedFiles,
-          reviewer: `${ctx.model?.provider}/${ctx.model?.id}`,
+          reviewer: result.reviewerModel,
         },
       };
     },
   });
 
   pi.registerCommand("review", {
-    description: "Run a reviewer subagent on current git changes. Usage: /review [focus or context]",
+    description: "Run a reviewer subagent on current git changes using the exact current model. Usage: /review [focus or context]",
     handler: async (args, ctx) => {
       try {
         ctx.ui.notify("Reviewer subagent: collecting context and reviewing changes...", "info");
-        const result = await generateReview(ctx as any, { context: args.trim() || undefined }, ctx.signal);
+        const result = await generateReview(ctx, pi.getThinkingLevel(), { context: args.trim() || undefined }, ctx.signal);
         pi.sendMessage({
           customType: REVIEW_REPORT_TYPE,
           content: `## Reviewer report\n\n${result.report}`,
@@ -392,6 +644,7 @@ export default function (pi: ExtensionAPI) {
             generatedAt: Date.now(),
             repoRoot: result.repoRoot,
             changedFiles: result.changedFiles,
+            reviewer: result.reviewerModel,
           },
         });
       } catch (error) {

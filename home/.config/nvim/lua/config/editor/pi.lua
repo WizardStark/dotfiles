@@ -63,7 +63,8 @@ end
 local function dotfiles_root()
 	local source = debug.getinfo(1, "S").source:sub(2)
 	local resolved_source = vim.uv.fs_realpath(source) or source
-	local root_marker = vim.fs.find("scripts/manifest.tsv", { upward = true, path = vim.fs.dirname(resolved_source), limit = 1 })[1]
+	local root_marker =
+		vim.fs.find("scripts/manifest.tsv", { upward = true, path = vim.fs.dirname(resolved_source), limit = 1 })[1]
 	if root_marker == nil then
 		error("Unable to locate dotfiles root from config.editor.pi")
 	end
@@ -114,6 +115,8 @@ local function get_visual_selection()
 	if not vim.tbl_contains({ "v", "V", "\22" }, mode) then
 		return nil
 	end
+
+	pcall(vim.cmd, [[normal! vv]])
 
 	local bufnr = 0
 	local start_pos = vim.api.nvim_buf_get_mark(bufnr, "<")
@@ -310,7 +313,10 @@ local function ensure_tmux_agent(opts, callback)
 
 	system_json(args, { text = true }, function(ok, decoded, result)
 		if not ok then
-			notify(decoded ~= "" and decoded or string.format("Failed to ensure Pi tmux agent for %s", cwd), vim.log.levels.ERROR)
+			notify(
+				decoded ~= "" and decoded or string.format("Failed to ensure Pi tmux agent for %s", cwd),
+				vim.log.levels.ERROR
+			)
 			if callback then
 				callback(false, result)
 			end
@@ -373,41 +379,49 @@ end
 
 local function resolve_tmux_client(callback)
 	local function fallback_to_attached_client()
-		vim.system({ "tmux", "list-clients", "-F", "#{client_tty}\t#{client_activity}" }, { text = true }, function(result)
-			vim.schedule(function()
-				if result.code ~= 0 then
-					callback(nil)
-					return
-				end
-
-				local best_tty = nil
-				local best_activity = -1
-				for _, line in ipairs(split_lines(result.stdout)) do
-					local tty, activity = line:match("^(.-)\t(%d+)$")
-					local score = tonumber(activity)
-					if tty ~= nil and tty ~= "" and score ~= nil and score > best_activity then
-						best_tty = tty
-						best_activity = score
+		vim.system(
+			{ "tmux", "list-clients", "-F", "#{client_tty}\t#{client_activity}" },
+			{ text = true },
+			function(result)
+				vim.schedule(function()
+					if result.code ~= 0 then
+						callback(nil)
+						return
 					end
-				end
-				callback(best_tty)
-			end)
-		end)
+
+					local best_tty = nil
+					local best_activity = -1
+					for _, line in ipairs(split_lines(result.stdout)) do
+						local tty, activity = line:match("^(.-)\t(%d+)$")
+						local score = tonumber(activity)
+						if tty ~= nil and tty ~= "" and score ~= nil and score > best_activity then
+							best_tty = tty
+							best_activity = score
+						end
+					end
+					callback(best_tty)
+				end)
+			end
+		)
 	end
 
 	if vim.env.TMUX_PANE ~= nil and vim.env.TMUX_PANE ~= "" then
-		vim.system({ "tmux", "display-message", "-p", "-t", vim.env.TMUX_PANE, "#{client_tty}" }, { text = true }, function(result)
-			vim.schedule(function()
-				if result.code == 0 then
-					local tty = trim(result.stdout)
-					if tty ~= "" then
-						callback(tty)
-						return
+		vim.system(
+			{ "tmux", "display-message", "-p", "-t", vim.env.TMUX_PANE, "#{client_tty}" },
+			{ text = true },
+			function(result)
+				vim.schedule(function()
+					if result.code == 0 then
+						local tty = trim(result.stdout)
+						if tty ~= "" then
+							callback(tty)
+							return
+						end
 					end
-				end
-				fallback_to_attached_client()
-			end)
-		end)
+					fallback_to_attached_client()
+				end)
+			end
+		)
 		return
 	end
 
@@ -546,10 +560,6 @@ local function list_worktrees(cwd, callback)
 	end)
 end
 
-function M.ensure_current_server(opts)
-	ensure_tmux_agent(opts)
-end
-
 function M.prompt(prompt, opts)
 	local resolved_prompt, resolved_opts = resolve_prompt(prompt, opts)
 	local cwd = current_target_cwd(resolved_opts)
@@ -573,7 +583,10 @@ function M.prompt(prompt, opts)
 			message = compose_request_text(user_prompt, references)
 			if trim(message) == "" then
 				if context ~= nil and context.path == "[No Name]" then
-					notify("Current buffer has no file path. Save it first or use <leader>cv for raw content.", vim.log.levels.WARN)
+					notify(
+						"Current buffer has no file path. Save it first or use <leader>cv for raw content.",
+						vim.log.levels.WARN
+					)
 				else
 					notify("No file reference available to send to Pi", vim.log.levels.WARN)
 				end
@@ -585,7 +598,10 @@ function M.prompt(prompt, opts)
 			cwd = cwd,
 			submit = resolved_opts.submit == true,
 			notify_success = resolved_opts.raw and "Pasted raw content into Pi tmux session"
-				or (resolved_opts.submit == true and "Sent prompt to Pi tmux session" or "Pasted prompt into Pi tmux session"),
+				or (
+					resolved_opts.submit == true and "Sent prompt to Pi tmux session"
+					or "Pasted prompt into Pi tmux session"
+				),
 		})
 	end
 
@@ -672,7 +688,8 @@ function M.ensure_tmux_agent(opts)
 	ensure_tmux_agent({
 		cwd = current_target_cwd(opts),
 		session_file = opts.session_file,
-		notify_success = opts.notify_success or string.format("Pi tmux agent is ready for %s", current_target_cwd(opts)),
+		notify_success = opts.notify_success
+			or string.format("Pi tmux agent is ready for %s", current_target_cwd(opts)),
 	})
 end
 

@@ -61,6 +61,7 @@ done
 require_command git
 require_command tmux
 require_command pi
+pi_bin="$(command -v pi)"
 
 [[ -d "$cwd" ]] || fail "Working directory does not exist: $cwd"
 cwd="$(cd "$cwd" && pwd)"
@@ -82,10 +83,10 @@ sanitize_window_name() {
   printf '%s' "$1" | tr '/:.' '-'
 }
 
-branch_name=$(git -C "$worktree_root" rev-parse --abbrev-ref HEAD 2>/dev/null) || {
-  fail "Unable to determine current branch"
-}
-
+branch_name="$(git -C "$worktree_root" branch --show-current 2>/dev/null || true)"
+if [[ -z "$branch_name" ]]; then
+  branch_name="$(git -C "$worktree_root" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+fi
 if [[ "$branch_name" == "HEAD" || -z "$branch_name" ]]; then
   branch_name="$(basename "$worktree_root")"
 fi
@@ -108,14 +109,15 @@ pane_id="$(tmux list-panes -t "$target" -F '#{pane_id}' | head -n 1)"
 
 pane_dead="$(tmux display-message -p -t "$pane_id" '#{pane_dead}')"
 pane_command="$(tmux display-message -p -t "$pane_id" '#{pane_current_command}')"
+pane_start_command="$(tmux display-message -p -t "$pane_id" '#{pane_start_command}')"
 stored_session_file="$(tmux show-options -v -t "$target" @pi_session_file 2>/dev/null || true)"
 stored_workdir="$(tmux show-options -v -t "$target" @pi_workdir 2>/dev/null || true)"
 
 launch_command=(env PI_NVIM_TMUX=1 PI_NVIM_WORKDIR="$cwd")
 if [[ -n "$session_file" ]]; then
-  launch_command+=(PI_NVIM_SESSION_FILE="$session_file" pi --session "$session_file")
+  launch_command+=(PI_NVIM_SESSION_FILE="$session_file" "$pi_bin" --session "$session_file")
 else
-  launch_command+=(pi)
+  launch_command+=("$pi_bin")
 fi
 
 quoted_launch_command=()
@@ -124,23 +126,38 @@ for part in "${launch_command[@]}"; do
 done
 joined_launch_command="exec ${quoted_launch_command[*]}"
 
+pane_is_pi=0
+if [[ "$pane_command" == "pi" ]]; then
+  pane_is_pi=1
+elif [[ "$pane_command" == "node" || "$pane_command" == "bun" ]]; then
+  case "$pane_start_command" in
+    pi|pi\ *|\"pi\"|\"pi\"\ *|*" pi"*|*"/pi"*|*"/pi\""*)
+      pane_is_pi=1
+      ;;
+  esac
+fi
+
 restart_reason=""
 if [[ "$pane_dead" == "1" ]]; then
   restart_reason="pane-dead"
-elif [[ "$pane_command" != "pi" ]]; then
+elif [[ "$pane_is_pi" != "1" ]]; then
   restart_reason="pane-not-pi"
-elif [[ -n "$session_file" && "$stored_session_file" != "$session_file" ]]; then
-  restart_reason="session-mismatch"
-elif [[ -n "$stored_workdir" && "$stored_workdir" != "$cwd" ]]; then
-  restart_reason="cwd-mismatch"
 fi
+
+active_session_file="$stored_session_file"
+active_workdir="$stored_workdir"
 
 if [[ -n "$restart_reason" ]]; then
   tmux respawn-pane -k -t "$pane_id" -c "$cwd" "$joined_launch_command"
+  active_session_file="$session_file"
+  active_workdir="$cwd"
+  tmux set-option -q -t "$target" @pi_session_file "$active_session_file"
+  tmux set-option -q -t "$target" @pi_workdir "$active_workdir"
+elif [[ -z "$active_workdir" ]]; then
+  active_workdir="$cwd"
+  tmux set-option -q -t "$target" @pi_workdir "$active_workdir"
 fi
 
-tmux set-option -q -t "$target" @pi_session_file "$session_file"
-tmux set-option -q -t "$target" @pi_workdir "$cwd"
 tmux select-window -t "$target" >/dev/null 2>&1 || true
 
 if [[ "$json_output" == "1" ]]; then
@@ -150,24 +167,24 @@ if [[ "$json_output" == "1" ]]; then
   fi
 
   printf '{"cwd":%s,"repo":%s,"tmuxSession":%s,"tmuxWindow":%s,"tmuxTarget":%s,"paneId":%s,"sessionFile":%s,"restarted":%s,"restartReason":%s}\n' \
-    "$(json_escape "$cwd")" \
+    "$(json_escape "${active_workdir:-$cwd}")" \
     "$(json_escape "$repo_name")" \
     "$(json_escape "$session_name")" \
     "$(json_escape "$window_name")" \
     "$(json_escape "$target")" \
     "$(json_escape "$pane_id")" \
-    "$(json_escape "$session_file")" \
+    "$(json_escape "$active_session_file")" \
     "$restarted" \
     "$(json_escape "$restart_reason")"
   exit 0
 fi
 
-printf 'Using repository path: %s\n' "$cwd"
+printf 'Using repository path: %s\n' "${active_workdir:-$cwd}"
 printf 'Using tmux session: %s\n' "$session_name"
 printf 'Using tmux window: %s\n' "$window_name"
 printf 'Using tmux pane: %s\n' "$pane_id"
-if [[ -n "$session_file" ]]; then
-  printf 'Using Pi session file: %s\n' "$session_file"
+if [[ -n "$active_session_file" ]]; then
+  printf 'Using Pi session file: %s\n' "$active_session_file"
 else
   printf 'Using Pi session selection: fresh interactive session (pi)\n'
 fi

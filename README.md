@@ -36,6 +36,7 @@ Pi is part of that reproducible setup:
 - repo-local Pi extensions live under `home/.pi/agent/extensions/`
 - public Pi packages/extensions are declared in `home/.pi/agent/settings.json`
   and `./sync.sh` installs any missing entries via `pi install`
+- the repo-local Pi extensions include an `edit` tool override so edit diffs keep the customized full-width, syntax-highlighted TUI rendering without patching Pi’s installed files
 
 ```bash
 ./sync.sh
