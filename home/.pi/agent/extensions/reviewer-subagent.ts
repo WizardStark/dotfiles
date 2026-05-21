@@ -378,6 +378,11 @@ async function runReviewerSubagent(
       "json",
       "-p",
       "--no-session",
+      "--no-tools",
+      "--no-extensions",
+      "--no-skills",
+      "--no-prompt-templates",
+      "--no-context-files",
       "--model",
       modelArg,
       ...(apiKey ? ["--api-key", apiKey] : []),
@@ -532,11 +537,6 @@ async function generateReview(
   const auth = await ctx.modelRegistry.getApiKeyAndHeaders(ctx.model);
   if (!auth.ok) {
     throw new Error(`Unable to resolve auth for reviewer subagent: ${auth.error}`);
-  }
-  if (auth.headers && Object.keys(auth.headers).length > 0) {
-    throw new Error(
-      "Reviewer subagent cannot inherit current-session auth headers for this model; strict same-model subprocess review is not supported for header-based auth.",
-    );
   }
   const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth.apiKey, signal);
   const final = extractFinalAssistantText(

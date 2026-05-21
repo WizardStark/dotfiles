@@ -2337,10 +2337,10 @@ local mappings = {
 		mode = { "n" },
 		keys = "<leader>cc",
 		callback = function()
-			require("config.editor.pi").select_server()
+			require("config.editor.pi").select_target()
 		end,
 		prefix = P.llm,
-		description = "Select Pi target worktree",
+		description = "Select Pi target",
 	},
 	{
 		mode = { "n" },
@@ -2355,55 +2355,46 @@ local mappings = {
 		mode = { "n", "x" },
 		keys = "<leader>ct",
 		callback = function()
-			require("config.editor.pi").prompt("send_this")
+			require("config.editor.pi").send_current_reference()
 		end,
 		prefix = P.llm,
-		description = "Paste file/line reference and focus Pi tmux",
+		description = "Paste file/line reference into Pi target",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cf",
 		callback = function()
-			require("config.editor.pi").prompt("send_buffer")
+			require("config.editor.pi").send_buffer_reference()
 		end,
 		prefix = P.llm,
-		description = "Paste file reference and focus Pi tmux",
+		description = "Paste file reference into Pi target",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cs",
 		callback = function()
-			require("config.editor.pi").select_session()
+			require("config.editor.pi").focus_target()
 		end,
 		prefix = P.llm,
-		description = "Open Pi session picker and focus tmux",
+		description = "Focus Pi target",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cq",
 		callback = function()
-			require("config.editor.pi").ask("ask_this")
+			require("config.editor.pi").ask_about_current()
 		end,
 		prefix = P.llm,
-		description = "Paste Pi question, reference, and focus tmux",
+		description = "Ask Pi with file/line reference",
 	},
 	{
 		mode = { "x", "n" },
 		keys = "<leader>cv",
 		callback = function()
-			require("config.editor.pi").prompt("verbatim")
+			require("config.editor.pi").send_verbatim()
 		end,
 		prefix = P.llm,
-		description = "Paste raw content and focus Pi tmux",
-	},
-	{
-		mode = { "x", "n" },
-		keys = "<leader>co",
-		callback = function()
-			require("config.editor.pi").select()
-		end,
-		prefix = P.llm,
-		description = "Select Pi tmux action",
+		description = "Paste raw content into Pi target",
 	},
 	{
 		mode = { "i" },
@@ -2440,15 +2431,6 @@ local mappings = {
 		end,
 		prefix = P.llm,
 		description = "Toggle inline suggestion",
-	},
-	{
-		mode = { "n", "x" },
-		keys = "<leader>ce",
-		callback = function()
-			require("config.editor.pi").prompt("review_this")
-		end,
-		prefix = P.llm,
-		description = "Paste review prompt, reference, and focus tmux",
 	},
 	{
 		mode = { "n" },

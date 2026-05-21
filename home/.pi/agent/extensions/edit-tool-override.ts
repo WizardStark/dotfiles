@@ -92,11 +92,12 @@ async function loadRuntime(): Promise<RuntimeModules> {
   }
 
   runtimePromise = (async () => {
-    const localRequire = createRequire(import.meta.url);
+    const agentRoot = getAgentRoot();
+    const requireFromAgent = createRequire(join(agentRoot, "package.json"));
 
     let tui: any;
     try {
-      const tuiEntry = localRequire.resolve("@earendil-works/pi-tui");
+      const tuiEntry = requireFromAgent.resolve("@earendil-works/pi-tui");
       tui = await import(pathToFileURL(tuiEntry).href);
     } catch {
       tui = undefined;
@@ -104,7 +105,7 @@ async function loadRuntime(): Promise<RuntimeModules> {
 
     let computeEditsDiff: RuntimeModules["computeEditsDiff"];
     try {
-      const editDiffEntry = localRequire.resolve("@earendil-works/pi-coding-agent/dist/core/tools/edit-diff.js");
+      const editDiffEntry = requireFromAgent.resolve("./dist/core/tools/edit-diff.js");
       const editDiff = await import(pathToFileURL(editDiffEntry).href);
       computeEditsDiff = editDiff.computeEditsDiff;
     } catch {
