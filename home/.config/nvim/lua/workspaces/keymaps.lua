@@ -111,7 +111,7 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
-		keys = "\\",
+		keys = "-",
 		callback = function()
 			require("workspaces.workspaces").switch_session_by_index(vim.v.count1)
 		end,

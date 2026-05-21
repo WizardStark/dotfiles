@@ -305,11 +305,31 @@ local function breadcrumbs_set()
 end
 
 local breadcrumbs_augroup = vim.api.nvim_create_augroup("Breadcrumbs", { clear = true })
+local breadcrumbs_timer = vim.uv.new_timer()
+
+local function schedule_breadcrumbs_update()
+	if breadcrumbs_timer == nil then
+		return
+	end
+	breadcrumbs_timer:stop()
+	breadcrumbs_timer:start(200, 0, vim.schedule_wrap(function()
+		breadcrumbs_set()
+	end))
+end
 
 vim.api.nvim_create_autocmd({ "CursorMoved" }, {
 	group = breadcrumbs_augroup,
-	callback = function()
-		vim.schedule(breadcrumbs_set)
-	end,
+	callback = schedule_breadcrumbs_update,
 	desc = "Set breadcrumbs.",
+})
+
+vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+	group = breadcrumbs_augroup,
+	callback = function()
+		if breadcrumbs_timer ~= nil then
+			breadcrumbs_timer:stop()
+			breadcrumbs_timer:close()
+			breadcrumbs_timer = nil
+		end
+	end,
 })
