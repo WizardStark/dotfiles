@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -63,6 +64,25 @@ function npmRoot(): string {
   return execFileSync("npm", ["root", "-g"], { encoding: "utf8" }).trim();
 }
 
+function resolveCliAgentRoot(pathValue: string | undefined): string | undefined {
+  if (typeof pathValue !== "string" || !pathValue) {
+    return undefined;
+  }
+
+  try {
+    const resolvedPath = realpathSync(pathValue);
+    if (resolvedPath.endsWith("/dist/cli.js")) {
+      return dirname(dirname(resolvedPath));
+    }
+  } catch {
+    if (pathValue.endsWith("/dist/cli.js")) {
+      return dirname(dirname(pathValue));
+    }
+  }
+
+  return undefined;
+}
+
 function getAgentRoot(): string {
   try {
     const localRequire = createRequire(import.meta.url);
@@ -72,14 +92,16 @@ function getAgentRoot(): string {
     // fall through to runtime-specific heuristics
   }
 
-  const argvPath = process.argv[1];
-  if (typeof argvPath === "string" && argvPath.endsWith("/dist/cli.js")) {
-    return dirname(dirname(argvPath));
+  const argvAgentRoot = resolveCliAgentRoot(process.argv[1]);
+  if (argvAgentRoot) {
+    return argvAgentRoot;
   }
 
-  const execArgvPath = process.execArgv.find((value) => value.endsWith("/dist/cli.js"));
-  if (typeof execArgvPath === "string") {
-    return dirname(dirname(execArgvPath));
+  const execArgvAgentRoot = process.execArgv
+    .map((value) => resolveCliAgentRoot(value))
+    .find((value): value is string => typeof value === "string");
+  if (execArgvAgentRoot) {
+    return execArgvAgentRoot;
   }
 
   const root = npmRoot();
