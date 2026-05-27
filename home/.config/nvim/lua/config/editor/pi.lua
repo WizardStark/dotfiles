@@ -649,9 +649,23 @@ local function paste_text_to_target(text, opts)
 				return
 			end
 			tmux_run({ "tmux", "paste-buffer", "-d", "-p", "-b", buffer_name, "-t", info.paneId }, {}, function(paste_ok)
-				if paste_ok and opts.notify_success then
-					notify(opts.notify_success)
+				if not paste_ok then
+					return
 				end
+				local function finish_success()
+					if opts.notify_success then
+						notify(opts.notify_success)
+					end
+				end
+				if opts.focus_after_send == false then
+					finish_success()
+					return
+				end
+				focus_tmux_target(info, function(focus_ok)
+					if focus_ok then
+						finish_success()
+					end
+				end)
 			end)
 		end)
 	end)
