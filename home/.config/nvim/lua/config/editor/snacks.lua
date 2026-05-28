@@ -78,6 +78,15 @@ require("snacks").setup({
 			},
 		},
 		sources = {
+			git_status_grep = {
+				finder = require("config.editor.snacks_git_status_grep").finder,
+				format = "file",
+				live = true,
+				supports_live = true,
+				show_empty = true,
+				untracked = true,
+				title = "Grep Changed Lines",
+			},
 			select = {
 				layout = {
 					preview = false,
@@ -466,6 +475,7 @@ require("snacks").setup({
 })
 
 Snacks.indent.enable()
+
 _G.dd = function(...)
 	require("snacks").debug.inspect(...)
 end

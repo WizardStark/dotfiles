@@ -456,6 +456,15 @@ local mappings = {
 		description = "Changed files",
 	},
 	{
+		mode = { "n" },
+		keys = "<leader>fD",
+		callback = function()
+			Snacks.picker.git_status_grep()
+		end,
+		prefix = P.find,
+		description = "Grep in changed lines",
+	},
+	{
 		mode = { "n", "x" },
 		keys = "<leader>fw",
 		callback = function()
