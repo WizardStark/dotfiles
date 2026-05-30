@@ -39,6 +39,16 @@ type CopyResult =
   | { ok: true; backend: string }
   | { ok: false; error: string };
 
+type ClipboardBackend = {
+  name: string;
+  command: string;
+  args: string[];
+  supported?: () => boolean;
+  timeoutMs?: number;
+};
+
+const CLIPBOARD_COMMAND_TIMEOUT_MS = 5000;
+
 function extractAssistantText(messageContent: unknown): string {
   if (typeof messageContent === "string") {
     return messageContent;
@@ -157,7 +167,7 @@ function extractCodeBlocks(text: string): CodeBlock[] {
   return blocks;
 }
 
-function getWindowsClipboardBackends(): Array<{ name: string; command: string; args: string[] }> {
+function getWindowsClipboardBackends(): ClipboardBackend[] {
   return [
     {
       name: "powershell Set-Clipboard",
@@ -177,7 +187,15 @@ function isWsl(): boolean {
   return process.platform === "linux" && !!(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP || /microsoft/i.test(release()));
 }
 
-function getClipboardBackends(): Array<{ name: string; command: string; args: string[] }> {
+function isWaylandSession(): boolean {
+  return !!(process.env.WAYLAND_DISPLAY || process.env.XDG_SESSION_TYPE === "wayland");
+}
+
+function isX11Session(): boolean {
+  return !!(process.env.DISPLAY || process.env.XDG_SESSION_TYPE === "x11");
+}
+
+function getClipboardBackends(): ClipboardBackend[] {
   switch (process.platform) {
     case "darwin":
       return [{ name: "pbcopy", command: "pbcopy", args: [] }];
@@ -186,9 +204,27 @@ function getClipboardBackends(): Array<{ name: string; command: string; args: st
     default:
       return [
         ...(isWsl() ? getWindowsClipboardBackends() : []),
-        { name: "wl-copy", command: "wl-copy", args: [] },
-        { name: "xclip", command: "xclip", args: ["-selection", "clipboard"] },
-        { name: "xsel", command: "xsel", args: ["--clipboard", "--input"] },
+        {
+          name: "wl-copy",
+          command: "wl-copy",
+          args: [],
+          supported: isWaylandSession,
+          timeoutMs: CLIPBOARD_COMMAND_TIMEOUT_MS,
+        },
+        {
+          name: "xclip",
+          command: "xclip",
+          args: ["-selection", "clipboard", "-in", "-silent"],
+          supported: isX11Session,
+          timeoutMs: CLIPBOARD_COMMAND_TIMEOUT_MS,
+        },
+        {
+          name: "xsel",
+          command: "xsel",
+          args: ["--clipboard", "--input"],
+          supported: isX11Session,
+          timeoutMs: CLIPBOARD_COMMAND_TIMEOUT_MS,
+        },
       ];
   }
 }
@@ -226,14 +262,20 @@ function copyViaTmuxLoadBuffer(text: string): CopyResult {
     input: text,
     encoding: "utf8",
     windowsHide: true,
+    timeout: CLIPBOARD_COMMAND_TIMEOUT_MS,
   });
 
   if (!result.error && result.status === 0) {
     return { ok: true, backend: "tmux load-buffer -w" };
   }
 
-  if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+  const errorCode = (result.error as NodeJS.ErrnoException | undefined)?.code;
+  if (errorCode === "ENOENT") {
     return { ok: false, error: "tmux load-buffer: not installed" };
+  }
+
+  if (errorCode === "ETIMEDOUT") {
+    return { ok: false, error: "tmux load-buffer: timed out" };
   }
 
   const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
@@ -256,19 +298,29 @@ function copyViaOsc52(text: string): CopyResult {
   }
 }
 
-function runCommandClipboardBackend(text: string, backend: { name: string; command: string; args: string[] }): CopyResult {
+function runCommandClipboardBackend(text: string, backend: ClipboardBackend): CopyResult {
+  if (backend.supported && !backend.supported()) {
+    return { ok: false, error: `${backend.name}: skipped for this session type` };
+  }
+
   const result = spawnSync(backend.command, backend.args, {
     input: text,
     encoding: "utf8",
     windowsHide: true,
+    timeout: backend.timeoutMs,
   });
 
   if (!result.error && result.status === 0) {
     return { ok: true, backend: backend.name };
   }
 
-  if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+  const errorCode = (result.error as NodeJS.ErrnoException | undefined)?.code;
+  if (errorCode === "ENOENT") {
     return { ok: false, error: `${backend.name}: not installed` };
+  }
+
+  if (errorCode === "ETIMEDOUT") {
+    return { ok: false, error: `${backend.name}: timed out` };
   }
 
   const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
@@ -423,6 +475,8 @@ function buildCopyDebugReport(): string {
     `tmux env: ${process.env.TMUX ? "yes" : "no"}`,
     `ssh env: ${isSshSession() ? "yes" : "no"}`,
     `wsl: ${isWsl() ? "yes" : "no"}`,
+    `wayland: ${isWaylandSession() ? "yes" : "no"}`,
+    `x11: ${isX11Session() ? "yes" : "no"}`,
     `tty: ${process.env.TTY ?? process.env.SSH_TTY ?? "(unknown)"}`,
     "",
     "backend order:",
