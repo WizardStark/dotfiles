@@ -3,6 +3,29 @@ vim.g.loaded_netrwPlugin = 1
 
 local opt = vim.opt
 
+local function setup_osc52_clipboard()
+	if not (vim.env.SSH_TTY or vim.env.SSH_CONNECTION or vim.env.TMUX) then
+		return
+	end
+
+	local ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
+	if not ok then
+		return
+	end
+
+	vim.g.clipboard = {
+		name = "OSC 52",
+		copy = {
+			["+"] = osc52.copy("+"),
+			["*"] = osc52.copy("*"),
+		},
+		paste = {
+			["+"] = osc52.paste("+"),
+			["*"] = osc52.paste("*"),
+		},
+	}
+end
+
 local opts = {
 	foldlevelstart = 99,
 	termguicolors = true,
@@ -62,5 +85,6 @@ return {
 		for key, value in pairs(opts) do
 			vim.opt[key] = value
 		end
+		setup_osc52_clipboard()
 	end,
 }

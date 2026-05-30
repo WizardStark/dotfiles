@@ -256,6 +256,20 @@ local mappings = {
 		description = "Copy/Yank to system clipboard",
 	},
 	{
+		mode = { "n" },
+		keys = "<leader>Y",
+		callback = [["+yy]],
+		prefix = P.misc,
+		description = "Copy current line to system clipboard",
+	},
+	{
+		mode = { "v" },
+		keys = "<leader>Y",
+		callback = [["+y]],
+		prefix = P.misc,
+		description = "Copy selection to system clipboard",
+	},
+	{
 		mode = { "n", "v" },
 		keys = "<leader>D",
 		callback = [["_d]],

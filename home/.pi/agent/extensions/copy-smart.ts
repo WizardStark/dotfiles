@@ -11,12 +11,15 @@
  * - Ctrl+Shift+Y       -> run the smart copy flow
  *
  * Clipboard backends:
+ * - tmux: tmux load-buffer -w, then OSC52 via tmux passthrough fallback
+ * - SSH: direct OSC52 write to /dev/tty as a fallback when not inside tmux
  * - macOS: pbcopy
  * - Linux: wl-copy, xclip, xsel
  * - WSL: powershell.exe / clip.exe fallback to the Windows clipboard
  * - Windows: powershell.exe, clip
  */
 import { spawnSync } from "node:child_process";
+import { closeSync, openSync, writeSync } from "node:fs";
 import { release } from "node:os";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -190,28 +193,119 @@ function getClipboardBackends(): Array<{ name: string; command: string; args: st
   }
 }
 
+function isSshSession(): boolean {
+  return !!(process.env.SSH_CONNECTION || process.env.SSH_CLIENT || process.env.SSH_TTY);
+}
+
+function encodeOsc52(text: string): string {
+  return `\u001b]52;c;${Buffer.from(text, "utf8").toString("base64")}\u0007`;
+}
+
+function encodeTmuxPassthrough(sequence: string): string {
+  return `\u001bPtmux;${sequence.replace(/\u001b/g, "\u001b\u001b")}\u001b\\`;
+}
+
+function copyViaTmuxPassthrough(text: string): CopyResult {
+  let fd: number | undefined;
+
+  try {
+    fd = openSync("/dev/tty", "w");
+    writeSync(fd, encodeTmuxPassthrough(encodeOsc52(text)));
+    return { ok: true, backend: "tmux passthrough OSC52" };
+  } catch (error) {
+    return { ok: false, error: `tmux passthrough: ${error instanceof Error ? error.message : String(error)}` };
+  } finally {
+    if (typeof fd === "number") {
+      closeSync(fd);
+    }
+  }
+}
+
+function copyViaTmuxLoadBuffer(text: string): CopyResult {
+  const result = spawnSync("tmux", ["load-buffer", "-w", "-"], {
+    input: text,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+
+  if (!result.error && result.status === 0) {
+    return { ok: true, backend: "tmux load-buffer -w" };
+  }
+
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+    return { ok: false, error: "tmux load-buffer: not installed" };
+  }
+
+  const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
+  return { ok: false, error: `tmux load-buffer: ${result.error instanceof Error ? result.error.message : stderr || `exit ${result.status ?? "unknown"}`}` };
+}
+
+function copyViaOsc52(text: string): CopyResult {
+  let fd: number | undefined;
+
+  try {
+    fd = openSync("/dev/tty", "w");
+    writeSync(fd, encodeOsc52(text));
+    return { ok: true, backend: "OSC52" };
+  } catch (error) {
+    return { ok: false, error: `OSC52: ${error instanceof Error ? error.message : String(error)}` };
+  } finally {
+    if (typeof fd === "number") {
+      closeSync(fd);
+    }
+  }
+}
+
+function runCommandClipboardBackend(text: string, backend: { name: string; command: string; args: string[] }): CopyResult {
+  const result = spawnSync(backend.command, backend.args, {
+    input: text,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+
+  if (!result.error && result.status === 0) {
+    return { ok: true, backend: backend.name };
+  }
+
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+    return { ok: false, error: `${backend.name}: not installed` };
+  }
+
+  const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
+  return { ok: false, error: `${backend.name}: ${result.error instanceof Error ? result.error.message : stderr || `exit ${result.status ?? "unknown"}`}` };
+}
+
 function copyToClipboard(text: string): CopyResult {
   const attempts: string[] = [];
 
+  if (process.env.TMUX) {
+    const loadBufferResult = copyViaTmuxLoadBuffer(text);
+    if (loadBufferResult.ok) {
+      return loadBufferResult;
+    }
+    attempts.push(loadBufferResult.error);
+
+    const passthroughResult = copyViaTmuxPassthrough(text);
+    if (passthroughResult.ok) {
+      return passthroughResult;
+    }
+    attempts.push(passthroughResult.error);
+  }
+
+  if (!process.env.TMUX && isSshSession()) {
+    const result = copyViaOsc52(text);
+    if (result.ok) {
+      return result;
+    }
+    attempts.push(result.error);
+  }
+
   for (const backend of getClipboardBackends()) {
-    const result = spawnSync(backend.command, backend.args, {
-      input: text,
-      encoding: "utf8",
-      windowsHide: true,
-    });
-
-    if (!result.error && result.status === 0) {
-      return { ok: true, backend: backend.name };
+    const result = runCommandClipboardBackend(text, backend);
+    if (result.ok) {
+      return result;
     }
-
-    if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
-      attempts.push(`${backend.name}: not installed`);
-      continue;
-    }
-
-    const stderr = typeof result.stderr === "string" ? result.stderr.trim() : "";
-    const errorMessage = result.error instanceof Error ? result.error.message : stderr || `exit ${result.status ?? "unknown"}`;
-    attempts.push(`${backend.name}: ${errorMessage}`);
+    attempts.push(result.error);
   }
 
   return {
@@ -278,6 +372,104 @@ async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: st
   }
 
   return undefined;
+}
+
+function runCommand(command: string, args: string[]): { ok: boolean; stdout: string; stderr: string; status: number | null; error?: string } {
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+
+  return {
+    ok: !result.error && result.status === 0,
+    stdout: typeof result.stdout === "string" ? result.stdout.trim() : "",
+    stderr: typeof result.stderr === "string" ? result.stderr.trim() : "",
+    status: result.status,
+    error: result.error instanceof Error ? result.error.message : undefined,
+  };
+}
+
+function isCommandAvailable(command: string): boolean {
+  if (process.platform === "win32") {
+    return runCommand("where", [command]).ok;
+  }
+
+  return runCommand("sh", ["-lc", `command -v ${JSON.stringify(command)} >/dev/null 2>&1`]).ok;
+}
+
+function getTmuxCommand(args: string[]): string {
+  const result = runCommand("tmux", args);
+  if (result.ok) {
+    return result.stdout || "(empty)";
+  }
+  return result.error || result.stderr || `exit ${result.status ?? "unknown"}`;
+}
+
+function getTmuxClientValue(format: string): string {
+  if (!process.env.TMUX) {
+    return "(not in tmux)";
+  }
+  return getTmuxCommand(["display-message", "-p", format]);
+}
+
+function buildCopyDebugReport(): string {
+  const commandBackends = getClipboardBackends();
+  const lines = [
+    "copy-debug",
+    `platform: ${process.platform}`,
+    `kernel: ${release()}`,
+    `term: ${process.env.TERM ?? "(unset)"}`,
+    `term_program: ${process.env.TERM_PROGRAM ?? "(unset)"}`,
+    `tmux env: ${process.env.TMUX ? "yes" : "no"}`,
+    `ssh env: ${isSshSession() ? "yes" : "no"}`,
+    `wsl: ${isWsl() ? "yes" : "no"}`,
+    `tty: ${process.env.TTY ?? process.env.SSH_TTY ?? "(unknown)"}`,
+    "",
+    "backend order:",
+  ];
+
+  if (process.env.TMUX) {
+    lines.push("- tmux load-buffer -w");
+    lines.push("- tmux passthrough OSC52");
+  }
+  if (!process.env.TMUX && isSshSession()) {
+    lines.push("- direct OSC52");
+  }
+  for (const backend of commandBackends) {
+    lines.push(`- ${backend.name}`);
+  }
+
+  lines.push("", "command availability:");
+  if (process.env.TMUX || isCommandAvailable("tmux")) {
+    lines.push(`- tmux: ${isCommandAvailable("tmux") ? "yes" : "no"}`);
+  }
+  for (const backend of commandBackends) {
+    lines.push(`- ${backend.name}: ${isCommandAvailable(backend.command) ? "yes" : "no"}`);
+  }
+
+  if (process.env.TMUX || isCommandAvailable("tmux")) {
+    lines.push(
+      "",
+      "tmux state:",
+      `- version: ${getTmuxCommand(["-V"])}`,
+      `- set-clipboard: ${getTmuxCommand(["show-options", "-sqv", "set-clipboard"])}`,
+      `- allow-passthrough: ${getTmuxCommand(["show-options", "-wqv", "allow-passthrough"])}`,
+      `- client termname: ${getTmuxClientValue("#{client_termname}")}`,
+      `- client termfeatures: ${getTmuxClientValue("#{client_termfeatures}")}`,
+      `- default-terminal: ${getTmuxCommand(["show-options", "-gqv", "default-terminal"])}`,
+      `- terminal-features: ${getTmuxCommand(["show-options", "-gqv", "terminal-features"])}`,
+    );
+  }
+
+  lines.push(
+    "",
+    "notes:",
+    "- For kitty -> local tmux -> ssh -> remote tmux, the local tmux client must advertise clipboard support.",
+    "- After tmux.conf changes, fully reattach local tmux if client_termfeatures still looks stale.",
+    "- Successful /dev/tty writes do not prove the outer terminal accepted OSC52."
+  );
+
+  return lines.join("\n");
 }
 
 function notifyCopied(ctx: any, label: string, backend: string) {
@@ -368,6 +560,19 @@ export default function (pi: ExtensionAPI) {
     description: "Copy a fenced code block from the last assistant message by number, language, or picker",
     handler: async (args, ctx) => {
       await copySelectedBlock(ctx, args);
+    },
+  });
+
+  pi.registerCommand("copy-debug", {
+    description: "Show SSH/tmux clipboard diagnostics for copy-smart",
+    handler: async (_args, ctx) => {
+      const report = buildCopyDebugReport();
+      pi.sendMessage({
+        customType: "copy-debug",
+        content: report,
+        display: true,
+      });
+      ctx.ui.notify("Posted copy debug report", "info");
     },
   });
 
