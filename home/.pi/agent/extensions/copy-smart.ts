@@ -8,7 +8,7 @@
  * - /copy-block bash   -> copy the first/selected bash block
  *
  * Shortcut:
- * - Ctrl+Shift+Y       -> run the smart copy flow
+ * - Ctrl+Alt+Y         -> run the smart copy flow
  *
  * Clipboard backends:
  * - tmux: tmux load-buffer -w, then OSC52 via tmux passthrough fallback
@@ -576,7 +576,7 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.registerShortcut("ctrl+shift+y", {
+  pi.registerShortcut("ctrl+alt+y", {
     description: "Copy the latest assistant code block or message",
     handler: async (ctx) => {
       await copySmart(ctx);

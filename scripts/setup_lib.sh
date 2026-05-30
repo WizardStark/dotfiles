@@ -469,8 +469,19 @@ missing_manifest_git_clones() {
   done < <(manifest_entries git)
 }
 
+ensure_pi_runtime_directories() {
+  mkdir -p \
+    "$HOME/.pi" \
+    "$HOME/.pi/agent" \
+    "$HOME/.pi/context-mode" \
+    "$HOME/.pi/agent/bin" \
+    "$HOME/.pi/agent/npm" \
+    "$HOME/.pi/agent/sessions"
+}
+
 ensure_base_directories() {
   mkdir -p "$HOME/.config" "$HOME/.ssh"
+  ensure_pi_runtime_directories
 }
 
 backup_existing_zshrc() {
