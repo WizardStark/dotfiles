@@ -17,6 +17,13 @@ Options:
   --adopt           Let stow adopt unmanaged files
   --launch-shell    Exec into a new login shell after syncing
   --help            Show this help text
+
+Examples:
+  ./sync.sh
+  ./sync.sh --check
+  ./sync.sh --check --verbose
+  ./sync.sh --with-sudo
+  ./sync.sh --bootstrap-brew --with-sudo --launch-shell
 EOF
 }
 

@@ -22,7 +22,7 @@ require_command() {
 }
 
 json_escape() {
-  python - <<'PY' "$1"
+  python3 - <<'PY' "$1"
 import json, sys
 print(json.dumps(sys.argv[1]))
 PY
@@ -161,6 +161,8 @@ fi
 tmux select-window -t "$target" >/dev/null 2>&1 || true
 
 if [[ "$json_output" == "1" ]]; then
+  require_command python3
+
   restarted=false
   if [[ -n "$restart_reason" ]]; then
     restarted=true

@@ -1,5 +1,11 @@
 min_version = "2025.1.0"
 
+# Primary task entrypoints used by this repo.
+#
+# Keep the names close to the underlying sync.sh flags so the workflow stays
+# easy to remember when switching between direct shell usage and mise tasks.
+# Bootstrap is the "new machine" path; the remaining tasks are for ongoing
+# maintenance or verification on an existing machine.
 [tasks.bootstrap]
 description = "Bootstrap a new machine with Homebrew, dotfiles, and extras"
 run = "./sync.sh --with-sudo --bootstrap-brew --adopt --launch-shell"
@@ -20,6 +26,8 @@ run = "./sync.sh --adopt"
 description = "Sync dependencies, adopt unmanaged files, and update login shell with sudo"
 run = "./sync.sh --with-sudo --adopt"
 
+# Verification stays separate from sync tasks so it is safe to run in CI,
+# during demos, or before applying local machine changes.
 [tasks.check]
 description = "Check whether dependencies and stow links are in sync"
 run = "./sync.sh --check"
