@@ -12,13 +12,13 @@
  *
  * Clipboard backends:
  * - tmux: tmux load-buffer -w, then OSC52 via tmux passthrough fallback
- * - SSH: direct OSC52 write to /dev/tty as a fallback when not inside tmux
+ * - OSC52: direct write to /dev/tty when outside tmux over SSH or in likely-compatible local terminals
  * - macOS: pbcopy
  * - Linux: wl-copy, xclip, xsel
  * - WSL: powershell.exe / clip.exe fallback to the Windows clipboard
  * - Windows: powershell.exe, clip
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { release } from "node:os";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -233,6 +233,29 @@ function isSshSession(): boolean {
   return !!(process.env.SSH_CONNECTION || process.env.SSH_CLIENT || process.env.SSH_TTY);
 }
 
+function likelySupportsOsc52(): boolean {
+  const term = (process.env.TERM ?? "").toLowerCase();
+  const termProgram = (process.env.TERM_PROGRAM ?? "").toLowerCase();
+
+  return !!(
+    process.env.KITTY_WINDOW_ID ||
+    process.env.WEZTERM_EXECUTABLE ||
+    process.env.GHOSTTY_RESOURCES_DIR ||
+    process.env.ITERM_SESSION_ID ||
+    process.env.VSCODE_GIT_IPC_HANDLE ||
+    term.includes("kitty") ||
+    term.includes("wezterm") ||
+    term.includes("ghostty") ||
+    term.includes("foot") ||
+    term.includes("alacritty") ||
+    termProgram.includes("kitty") ||
+    termProgram.includes("wezterm") ||
+    termProgram.includes("ghostty") ||
+    termProgram.includes("iterm") ||
+    termProgram.includes("vscode")
+  );
+}
+
 function encodeOsc52(text: string): string {
   return `\u001b]52;c;${Buffer.from(text, "utf8").toString("base64")}\u0007`;
 }
@@ -298,7 +321,85 @@ function copyViaOsc52(text: string): CopyResult {
   }
 }
 
-function runCommandClipboardBackend(text: string, backend: ClipboardBackend): CopyResult {
+function runWlCopyBackend(text: string, backend: ClipboardBackend): Promise<CopyResult> {
+  if (backend.supported && !backend.supported()) {
+    return Promise.resolve({ ok: false, error: `${backend.name}: skipped for this session type` });
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let successTimer: NodeJS.Timeout | undefined;
+    let watchdogTimer: NodeJS.Timeout | undefined;
+
+    const finish = (result: CopyResult) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (successTimer) {
+        clearTimeout(successTimer);
+      }
+      if (watchdogTimer) {
+        clearTimeout(watchdogTimer);
+      }
+      resolve(result);
+    };
+
+    try {
+      const child = spawn(backend.command, backend.args, {
+        stdio: ["pipe", "ignore", "ignore"],
+        windowsHide: true,
+        detached: process.platform !== "win32",
+      });
+
+      watchdogTimer = setTimeout(() => {
+        try {
+          child.kill();
+        } catch {
+          // ignore kill errors from already-exited child processes
+        }
+        child.unref();
+        finish({ ok: false, error: `${backend.name}: timed out` });
+      }, backend.timeoutMs ?? CLIPBOARD_COMMAND_TIMEOUT_MS);
+
+      child.once("error", (error) => {
+        const errorCode = (error as NodeJS.ErrnoException).code;
+        if (errorCode === "ENOENT") {
+          finish({ ok: false, error: `${backend.name}: not installed` });
+          return;
+        }
+        finish({ ok: false, error: `${backend.name}: ${error.message}` });
+      });
+
+      child.once("exit", (code, signal) => {
+        if (code === 0) {
+          finish({ ok: true, backend: backend.name });
+          return;
+        }
+        finish({ ok: false, error: `${backend.name}: ${signal ? `signal ${signal}` : `exit ${code ?? "unknown"}`}` });
+      });
+
+      child.stdin.on("error", (error) => {
+        finish({ ok: false, error: `${backend.name}: ${error.message}` });
+      });
+
+      child.stdin.end(text, "utf8", () => {
+        successTimer = setTimeout(() => {
+          child.unref();
+          finish({ ok: true, backend: backend.name });
+        }, 150);
+      });
+    } catch (error) {
+      finish({ ok: false, error: `${backend.name}: ${error instanceof Error ? error.message : String(error)}` });
+    }
+  });
+}
+
+async function runCommandClipboardBackend(text: string, backend: ClipboardBackend): Promise<CopyResult> {
+  if (backend.command === "wl-copy") {
+    return runWlCopyBackend(text, backend);
+  }
+
   if (backend.supported && !backend.supported()) {
     return { ok: false, error: `${backend.name}: skipped for this session type` };
   }
@@ -327,7 +428,7 @@ function runCommandClipboardBackend(text: string, backend: ClipboardBackend): Co
   return { ok: false, error: `${backend.name}: ${result.error instanceof Error ? result.error.message : stderr || `exit ${result.status ?? "unknown"}`}` };
 }
 
-function copyToClipboard(text: string): CopyResult {
+async function copyToClipboard(text: string): Promise<CopyResult> {
   const attempts: string[] = [];
 
   if (process.env.TMUX) {
@@ -353,7 +454,15 @@ function copyToClipboard(text: string): CopyResult {
   }
 
   for (const backend of getClipboardBackends()) {
-    const result = runCommandClipboardBackend(text, backend);
+    const result = await runCommandClipboardBackend(text, backend);
+    if (result.ok) {
+      return result;
+    }
+    attempts.push(result.error);
+  }
+
+  if (!process.env.TMUX && !isSshSession() && likelySupportsOsc52()) {
+    const result = copyViaOsc52(text);
     if (result.ok) {
       return result;
     }
@@ -478,6 +587,8 @@ function buildCopyDebugReport(): string {
     `wayland: ${isWaylandSession() ? "yes" : "no"}`,
     `x11: ${isX11Session() ? "yes" : "no"}`,
     `tty: ${process.env.TTY ?? process.env.SSH_TTY ?? "(unknown)"}`,
+    `osc52 ssh path: ${!process.env.TMUX && isSshSession() ? "yes" : "no"}`,
+    `osc52 local fallback: ${!process.env.TMUX && !isSshSession() && likelySupportsOsc52() ? "yes" : "no"}`,
     "",
     "backend order:",
   ];
@@ -491,6 +602,9 @@ function buildCopyDebugReport(): string {
   }
   for (const backend of commandBackends) {
     lines.push(`- ${backend.name}`);
+  }
+  if (!process.env.TMUX && !isSshSession() && likelySupportsOsc52()) {
+    lines.push("- direct OSC52 (local fallback)");
   }
 
   lines.push("", "command availability:");
@@ -555,7 +669,7 @@ async function copySelectedBlock(ctx: any, selector?: string): Promise<boolean> 
     return false;
   }
 
-  const result = copyToClipboard(block.code);
+  const result = await copyToClipboard(block.code);
   if (!result.ok) {
     notifyCopyError(ctx, `Copy failed: ${result.error}`);
     return false;
@@ -578,7 +692,7 @@ async function copySmart(ctx: any, selector?: string): Promise<boolean> {
   }
 
   if (blocks.length === 1) {
-    const result = copyToClipboard(blocks[0].code);
+    const result = await copyToClipboard(blocks[0].code);
     if (!result.ok) {
       notifyCopyError(ctx, `Copy failed: ${result.error}`);
       return false;
@@ -592,7 +706,7 @@ async function copySmart(ctx: any, selector?: string): Promise<boolean> {
     return copySelectedBlock(ctx);
   }
 
-  const result = copyToClipboard(lastAssistant.text);
+  const result = await copyToClipboard(lastAssistant.text);
   if (!result.ok) {
     notifyCopyError(ctx, `Copy failed: ${result.error}`);
     return false;
