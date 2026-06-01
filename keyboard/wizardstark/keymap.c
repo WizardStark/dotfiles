@@ -2,7 +2,7 @@
 #include "keymap.h"
 #include "qmk-vim/src/vim.h"
 #include "rgb.h"
-#include "sm_td/sm_td.h"
+#include "sm_td/sm_td/sm_td.h"
 #include "sm_td_user.h"
 
 #ifdef STATUS_LED_1
@@ -15,39 +15,152 @@ void vim_mac_mode_active(bool active) { STATUS_LED_3(active); }
 
 bool IS_MAC = false;
 
-const uint16_t PROGMEM combo_SPCR[] = {CKC_SPC, CKC_R, COMBO_END};
+enum combo_events {
+  COMBO_SPCR,
+  COMBO_COMK,
+  COMBO_AH,
+  COMBO_UH,
+  COMBO_EH,
+  COMBO_OH,
+  COMBO_GM,
+  COMBO_NC,
+  COMBO_XW,
+  COMBO_TN,
+  COMBO_WM,
+  COMBO_MC,
+  COMBO_TA,
+  COMBO_RDEL,
+};
+
+const uint16_t PROGMEM combo_SPCR[] = {KC_SPC, KC_R, COMBO_END};
 const uint16_t PROGMEM combo_COMK[] = {KC_COMM, KC_K, COMBO_END};
-const uint16_t PROGMEM combo_AH[] = {CKC_A, CKC_H, COMBO_END};
-const uint16_t PROGMEM combo_UH[] = {KC_U, CKC_H, COMBO_END};
-const uint16_t PROGMEM combo_EH[] = {CKC_E, CKC_H, COMBO_END};
-const uint16_t PROGMEM combo_OH[] = {KC_O, CKC_H, COMBO_END};
-const uint16_t PROGMEM combo_GM[] = {CKC_G, CKC_M, COMBO_END};
-const uint16_t PROGMEM combo_NC[] = {CKC_N, KC_C, COMBO_END};
+const uint16_t PROGMEM combo_AH[] = {KC_A, KC_H, COMBO_END};
+const uint16_t PROGMEM combo_UH[] = {KC_U, KC_H, COMBO_END};
+const uint16_t PROGMEM combo_EH[] = {KC_E, KC_H, COMBO_END};
+const uint16_t PROGMEM combo_OH[] = {KC_O, KC_H, COMBO_END};
+const uint16_t PROGMEM combo_GM[] = {KC_G, KC_M, COMBO_END};
+const uint16_t PROGMEM combo_NC[] = {KC_N, KC_C, COMBO_END};
 const uint16_t PROGMEM combo_XW[] = {KC_X, KC_W, COMBO_END};
-const uint16_t PROGMEM combo_TN[] = {CKC_T, CKC_N, COMBO_END};
-const uint16_t PROGMEM combo_WM[] = {KC_W, CKC_M, COMBO_END};
-const uint16_t PROGMEM combo_MC[] = {CKC_M, KC_C, COMBO_END};
-const uint16_t PROGMEM combo_TA[] = {CKC_T, CKC_A, COMBO_END};
-const uint16_t PROGMEM combo_RDEL[] = {CKC_R, KC_DEL, COMBO_END};
+const uint16_t PROGMEM combo_TN[] = {KC_T, KC_N, COMBO_END};
+const uint16_t PROGMEM combo_WM[] = {KC_W, KC_M, COMBO_END};
+const uint16_t PROGMEM combo_MC[] = {KC_M, KC_C, COMBO_END};
+const uint16_t PROGMEM combo_TA[] = {KC_T, KC_A, COMBO_END};
+const uint16_t PROGMEM combo_RDEL[] = {KC_R, KC_DEL, COMBO_END};
 
 // clang-format off
 combo_t key_combos[COMBO_COUNT] = {
-    COMBO(combo_SPCR, KC_ENT),
-    COMBO(combo_COMK, TO(MOUSE)),
-    COMBO(combo_AH, MCRO_AU),
-    COMBO(combo_UH, MCRO_UA),
-    COMBO(combo_EH, MCRO_EO),
-    COMBO(combo_OH, MCRO_OE),
-    COMBO(combo_GM, MCRO_GL),
-    COMBO(combo_NC, MCRO_QU),
-    COMBO(combo_XW, MCRO_XPL),
-    COMBO(combo_TN, MCRO_TION),
-    COMBO(combo_WM, KC_Z),
-    COMBO(combo_MC, MCRO_MPL),
-    COMBO(combo_TA, CW_TOGG),
-    COMBO(combo_RDEL, TO(GAME)),
+    [COMBO_SPCR] = COMBO_ACTION(combo_SPCR),
+    [COMBO_COMK] = COMBO_ACTION(combo_COMK),
+    [COMBO_AH]   = COMBO_ACTION(combo_AH),
+    [COMBO_UH]   = COMBO_ACTION(combo_UH),
+    [COMBO_EH]   = COMBO_ACTION(combo_EH),
+    [COMBO_OH]   = COMBO_ACTION(combo_OH),
+    [COMBO_GM]   = COMBO_ACTION(combo_GM),
+    [COMBO_NC]   = COMBO_ACTION(combo_NC),
+    [COMBO_XW]   = COMBO_ACTION(combo_XW),
+    [COMBO_TN]   = COMBO_ACTION(combo_TN),
+    [COMBO_WM]   = COMBO_ACTION(combo_WM),
+    [COMBO_MC]   = COMBO_ACTION(combo_MC),
+    [COMBO_TA]   = COMBO_ACTION(combo_TA),
+    [COMBO_RDEL] = COMBO_ACTION(combo_RDEL),
 };
 // clang-format on
+
+static void emit_macro(uint16_t keycode) {
+  switch (keycode) {
+  case MCRO_AU:
+    tap_code16(KC_A);
+    tap_code16(KC_U);
+    break;
+  case MCRO_UA:
+    tap_code16(KC_U);
+    tap_code16(KC_A);
+    break;
+  case MCRO_EO:
+    tap_code16(KC_E);
+    tap_code16(KC_O);
+    break;
+  case MCRO_OE:
+    tap_code16(KC_O);
+    tap_code16(KC_E);
+    break;
+  case MCRO_GL:
+    tap_code16(KC_G);
+    tap_code16(KC_L);
+    break;
+  case MCRO_QU:
+    tap_code16(KC_Q);
+    tap_code16(KC_U);
+    break;
+  case MCRO_XPL:
+    tap_code16(KC_X);
+    tap_code16(KC_P);
+    tap_code16(KC_L);
+    break;
+  case MCRO_TION:
+    tap_code16(KC_T);
+    tap_code16(KC_I);
+    tap_code16(KC_O);
+    tap_code16(KC_N);
+    break;
+  case MCRO_MPL:
+    tap_code16(KC_M);
+    tap_code16(KC_P);
+    tap_code16(KC_L);
+    break;
+  }
+}
+
+void process_combo_event(uint16_t combo_index, bool pressed) {
+  if (!pressed) {
+    return;
+  }
+
+  switch (combo_index) {
+  case COMBO_SPCR:
+    tap_code16(KC_ENT);
+    break;
+  case COMBO_COMK:
+    layer_move(MOUSE);
+    break;
+  case COMBO_AH:
+    emit_macro(MCRO_AU);
+    break;
+  case COMBO_UH:
+    emit_macro(MCRO_UA);
+    break;
+  case COMBO_EH:
+    emit_macro(MCRO_EO);
+    break;
+  case COMBO_OH:
+    emit_macro(MCRO_OE);
+    break;
+  case COMBO_GM:
+    emit_macro(MCRO_GL);
+    break;
+  case COMBO_NC:
+    emit_macro(MCRO_QU);
+    break;
+  case COMBO_XW:
+    emit_macro(MCRO_XPL);
+    break;
+  case COMBO_TN:
+    emit_macro(MCRO_TION);
+    break;
+  case COMBO_WM:
+    tap_code16(KC_Z);
+    break;
+  case COMBO_MC:
+    emit_macro(MCRO_MPL);
+    break;
+  case COMBO_TA:
+    tap_code16(CW_TOGG);
+    break;
+  case COMBO_RDEL:
+    layer_move(GAME);
+    break;
+  }
+}
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   if (!process_smtd(keycode, record)) {
@@ -65,61 +178,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
   switch (keycode) {
   case MCRO_AU:
-    if (record->event.pressed) {
-      tap_code16(KC_A);
-      tap_code16(KC_U);
-    }
-    break;
   case MCRO_UA:
-    if (record->event.pressed) {
-      tap_code16(KC_U);
-      tap_code16(KC_A);
-    }
-    break;
   case MCRO_EO:
-    if (record->event.pressed) {
-      tap_code16(KC_E);
-      tap_code16(KC_O);
-    }
-    break;
   case MCRO_OE:
-    if (record->event.pressed) {
-      tap_code16(KC_O);
-      tap_code16(KC_E);
-    }
-    break;
   case MCRO_GL:
-    if (record->event.pressed) {
-      tap_code16(KC_G);
-      tap_code16(KC_L);
-    }
-    break;
   case MCRO_QU:
-    if (record->event.pressed) {
-      tap_code16(KC_Q);
-      tap_code16(KC_U);
-    }
-    break;
   case MCRO_XPL:
-    if (record->event.pressed) {
-      tap_code16(KC_X);
-      tap_code16(KC_P);
-      tap_code16(KC_L);
-    }
-    break;
   case MCRO_TION:
-    if (record->event.pressed) {
-      tap_code16(KC_T);
-      tap_code16(KC_I);
-      tap_code16(KC_O);
-      tap_code16(KC_N);
-    }
-    break;
   case MCRO_MPL:
     if (record->event.pressed) {
-      tap_code16(KC_M);
-      tap_code16(KC_P);
-      tap_code16(KC_L);
+      emit_macro(keycode);
     }
     break;
   case RGB_SLD:
