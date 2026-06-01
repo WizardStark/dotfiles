@@ -35,6 +35,13 @@ return {
 		dependencies = { { src = "https://github.com/MunifTanjim/nui.nvim" } },
 		config = function()
 			require("codediff").setup({
+				diff = {
+					compute_moves = true,
+					conflict_result_height = 50,
+				},
+				explorer = {
+					view_mode = "tree",
+				},
 				keymaps = {
 					view = {
 						next_hunk = "<M-n>",
