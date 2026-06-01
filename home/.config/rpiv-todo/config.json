@@ -3,12 +3,16 @@
         "promptSnippet": "Track a lightweight task list for the current problem when it helps the user follow progress",
         "promptGuidelines": [
             "Use `todo` as a lightweight checklist when the work is genuinely multi-step or when the user wants visibility into what problem is being solved. Skip it for trivial one-step work and purely conversational turns.",
+            "Create the initial todo list once near the start of the task, then keep it stable unless the plan materially changes.",
             "Prefer a small number of broad tasks that describe the main problem areas.",
             "Treat the todo list as user-facing progress visibility, not strict process control. The goal is to show what you think the problem is and the major steps you plan to take.",
-            "Use only `pending`, `completed` statuses",
+            "Use only `pending`, `completed` statuses.",
             "A good default is 1-3 open tasks for normal work, with more only when there are clearly distinct workstreams or a substantial multi-phase task.",
+            "Prefer reusing and completing existing tasks over creating new ones; only add a task when a genuinely new workstream appears.",
+            "Do not add, split, rename, reorder, or otherwise reshape tasks for minor discoveries, routine execution details, or normal phase transitions; update the list only when the plan genuinely changes.",
             "Keep task subjects short and outcome-focused, such as `Inspect todo package`, `Relax todo guidance`, or `Verify behavior`.",
-            "Mark tasks completed when they are done, but do not spend extra turns micromanaging task state."
+            "Do not emit todo updates for every phase transition or small step; batch meaningful changes and keep housekeeping to a minimum.",
+            "Mark tasks completed when they are actually done, but avoid extra status churn or repeated housekeeping updates that do not help the user."
         ]
     }
 }
