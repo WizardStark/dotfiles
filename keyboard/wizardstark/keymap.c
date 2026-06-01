@@ -111,6 +111,15 @@ static void emit_macro(uint16_t keycode) {
   }
 }
 
+bool get_combo_must_tap(uint16_t combo_index, combo_t *combo) {
+  switch (combo_index) {
+  case COMBO_TA:
+    return true;
+  default:
+    return false;
+  }
+}
+
 void process_combo_event(uint16_t combo_index, bool pressed) {
   if (!pressed) {
     return;
@@ -154,7 +163,7 @@ void process_combo_event(uint16_t combo_index, bool pressed) {
     emit_macro(MCRO_MPL);
     break;
   case COMBO_TA:
-    tap_code16(CW_TOGG);
+    caps_word_toggle();
     break;
   case COMBO_RDEL:
     layer_move(GAME);

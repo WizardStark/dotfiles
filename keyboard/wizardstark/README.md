@@ -9,6 +9,7 @@ This keymap is updated to build against a current ZSA QMK checkout without flash
   - `zsa/defaults`
 - updated `sm_td` integration for the current package API
 - migrated combos to `COMBO_ACTION` handling for compatibility with the current `sm_td` behavior
+- made the `T+A` Caps Word combo tap-only so it does not interfere with using those keys as Shift holds
 - removed the old `RGB_MATRIX_CUSTOM_KB` flag that now requires a missing `rgb_matrix_kb.inc`
 - kept `qmk-vim` as direct source files from the bundled submodule
 - compile-tested against a fresh `zsa/qmk_firmware` checkout
