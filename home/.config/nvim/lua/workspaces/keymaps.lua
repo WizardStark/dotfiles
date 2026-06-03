@@ -66,6 +66,15 @@ local mappings = {
 	},
 	{
 		mode = { "n" },
+		keys = "<leader><C-p>",
+		callback = function()
+			require("workspaces.pi_sessions").show()
+		end,
+		prefix = P.work,
+		description = "Pi sessions",
+	},
+	{
+		mode = { "n" },
 		keys = "<leader>sa",
 		callback = function()
 			require("workspaces.ui").pick_session()
