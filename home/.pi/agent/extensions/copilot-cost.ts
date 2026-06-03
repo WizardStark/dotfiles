@@ -1,6 +1,20 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
+type SubagentMetrics = {
+  cost?: {
+    amount?: number;
+    estimated?: boolean;
+    knownRate?: boolean;
+    unknownModel?: string;
+  };
+};
+
+type ReviewerMetricsEvent = {
+  generatedAt?: number;
+  subagentMetrics?: SubagentMetrics;
+};
+
 const STATUS_KEY = "copilot-cost";
 const TOKENS_PER_MILLION = 1_000_000;
 
@@ -37,10 +51,13 @@ const MODEL_RATES: Record<string, ModelRates> = {
 
 function normalizeModelId(model: string | undefined): string {
   const raw = (model ?? "").trim().toLowerCase();
-  const withoutSuffix = raw.split("@")[0] || raw;
-  const withoutSlashPrefix = withoutSuffix.split("/").pop() || withoutSuffix;
-  const unscoped = withoutSlashPrefix.split(":").pop() || withoutSlashPrefix;
-  return unscoped.replace(/[_\s]+/g, "-").replace(/-+/g, "-");
+  const withoutBuildSuffix = raw.split("@")[0] || raw;
+  const withoutThinkingSuffix = withoutBuildSuffix.replace(/:(off|minimal|low|medium|high|xhigh)$/, "");
+  const withoutPathPrefix = withoutThinkingSuffix.split("/").pop() || withoutThinkingSuffix;
+  const withoutProviderPrefix = withoutPathPrefix.includes(":")
+    ? withoutPathPrefix.split(":").slice(1).join(":") || withoutPathPrefix
+    : withoutPathPrefix;
+  return withoutProviderPrefix.replace(/[_\s]+/g, "-").replace(/-+/g, "-");
 }
 
 function formatUsd(amount: number): string {
@@ -83,13 +100,73 @@ function estimateUsageCost(message: AssistantMessage): { amount: number; estimat
   return { amount, estimated: true, knownRate: true };
 }
 
-function buildStatus(ctx: ExtensionContext): string {
-  let total = 0;
+function getSubagentDetails(message: unknown): ReviewerMetricsEvent | undefined {
+  if (!message || typeof message !== "object") {
+    return undefined;
+  }
+
+  const details = (message as { details?: unknown }).details;
+  if (!details || typeof details !== "object") {
+    return undefined;
+  }
+
+  const generatedAt = (details as { generatedAt?: unknown }).generatedAt;
+  const metrics = (details as { subagentMetrics?: unknown }).subagentMetrics;
+  if (typeof generatedAt !== "number" && (!metrics || typeof metrics !== "object")) {
+    return undefined;
+  }
+
+  return {
+    generatedAt: typeof generatedAt === "number" ? generatedAt : undefined,
+    subagentMetrics: metrics && typeof metrics === "object" ? (metrics as SubagentMetrics) : undefined,
+  };
+}
+
+function getSubagentMetrics(message: unknown): SubagentMetrics | undefined {
+  return getSubagentDetails(message)?.subagentMetrics;
+}
+
+function buildStatus(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent): string {
+  let mainTotal = 0;
+  let subTotal = 0;
   let hasEstimate = false;
+  let hasAnyCost = false;
+  let sawSubagentMessage = false;
+  let hasUnknownSubCost = false;
+  let latestPersistedGeneratedAt: number | undefined;
   const unknownModels = new Set<string>();
 
+  const applySubagentMetrics = (metrics: SubagentMetrics | undefined) => {
+    sawSubagentMessage ||= metrics !== undefined;
+
+    const cost = metrics?.cost;
+    if (typeof cost?.amount === "number") {
+      subTotal += cost.amount;
+      hasEstimate ||= Boolean(cost.estimated);
+      hasAnyCost = true;
+      if (cost.knownRate === false) {
+        unknownModels.add(cost.unknownModel || "unknown-model");
+      }
+    } else if (metrics !== undefined) {
+      hasUnknownSubCost = true;
+      if (cost?.knownRate === false) {
+        unknownModels.add(cost.unknownModel || "unknown-model");
+      }
+    }
+  };
+
   for (const entry of ctx.sessionManager.getBranch()) {
-    if (entry.type !== "message" || entry.message.role !== "assistant") {
+    if (entry.type !== "message") {
+      continue;
+    }
+
+    const details = getSubagentDetails(entry.message);
+    if (typeof details?.generatedAt === "number") {
+      latestPersistedGeneratedAt = Math.max(latestPersistedGeneratedAt ?? details.generatedAt, details.generatedAt);
+    }
+    applySubagentMetrics(details?.subagentMetrics);
+
+    if (entry.message.role !== "assistant") {
       continue;
     }
 
@@ -97,41 +174,79 @@ function buildStatus(ctx: ExtensionContext): string {
     if (message.provider !== "github-copilot") {
       continue;
     }
+
     const { amount, estimated, knownRate } = estimateUsageCost(message);
-    total += amount;
+    mainTotal += amount;
     hasEstimate ||= estimated;
+    hasAnyCost = true;
     if (!knownRate) {
       unknownModels.add(normalizeModelId(message.model) || "unknown-model");
     }
   }
 
-  const prefix = hasEstimate ? "Est " : "Cost ";
-  const unknownSuffix = unknownModels.size > 0 ? ` +${unknownModels.size} unk` : "";
-  return `${prefix}${formatUsd(total)}${unknownSuffix}`;
-}
-
-function renderStatus(ctx: ExtensionContext) {
-  if (!ctx.hasUI) {
-    return;
+  if (
+    pendingEvent?.subagentMetrics &&
+    (latestPersistedGeneratedAt === undefined ||
+      (pendingEvent.generatedAt ?? Number.POSITIVE_INFINITY) > latestPersistedGeneratedAt)
+  ) {
+    applySubagentMetrics(pendingEvent.subagentMetrics);
   }
 
-  ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", buildStatus(ctx)));
+  const subLabel =
+    sawSubagentMessage && hasUnknownSubCost
+      ? subTotal > 0
+        ? `${formatUsd(subTotal)}+?`
+        : "+?"
+      : formatUsd(subTotal);
+  const unknownSuffix = unknownModels.size > 0 ? ` +${unknownModels.size} unk` : "";
+  return `Main ${formatUsd(mainTotal)} · Sub ${subLabel}${unknownSuffix}`;
 }
 
 export default function copilotCost(pi: ExtensionAPI) {
+  let currentCtx: ExtensionContext | undefined;
+  let pendingReviewerMetrics: ReviewerMetricsEvent | undefined;
+
+  function renderStatus(ctx: ExtensionContext) {
+    if (!ctx.hasUI) {
+      return;
+    }
+
+    ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", buildStatus(ctx, pendingReviewerMetrics)));
+  }
+
   pi.on("session_start", async (_event, ctx) => {
+    currentCtx = ctx;
+    pendingReviewerMetrics = undefined;
     renderStatus(ctx);
   });
 
+  pi.events.on("reviewer-subagent:metrics", (data) => {
+    pendingReviewerMetrics = (data ?? {}) as ReviewerMetricsEvent;
+    if (currentCtx) {
+      renderStatus(currentCtx);
+    }
+  });
+
+  pi.on("message_end", async (event, ctx) => {
+    if (getSubagentMetrics(event.message)) {
+      currentCtx = ctx;
+      renderStatus(ctx);
+    }
+  });
+
   pi.on("agent_end", async (_event, ctx) => {
+    currentCtx = ctx;
     renderStatus(ctx);
   });
 
   pi.on("model_select", async (_event, ctx) => {
+    currentCtx = ctx;
     renderStatus(ctx);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    currentCtx = undefined;
+    pendingReviewerMetrics = undefined;
     if (!ctx.hasUI) {
       return;
     }

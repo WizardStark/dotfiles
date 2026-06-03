@@ -1,5 +1,5 @@
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { Message } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
@@ -16,6 +16,28 @@ const MAX_DIFF_CHARS = 40_000;
 const MAX_UNTRACKED_FILES = 3;
 const MAX_UNTRACKED_FILE_CHARS = 4_000;
 const MAX_MESSAGES = 12;
+const TOKENS_PER_MILLION = 1_000_000;
+
+const MODEL_RATES: Record<string, { input: number; cachedInput: number; output: number; cacheWrite?: number }> = {
+  "gpt-4.1": { input: 2.0, cachedInput: 0.5, output: 8.0 },
+  "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2.0 },
+  "gpt-5.2": { input: 1.75, cachedInput: 0.175, output: 14.0 },
+  "gpt-5.2-codex": { input: 1.75, cachedInput: 0.175, output: 14.0 },
+  "gpt-5.3-codex": { input: 1.75, cachedInput: 0.175, output: 14.0 },
+  "gpt-5.4": { input: 2.5, cachedInput: 0.25, output: 15.0 },
+  "gpt-5.4-mini": { input: 0.75, cachedInput: 0.075, output: 4.5 },
+  "gpt-5.4-nano": { input: 0.2, cachedInput: 0.02, output: 1.25 },
+  "gpt-5.5": { input: 5.0, cachedInput: 0.5, output: 30.0 },
+  "claude-haiku-4.5": { input: 1.0, cachedInput: 0.1, cacheWrite: 1.25, output: 5.0 },
+  "claude-sonnet-4": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
+  "claude-sonnet-4.5": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
+  "claude-sonnet-4.6": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
+  "claude-opus-4.5": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
+  "claude-opus-4.6": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
+  "claude-opus-4.7": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
+  "claude-opus-4.8": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
+  "mai-code-1-flash": { input: 0.75, cachedInput: 0.075, output: 4.5 },
+};
 
 const REVIEW_SYSTEM_PROMPT = `You are a reviewer subagent for a coding session.
 
@@ -45,11 +67,29 @@ Output exactly this Markdown structure:
 - [brief note]
 - If none: (none)`;
 
+type ReviewSubagentMetrics = {
+  provider?: string;
+  model?: string;
+  cost?: {
+    amount?: number;
+    estimated: boolean;
+    knownRate: boolean;
+    unknownModel?: string;
+  };
+  throughput: {
+    ttftMs?: number;
+    generationDurationMs?: number;
+    outputTokens: number;
+    generationTokensPerSecond?: number;
+  };
+};
+
 type ReviewResult = {
   report: string;
   repoRoot?: string;
   changedFiles: string[];
   reviewerModel: string;
+  subagentMetrics?: ReviewSubagentMetrics;
 };
 
 type ReviewParams = {
@@ -67,6 +107,10 @@ type ReviewRunState = {
   exitCode: number;
   stopReason?: string;
   errorMessage?: string;
+  providerRequestStartedAt?: number;
+  firstTextAt?: number;
+  assistantCompletedAt?: number;
+  finishedAt?: number;
 };
 
 function truncate(text: string, maxChars: number): string {
@@ -76,6 +120,61 @@ function truncate(text: string, maxChars: number): string {
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
+}
+
+function normalizeModelId(model: string | undefined): string {
+  const raw = (model ?? "").trim().toLowerCase();
+  const withoutBuildSuffix = raw.split("@")[0] || raw;
+  const withoutThinkingSuffix = withoutBuildSuffix.replace(/:(off|minimal|low|medium|high|xhigh)$/, "");
+  const withoutPathPrefix = withoutThinkingSuffix.split("/").pop() || withoutThinkingSuffix;
+  const withoutProviderPrefix = withoutPathPrefix.includes(":")
+    ? withoutPathPrefix.split(":").slice(1).join(":") || withoutPathPrefix
+    : withoutPathPrefix;
+  return withoutProviderPrefix.replace(/[_\s]+/g, "-").replace(/-+/g, "-");
+}
+
+function estimateUsageCost(message: AssistantMessage): {
+  amount?: number;
+  estimated: boolean;
+  knownRate: boolean;
+  unknownModel?: string;
+} {
+  const usage = message.usage;
+  if (!usage) {
+    return { estimated: false, knownRate: true };
+  }
+
+  const actualCost = usage.cost?.total;
+  const provider = message.provider ?? "";
+  if (
+    typeof actualCost === "number" &&
+    (actualCost > 0 || (actualCost === 0 && provider !== "" && provider !== "github-copilot"))
+  ) {
+    return { amount: actualCost, estimated: false, knownRate: true };
+  }
+
+  const normalizedModel = normalizeModelId(message.model);
+  const rates = MODEL_RATES[normalizedModel];
+  if (!rates) {
+    return {
+      estimated: true,
+      knownRate: false,
+      unknownModel: normalizedModel || "unknown-model",
+    };
+  }
+
+  const input = usage.input ?? 0;
+  const cacheRead = usage.cacheRead ?? 0;
+  const cacheWrite = usage.cacheWrite ?? 0;
+  const output = usage.output ?? 0;
+  const amount =
+    (input * rates.input +
+      cacheRead * rates.cachedInput +
+      output * rates.output +
+      cacheWrite * (rates.cacheWrite ?? 0)) /
+    TOKENS_PER_MILLION;
+
+  return { amount, estimated: true, knownRate: true };
 }
 
 function textFromMessage(message: AgentMessage): string {
@@ -168,28 +267,87 @@ function getPiInvocation(args: string[]): { command: string; args: string[] } {
   return { command: "pi", args };
 }
 
+function extractFinalAssistantMessage(messages: Message[]): AssistantMessage | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role === "assistant") {
+      return msg as AssistantMessage;
+    }
+  }
+
+  return undefined;
+}
+
 function extractFinalAssistantText(
   messages: Message[],
   streamedText = "",
 ): { text: string; stopReason?: string; errorMessage?: string } {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role !== "assistant") continue;
-
-    const text = msg.content
-      .filter((part): part is { type: "text"; text: string } => part.type === "text")
-      .map((part) => part.text)
-      .join("\n")
-      .trim();
-
-    return {
-      text: text || streamedText.trim(),
-      stopReason: msg.stopReason,
-      errorMessage: msg.errorMessage,
-    };
+  const msg = extractFinalAssistantMessage(messages);
+  if (!msg) {
+    return { text: "" };
   }
 
-  return { text: "" };
+  const text = msg.content
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
+
+  return {
+    text: text || streamedText.trim(),
+    stopReason: msg.stopReason,
+    errorMessage: msg.errorMessage,
+  };
+}
+
+function buildReviewSubagentMetrics(run: ReviewRunState): ReviewSubagentMetrics | undefined {
+  const partialAssistant =
+    run.lastAssistantPartial?.role === "assistant" ? (run.lastAssistantPartial as AssistantMessage) : undefined;
+  const finalizedAssistant = extractFinalAssistantMessage([
+    ...run.messages,
+    ...(run.turnEndMessage ? [run.turnEndMessage] : []),
+    ...(run.agentEndMessage ? [run.agentEndMessage] : []),
+  ]);
+  const finalAssistant = finalizedAssistant ?? partialAssistant;
+  if (!finalAssistant) {
+    return undefined;
+  }
+
+  const assistantForUsage = {
+    ...finalAssistant,
+    provider: finalAssistant.provider ?? partialAssistant?.provider,
+    model: finalAssistant.model ?? partialAssistant?.model,
+    usage: finalAssistant.usage ?? partialAssistant?.usage,
+  } as AssistantMessage;
+
+  const ttftMs =
+    run.providerRequestStartedAt !== undefined && run.firstTextAt !== undefined
+      ? Math.max(0, run.firstTextAt - run.providerRequestStartedAt)
+      : undefined;
+  const generationDurationMs =
+    run.firstTextAt !== undefined && run.assistantCompletedAt !== undefined
+      ? Math.max(1, run.assistantCompletedAt - run.firstTextAt)
+      : undefined;
+  const outputTokens = Math.max(0, assistantForUsage.usage?.output ?? 0);
+  const generationTokensPerSecond =
+    outputTokens > 0 && generationDurationMs !== undefined
+      ? outputTokens / (generationDurationMs / 1_000)
+      : undefined;
+
+  const cost = estimateUsageCost(assistantForUsage);
+  const hasUsage = assistantForUsage.usage !== undefined;
+
+  return {
+    provider: assistantForUsage.provider,
+    model: assistantForUsage.model,
+    cost: hasUsage ? cost : undefined,
+    throughput: {
+      ttftMs,
+      generationDurationMs,
+      outputTokens,
+      generationTokensPerSecond,
+    },
+  };
 }
 
 async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
@@ -370,7 +528,26 @@ async function runReviewerSubagent(
 ): Promise<ReviewRunState> {
   const tempDir = await mkdtemp(join(tmpdir(), "pi-reviewer-"));
   const systemPromptPath = join(tempDir, "system-prompt.md");
+  const timingExtensionPath = join(tempDir, "timing-extension.ts");
   await writeFile(systemPromptPath, REVIEW_SYSTEM_PROMPT, "utf8");
+  await writeFile(
+    timingExtensionPath,
+    `export default function (pi) {
+  const emit = (payload) => {
+    process.stdout.write(JSON.stringify({ type: "reviewer_metric", ...payload }) + "\\n");
+  };
+
+  pi.on("before_provider_request", async () => {
+    emit({ event: "before_provider_request", timestamp: Date.now() });
+  });
+
+  pi.on("after_provider_response", async (event) => {
+    emit({ event: "after_provider_response", timestamp: Date.now(), status: event.status });
+  });
+}
+`,
+    "utf8",
+  );
 
   try {
     const args = [
@@ -380,6 +557,8 @@ async function runReviewerSubagent(
       "--no-session",
       "--no-tools",
       "--no-extensions",
+      "-e",
+      timingExtensionPath,
       "--no-skills",
       "--no-prompt-templates",
       "--no-context-files",
@@ -412,13 +591,14 @@ async function runReviewerSubagent(
         if (settled) return;
         settled = true;
         state.exitCode = exitCode;
+        state.finishedAt = Date.now();
         state.streamedText = streamedTextParts.map((part) => part ?? "").join("").trim();
         const final = extractFinalAssistantText(
           [
+            ...(state.lastAssistantPartial ? [state.lastAssistantPartial] : []),
             ...state.messages,
             ...(state.turnEndMessage ? [state.turnEndMessage] : []),
             ...(state.agentEndMessage ? [state.agentEndMessage] : []),
-            ...(state.lastAssistantPartial ? [state.lastAssistantPartial] : []),
           ],
           state.streamedText,
         );
@@ -440,6 +620,9 @@ async function runReviewerSubagent(
               streamedTextParts[assistantEvent.contentIndex] ??= "";
             }
             if (assistantEvent?.type === "text_delta") {
+              if (assistantEvent.delta) {
+                state.firstTextAt ??= Date.now();
+              }
               const index = assistantEvent.contentIndex;
               streamedTextParts[index] = `${streamedTextParts[index] ?? ""}${assistantEvent.delta ?? ""}`;
             }
@@ -447,7 +630,15 @@ async function runReviewerSubagent(
               streamedTextParts[assistantEvent.contentIndex] = assistantEvent.content ?? "";
             }
           }
+          if (event.type === "reviewer_metric") {
+            if (event.event === "before_provider_request") {
+              state.providerRequestStartedAt ??= typeof event.timestamp === "number" ? event.timestamp : Date.now();
+            }
+          }
           if (event.type === "message_end" && event.message) {
+            if (event.message.role === "assistant") {
+              state.assistantCompletedAt = Date.now();
+            }
             state.messages.push(event.message as Message);
           }
           if (event.type === "turn_end" && event.message) {
@@ -541,10 +732,10 @@ async function generateReview(
   const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth.apiKey, signal);
   const final = extractFinalAssistantText(
     [
+      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
       ...run.messages,
       ...(run.turnEndMessage ? [run.turnEndMessage] : []),
       ...(run.agentEndMessage ? [run.agentEndMessage] : []),
-      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
     ],
     run.streamedText,
   );
@@ -554,6 +745,7 @@ async function generateReview(
       repoRoot: git.repoRoot,
       changedFiles: git.changedFiles,
       reviewerModel: modelArg,
+      subagentMetrics: buildReviewSubagentMetrics(run),
     };
   }
 
@@ -618,13 +810,21 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }] });
       const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal);
+      const generatedAt = Date.now();
+      pi.events.emit("reviewer-subagent:metrics", {
+        generatedAt,
+        subagentMetrics: result.subagentMetrics,
+        source: "tool",
+      });
       onUpdate?.({ content: [{ type: "text", text: "Reviewer subagent finished." }] });
       return {
         content: [{ type: "text", text: result.report }],
         details: {
+          generatedAt,
           repoRoot: result.repoRoot,
           changedFiles: result.changedFiles,
           reviewer: result.reviewerModel,
+          subagentMetrics: result.subagentMetrics,
         },
       };
     },
@@ -636,16 +836,23 @@ export default function (pi: ExtensionAPI) {
       try {
         ctx.ui.notify("Reviewer subagent: collecting context and reviewing changes...", "info");
         const result = await generateReview(ctx, pi.getThinkingLevel(), { context: args.trim() || undefined }, ctx.signal);
+        const generatedAt = Date.now();
         pi.sendMessage({
           customType: REVIEW_REPORT_TYPE,
           content: `## Reviewer report\n\n${result.report}`,
           display: true,
           details: {
-            generatedAt: Date.now(),
+            generatedAt,
             repoRoot: result.repoRoot,
             changedFiles: result.changedFiles,
             reviewer: result.reviewerModel,
+            subagentMetrics: result.subagentMetrics,
           },
+        });
+        pi.events.emit("reviewer-subagent:metrics", {
+          generatedAt,
+          subagentMetrics: result.subagentMetrics,
+          source: "command",
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
