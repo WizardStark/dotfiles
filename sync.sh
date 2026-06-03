@@ -29,18 +29,23 @@ EOF
 
 run_checks() {
   local verbose="$1"
+  local brew_ready="$2"
   local issues=0
   local missing
 
-  if brew_bundle_check; then
-    printf 'OK   Homebrew packages match Brewfile\n'
-  else
-    printf 'MISS Homebrew packages are out of sync with Brewfile\n'
-    if (( verbose )); then
-      missing="$(missing_brewfile_formulae)"
-      [[ -n "$missing" ]] && printf '%s\n' "$missing" | while IFS= read -r line; do printf '  - %s\n' "$line"; done
+  if (( brew_ready )); then
+    if brew_bundle_check; then
+      printf 'OK   Homebrew packages match Brewfile\n'
+    else
+      printf 'MISS Homebrew packages are out of sync with Brewfile\n'
+      if (( verbose )); then
+        missing="$(missing_brewfile_formulae)"
+        [[ -n "$missing" ]] && printf '%s\n' "$missing" | while IFS= read -r line; do printf '  - %s\n' "$line"; done
+      fi
+      issues=$((issues + 1))
     fi
-    issues=$((issues + 1))
+  else
+    printf 'WARN Homebrew is unavailable or not executable; skipping Brewfile check\n'
   fi
 
   if check_manifest_npm_packages; then
@@ -87,14 +92,18 @@ run_checks() {
     issues=$((issues + 1))
   fi
 
-  if check_bat_theme; then
-    printf 'OK   bat theme is present\n'
-  else
-    printf 'MISS bat theme is missing\n'
-    if (( verbose )); then
-      printf '  - %s\n' "$(bat --config-dir)/themes/Catppuccin Mocha.tmTheme"
+  if require_cmd bat; then
+    if check_bat_theme; then
+      printf 'OK   bat theme is present\n'
+    else
+      printf 'MISS bat theme is missing\n'
+      if (( verbose )); then
+        printf '  - %s\n' "$(bat --config-dir)/themes/Catppuccin Mocha.tmTheme"
+      fi
+      issues=$((issues + 1))
     fi
-    issues=$((issues + 1))
+  else
+    printf 'WARN bat is unavailable; skipping bat theme check\n'
   fi
 
   if check_agent_socket; then
@@ -125,8 +134,14 @@ run_apply() {
   local with_sudo="$1"
   local adopt_stow="$2"
   local launch_shell="$3"
+  local brew_ready="$4"
 
-  brew_bundle_install
+  if (( brew_ready )); then
+    brew_bundle_install
+  else
+    printf 'WARN Homebrew is unavailable or not executable; skipping Brewfile-managed installs\n'
+  fi
+
   ensure_manifest_npm_packages
   ensure_manifest_uv_tools
   ensure_base_directories
@@ -157,6 +172,7 @@ main() {
   local bootstrap_brew=0
   local adopt_stow=0
   local launch_shell=0
+  local brew_ready=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -202,16 +218,19 @@ main() {
   if (( bootstrap_brew )); then
     install_platform_prereqs
     ensure_homebrew_installed
+    brew_ready=1
+  elif ensure_homebrew_available; then
+    brew_ready=1
   else
-    ensure_homebrew_available
+    printf 'WARN Continuing without Homebrew-managed steps.\n' >&2
   fi
 
   if (( check_only )); then
-    run_checks "$verbose"
+    run_checks "$verbose" "$brew_ready"
     exit $?
   fi
 
-  run_apply "$with_sudo" "$adopt_stow" "$launch_shell"
+  run_apply "$with_sudo" "$adopt_stow" "$launch_shell" "$brew_ready"
 }
 
 main "$@"

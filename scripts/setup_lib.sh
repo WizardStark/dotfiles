@@ -81,9 +81,17 @@ ensure_homebrew_installed() {
   setup_brew_env
 }
 
-ensure_homebrew_available() {
+homebrew_is_usable() {
   if ! setup_brew_env; then
-    printf 'Homebrew not found. Run ./setup.sh first.\n' >&2
+    return 1
+  fi
+
+  brew --version >/dev/null 2>&1
+}
+
+ensure_homebrew_available() {
+  if ! homebrew_is_usable; then
+    printf 'Homebrew not found or not executable. Run ./setup.sh first or continue without Brewfile-managed steps.\n' >&2
     return 1
   fi
 }
@@ -419,13 +427,27 @@ ensure_git_clone() {
 
 ensure_bat_theme() {
   local theme_dir theme_file
+
+  if ! require_cmd bat; then
+    log_step "Skipping bat theme setup because bat is unavailable"
+    return 0
+  fi
+
   theme_dir="$(bat --config-dir)/themes"
   theme_file="$theme_dir/Catppuccin Mocha.tmTheme"
 
   mkdir -p "$theme_dir"
   if [[ ! -f "$theme_file" ]]; then
-    log_step "Installing bat theme"
-    wget -O "$theme_file" "$BAT_THEME_URL"
+    if require_cmd wget; then
+      log_step "Installing bat theme"
+      wget -O "$theme_file" "$BAT_THEME_URL"
+    elif require_cmd curl; then
+      log_step "Installing bat theme"
+      curl -fsSL "$BAT_THEME_URL" -o "$theme_file"
+    else
+      log_step "Skipping bat theme install because neither wget nor curl is available"
+      return 0
+    fi
   fi
 
   bat cache --build
@@ -433,6 +455,11 @@ ensure_bat_theme() {
 
 check_bat_theme() {
   local theme_file
+
+  if ! require_cmd bat; then
+    return 1
+  fi
+
   theme_file="$(bat --config-dir)/themes/Catppuccin Mocha.tmTheme"
   [[ -f "$theme_file" ]]
 }
@@ -475,6 +502,7 @@ ensure_pi_runtime_directories() {
     "$HOME/.pi/agent" \
     "$HOME/.pi/context-mode" \
     "$HOME/.pi/agent/bin" \
+    "$HOME/.pi/agent/extensions" \
     "$HOME/.pi/agent/npm" \
     "$HOME/.pi/agent/sessions"
 }
@@ -530,6 +558,11 @@ ensure_tmux_plugins() {
 }
 
 ensure_fzf() {
+  if [[ ! -x "$HOME/.fzf/install" ]]; then
+    log_step "Skipping fzf shell integration because ~/.fzf/install is unavailable"
+    return 0
+  fi
+
   log_step "Ensuring fzf shell integration"
   "$HOME/.fzf/install" --key-bindings --completion --update-rc
 }

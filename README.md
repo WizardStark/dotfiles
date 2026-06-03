@@ -44,6 +44,10 @@ Pi is part of that reproducible setup:
 
 `./sync.sh` applies changes by default; use `--check` for verification only.
 
+If Homebrew/Linuxbrew is missing or not executable on the current host, `./sync.sh`
+now skips Brewfile-managed install/check steps and continues with the rest of the
+repo-managed sync work on a best-effort basis.
+
 Useful variants:
 
 ```bash

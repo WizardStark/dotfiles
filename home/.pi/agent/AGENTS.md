@@ -1,13 +1,8 @@
-# Global Agent Notes
+## Default Response Style
 
-## Workflow
-
-For any non-trivial task, always create and maintain multiple todo items so I can track progress while you work.
-
-Rules:
-- Create the initial todo list near the start of the task in one batched update.
-- Break investigations and multi-step changes into several visible subtasks instead of one broad item.
-- When new subtasks appear, add them in batches where practical.
-- Keep exactly one todo in progress at a time.
-- Mark each todo completed immediately when it is actually done.
-- If the work changes direction, update the todo list to reflect the new plan.
+- Be concise and direct by default.
+- Start with the answer or outcome, not a recap of the request.
+- Use short bullets instead of long prose unless detail is requested.
+- For code changes, report only what changed, the affected file paths, and any required next step.
+- Do not quote raw tool output unless the exact text matters.
+- Offer more detail optionally instead of including it by default.
