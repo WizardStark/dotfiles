@@ -102,61 +102,78 @@ function buildPrompt(values: FormValues): string {
 }
 
 export default function formExtension(pi: ExtensionAPI) {
+	const openBrief = async (
+		args: string,
+		ctx: Parameters<ExtensionAPI["registerCommand"]>[1]["handler"] extends (
+			args: any,
+			ctx: infer TCtx,
+		) => any
+			? TCtx
+			: never,
+	) => {
+		if (!ctx.hasUI) {
+			return;
+		}
+
+		const prefilledObjective = args.trim();
+		ctx.ui.setWidget("brief-keymap", (_tui, theme) => ({
+			invalidate() {},
+			render(): string[] {
+				return [
+					theme.fg(
+						"dim",
+						[
+							keyHint("tui.input.submit", "submit"),
+							keyHint("app.message.followUp", "follow-up"),
+							keyHint("tui.input.newLine", "newline"),
+							keyHint("app.interrupt", "cancel"),
+						].join(" · "),
+					),
+				];
+			},
+		}));
+		let edited: string | undefined;
+		try {
+			edited = await ctx.ui.editor(
+				"Structured prompt form",
+				buildTemplate(prefilledObjective),
+			);
+		} finally {
+			ctx.ui.setWidget("brief-keymap", undefined);
+		}
+
+		if (edited === undefined) {
+			ctx.ui.notify("Form cancelled", "info");
+			return;
+		}
+
+		const values = parseForm(edited);
+		const prompt = buildPrompt(values);
+
+		if (!prompt) {
+			ctx.ui.notify("Form was empty, nothing was sent", "warning");
+			return;
+		}
+
+		if (ctx.isIdle()) {
+			pi.sendUserMessage(prompt);
+			ctx.ui.notify("Structured prompt sent", "info");
+			return;
+		}
+
+		pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+		ctx.ui.notify("Structured prompt queued as a follow-up", "info");
+	};
+
 	pi.registerCommand("brief", {
 		description: "Open a structured prompt brief and send it to the agent",
-		handler: async (args, ctx) => {
-			if (!ctx.hasUI) {
-				return;
-			}
+		handler: openBrief,
+	});
 
-			const prefilledObjective = args.trim();
-			ctx.ui.setWidget("brief-keymap", (_tui, theme) => ({
-				invalidate() {},
-				render(): string[] {
-					return [
-						theme.fg(
-							"dim",
-							[
-								keyHint("tui.input.submit", "submit"),
-								keyHint("app.message.followUp", "follow-up"),
-								keyHint("tui.input.newLine", "newline"),
-								keyHint("app.interrupt", "cancel"),
-							].join(" · "),
-						),
-					];
-				},
-			}));
-			let edited: string | undefined;
-			try {
-				edited = await ctx.ui.editor(
-					"Structured prompt form",
-					buildTemplate(prefilledObjective),
-				);
-			} finally {
-				ctx.ui.setWidget("brief-keymap", undefined);
-			}
-
-			if (edited === undefined) {
-				ctx.ui.notify("Form cancelled", "info");
-				return;
-			}
-
-			const values = parseForm(edited);
-			const prompt = buildPrompt(values);
-
-			if (!prompt) {
-				ctx.ui.notify("Form was empty, nothing was sent", "warning");
-				return;
-			}
-
-			if (ctx.isIdle()) {
-				pi.sendUserMessage(prompt);
-				ctx.ui.notify("Structured prompt sent", "info");
-				return;
-			}
-
-			pi.sendUserMessage(prompt, { deliverAs: "followUp" });
-			ctx.ui.notify("Structured prompt queued as a follow-up", "info");
+	pi.registerShortcut("alt+q", {
+		description: "Open structured prompt brief",
+		handler: async (ctx) => {
+			await openBrief("", ctx);
 		},
 	});
 }

@@ -45,7 +45,7 @@ run_checks() {
       issues=$((issues + 1))
     fi
   else
-    printf 'WARN Homebrew is unavailable or not executable; skipping Brewfile check\n'
+    printf 'WARN Homebrew is unavailable or not usable; skipping Brewfile check\n'
   fi
 
   if check_manifest_npm_packages; then
@@ -139,7 +139,7 @@ run_apply() {
   if (( brew_ready )); then
     brew_bundle_install
   else
-    printf 'WARN Homebrew is unavailable or not executable; skipping Brewfile-managed installs\n'
+    printf 'WARN Homebrew is unavailable or not usable; skipping Brewfile-managed installs\n'
   fi
 
   ensure_manifest_npm_packages

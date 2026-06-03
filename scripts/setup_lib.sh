@@ -8,6 +8,7 @@ MISE_CONFIG_PATH="$DOTFILES_ROOT/mise.toml"
 MANIFEST_PATH="$DOTFILES_ROOT/scripts/manifest.tsv"
 PI_SETTINGS_PATH="$DOTFILES_ROOT/home/.pi/agent/settings.json"
 BAT_THEME_URL="https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
+BREW_USABLE_PATH="$DOTFILES_ROOT/home/.local/bin/brew-usable"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -81,19 +82,59 @@ ensure_homebrew_installed() {
   setup_brew_env
 }
 
+brew_usable_cmd() {
+  if [[ -x "$BREW_USABLE_PATH" ]]; then
+    printf '%s\n' "$BREW_USABLE_PATH"
+    return 0
+  fi
+
+  if require_cmd brew-usable; then
+    command -v brew-usable
+    return 0
+  fi
+
+  return 1
+}
+
 homebrew_is_usable() {
+  local brew_usable_bin
+
   if ! setup_brew_env; then
     return 1
+  fi
+
+  if brew_usable_bin="$(brew_usable_cmd 2>/dev/null)"; then
+    "$brew_usable_bin" --quiet >/dev/null 2>&1
+    return $?
   fi
 
   brew --version >/dev/null 2>&1
 }
 
 ensure_homebrew_available() {
-  if ! homebrew_is_usable; then
-    printf 'Homebrew not found or not executable. Run ./setup.sh first or continue without Brewfile-managed steps.\n' >&2
+  local brew_usable_bin
+  local status
+
+  if ! setup_brew_env; then
+    printf 'Homebrew not found or not executable. Run ./sync.sh --bootstrap-brew first or continue without Brewfile-managed steps.\n' >&2
     return 1
   fi
+
+  if homebrew_is_usable; then
+    return 0
+  fi
+
+  status=$?
+  if [[ "$status" -eq 2 ]]; then
+    printf 'Homebrew is executable but not usable by the current user; skipping Brewfile-managed steps.\n' >&2
+    if brew_usable_bin="$(brew_usable_cmd 2>/dev/null)"; then
+      "$brew_usable_bin" >&2 || true
+    fi
+    return 1
+  fi
+
+  printf 'Homebrew not found or not executable. Run ./sync.sh --bootstrap-brew first or continue without Brewfile-managed steps.\n' >&2
+  return 1
 }
 
 brew_bundle_install() {

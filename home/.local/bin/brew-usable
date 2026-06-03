@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: brew-usable [--quiet] [--json]
+
+Checks whether Homebrew is not only executable, but also writable/usable for the
+current user.
+
+Exit codes:
+  0  brew usable
+  1  brew missing or not executable
+  2  brew executable, but one or more required directories are not writable
+EOF
+}
+
+quiet=0
+json=0
+for arg in "$@"; do
+  case "$arg" in
+    --quiet) quiet=1 ;;
+    --json) json=1 ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'Unknown argument: %s\n' "$arg" >&2
+      usage >&2
+      exit 64
+      ;;
+  esac
+done
+
+print_text() {
+  if [ "$quiet" -eq 0 ] && [ "$json" -eq 0 ]; then
+    printf '%s\n' "$1"
+  fi
+}
+
+brew_bin="$(command -v brew || true)"
+if [ -z "$brew_bin" ] || [ ! -x "$brew_bin" ]; then
+  if [ "$json" -eq 1 ]; then
+    printf '{"status":"not_executable","brew_bin":%s}\n' "${brew_bin:+"$brew_bin"}"
+  else
+    print_text 'BREW_NOT_EXECUTABLE'
+    [ -n "$brew_bin" ] && print_text "brew_bin=$brew_bin"
+  fi
+  exit 1
+fi
+
+brew_prefix="$(brew --prefix 2>/dev/null || true)"
+brew_cache="$(brew --cache 2>/dev/null || true)"
+lock_dir="$brew_prefix/var/homebrew/locks"
+
+paths=()
+[ -n "$brew_prefix" ] && paths+=("$brew_prefix")
+[ -n "$lock_dir" ] && paths+=("$lock_dir")
+[ -n "$brew_cache" ] && paths+=("$brew_cache")
+
+non_writable=()
+non_creatable=()
+
+for path in "${paths[@]}"; do
+  if [ ! -d "$path" ] || [ ! -w "$path" ]; then
+    non_writable+=("$path")
+    continue
+  fi
+
+  probe="$path/.brew-usable-$$"
+  if ! : > "$probe" 2>/dev/null; then
+    non_creatable+=("$path")
+    continue
+  fi
+  rm -f "$probe"
+done
+
+if [ "${#non_writable[@]}" -eq 0 ] && [ "${#non_creatable[@]}" -eq 0 ]; then
+  if [ "$json" -eq 1 ]; then
+    printf '{"status":"usable","brew_bin":"%s","brew_prefix":"%s","brew_cache":"%s","lock_dir":"%s"}\n' \
+      "$brew_bin" "$brew_prefix" "$brew_cache" "$lock_dir"
+  else
+    print_text 'BREW_USABLE'
+    print_text "brew_bin=$brew_bin"
+    print_text "brew_prefix=$brew_prefix"
+    [ -n "$brew_cache" ] && print_text "brew_cache=$brew_cache"
+    print_text "lock_dir=$lock_dir"
+  fi
+  exit 0
+fi
+
+if [ "$json" -eq 1 ]; then
+  printf '{"status":"not_usable","brew_bin":"%s","brew_prefix":"%s","brew_cache":"%s","lock_dir":"%s","non_writable":[%s],"non_creatable":[%s]}\n' \
+    "$brew_bin" "$brew_prefix" "$brew_cache" "$lock_dir" \
+    "$(printf '"%s",' "${non_writable[@]:-}" | sed 's/,$//')" \
+    "$(printf '"%s",' "${non_creatable[@]:-}" | sed 's/,$//')"
+else
+  print_text 'BREW_NOT_USABLE'
+  print_text "brew_bin=$brew_bin"
+  print_text "brew_prefix=$brew_prefix"
+  [ -n "$brew_cache" ] && print_text "brew_cache=$brew_cache"
+  print_text "lock_dir=$lock_dir"
+  for path in "${non_writable[@]}"; do
+    print_text "NOT_WRITABLE=$path"
+  done
+  for path in "${non_creatable[@]}"; do
+    print_text "NOT_CREATABLE=$path"
+  done
+fi
+
+exit 2
