@@ -92,6 +92,17 @@ run_checks() {
     issues=$((issues + 1))
   fi
 
+  if check_tmux_terminfo; then
+    printf 'OK   tmux-256color terminfo is installed\n'
+  else
+    printf 'MISS tmux-256color terminfo is missing\n'
+    if (( verbose )); then
+      printf '  - %s\n' "$TMUX_TERMINFO_SOURCE_PATH"
+      printf '  - install with: tic -x -o ~/.terminfo %s\n' "$TMUX_TERMINFO_SOURCE_PATH"
+    fi
+    issues=$((issues + 1))
+  fi
+
   if require_cmd bat; then
     if check_bat_theme; then
       printf 'OK   bat theme is present\n'
@@ -146,6 +157,7 @@ run_apply() {
   ensure_manifest_uv_tools
   ensure_base_directories
   ensure_manifest_git_clones
+  ensure_tmux_terminfo
   ensure_bat_theme
   ensure_fzf
   restow_home "$adopt_stow"

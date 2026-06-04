@@ -1,9 +1,10 @@
 {
   "lastChangelogVersion": "0.78.0",
+  "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
   "defaultModel": "gpt-5.4",
   "defaultThinkingLevel": "medium",
-  "hideThinkingBlock": false,
+  "hideThinkingBlock": true,
   "compaction": {
     "enabled": true,
     "reserveTokens": 200000,

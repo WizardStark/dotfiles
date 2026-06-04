@@ -1,0 +1,13 @@
+{
+    "themeName": "catppuccin-custom",
+    "presets": {
+        "bush": false,
+        "stark": true
+    },
+    "themeOverrides": {
+        "colors": {
+            "toolPendingBg": "crust",
+            "toolSuccessBg": "crust"
+        }
+    }
+}

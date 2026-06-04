@@ -9,6 +9,7 @@ MANIFEST_PATH="$DOTFILES_ROOT/scripts/manifest.tsv"
 PI_SETTINGS_PATH="$DOTFILES_ROOT/home/.pi/agent/settings.json"
 BAT_THEME_URL="https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
 BREW_USABLE_PATH="$DOTFILES_ROOT/home/.local/bin/brew-usable"
+TMUX_TERMINFO_SOURCE_PATH="$DOTFILES_ROOT/terminfo/tmux-256color.src"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1
@@ -63,11 +64,11 @@ install_platform_prereqs() {
   if require_cmd apt; then
     log_step "Installing Linux prerequisites with apt"
     sudo apt update
-    sudo apt-get install -y build-essential procps curl file git
+    sudo apt-get install -y build-essential procps curl file git ncurses-bin
   elif require_cmd yum; then
     log_step "Installing Linux prerequisites with yum"
     sudo yum groupinstall -y 'Development Tools'
-    sudo yum install -y procps-ng curl file git
+    sudo yum install -y procps-ng curl file git ncurses
   fi
 }
 
@@ -589,6 +590,34 @@ stow_check_output() {
   output="$(stow -n -v -t "$HOME" -d "$DOTFILES_ROOT" home 2>&1 || true)"
   output="$(printf '%s\n' "$output" | grep -v '^WARNING: in simulation mode so not modifying filesystem\.$' || true)"
   printf '%s' "$output"
+}
+
+terminfo_entry_exists() {
+  infocmp -x "$1" >/dev/null 2>&1
+}
+
+check_tmux_terminfo() {
+  terminfo_entry_exists tmux-256color
+}
+
+ensure_tmux_terminfo() {
+  if check_tmux_terminfo; then
+    return 0
+  fi
+
+  if ! require_cmd tic; then
+    log_step "Skipping tmux-256color terminfo install because tic is unavailable"
+    return 0
+  fi
+
+  if [[ ! -f "$TMUX_TERMINFO_SOURCE_PATH" ]]; then
+    printf 'tmux-256color terminfo source is missing: %s\n' "$TMUX_TERMINFO_SOURCE_PATH" >&2
+    return 1
+  fi
+
+  mkdir -p "$HOME/.terminfo"
+  log_step "Installing tmux-256color terminfo into ~/.terminfo"
+  tic -x -o "$HOME/.terminfo" "$TMUX_TERMINFO_SOURCE_PATH"
 }
 
 ensure_tmux_plugins() {
