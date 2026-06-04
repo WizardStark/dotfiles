@@ -4,23 +4,33 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 const STATUS_KEY = "token-throughput";
 const STATUS_INTERVAL_MS = 100;
 
+const USAGE_EMPTY = "In/Out —";
+
 type ActiveRequest = {
   turnIndex?: number;
   startedAt: number;
   firstTokenAt?: number;
   failureStatusCode?: number;
+  estimatedInputTokens?: number;
 };
 
 type CompletedSnapshot = {
   ttftMs?: number;
   generationDurationMs?: number;
-  outputTokens: number;
+  inputTokens?: number;
+  outputTokens?: number;
   generationTokensPerSecond?: number;
 };
 
 type FailedSnapshot = {
   durationMs: number;
   statusCode?: number;
+};
+
+type UsageStats = {
+  count: number;
+  mean?: number;
+  median?: number;
 };
 
 type SubagentMetrics = {
@@ -56,6 +66,93 @@ function formatTokensPerSecond(tokensPerSecond: number | undefined): string {
   if (tokensPerSecond >= 100) return `${Math.round(tokensPerSecond)} tok/s`;
   if (tokensPerSecond >= 10) return `${tokensPerSecond.toFixed(1)} tok/s`;
   return `${tokensPerSecond.toFixed(2)} tok/s`;
+}
+
+function formatTokenCount(tokens: number | undefined): string {
+  if (tokens === undefined || !Number.isFinite(tokens) || tokens < 0) {
+    return "—";
+  }
+
+  if (tokens >= 100_000) return `${Math.round(tokens / 1_000)}k`;
+  if (tokens >= 10_000) return `${(tokens / 1_000).toFixed(1)}k`;
+  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(2)}k`;
+  return `${Math.round(tokens)}`;
+}
+
+function calculateMean(samples: number[]): number | undefined {
+  if (samples.length === 0) {
+    return undefined;
+  }
+
+  const total = samples.reduce((sum, sample) => sum + sample, 0);
+  return total / samples.length;
+}
+
+function calculateMedian(samples: number[]): number | undefined {
+  if (samples.length === 0) {
+    return undefined;
+  }
+
+  const sorted = [...samples].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+
+  return (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
+function buildUsageStats(samples: number[]): UsageStats {
+  return {
+    count: samples.length,
+    mean: calculateMean(samples),
+    median: calculateMedian(samples),
+  };
+}
+
+function buildUsageSummary(
+  theme: ExtensionContext["ui"]["theme"],
+  inputSamples: number[],
+  outputSamples: number[],
+): string {
+  const separator = theme.fg("dim", " · ");
+  const inputStats = buildUsageStats(inputSamples);
+  const outputStats = buildUsageStats(outputSamples);
+
+  if (inputStats.count === 0 && outputStats.count === 0) {
+    return theme.fg("dim", USAGE_EMPTY);
+  }
+
+  const countLabel =
+    inputStats.count === outputStats.count
+      ? `${inputStats.count}`
+      : `${inputStats.count}/${outputStats.count}`;
+
+  const parts: string[] = [theme.fg("dim", countLabel)];
+
+  if (inputStats.count > 0) {
+    parts.push(
+      theme.fg(
+        "dim",
+        `↑μ${formatTokenCount(inputStats.mean)} M${formatTokenCount(inputStats.median)}`,
+      ),
+    );
+  } else {
+    parts.push(theme.fg("dim", "↑—"));
+  }
+
+  if (outputStats.count > 0) {
+    parts.push(
+      theme.fg(
+        "dim",
+        `↓μ${formatTokenCount(outputStats.mean)} M${formatTokenCount(outputStats.median)}`,
+      ),
+    );
+  } else {
+    parts.push(theme.fg("dim", "↓—"));
+  }
+
+  return parts.join(separator);
 }
 
 function setStatus(ctx: ExtensionContext, content: string | undefined) {
@@ -111,6 +208,27 @@ function isSubagentMessage(message: unknown): boolean {
   );
 }
 
+function withEstimatedInputUsage(
+  message: AssistantMessage,
+  estimatedInputTokens: number | undefined,
+): AssistantMessage {
+  if (
+    estimatedInputTokens === undefined ||
+    !Number.isFinite(estimatedInputTokens) ||
+    message.usage?.input !== undefined
+  ) {
+    return message;
+  }
+
+  return {
+    ...message,
+    usage: {
+      ...(message.usage ?? {}),
+      input: estimatedInputTokens,
+    },
+  };
+}
+
 function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent): string {
   const branch = ctx.sessionManager.getBranch();
   let latestPersistedGeneratedAt: number | undefined;
@@ -159,6 +277,8 @@ export default function tokenThroughput(pi: ExtensionAPI) {
   let lastCompleted: CompletedSnapshot | undefined;
   let lastFailure: FailedSnapshot | undefined;
   let statusTimer: ReturnType<typeof setInterval> | undefined;
+  let promptTokenSamples: number[] = [];
+  let outputTokenSamples: number[] = [];
 
   function isCurrentRequestActive() {
     if (!activeRequest) {
@@ -183,6 +303,56 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     }
   }
 
+  function buildStatusWithUsage(ctx: ExtensionContext, status: string): string {
+    return `${status}${ctx.ui.theme.fg("dim", " · ")}${buildUsageSummary(
+      ctx.ui.theme,
+      promptTokenSamples,
+      outputTokenSamples,
+    )}`;
+  }
+
+  function resetUsageSamples() {
+    promptTokenSamples = [];
+    outputTokenSamples = [];
+  }
+
+  function recordUsageSample(inputTokens: number | undefined, outputTokens: number | undefined) {
+    if (inputTokens !== undefined && Number.isFinite(inputTokens) && inputTokens >= 0) {
+      promptTokenSamples.push(inputTokens);
+    }
+
+    if (outputTokens !== undefined && Number.isFinite(outputTokens) && outputTokens >= 0) {
+      outputTokenSamples.push(outputTokens);
+    }
+  }
+
+  function rebuildUsageSamples(ctx: ExtensionContext) {
+    resetUsageSamples();
+
+    for (const entry of ctx.sessionManager.getBranch()) {
+      if (entry.type !== "message" || entry.message.role !== "assistant" || isSubagentMessage(entry.message)) {
+        continue;
+      }
+
+      const message = entry.message as AssistantMessage;
+      recordUsageSample(message.usage?.input, message.usage?.output);
+    }
+  }
+
+  function resetBranchScopedState(ctx: ExtensionContext) {
+    clearLiveStatus();
+    activeRequest = undefined;
+    currentTurnIndex = undefined;
+    lastCompleted = undefined;
+    lastFailure = undefined;
+    pendingReviewerMetrics = undefined;
+    rebuildUsageSamples(ctx);
+  }
+
+  function refreshUsageSamples(ctx: ExtensionContext) {
+    rebuildUsageSamples(ctx);
+  }
+
   function renderIdleStatus(ctx: ExtensionContext) {
     if (!ctx.hasUI) {
       return;
@@ -194,21 +364,31 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       const code = lastFailure.statusCode ? ` HTTP ${lastFailure.statusCode}` : "";
       setStatus(
         ctx,
-        `${ctx.ui.theme.fg("warning", "⚠")}${ctx.ui.theme.fg("dim", ` Resp failed${code} after ${formatDuration(lastFailure.durationMs)} · ${subagentSummary}`)}`,
+        buildStatusWithUsage(
+          ctx,
+          `${ctx.ui.theme.fg("warning", "⚠")}${ctx.ui.theme.fg("dim", ` Resp failed${code} after ${formatDuration(lastFailure.durationMs)} · ${subagentSummary}`)}`,
+        ),
       );
       return;
     }
 
     if (!lastCompleted) {
-      setStatus(ctx, ctx.ui.theme.fg("dim", `Resp — · ${subagentSummary}`));
+      setStatus(ctx, buildStatusWithUsage(ctx, ctx.ui.theme.fg("dim", `Resp — · ${subagentSummary}`)));
       return;
     }
 
     const ttft =
       lastCompleted.ttftMs === undefined ? "TTFT —" : `TTFT ${formatDuration(lastCompleted.ttftMs)}`;
+    const prompt =
+      lastCompleted.inputTokens === undefined ? "P —" : `P ${formatTokenCount(lastCompleted.inputTokens)}`;
+    const output =
+      lastCompleted.outputTokens === undefined ? "O —" : `O ${formatTokenCount(lastCompleted.outputTokens)}`;
     setStatus(
       ctx,
-      `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` Main ${ttft} · ${formatTokensPerSecond(lastCompleted.generationTokensPerSecond)} · ${subagentSummary}`)}`,
+      buildStatusWithUsage(
+        ctx,
+        `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` Main ${ttft} · ${prompt} · ${output} · ${formatTokensPerSecond(lastCompleted.generationTokensPerSecond)} · ${subagentSummary}`)}`,
+      ),
     );
   }
 
@@ -226,18 +406,30 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
     if (activeRequest.firstTokenAt === undefined) {
       const elapsed = formatDuration(Math.max(0, Date.now() - activeRequest.startedAt));
+      const promptEstimate =
+        activeRequest.estimatedInputTokens === undefined
+          ? "P ~—"
+          : `P ~${formatTokenCount(activeRequest.estimatedInputTokens)}`;
       setStatus(
         ctx,
-        `${ctx.ui.theme.fg("warning", "…")}${ctx.ui.theme.fg("dim", ` Main waiting ${elapsed} · ${subagentSummary}`)}`,
+        buildStatusWithUsage(
+          ctx,
+          `${ctx.ui.theme.fg("warning", "…")}${ctx.ui.theme.fg("dim", ` Main waiting ${elapsed} · ${promptEstimate} · ${subagentSummary}`)}`,
+        ),
       );
       return;
     }
 
     const ttft = Math.max(0, activeRequest.firstTokenAt - activeRequest.startedAt);
     const streamingFor = formatDuration(Math.max(0, Date.now() - activeRequest.firstTokenAt));
+    const promptEstimate =
+      activeRequest.estimatedInputTokens === undefined ? "P ~—" : `P ~${formatTokenCount(activeRequest.estimatedInputTokens)}`;
     setStatus(
       ctx,
-      `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` Main TTFT ${formatDuration(ttft)} · streaming ${streamingFor} · ${subagentSummary}`)}`,
+      buildStatusWithUsage(
+        ctx,
+        `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` Main TTFT ${formatDuration(ttft)} · ${promptEstimate} · streaming ${streamingFor} · ${subagentSummary}`)}`,
+      ),
     );
   }
 
@@ -270,18 +462,27 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       activeRequest.firstTokenAt === undefined
         ? undefined
         : Math.max(1, finishedAt - activeRequest.firstTokenAt);
-    const outputTokens = Math.max(0, message.usage?.output ?? 0);
+    const inputTokens =
+      message.usage?.input !== undefined && Number.isFinite(message.usage.input)
+        ? message.usage.input
+        : activeRequest.estimatedInputTokens;
+    const outputTokens =
+      message.usage?.output !== undefined && Number.isFinite(message.usage.output)
+        ? Math.max(0, message.usage.output)
+        : undefined;
     const generationTokensPerSecond =
-      outputTokens > 0 && generationDurationMs !== undefined
+      outputTokens !== undefined && outputTokens > 0 && generationDurationMs !== undefined
         ? outputTokens / (generationDurationMs / 1_000)
         : undefined;
 
     lastCompleted = {
       ttftMs,
       generationDurationMs,
+      inputTokens,
       outputTokens,
       generationTokensPerSecond,
     };
+    recordUsageSample(inputTokens, outputTokens);
     lastFailure = undefined;
     activeRequest = undefined;
 
@@ -291,12 +492,19 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     currentCtx = ctx;
-    pendingReviewerMetrics = undefined;
-    clearLiveStatus();
-    activeRequest = undefined;
-    currentTurnIndex = undefined;
-    lastCompleted = undefined;
-    lastFailure = undefined;
+    resetBranchScopedState(ctx);
+    renderIdleStatus(ctx);
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    currentCtx = ctx;
+    refreshUsageSamples(ctx);
+    renderIdleStatus(ctx);
+  });
+
+  pi.on("session_compact", async (_event, ctx) => {
+    currentCtx = ctx;
+    refreshUsageSamples(ctx);
     renderIdleStatus(ctx);
   });
 
@@ -319,6 +527,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     activeRequest = {
       turnIndex: currentTurnIndex,
       startedAt: Date.now(),
+      estimatedInputTokens: ctx.getContextUsage()?.tokens,
     };
     startLiveStatus(ctx);
   });
@@ -351,12 +560,17 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       renderIdleStatus(ctx);
     }
 
-    if (event.message.role !== "assistant" || !isCurrentRequestActive()) {
+    if (event.message.role !== "assistant" || isSubagentMessage(event.message) || !isCurrentRequestActive()) {
       return;
     }
 
-    const message = event.message as AssistantMessage;
+    const originalMessage = event.message as AssistantMessage;
+    const message = withEstimatedInputUsage(originalMessage, activeRequest?.estimatedInputTokens);
     finishRequest(ctx, message);
+
+    if (message !== originalMessage) {
+      return { message };
+    }
   });
 
   pi.on("turn_end", async (event) => {
@@ -391,6 +605,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     activeRequest = undefined;
     lastCompleted = undefined;
     lastFailure = undefined;
+    resetUsageSamples();
     setStatus(ctx, undefined);
   });
 }
