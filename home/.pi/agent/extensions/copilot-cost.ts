@@ -1,5 +1,6 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
 
 type SubagentMetrics = {
   cost?: {
@@ -12,11 +13,28 @@ type SubagentMetrics = {
 
 type ReviewerMetricsEvent = {
   generatedAt?: number;
+  sessionKey?: string;
   subagentMetrics?: SubagentMetrics;
+};
+
+type CostSummary = {
+  mainTotal: number;
+  subTotal: number;
+  hasUnknownSubCost: boolean;
+  sawSubagentMessage: boolean;
+  unknownModels: Set<string>;
 };
 
 const STATUS_KEY = "copilot-cost";
 const TOKENS_PER_MILLION = 1_000_000;
+
+const statuslineItem = createStatuslineItem({
+  id: STATUS_KEY,
+  side: "left",
+  order: 30,
+  importance: 40,
+  background: "userMessageBg",
+});
 
 // Rates from GitHub Copilot models and pricing docs
 // https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing
@@ -126,11 +144,9 @@ function getSubagentMetrics(message: unknown): SubagentMetrics | undefined {
   return getSubagentDetails(message)?.subagentMetrics;
 }
 
-function buildStatus(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent): string {
+function buildCostSummary(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent): CostSummary {
   let mainTotal = 0;
   let subTotal = 0;
-  let hasEstimate = false;
-  let hasAnyCost = false;
   let sawSubagentMessage = false;
   let hasUnknownSubCost = false;
   let latestPersistedGeneratedAt: number | undefined;
@@ -142,8 +158,6 @@ function buildStatus(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent)
     const cost = metrics?.cost;
     if (typeof cost?.amount === "number") {
       subTotal += cost.amount;
-      hasEstimate ||= Boolean(cost.estimated);
-      hasAnyCost = true;
       if (cost.knownRate === false) {
         unknownModels.add(cost.unknownModel || "unknown-model");
       }
@@ -175,10 +189,8 @@ function buildStatus(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent)
       continue;
     }
 
-    const { amount, estimated, knownRate } = estimateUsageCost(message);
+    const { amount, knownRate } = estimateUsageCost(message);
     mainTotal += amount;
-    hasEstimate ||= estimated;
-    hasAnyCost = true;
     if (!knownRate) {
       unknownModels.add(normalizeModelId(message.model) || "unknown-model");
     }
@@ -192,18 +204,36 @@ function buildStatus(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent)
     applySubagentMetrics(pendingEvent.subagentMetrics);
   }
 
-  const subLabel =
-    sawSubagentMessage && hasUnknownSubCost
-      ? subTotal > 0
-        ? `${formatUsd(subTotal)}+?`
-        : "+?"
-      : formatUsd(subTotal);
-  const unknownSuffix = unknownModels.size > 0 ? ` +${unknownModels.size} unk` : "";
-  return `Main ${formatUsd(mainTotal)} · Sub ${subLabel}${unknownSuffix}`;
+  return {
+    mainTotal,
+    subTotal,
+    hasUnknownSubCost,
+    sawSubagentMessage,
+    unknownModels,
+  };
+}
+
+function formatSubLabel(summary: CostSummary) {
+  return summary.sawSubagentMessage && summary.hasUnknownSubCost
+    ? summary.subTotal > 0
+      ? `${formatUsd(summary.subTotal)}+?`
+      : "+?"
+    : formatUsd(summary.subTotal);
+}
+
+function buildStatus(summary: CostSummary) {
+  const unknownSuffix = summary.unknownModels.size > 0 ? ` +${summary.unknownModels.size} unk` : "";
+  return `Main ${formatUsd(summary.mainTotal)} · Sub ${formatSubLabel(summary)}${unknownSuffix}`;
+}
+
+function buildCompactStatus(summary: CostSummary) {
+  const unknownSuffix = summary.unknownModels.size > 0 ? " +u" : "";
+  return `M${formatUsd(summary.mainTotal)} · S${formatSubLabel(summary)}${unknownSuffix}`;
 }
 
 export default function copilotCost(pi: ExtensionAPI) {
   let currentCtx: ExtensionContext | undefined;
+  let currentSessionKey = "ephemeral";
   let pendingReviewerMetrics: ReviewerMetricsEvent | undefined;
 
   function renderStatus(ctx: ExtensionContext) {
@@ -211,17 +241,30 @@ export default function copilotCost(pi: ExtensionAPI) {
       return;
     }
 
-    ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", buildStatus(ctx, pendingReviewerMetrics)));
+    const summary = buildCostSummary(ctx, pendingReviewerMetrics);
+    statuslineItem.set(
+      {
+        content: ctx.ui.theme.fg("dim", buildStatus(summary)),
+        compactContent: ctx.ui.theme.fg("dim", buildCompactStatus(summary)),
+      },
+      getStatuslineSessionKey(ctx),
+    );
   }
 
   pi.on("session_start", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     pendingReviewerMetrics = undefined;
     renderStatus(ctx);
   });
 
   pi.events.on("reviewer-subagent:metrics", (data) => {
-    pendingReviewerMetrics = (data ?? {}) as ReviewerMetricsEvent;
+    const event = (data ?? {}) as ReviewerMetricsEvent;
+    if (event.sessionKey && event.sessionKey !== currentSessionKey) {
+      return;
+    }
+
+    pendingReviewerMetrics = event;
     if (currentCtx) {
       renderStatus(currentCtx);
     }
@@ -230,27 +273,26 @@ export default function copilotCost(pi: ExtensionAPI) {
   pi.on("message_end", async (event, ctx) => {
     if (getSubagentMetrics(event.message)) {
       currentCtx = ctx;
+      currentSessionKey = getStatuslineSessionKey(ctx);
       renderStatus(ctx);
     }
   });
 
   pi.on("agent_end", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     renderStatus(ctx);
   });
 
   pi.on("model_select", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     renderStatus(ctx);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     currentCtx = undefined;
     pendingReviewerMetrics = undefined;
-    if (!ctx.hasUI) {
-      return;
-    }
-
-    ctx.ui.setStatus(STATUS_KEY, undefined);
+    statuslineItem.clear(getStatuslineSessionKey(ctx));
   });
 }

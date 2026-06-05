@@ -34,6 +34,8 @@ type CodeBlock = {
   language?: string;
   code: string;
   preview: string;
+  searchText: string;
+  codeSearchText: string;
 };
 
 type CopyResult =
@@ -49,7 +51,7 @@ type ClipboardBackend = {
 };
 
 const CLIPBOARD_COMMAND_TIMEOUT_MS = 5000;
-const BLOCK_PICKER_MAX_VISIBLE_ITEMS = 3;
+const BLOCK_PICKER_MAX_VISIBLE_ITEMS = 5;
 const BLOCK_PICKER_OVERLAY_MAX_HEIGHT_RATIO = 0.85;
 
 function extractAssistantText(messageContent: unknown): string {
@@ -124,6 +126,18 @@ function summarizeCode(code: string): string {
   return firstMeaningfulLine.length > 60 ? `${firstMeaningfulLine.slice(0, 57)}...` : firstMeaningfulLine;
 }
 
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function buildBlockSearchText(language: string | undefined, preview: string, code: string): string {
+  return normalizeSearchText([language ?? "", preview, code].join("\n"));
+}
+
+function buildCodeSearchText(code: string): string {
+  return normalizeSearchText(code);
+}
+
 function extractCodeBlocks(text: string): CodeBlock[] {
   const lines = text.split("\n");
   const blocks: CodeBlock[] = [];
@@ -158,11 +172,15 @@ function extractCodeBlocks(text: string): CodeBlock[] {
     }
 
     const code = contentLines.join("\n");
+    const language = info.split(/\s+/)[0] || undefined;
+    const preview = summarizeCode(code);
     blocks.push({
       index: blocks.length + 1,
-      language: info.split(/\s+/)[0] || undefined,
+      language,
       code,
-      preview: summarizeCode(code),
+      preview,
+      searchText: buildBlockSearchText(language, preview, code),
+      codeSearchText: buildCodeSearchText(code),
     });
     i = closeIndex;
   }
@@ -508,6 +526,160 @@ function formatBlockMeta(block: CodeBlock): string {
   return `Block ${block.index} • ${language} • ${lineLabel} • ${charLabel}`;
 }
 
+function getFuzzyMatchScore(normalizedQuery: string, normalizedText: string): number | undefined {
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const exactIndex = normalizedText.indexOf(normalizedQuery);
+  if (exactIndex >= 0) {
+    return 1_000_000 + Math.max(0, normalizedText.length - exactIndex);
+  }
+
+  let score = 0;
+  let firstIndex = -1;
+  let lastIndex = -1;
+
+  for (const char of normalizedQuery) {
+    if (char === " ") {
+      continue;
+    }
+
+    const index = normalizedText.indexOf(char, lastIndex + 1);
+    if (index === -1) {
+      return undefined;
+    }
+
+    if (firstIndex === -1) {
+      firstIndex = index;
+    }
+
+    score += 10;
+    if (index === lastIndex + 1) {
+      score += 15;
+    }
+
+    const previousChar = index === 0 ? " " : normalizedText[index - 1] ?? " ";
+    if (/\s|[([{\'"`_\-/:.]/.test(previousChar)) {
+      score += 20;
+    }
+
+    lastIndex = index;
+  }
+
+  const span = Math.max(1, lastIndex - firstIndex + 1);
+  return score - span - firstIndex;
+}
+
+function rankBlocks(blocks: CodeBlock[], query: string): CodeBlock[] {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return [...blocks];
+  }
+
+  return blocks
+    .map((block) => ({
+      block,
+      score: getFuzzyMatchScore(normalizedQuery, block.searchText),
+    }))
+    .filter((entry): entry is { block: CodeBlock; score: number } => entry.score !== undefined)
+    .sort((left, right) => right.score - left.score || left.block.index - right.block.index)
+    .map((entry) => entry.block);
+}
+
+function findExactMatchRange(text: string, query: string): { start: number; end: number } | undefined {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return undefined;
+  }
+
+  const normalizedChars: string[] = [];
+  const rawIndices: number[] = [];
+  let sawNonWhitespace = false;
+  let pendingWhitespace = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]!;
+    if (/\s/.test(char)) {
+      pendingWhitespace = sawNonWhitespace;
+      continue;
+    }
+
+    if (pendingWhitespace) {
+      normalizedChars.push(" ");
+      rawIndices.push(index);
+      pendingWhitespace = false;
+    }
+
+    normalizedChars.push(char.toLowerCase());
+    rawIndices.push(index);
+    sawNonWhitespace = true;
+  }
+
+  const normalizedText = normalizedChars.join("");
+  const exactIndex = normalizedText.indexOf(normalizedQuery);
+  if (exactIndex === -1) {
+    return undefined;
+  }
+
+  const start = rawIndices[exactIndex]!;
+  const end = rawIndices[exactIndex + normalizedQuery.length - 1]! + 1;
+  return { start, end };
+}
+
+function getMatchRanges(text: string, query: string): Array<{ start: number; end: number }> {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const exactRange = findExactMatchRange(text, query);
+  if (exactRange) {
+    return [exactRange];
+  }
+
+  const lowerText = text.toLowerCase();
+  const matchedIndices: number[] = [];
+  let searchFrom = 0;
+
+  for (const char of normalizedQuery) {
+    if (char === " ") {
+      continue;
+    }
+
+    const index = lowerText.indexOf(char, searchFrom);
+    if (index === -1) {
+      return [];
+    }
+
+    matchedIndices.push(index);
+    searchFrom = index + 1;
+  }
+
+  if (matchedIndices.length === 0) {
+    return [];
+  }
+
+  const ranges: Array<{ start: number; end: number }> = [];
+  let rangeStart = matchedIndices[0]!;
+  let previousIndex = matchedIndices[0]!;
+
+  for (let i = 1; i < matchedIndices.length; i += 1) {
+    const index = matchedIndices[i]!;
+    if (index === previousIndex + 1) {
+      previousIndex = index;
+      continue;
+    }
+
+    ranges.push({ start: rangeStart, end: previousIndex + 1 });
+    rangeStart = index;
+    previousIndex = index;
+  }
+
+  ranges.push({ start: rangeStart, end: previousIndex + 1 });
+  return ranges;
+}
+
 function getVisibleWindow(selectedIndex: number, total: number, limit: number): { start: number; end: number } {
   if (total <= limit) {
     return { start: 0, end: total };
@@ -527,6 +699,8 @@ function getVisibleWindow(selectedIndex: number, total: number, limit: number): 
 
 class BlockPickerOverlay {
   private selectedIndex = 0;
+  private query = "";
+  private filteredBlocks: CodeBlock[];
 
   constructor(
     private readonly tui: TUI,
@@ -534,7 +708,9 @@ class BlockPickerOverlay {
     private readonly blocks: CodeBlock[],
     private readonly title: string,
     private readonly done: (result: CodeBlock | undefined) => void,
-  ) {}
+  ) {
+    this.filteredBlocks = [...blocks];
+  }
 
   handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
@@ -542,39 +718,58 @@ class BlockPickerOverlay {
       return;
     }
 
-    if (matchesKey(data, "up") || data === "k") {
-      this.selectedIndex = Math.max(0, this.selectedIndex - 1);
-      this.tui.requestRender();
+    if (matchesKey(data, "up")) {
+      this.moveSelection(-1);
       return;
     }
 
-    if (matchesKey(data, "down") || data === "j") {
-      this.selectedIndex = Math.min(this.blocks.length - 1, this.selectedIndex + 1);
-      this.tui.requestRender();
+    if (matchesKey(data, "down")) {
+      this.moveSelection(1);
       return;
     }
 
     if (matchesKey(data, "enter") || matchesKey(data, "return")) {
-      this.done(this.blocks[this.selectedIndex]);
+      const selectedBlock = this.filteredBlocks[this.selectedIndex];
+      if (selectedBlock) {
+        this.done(selectedBlock);
+      }
       return;
     }
 
-    if (data.length === 1 && /^\d$/.test(data)) {
-      const index = Number.parseInt(data, 10) - 1;
-      if (index >= 0 && index < this.blocks.length) {
-        this.selectedIndex = index;
-        this.done(this.blocks[index]);
+    if (matchesKey(data, "backspace") || data === "\u007f" || data === "\b") {
+      if (this.query.length > 0) {
+        this.updateQuery(this.query.slice(0, -1));
       }
+      return;
+    }
+
+    if (data === "\u0015") {
+      if (this.query.length > 0) {
+        this.updateQuery("");
+      }
+      return;
+    }
+
+    if (data === "\u0017") {
+      if (this.query.length > 0) {
+        this.updateQuery(this.query.replace(/\s*\S+\s*$/, ""));
+      }
+      return;
+    }
+
+    const printableInput = this.getPrintableInput(data);
+    if (printableInput) {
+      this.updateQuery(this.query + printableInput);
     }
   }
 
   render(width: number): string[] {
     const innerWidth = Math.max(1, width - 2);
     const maxOverlayRows = Math.max(1, Math.floor(this.tui.terminal.rows * BLOCK_PICKER_OVERLAY_MAX_HEIGHT_RATIO));
-    const showMeta = maxOverlayRows >= 6;
-    const showBlocksHeader = maxOverlayRows >= 7;
-    const showHelp = maxOverlayRows >= 8;
-    const fixedRows = 2 + 1 + (showMeta ? 1 : 0) + (showBlocksHeader ? 1 : 0) + (showHelp ? 1 : 0);
+    const showMeta = maxOverlayRows >= 7;
+    const showBlocksHeader = maxOverlayRows >= 8;
+    const showHelp = maxOverlayRows >= 9;
+    const fixedRows = 2 + 2 + (showMeta ? 1 : 0) + (showBlocksHeader ? 1 : 0) + (showHelp ? 1 : 0);
     const availableBodyRows = Math.max(1, maxOverlayRows - fixedRows);
     const listRows = availableBodyRows === 1
       ? 1
@@ -582,14 +777,22 @@ class BlockPickerOverlay {
     const previewRows = Math.max(0, availableBodyRows - listRows);
     const border = (text: string) => this.theme.fg("border", text);
     const row = (content = "") => border("│") + this.pad(content, innerWidth) + border("│");
-    const selectedBlock = this.blocks[this.selectedIndex]!;
+    const selectedBlock = this.filteredBlocks[this.selectedIndex];
     const lines: string[] = [];
+    const matchCount = this.filteredBlocks.length;
+    const searchLabel = this.query
+      ? this.theme.fg("accent", this.query)
+      : this.theme.fg("dim", "type to search full block content");
 
     lines.push(border(`╭${"─".repeat(innerWidth)}╮`));
     lines.push(row(` ${this.theme.fg("accent", this.theme.bold(this.title))}`));
+    lines.push(row(` Search: ${searchLabel}`));
 
     if (showMeta) {
-      lines.push(row(` ${this.theme.fg("dim", formatBlockMeta(selectedBlock))}`));
+      const meta = selectedBlock
+        ? `${formatBlockMeta(selectedBlock)} • ${matchCount}/${this.blocks.length} matches`
+        : `No matching blocks • 0/${this.blocks.length} matches`;
+      lines.push(row(` ${this.theme.fg("dim", meta)}`));
     }
 
     for (const previewLine of this.renderPreview(selectedBlock, innerWidth, previewRows)) {
@@ -597,7 +800,7 @@ class BlockPickerOverlay {
     }
 
     if (showBlocksHeader) {
-      lines.push(row(` ${this.theme.fg("accent", "Blocks")}`));
+      lines.push(row(` ${this.theme.fg("accent", "Matches")}`));
     }
 
     for (const optionLine of this.renderBlockList(listRows)) {
@@ -605,7 +808,7 @@ class BlockPickerOverlay {
     }
 
     if (showHelp) {
-      lines.push(row(` ${this.theme.fg("dim", "↑↓/j/k move • Enter copy • Esc cancel • 1-9 jump")}`));
+      lines.push(row(` ${this.theme.fg("dim", "Type to filter • ↑↓ move • Enter copy • ⌫ delete • Esc cancel")}`));
     }
 
     lines.push(border(`╰${"─".repeat(innerWidth)}╯`));
@@ -617,63 +820,229 @@ class BlockPickerOverlay {
 
   dispose(): void {}
 
-  private renderPreview(block: CodeBlock, innerWidth: number, maxRows: number): string[] {
+  private moveSelection(delta: number): void {
+    if (this.filteredBlocks.length === 0) {
+      return;
+    }
+
+    this.selectedIndex = Math.max(0, Math.min(this.filteredBlocks.length - 1, this.selectedIndex + delta));
+    this.tui.requestRender();
+  }
+
+  private updateQuery(nextQuery: string): void {
+    this.query = nextQuery;
+    this.filteredBlocks = rankBlocks(this.blocks, this.query);
+    this.selectedIndex = 0;
+    this.tui.requestRender();
+  }
+
+  private getPrintableInput(data: string): string {
+    return data
+      .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g, "")
+      .replace(/\u001b[P^_][\s\S]*?\u001b\\/g, "")
+      .replace(/\u001b\[200~/g, "")
+      .replace(/\u001b\[201~/g, "")
+      .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+      .replace(/\u001b./g, "")
+      .replace(/[\r\n\t]+/g, " ")
+      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
+  }
+
+  private renderPreview(block: CodeBlock | undefined, innerWidth: number, maxRows: number): string[] {
+    if (!block) {
+      return [this.theme.fg("dim", " no matching blocks")].slice(0, maxRows);
+    }
+
     const codeLines = getCodeLines(block.code);
     if (codeLines.length === 0) {
       return [this.theme.fg("dim", " (empty block)")].slice(0, maxRows);
     }
 
+    const lineStarts: number[] = [];
+    let blockOffset = 0;
+    for (const line of codeLines) {
+      lineStarts.push(blockOffset);
+      blockOffset += line.length + 1;
+    }
+
+    const exactBlockMatch = this.query ? findExactMatchRange(block.code, this.query) : undefined;
     const previewWidth = Math.max(8, innerWidth - 1);
     const lineNumberWidth = String(codeLines.length).length;
     const visibleCodeLines = codeLines.length > maxRows && maxRows > 1 ? maxRows - 1 : maxRows;
-    const rendered = codeLines.slice(0, visibleCodeLines).map((line, index) => {
-      const prefix = this.theme.fg("dim", `${String(index + 1).padStart(lineNumberWidth, " ")} │ `);
+    const matchLineIndex = exactBlockMatch
+      ? this.getLineIndexForOffset(codeLines, exactBlockMatch.start)
+      : this.findPreviewMatchLineIndex(codeLines);
+    const { start, end } = matchLineIndex >= 0
+      ? getVisibleWindow(matchLineIndex, codeLines.length, visibleCodeLines)
+      : { start: 0, end: visibleCodeLines };
+    const rendered = codeLines.slice(start, end).map((line, index) => {
+      const absoluteIndex = start + index;
+      const lineNumber = absoluteIndex + 1;
+      const prefix = this.theme.fg("dim", `${String(lineNumber).padStart(lineNumberWidth, " ")} │ `);
       const available = Math.max(1, previewWidth - visibleWidth(prefix));
-      return ` ${prefix}${truncateToWidth(line, available, "…", true)}`;
+      const exactLineRanges = exactBlockMatch
+        ? this.getExactLineMatchRanges(line, lineStarts[absoluteIndex]!, exactBlockMatch)
+        : [];
+      return ` ${prefix}${this.renderHighlightedExcerpt(line, available, exactLineRanges.length > 0 ? exactLineRanges : undefined)}`;
     });
 
-    if (codeLines.length > visibleCodeLines && rendered.length < maxRows) {
-      rendered.push(this.theme.fg("dim", ` … ${codeLines.length - visibleCodeLines} more lines not shown`));
+    if ((start > 0 || end < codeLines.length) && rendered.length < maxRows) {
+      const parts: string[] = [];
+      if (start > 0) {
+        parts.push(`${start} earlier line${start === 1 ? "" : "s"}`);
+      }
+      if (end < codeLines.length) {
+        parts.push(`${codeLines.length - end} more line${codeLines.length - end === 1 ? "" : "s"}`);
+      }
+      rendered.push(this.theme.fg("dim", ` … ${parts.join(" • ")} not shown`));
     }
 
     return rendered.slice(0, maxRows);
   }
 
   private renderBlockList(maxRows: number): string[] {
+    if (this.filteredBlocks.length === 0) {
+      return [` ${this.theme.fg("dim", `No matches for “${this.query}”`)}`].slice(0, maxRows);
+    }
+
     if (maxRows <= 1) {
-      const selected = this.blocks[this.selectedIndex]!;
-      return [` ${this.theme.fg("accent", "▶ ")}${this.theme.fg("accent", formatBlockLabel(selected))}`];
+      const selected = this.filteredBlocks[this.selectedIndex]!;
+      return [` ${this.theme.fg("accent", "▶ ")}${this.highlightText(formatBlockLabel(selected), this.query, { selected: true })}`];
     }
 
     if (maxRows === 2) {
-      const selected = this.blocks[this.selectedIndex]!;
+      const selected = this.filteredBlocks[this.selectedIndex]!;
       return [
-        ` ${this.theme.fg("accent", "▶ ")}${this.theme.fg("accent", formatBlockLabel(selected))}`,
-        this.theme.fg("dim", ` ${this.selectedIndex + 1} of ${this.blocks.length}`),
+        ` ${this.theme.fg("accent", "▶ ")}${this.highlightText(formatBlockLabel(selected), this.query, { selected: true })}`,
+        this.theme.fg("dim", ` ${this.selectedIndex + 1} of ${this.filteredBlocks.length} matches`),
       ];
     }
 
-    const { start, end } = getVisibleWindow(this.selectedIndex, this.blocks.length, Math.max(1, Math.min(BLOCK_PICKER_MAX_VISIBLE_ITEMS, maxRows - 2)));
+    const { start, end } = getVisibleWindow(
+      this.selectedIndex,
+      this.filteredBlocks.length,
+      Math.max(1, Math.min(BLOCK_PICKER_MAX_VISIBLE_ITEMS, maxRows - 2)),
+    );
     const lines: string[] = [];
 
     if (start > 0) {
-      lines.push(this.theme.fg("dim", ` … ${start} earlier block${start === 1 ? "" : "s"}`));
+      lines.push(this.theme.fg("dim", ` … ${start} earlier match${start === 1 ? "" : "es"}`));
     }
 
     for (let index = start; index < end; index += 1) {
-      const block = this.blocks[index]!;
+      const block = this.filteredBlocks[index]!;
       const isSelected = index === this.selectedIndex;
       const prefix = isSelected ? this.theme.fg("accent", "▶ ") : "  ";
-      const label = formatBlockLabel(block);
-      lines.push(` ${prefix}${isSelected ? this.theme.fg("accent", label) : label}`);
+      const label = this.highlightText(formatBlockLabel(block), this.query, { selected: isSelected });
+      lines.push(` ${prefix}${label}`);
     }
 
-    if (end < this.blocks.length) {
-      const remaining = this.blocks.length - end;
-      lines.push(this.theme.fg("dim", ` … ${remaining} more block${remaining === 1 ? "" : "s"}`));
+    if (end < this.filteredBlocks.length) {
+      const remaining = this.filteredBlocks.length - end;
+      lines.push(this.theme.fg("dim", ` … ${remaining} more match${remaining === 1 ? "" : "es"}`));
     }
 
     return lines.slice(0, maxRows);
+  }
+
+  private findPreviewMatchLineIndex(codeLines: string[]): number {
+    if (!normalizeSearchText(this.query)) {
+      return -1;
+    }
+
+    const exactLineIndex = codeLines.findIndex((line) => !!findExactMatchRange(line, this.query));
+    if (exactLineIndex >= 0) {
+      return exactLineIndex;
+    }
+
+    return codeLines.findIndex((line) => getMatchRanges(line, this.query).length > 0);
+  }
+
+  private getLineIndexForOffset(codeLines: string[], offset: number): number {
+    let lineStart = 0;
+
+    for (let index = 0; index < codeLines.length; index += 1) {
+      const line = codeLines[index]!;
+      const lineEnd = lineStart + line.length;
+      if (offset <= lineEnd || index === codeLines.length - 1) {
+        return index;
+      }
+      lineStart = lineEnd + 1;
+    }
+
+    return 0;
+  }
+
+  private getExactLineMatchRanges(line: string, lineStart: number, exactMatch: { start: number; end: number }): Array<{ start: number; end: number }> {
+    const lineEnd = lineStart + line.length;
+    const start = Math.max(lineStart, exactMatch.start);
+    const end = Math.min(lineEnd, exactMatch.end);
+
+    if (start >= end) {
+      return [];
+    }
+
+    return [{ start: start - lineStart, end: end - lineStart }];
+  }
+
+  private renderHighlightedExcerpt(text: string, width: number, rangesOverride?: Array<{ start: number; end: number }>): string {
+    if (!this.query && !rangesOverride) {
+      return truncateToWidth(text, width, "…", true);
+    }
+
+    const ranges = rangesOverride ?? getMatchRanges(text, this.query);
+    if (ranges.length === 0) {
+      return this.highlightText(truncateToWidth(text, width, "…", true), this.query);
+    }
+
+    const firstRange = ranges[0]!;
+    const matchLength = Math.max(1, firstRange.end - firstRange.start);
+    const targetStart = Math.max(0, firstRange.start - Math.max(0, Math.floor((width - matchLength) / 2)));
+    const targetEnd = Math.min(text.length, Math.max(firstRange.end, targetStart + width));
+    const start = Math.max(0, targetEnd - width);
+    const end = Math.min(text.length, Math.max(firstRange.end, start + width));
+    const leftEllipsis = start > 0;
+    const rightEllipsis = end < text.length;
+    const excerptBudget = Math.max(1, width - (leftEllipsis ? 1 : 0) - (rightEllipsis ? 1 : 0));
+    const excerptEnd = Math.min(text.length, start + excerptBudget);
+    const excerpt = text.slice(start, excerptEnd);
+    const adjustedRanges = ranges
+      .map((range) => ({
+        start: Math.max(0, range.start - start) + (leftEllipsis ? 1 : 0),
+        end: Math.min(excerpt.length, range.end - start) + (leftEllipsis ? 1 : 0),
+      }))
+      .filter((range) => range.end > range.start);
+    const decorated = `${leftEllipsis ? "…" : ""}${excerpt}${rightEllipsis ? "…" : ""}`;
+
+    return this.highlightText(decorated, this.query, undefined, adjustedRanges);
+  }
+
+  private highlightText(text: string, query: string, options?: { selected?: boolean }, rangesOverride?: Array<{ start: number; end: number }>): string {
+    const ranges = rangesOverride ?? getMatchRanges(text, query);
+    const base = (value: string) => (options?.selected ? this.theme.fg("accent", value) : value);
+    const highlight = (value: string) => this.theme.fg("accent", this.theme.bold(value));
+
+    if (ranges.length === 0) {
+      return base(text);
+    }
+
+    let result = "";
+    let cursor = 0;
+
+    for (const range of ranges) {
+      if (range.start > cursor) {
+        result += base(text.slice(cursor, range.start));
+      }
+
+      result += highlight(text.slice(range.start, range.end));
+      cursor = range.end;
+    }
+
+    if (cursor < text.length) {
+      result += base(text.slice(cursor));
+    }
+
+    return result;
   }
 
   private pad(content: string, width: number): string {
@@ -725,7 +1094,7 @@ async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<
 }
 
 async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: string): Promise<CodeBlock | undefined> {
-  const normalized = selector.trim().toLowerCase();
+  const normalized = normalizeSearchText(selector);
   if (!normalized) {
     return pickBlock(ctx, blocks, "Copy which block?");
   }
@@ -746,10 +1115,7 @@ async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: st
     return pickBlock(ctx, exactLanguageMatches, `Multiple ${normalized} blocks found`);
   }
 
-  const fuzzyMatches = blocks.filter((block) => {
-    const haystack = `${block.language ?? ""} ${block.preview}`.toLowerCase();
-    return haystack.includes(normalized);
-  });
+  const fuzzyMatches = blocks.filter((block) => block.codeSearchText.includes(normalized));
 
   if (fuzzyMatches.length === 1) {
     return fuzzyMatches[0];

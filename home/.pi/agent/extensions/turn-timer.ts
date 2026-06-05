@@ -1,9 +1,18 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
 
 const STATUS_KEY = "turn-timer";
 const STATUS_INTERVAL_MS = 100;
 
-function formatDuration(durationMs: number): string {
+const statuslineItem = createStatuslineItem({
+  id: STATUS_KEY,
+  side: "left",
+  order: 20,
+  importance: 60,
+  background: "toolSuccessBg",
+});
+
+function formatDuration(durationMs: number) {
   if (durationMs < 1_000) return `${durationMs}ms`;
   if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(1)}s`;
   if (durationMs < 60_000) return `${Math.round(durationMs / 1_000)}s`;
@@ -14,7 +23,15 @@ function formatDuration(durationMs: number): string {
   return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
-export default function (pi: ExtensionAPI) {
+function setStatus(ctx: ExtensionContext, content: string, compactContent = content) {
+  if (!ctx.hasUI) {
+    return;
+  }
+
+  statuslineItem.set({ content, compactContent }, getStatuslineSessionKey(ctx));
+}
+
+export default function turnTimer(pi: ExtensionAPI) {
   let startedAt: number | undefined;
   let statusTimer: ReturnType<typeof setInterval> | undefined;
   let lastDurationMs: number | undefined;
@@ -28,21 +45,24 @@ export default function (pi: ExtensionAPI) {
 
   function renderIdleStatus(ctx: ExtensionContext) {
     if (lastDurationMs === undefined) {
-      ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", "Idle"));
+      setStatus(ctx, ctx.ui.theme.fg("dim", "Idle"));
       return;
     }
 
-    ctx.ui.setStatus(
-      STATUS_KEY,
-      `${ctx.ui.theme.fg("success", "✓")}${ctx.ui.theme.fg("dim", ` Last turn ${formatDuration(lastDurationMs)}`)}`,
+    const duration = formatDuration(lastDurationMs);
+    setStatus(
+      ctx,
+      `${ctx.ui.theme.fg("success", "✓")}${ctx.ui.theme.fg("dim", ` Last turn ${duration}`)}`,
+      `${ctx.ui.theme.fg("success", "✓")}${ctx.ui.theme.fg("dim", ` ${duration}`)}`,
     );
   }
 
   function renderRunningStatus(ctx: ExtensionContext, runStartedAt: number) {
     const elapsed = formatDuration(Math.max(0, Date.now() - runStartedAt));
-    ctx.ui.setStatus(
-      STATUS_KEY,
+    setStatus(
+      ctx,
       `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` Running ${elapsed}`)}`,
+      `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` ${elapsed}`)}`,
     );
   }
 
@@ -89,7 +109,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async (_event, ctx) => {
     clearLiveStatus();
-    ctx.ui.setStatus(STATUS_KEY, undefined);
+    statuslineItem.clear(getStatuslineSessionKey(ctx));
     startedAt = undefined;
     lastDurationMs = undefined;
   });

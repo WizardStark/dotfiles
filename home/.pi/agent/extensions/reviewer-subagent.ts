@@ -811,8 +811,10 @@ export default function (pi: ExtensionAPI) {
       onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }] });
       const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal);
       const generatedAt = Date.now();
+      const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
       pi.events.emit("reviewer-subagent:metrics", {
         generatedAt,
+        sessionKey,
         subagentMetrics: result.subagentMetrics,
         source: "tool",
       });
@@ -821,6 +823,7 @@ export default function (pi: ExtensionAPI) {
         content: [{ type: "text", text: result.report }],
         details: {
           generatedAt,
+          sessionKey,
           repoRoot: result.repoRoot,
           changedFiles: result.changedFiles,
           reviewer: result.reviewerModel,
@@ -837,12 +840,14 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify("Reviewer subagent: collecting context and reviewing changes...", "info");
         const result = await generateReview(ctx, pi.getThinkingLevel(), { context: args.trim() || undefined }, ctx.signal);
         const generatedAt = Date.now();
+        const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
         pi.sendMessage({
           customType: REVIEW_REPORT_TYPE,
           content: `## Reviewer report\n\n${result.report}`,
           display: true,
           details: {
             generatedAt,
+            sessionKey,
             repoRoot: result.repoRoot,
             changedFiles: result.changedFiles,
             reviewer: result.reviewerModel,
@@ -851,6 +856,7 @@ export default function (pi: ExtensionAPI) {
         });
         pi.events.emit("reviewer-subagent:metrics", {
           generatedAt,
+          sessionKey,
           subagentMetrics: result.subagentMetrics,
           source: "command",
         });

@@ -1,10 +1,19 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
 
 const STATUS_KEY = "token-throughput";
 const STATUS_INTERVAL_MS = 100;
 
 const USAGE_EMPTY = "In/Out —";
+
+const statuslineItem = createStatuslineItem({
+  id: STATUS_KEY,
+  side: "left",
+  order: 10,
+  importance: 70,
+  background: "toolPendingBg",
+});
 
 type ActiveRequest = {
   turnIndex?: number;
@@ -44,6 +53,7 @@ type SubagentMetrics = {
 
 type ReviewerMetricsEvent = {
   generatedAt?: number;
+  sessionKey?: string;
   subagentMetrics?: SubagentMetrics;
 };
 
@@ -155,12 +165,17 @@ function buildUsageSummary(
   return parts.join(separator);
 }
 
-function setStatus(ctx: ExtensionContext, content: string | undefined) {
+function setStatus(ctx: ExtensionContext, content: string | undefined, compactContent = content) {
   if (!ctx.hasUI) {
     return;
   }
 
-  ctx.ui.setStatus(STATUS_KEY, content);
+  if (!content) {
+    statuslineItem.clear(getStatuslineSessionKey(ctx));
+    return;
+  }
+
+  statuslineItem.set({ content, compactContent }, getStatuslineSessionKey(ctx));
 }
 
 function getSubagentDetails(message: unknown): ReviewerMetricsEvent | undefined {
@@ -271,6 +286,7 @@ function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: ReviewerMetr
 
 export default function tokenThroughput(pi: ExtensionAPI) {
   let currentCtx: ExtensionContext | undefined;
+  let currentSessionKey = "ephemeral";
   let pendingReviewerMetrics: ReviewerMetricsEvent | undefined;
   let activeRequest: ActiveRequest | undefined;
   let currentTurnIndex: number | undefined;
@@ -368,12 +384,17 @@ export default function tokenThroughput(pi: ExtensionAPI) {
           ctx,
           `${ctx.ui.theme.fg("warning", "⚠")}${ctx.ui.theme.fg("dim", ` Resp failed${code} after ${formatDuration(lastFailure.durationMs)} · ${subagentSummary}`)}`,
         ),
+        `${ctx.ui.theme.fg("warning", "⚠")}${ctx.ui.theme.fg("dim", ` Fail${code || ""} · ${formatDuration(lastFailure.durationMs)}`)}`,
       );
       return;
     }
 
     if (!lastCompleted) {
-      setStatus(ctx, buildStatusWithUsage(ctx, ctx.ui.theme.fg("dim", `Resp — · ${subagentSummary}`)));
+      setStatus(
+        ctx,
+        buildStatusWithUsage(ctx, ctx.ui.theme.fg("dim", `Resp — · ${subagentSummary}`)),
+        ctx.ui.theme.fg("dim", "Resp —"),
+      );
       return;
     }
 
@@ -383,12 +404,14 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       lastCompleted.inputTokens === undefined ? "P —" : `P ${formatTokenCount(lastCompleted.inputTokens)}`;
     const output =
       lastCompleted.outputTokens === undefined ? "O —" : `O ${formatTokenCount(lastCompleted.outputTokens)}`;
+    const rate = formatTokensPerSecond(lastCompleted.generationTokensPerSecond);
     setStatus(
       ctx,
       buildStatusWithUsage(
         ctx,
-        `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` Main ${ttft} · ${prompt} · ${output} · ${formatTokensPerSecond(lastCompleted.generationTokensPerSecond)} · ${subagentSummary}`)}`,
+        `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` Main ${ttft} · ${prompt} · ${output} · ${rate} · ${subagentSummary}`)}`,
       ),
+      `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` ${ttft} · ${rate}`)}`,
     );
   }
 
@@ -416,6 +439,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
           ctx,
           `${ctx.ui.theme.fg("warning", "…")}${ctx.ui.theme.fg("dim", ` Main waiting ${elapsed} · ${promptEstimate} · ${subagentSummary}`)}`,
         ),
+        `${ctx.ui.theme.fg("warning", "…")}${ctx.ui.theme.fg("dim", ` Wait ${elapsed}`)}`,
       );
       return;
     }
@@ -430,6 +454,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
         ctx,
         `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` Main TTFT ${formatDuration(ttft)} · ${promptEstimate} · streaming ${streamingFor} · ${subagentSummary}`)}`,
       ),
+      `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` TTFT ${formatDuration(ttft)} · ${streamingFor}`)}`,
     );
   }
 
@@ -492,24 +517,32 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     resetBranchScopedState(ctx);
     renderIdleStatus(ctx);
   });
 
   pi.on("session_tree", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     refreshUsageSamples(ctx);
     renderIdleStatus(ctx);
   });
 
   pi.on("session_compact", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     refreshUsageSamples(ctx);
     renderIdleStatus(ctx);
   });
 
   pi.events.on("reviewer-subagent:metrics", (data) => {
-    pendingReviewerMetrics = (data ?? {}) as ReviewerMetricsEvent;
+    const event = (data ?? {}) as ReviewerMetricsEvent;
+    if (event.sessionKey && event.sessionKey !== currentSessionKey) {
+      return;
+    }
+
+    pendingReviewerMetrics = event;
     if (currentCtx) {
       renderIdleStatus(currentCtx);
     }
@@ -556,6 +589,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
   pi.on("message_end", async (event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     if (getSubagentMetrics(event.message)?.throughput) {
       renderIdleStatus(ctx);
     }
@@ -581,6 +615,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
   pi.on("agent_end", async (_event, ctx) => {
     currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
     if (!activeRequest) {
       renderIdleStatus(ctx);
       return;
@@ -606,6 +641,6 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     lastCompleted = undefined;
     lastFailure = undefined;
     resetUsageSamples();
-    setStatus(ctx, undefined);
+    statuslineItem.clear(getStatuslineSessionKey(ctx));
   });
 }

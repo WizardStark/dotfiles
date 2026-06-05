@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.78.0",
+  "lastChangelogVersion": "0.78.1",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
   "defaultModel": "gpt-5.4",
