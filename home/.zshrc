@@ -5,6 +5,9 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
+    # Load core zsh helpers before zinit/plugin code relies on them.
+    autoload -Uz add-zsh-hook colors is-at-least compinit vcs_info
+
     if [ ! -d "$ZINIT_HOME" ]; then
        mkdir -p "$(dirname $ZINIT_HOME)"
        git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"

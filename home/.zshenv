@@ -22,6 +22,32 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
+typeset -U fpath
+typeset -aU brew_prefixes
+brew_prefixes=(${HOMEBREW_PREFIX:-} /home/linuxbrew/.linuxbrew /opt/homebrew /usr/local)
+for brew_prefix in $brew_prefixes; do
+    [[ -n "$brew_prefix" ]] || continue
+    [[ "${(j.:.)fpath}" == *"$brew_prefix/Cellar/zsh/"* ]] || continue
+    [[ -d "$brew_prefix/share/zsh/functions" ]] || continue
+
+    typeset -a cleaned_fpath
+    cleaned_fpath=()
+    for fpath_entry in $fpath; do
+        if [[ "$fpath_entry" == "$brew_prefix"/Cellar/zsh/*/share/zsh/functions* ]] || [[ "$fpath_entry" == "$brew_prefix"/Cellar/zsh/*/share/zsh/site-functions* ]]; then
+            continue
+        fi
+        cleaned_fpath+=("$fpath_entry")
+    done
+
+    fpath=(
+        "$brew_prefix/share/zsh/functions"
+        "$brew_prefix/share/zsh/site-functions"
+        $cleaned_fpath
+    )
+    unset cleaned_fpath
+done
+unset brew_prefixes
+
 if require mise; then
     eval "$(mise activate zsh)"
 fi
