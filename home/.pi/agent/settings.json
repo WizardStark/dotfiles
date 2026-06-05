@@ -6,8 +6,8 @@
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "compaction": {
-    "enabled": true,
-    "reserveTokens": 200000,
+    "enabled": false,
+    "reserveTokens": 64000,
     "keepRecentTokens": 20000
   },
   "packages": [
