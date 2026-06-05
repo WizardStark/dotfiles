@@ -159,9 +159,9 @@ run_apply() {
   ensure_manifest_git_clones
   ensure_tmux_terminfo
   ensure_bat_theme
-  ensure_fzf
   restow_home "$adopt_stow"
   ensure_pi_packages_from_settings
+  ensure_fzf
   ensure_tmux_plugins
   ensure_agent_socket
   ensure_nvim_plugins
