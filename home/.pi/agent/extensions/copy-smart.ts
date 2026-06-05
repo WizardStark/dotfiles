@@ -21,7 +21,8 @@
 import { spawn, spawnSync } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { release } from "node:os";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import { matchesKey, truncateToWidth, visibleWidth, type TUI } from "@earendil-works/pi-tui";
 
 type AssistantTextSource = {
   text: string;
@@ -48,6 +49,8 @@ type ClipboardBackend = {
 };
 
 const CLIPBOARD_COMMAND_TIMEOUT_MS = 5000;
+const BLOCK_PICKER_MAX_VISIBLE_ITEMS = 3;
+const BLOCK_PICKER_OVERLAY_MAX_HEIGHT_RATIO = 0.85;
 
 function extractAssistantText(messageContent: unknown): string {
   if (typeof messageContent === "string") {
@@ -475,9 +478,225 @@ async function copyToClipboard(text: string): Promise<CopyResult> {
   };
 }
 
+function getCodeLines(code: string): string[] {
+  const normalized = code.replace(/\r\n?/g, "\n");
+  const trimmed = normalized.replace(/\n+$/, "");
+
+  if (trimmed === "") {
+    return normalized === "" ? [] : [""];
+  }
+
+  return trimmed.split("\n");
+}
+
+function getBlockLineCount(block: CodeBlock): number {
+  return getCodeLines(block.code).length;
+}
+
 function formatBlockLabel(block: CodeBlock): string {
   const language = block.language ?? "text";
-  return `${block.index}. ${language} — ${block.preview}`;
+  const lineCount = getBlockLineCount(block);
+  const lineLabel = `${lineCount} ${lineCount === 1 ? "line" : "lines"}`;
+  return `${block.index}. ${language} — ${lineLabel} — ${block.preview}`;
+}
+
+function formatBlockMeta(block: CodeBlock): string {
+  const language = block.language ?? "text";
+  const lineCount = getBlockLineCount(block);
+  const lineLabel = `${lineCount} ${lineCount === 1 ? "line" : "lines"}`;
+  const charLabel = `${block.code.length} ${block.code.length === 1 ? "char" : "chars"}`;
+  return `Block ${block.index} • ${language} • ${lineLabel} • ${charLabel}`;
+}
+
+function getVisibleWindow(selectedIndex: number, total: number, limit: number): { start: number; end: number } {
+  if (total <= limit) {
+    return { start: 0, end: total };
+  }
+
+  const half = Math.floor(limit / 2);
+  let start = Math.max(0, selectedIndex - half);
+  let end = start + limit;
+
+  if (end > total) {
+    end = total;
+    start = Math.max(0, end - limit);
+  }
+
+  return { start, end };
+}
+
+class BlockPickerOverlay {
+  private selectedIndex = 0;
+
+  constructor(
+    private readonly tui: TUI,
+    private readonly theme: Theme,
+    private readonly blocks: CodeBlock[],
+    private readonly title: string,
+    private readonly done: (result: CodeBlock | undefined) => void,
+  ) {}
+
+  handleInput(data: string): void {
+    if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
+      this.done(undefined);
+      return;
+    }
+
+    if (matchesKey(data, "up") || data === "k") {
+      this.selectedIndex = Math.max(0, this.selectedIndex - 1);
+      this.tui.requestRender();
+      return;
+    }
+
+    if (matchesKey(data, "down") || data === "j") {
+      this.selectedIndex = Math.min(this.blocks.length - 1, this.selectedIndex + 1);
+      this.tui.requestRender();
+      return;
+    }
+
+    if (matchesKey(data, "enter") || matchesKey(data, "return")) {
+      this.done(this.blocks[this.selectedIndex]);
+      return;
+    }
+
+    if (data.length === 1 && /^\d$/.test(data)) {
+      const index = Number.parseInt(data, 10) - 1;
+      if (index >= 0 && index < this.blocks.length) {
+        this.selectedIndex = index;
+        this.done(this.blocks[index]);
+      }
+    }
+  }
+
+  render(width: number): string[] {
+    const innerWidth = Math.max(1, width - 2);
+    const maxOverlayRows = Math.max(1, Math.floor(this.tui.terminal.rows * BLOCK_PICKER_OVERLAY_MAX_HEIGHT_RATIO));
+    const showMeta = maxOverlayRows >= 6;
+    const showBlocksHeader = maxOverlayRows >= 7;
+    const showHelp = maxOverlayRows >= 8;
+    const fixedRows = 2 + 1 + (showMeta ? 1 : 0) + (showBlocksHeader ? 1 : 0) + (showHelp ? 1 : 0);
+    const availableBodyRows = Math.max(1, maxOverlayRows - fixedRows);
+    const listRows = availableBodyRows === 1
+      ? 1
+      : Math.max(1, Math.min(BLOCK_PICKER_MAX_VISIBLE_ITEMS + 2, Math.floor(availableBodyRows / 2)));
+    const previewRows = Math.max(0, availableBodyRows - listRows);
+    const border = (text: string) => this.theme.fg("border", text);
+    const row = (content = "") => border("│") + this.pad(content, innerWidth) + border("│");
+    const selectedBlock = this.blocks[this.selectedIndex]!;
+    const lines: string[] = [];
+
+    lines.push(border(`╭${"─".repeat(innerWidth)}╮`));
+    lines.push(row(` ${this.theme.fg("accent", this.theme.bold(this.title))}`));
+
+    if (showMeta) {
+      lines.push(row(` ${this.theme.fg("dim", formatBlockMeta(selectedBlock))}`));
+    }
+
+    for (const previewLine of this.renderPreview(selectedBlock, innerWidth, previewRows)) {
+      lines.push(row(previewLine));
+    }
+
+    if (showBlocksHeader) {
+      lines.push(row(` ${this.theme.fg("accent", "Blocks")}`));
+    }
+
+    for (const optionLine of this.renderBlockList(listRows)) {
+      lines.push(row(optionLine));
+    }
+
+    if (showHelp) {
+      lines.push(row(` ${this.theme.fg("dim", "↑↓/j/k move • Enter copy • Esc cancel • 1-9 jump")}`));
+    }
+
+    lines.push(border(`╰${"─".repeat(innerWidth)}╯`));
+
+    return lines;
+  }
+
+  invalidate(): void {}
+
+  dispose(): void {}
+
+  private renderPreview(block: CodeBlock, innerWidth: number, maxRows: number): string[] {
+    const codeLines = getCodeLines(block.code);
+    if (codeLines.length === 0) {
+      return [this.theme.fg("dim", " (empty block)")].slice(0, maxRows);
+    }
+
+    const previewWidth = Math.max(8, innerWidth - 1);
+    const lineNumberWidth = String(codeLines.length).length;
+    const visibleCodeLines = codeLines.length > maxRows && maxRows > 1 ? maxRows - 1 : maxRows;
+    const rendered = codeLines.slice(0, visibleCodeLines).map((line, index) => {
+      const prefix = this.theme.fg("dim", `${String(index + 1).padStart(lineNumberWidth, " ")} │ `);
+      const available = Math.max(1, previewWidth - visibleWidth(prefix));
+      return ` ${prefix}${truncateToWidth(line, available, "…", true)}`;
+    });
+
+    if (codeLines.length > visibleCodeLines && rendered.length < maxRows) {
+      rendered.push(this.theme.fg("dim", ` … ${codeLines.length - visibleCodeLines} more lines not shown`));
+    }
+
+    return rendered.slice(0, maxRows);
+  }
+
+  private renderBlockList(maxRows: number): string[] {
+    if (maxRows <= 1) {
+      const selected = this.blocks[this.selectedIndex]!;
+      return [` ${this.theme.fg("accent", "▶ ")}${this.theme.fg("accent", formatBlockLabel(selected))}`];
+    }
+
+    if (maxRows === 2) {
+      const selected = this.blocks[this.selectedIndex]!;
+      return [
+        ` ${this.theme.fg("accent", "▶ ")}${this.theme.fg("accent", formatBlockLabel(selected))}`,
+        this.theme.fg("dim", ` ${this.selectedIndex + 1} of ${this.blocks.length}`),
+      ];
+    }
+
+    const { start, end } = getVisibleWindow(this.selectedIndex, this.blocks.length, Math.max(1, Math.min(BLOCK_PICKER_MAX_VISIBLE_ITEMS, maxRows - 2)));
+    const lines: string[] = [];
+
+    if (start > 0) {
+      lines.push(this.theme.fg("dim", ` … ${start} earlier block${start === 1 ? "" : "s"}`));
+    }
+
+    for (let index = start; index < end; index += 1) {
+      const block = this.blocks[index]!;
+      const isSelected = index === this.selectedIndex;
+      const prefix = isSelected ? this.theme.fg("accent", "▶ ") : "  ";
+      const label = formatBlockLabel(block);
+      lines.push(` ${prefix}${isSelected ? this.theme.fg("accent", label) : label}`);
+    }
+
+    if (end < this.blocks.length) {
+      const remaining = this.blocks.length - end;
+      lines.push(this.theme.fg("dim", ` … ${remaining} more block${remaining === 1 ? "" : "s"}`));
+    }
+
+    return lines.slice(0, maxRows);
+  }
+
+  private pad(content: string, width: number): string {
+    const truncated = truncateToWidth(content, width, "…", true);
+    return truncated + " ".repeat(Math.max(0, width - visibleWidth(truncated)));
+  }
+}
+
+async function pickBlockWithPreview(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
+  return ctx.ui.custom<CodeBlock | undefined>(
+    (tui: TUI, theme: Theme, _keybindings: unknown, done: (result: CodeBlock | undefined) => void) =>
+      new BlockPickerOverlay(tui, theme, blocks, title, done),
+    {
+      overlay: true,
+      overlayOptions: {
+        anchor: "center",
+        width: "85%",
+        minWidth: 60,
+        maxHeight: "85%",
+        margin: 1,
+      },
+    },
+  );
 }
 
 async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
@@ -489,13 +708,20 @@ async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<
     return blocks[0];
   }
 
-  const labels = blocks.map(formatBlockLabel);
-  const selected = await ctx.ui.select(title, labels);
-  if (!selected) {
-    return undefined;
-  }
+  try {
+    return await pickBlockWithPreview(ctx, blocks, title);
+  } catch (error) {
+    console.warn("[copy-smart] preview picker failed, falling back to standard select", error);
+    ctx.ui.notify?.("Preview picker unavailable, falling back to the standard block picker.", "warning");
 
-  return blocks[labels.indexOf(selected)];
+    const labels = blocks.map(formatBlockLabel);
+    const selected = await ctx.ui.select(title, labels);
+    if (!selected) {
+      return undefined;
+    }
+
+    return blocks[labels.indexOf(selected)];
+  }
 }
 
 async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: string): Promise<CodeBlock | undefined> {
