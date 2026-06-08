@@ -55,6 +55,15 @@ local mappings = {
 		end,
 	},
 	{
+		event = "BufEnter",
+		pattern = { "*.json" },
+		callback = function()
+			vim.opt_local.shiftwidth = 2
+			vim.opt_local.tabstop = 2
+			vim.opt_local.softtabstop = 2
+		end,
+	},
+	{
 		event = "BufWinEnter",
 		callback = function()
 			if vim.bo.bt == "terminal" then
