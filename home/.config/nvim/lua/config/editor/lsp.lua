@@ -147,5 +147,33 @@ vim.lsp.config.gopls = {
 }
 
 vim.lsp.enable("gopls")
+
+vim.lsp.config.golangci_lint_ls = {
+	cmd = { "golangci-lint-langserver" },
+	root_markers = { ".git", "go.mod" },
+	init_options = {
+		command = {
+			"golangci-lint",
+			"run",
+			"--output.json.path",
+			"stdout",
+			"--show-stats=false",
+			"--issues-exit-code=1",
+		},
+	},
+	before_init = function(params, config)
+		local local_bin = config.root_dir .. "/bin/custom-gcl"
+		if vim.fn.executable(local_bin) == 1 then
+			config.init_options.command[1] = local_bin
+			params.initializationOptions.command[1] = local_bin
+		else
+			config.init_options.command[1] = "golangci-lint"
+			params.initializationOptions.command[1] = "golangci-lint"
+		end
+	end,
+}
+
+vim.lsp.enable("golangci-lint-langserver")
+
 -- As we lazy load this we need to trigger the ft event manually after everything is set up
 vim.cmd("doautocmd FileType")
