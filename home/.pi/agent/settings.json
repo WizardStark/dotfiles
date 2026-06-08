@@ -2,9 +2,9 @@
   "lastChangelogVersion": "0.78.1",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
-  "defaultModel": "gpt-5.4",
+  "defaultModel": "gpt-5.4-mini",
   "defaultThinkingLevel": "medium",
-  "hideThinkingBlock": true,
+  "hideThinkingBlock": false,
   "compaction": {
     "enabled": false,
     "reserveTokens": 64000,
