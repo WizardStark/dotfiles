@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -113,6 +114,21 @@ function formatModel(ctx: ExtensionContext) {
   };
 }
 
+function getGitBranch(cwd: string): string | null {
+  const result = spawnSync("git", ["branch", "--show-current"], {
+    cwd,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  const branch = typeof result.stdout === "string" ? result.stdout.trim() : "";
+  return branch || null;
+}
+
 function renderBuiltinSegments(pi: ExtensionAPI, ctx: ExtensionContext) {
   const sessionKey = getStatuslineSessionKey(ctx);
   const model = formatModel(ctx);
@@ -156,7 +172,7 @@ function compareItems(left: StatuslineItem, right: StatuslineItem) {
 function buildBuiltinItems(
   ctx: ExtensionContext,
   theme: ExtensionContext["ui"]["theme"],
-  footerData: { getGitBranch(): string | null },
+  branch: string | null,
 ): StatuslineItem[] {
   const items: StatuslineItem[] = [
     {
@@ -170,7 +186,6 @@ function buildBuiltinItems(
     },
   ];
 
-  const branch = footerData.getGitBranch();
   if (branch) {
     items.push({
       id: "statusline:branch",
@@ -360,46 +375,96 @@ function renderFooterLine(
   return [truncateToWidth(`${leftText} ${truncateToWidth(rightText, availableRight)}`, width)];
 }
 
+function renderRpcStatusline(ctx: ExtensionContext, sessionKey: string) {
+  if (!ctx.hasUI) return;
+  const theme = ctx.ui.theme;
+  const builtins = buildBuiltinItems(ctx, theme, getGitBranch(ctx.cwd));
+  const { left, right } = toStyledItems(theme, sessionKey, builtins);
+  const leftText = renderLeftChain(theme, left);
+  const rightText = renderRightChain(theme, right);
+  const line = leftText && rightText ? `${leftText} ${rightText}` : leftText || rightText;
+  ctx.ui.setWidget("statusline", [line || ""], { placement: "belowEditor" });
+}
+
 export default function statusline(pi: ExtensionAPI) {
   let currentSessionKey = "ephemeral";
+  let unsubscribeRpcStatusline: (() => void) | undefined;
+  let rpcStatuslineRefreshTimer: ReturnType<typeof setInterval> | undefined;
 
   pi.on("session_start", async (_event, ctx) => {
+    unsubscribeRpcStatusline?.();
+    unsubscribeRpcStatusline = undefined;
+    if (rpcStatuslineRefreshTimer) {
+      clearInterval(rpcStatuslineRefreshTimer);
+      rpcStatuslineRefreshTimer = undefined;
+    }
+
     currentSessionKey = getStatuslineSessionKey(ctx);
     renderBuiltinSegments(pi, ctx);
 
-    ctx.ui.setFooter((tui, theme, footerData) => {
-      const unsubscribeStatusline = subscribeStatusline(() => tui.requestRender());
-      const unsubscribeBranch = footerData.onBranchChange(() => tui.requestRender());
+    if (ctx.mode === "tui") {
+      ctx.ui.setFooter((tui, theme, footerData) => {
+        const unsubscribeStatusline = subscribeStatusline(() => tui.requestRender());
+        const unsubscribeBranch = footerData.onBranchChange(() => tui.requestRender());
 
-      return {
-        dispose() {
-          unsubscribeStatusline();
-          unsubscribeBranch();
-        },
-        invalidate() {
-          renderBuiltinSegments(pi, ctx);
-        },
-        render(width: number) {
-          const builtins = buildBuiltinItems(ctx, theme, footerData);
-          const { left, right } = toStyledItems(theme, currentSessionKey, builtins);
-          return renderFooterLine(width, theme, left, right);
-        },
-      };
-    });
+        return {
+          dispose() {
+            unsubscribeStatusline();
+            unsubscribeBranch();
+          },
+          invalidate() {
+            renderBuiltinSegments(pi, ctx);
+          },
+          render(width: number) {
+            const builtins = buildBuiltinItems(ctx, theme, footerData.getGitBranch());
+            const { left, right } = toStyledItems(theme, currentSessionKey, builtins);
+            return renderFooterLine(width, theme, left, right);
+          },
+        };
+      });
+      return;
+    }
+
+    if (ctx.hasUI) {
+      unsubscribeRpcStatusline?.();
+      unsubscribeRpcStatusline = subscribeStatusline(() => renderRpcStatusline(ctx, currentSessionKey));
+      renderRpcStatusline(ctx, currentSessionKey);
+      if (ctx.mode !== "tui") {
+        rpcStatuslineRefreshTimer && clearInterval(rpcStatuslineRefreshTimer);
+        rpcStatuslineRefreshTimer = setInterval(() => renderRpcStatusline(ctx, currentSessionKey), 10_000);
+        rpcStatuslineRefreshTimer.unref?.();
+      }
+    }
   });
 
   pi.on("model_select", async (_event, ctx) => {
     renderBuiltinSegments(pi, ctx);
+    if (ctx.hasUI && ctx.mode !== "tui") {
+      renderRpcStatusline(ctx, currentSessionKey);
+    }
   });
 
   pi.on("thinking_level_select", async (_event, ctx) => {
     renderBuiltinSegments(pi, ctx);
+    if (ctx.hasUI && ctx.mode !== "tui") {
+      renderRpcStatusline(ctx, currentSessionKey);
+    }
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     const sessionKey = getStatuslineSessionKey(ctx);
     modelItem.clear(sessionKey);
     reasoningItem.clear(sessionKey);
+    unsubscribeRpcStatusline?.();
+    unsubscribeRpcStatusline = undefined;
+    if (rpcStatuslineRefreshTimer) {
+      clearInterval(rpcStatuslineRefreshTimer);
+      rpcStatuslineRefreshTimer = undefined;
+    }
+    if (ctx.hasUI && ctx.mode !== "tui") {
+      ctx.ui.setWidget("statusline", undefined);
+      return;
+    }
     ctx.ui.setFooter(undefined);
   });
 }

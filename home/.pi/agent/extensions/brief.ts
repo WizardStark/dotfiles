@@ -101,22 +101,9 @@ function buildPrompt(values: FormValues): string {
 	return sections.join("\n\n");
 }
 
-export default function formExtension(pi: ExtensionAPI) {
-	const openBrief = async (
-		args: string,
-		ctx: Parameters<ExtensionAPI["registerCommand"]>[1]["handler"] extends (
-			args: any,
-			ctx: infer TCtx,
-		) => any
-			? TCtx
-			: never,
-	) => {
-		if (!ctx.hasUI) {
-			return;
-		}
-
-		const prefilledObjective = args.trim();
-		ctx.ui.setWidget("brief-keymap", (_tui, theme) => ({
+function setBriefKeymapWidget(ctx: { mode?: string; ui: { setWidget: (...args: any[]) => void } }) {
+	if (ctx.mode === "tui") {
+		ctx.ui.setWidget("brief-keymap", (_tui: unknown, theme: any) => ({
 			invalidate() {},
 			render(): string[] {
 				return [
@@ -132,6 +119,28 @@ export default function formExtension(pi: ExtensionAPI) {
 				];
 			},
 		}));
+		return;
+	}
+
+	ctx.ui.setWidget("brief-keymap", ["Structured prompt form controls", "submit · follow-up · newline · cancel"]);
+}
+
+export default function formExtension(pi: ExtensionAPI) {
+	const openBrief = async (
+		args: string,
+		ctx: Parameters<ExtensionAPI["registerCommand"]>[1]["handler"] extends (
+			args: any,
+			ctx: infer TCtx,
+		) => any
+			? TCtx
+			: never,
+	) => {
+		if (!ctx.hasUI) {
+			return;
+		}
+
+		const prefilledObjective = args.trim();
+		setBriefKeymapWidget(ctx);
 		let edited: string | undefined;
 		try {
 			edited = await ctx.ui.editor(

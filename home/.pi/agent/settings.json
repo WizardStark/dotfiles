@@ -1,8 +1,8 @@
 {
-  "lastChangelogVersion": "0.78.1",
+  "lastChangelogVersion": "0.79.0",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
-  "defaultModel": "gpt-5.4-mini",
+  "defaultModel": "gpt-5.4",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": false,
   "compaction": {
@@ -15,5 +15,8 @@
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-btw"
-  ]
+  ],
+  "terminal": {
+    "showTerminalProgress": true
+  }
 }

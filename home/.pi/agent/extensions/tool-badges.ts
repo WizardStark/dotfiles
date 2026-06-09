@@ -488,6 +488,10 @@ function renderBadgeLines(theme: any, badges: Badge[], width: number) {
 	return lines;
 }
 
+function renderBadgeSummary(theme: any, badges: Badge[]) {
+	return badges.length === 0 ? [] : [badges.map((badge) => compactBadge(theme, badge.name, badge.state)).join(" ")];
+}
+
 export default function toolBadges(pi: ExtensionAPI) {
 	let ctxBridge: CtxBridgeHandle | undefined;
 	let ctxToolsReady = false;
@@ -495,9 +499,15 @@ export default function toolBadges(pi: ExtensionAPI) {
 	let pendingBadges = new Map<string, Badge>();
 
 	function updateWidget(ctx: ExtensionContext) {
+		if (!ctx.hasUI) return;
 		const badges = [...pendingBadges.values(), ...recentBadges].slice(-16);
 		if (badges.length === 0) {
 			ctx.ui.setWidget("tool-badges", undefined);
+			return;
+		}
+
+		if (ctx.mode !== "tui") {
+			ctx.ui.setWidget("tool-badges", renderBadgeSummary(ctx.ui.theme, badges));
 			return;
 		}
 
@@ -510,6 +520,7 @@ export default function toolBadges(pi: ExtensionAPI) {
 	}
 
 	function collapseToolOutputs(ctx: ExtensionContext) {
+		if (!ctx.hasUI) return;
 		ctx.ui.setToolsExpanded(false);
 	}
 

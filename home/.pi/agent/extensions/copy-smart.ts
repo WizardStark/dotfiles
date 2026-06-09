@@ -1068,6 +1068,16 @@ async function pickBlockWithPreview(ctx: any, blocks: CodeBlock[], title: string
   );
 }
 
+async function pickBlockWithSelect(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
+  const labels = blocks.map((block, index) => `${index + 1}. ${formatBlockLabel(block)}`);
+  const selected = await ctx.ui.select(title, labels);
+  if (!selected) {
+    return undefined;
+  }
+
+  return blocks[labels.indexOf(selected)];
+}
+
 async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
   if (blocks.length === 0) {
     return undefined;
@@ -1077,19 +1087,17 @@ async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<
     return blocks[0];
   }
 
+  if (ctx.mode !== "tui") {
+    return pickBlockWithSelect(ctx, blocks, title);
+  }
+
   try {
-    return await pickBlockWithPreview(ctx, blocks, title);
+    const selected = await pickBlockWithPreview(ctx, blocks, title);
+    return selected;
   } catch (error) {
     console.warn("[copy-smart] preview picker failed, falling back to standard select", error);
     ctx.ui.notify?.("Preview picker unavailable, falling back to the standard block picker.", "warning");
-
-    const labels = blocks.map(formatBlockLabel);
-    const selected = await ctx.ui.select(title, labels);
-    if (!selected) {
-      return undefined;
-    }
-
-    return blocks[labels.indexOf(selected)];
+    return pickBlockWithSelect(ctx, blocks, title);
   }
 }
 

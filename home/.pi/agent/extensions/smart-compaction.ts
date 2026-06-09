@@ -54,6 +54,8 @@ const PREFERRED_SUMMARIZERS: Array<{ provider: string; id: string }> = [
 	{ provider: "openai", id: "gpt-5.4" },
 ];
 
+let thresholdWidgetClearTimer: ReturnType<typeof setTimeout> | undefined;
+
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
 }
@@ -313,6 +315,18 @@ class ThresholdOverlay {
 async function showThresholdOverlay(ctx: ExtensionCommandContext) {
 	const lines = await buildThresholdLines(ctx);
 	if (!ctx.hasUI) return;
+
+	if (ctx.mode !== "tui") {
+		if (thresholdWidgetClearTimer) clearTimeout(thresholdWidgetClearTimer);
+		ctx.ui.setWidget("smart-compaction-thresholds", lines, { placement: "belowEditor" });
+		thresholdWidgetClearTimer = setTimeout(() => {
+			ctx.ui.setWidget("smart-compaction-thresholds", undefined);
+			thresholdWidgetClearTimer = undefined;
+		}, 15000);
+		thresholdWidgetClearTimer.unref?.();
+		return;
+	}
+
 	await ctx.ui.custom<void>(
 		(_tui, theme, _keybindings, done) => new ThresholdOverlay(theme, lines, () => done()),
 		{
@@ -568,6 +582,16 @@ export default function smartCompaction(pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		overflowRecoveryAttempted = false;
 		updateStatus(ctx);
+	});
+
+	pi.on("session_shutdown", async (_event, ctx) => {
+		if (thresholdWidgetClearTimer) {
+			clearTimeout(thresholdWidgetClearTimer);
+			thresholdWidgetClearTimer = undefined;
+		}
+		if (ctx.hasUI) {
+			ctx.ui.setWidget("smart-compaction-thresholds", undefined);
+		}
 	});
 
 	pi.on("context", async (event) => {
