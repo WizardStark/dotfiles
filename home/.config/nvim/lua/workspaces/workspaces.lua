@@ -73,9 +73,7 @@ local function stop_lsp_clients()
 	end
 
 	for _, client in ipairs(clients) do
-		if client.name ~= "copilot" then
-			client:stop(true)
-		end
+		client:stop(false)
 	end
 end
 
@@ -292,11 +290,11 @@ function M.setup_lualine()
 		local is_selected = session.name == current_workspace.current_session_name
 		local is_last_session = session.name == current_workspace.last_session_name
 
-			tabs[i] = {
-				mode = 2,
-				color = function()
-					return { fg = is_selected and palette.blue or palette.text }
-				end,
+		tabs[i] = {
+			mode = 2,
+			color = function()
+				return { fg = is_selected and palette.blue or palette.text }
+			end,
 			on_click = function()
 				M.switch_session(session, current_workspace)
 			end,
