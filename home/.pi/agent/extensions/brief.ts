@@ -1,4 +1,5 @@
 import { keyHint, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { ManagedWidget } from "./lib/ui-widgets.ts";
 
 const FORM_FIELDS = [
 	{ key: "objective", heading: "Objective" },
@@ -9,6 +10,8 @@ const FORM_FIELDS = [
 	{ key: "output", heading: "Output" },
 	{ key: "evidence", heading: "Evidence" },
 ] as const;
+
+const KEYMAP_WIDGET = new ManagedWidget("brief-keymap");
 
 type FieldKey = (typeof FORM_FIELDS)[number]["key"];
 type FormValues = Record<FieldKey, string>;
@@ -101,9 +104,9 @@ function buildPrompt(values: FormValues): string {
 	return sections.join("\n\n");
 }
 
-function setBriefKeymapWidget(ctx: { mode?: string; ui: { setWidget: (...args: any[]) => void } }) {
+function setBriefKeymapWidget(ctx: any) {
 	if (ctx.mode === "tui") {
-		ctx.ui.setWidget("brief-keymap", (_tui: unknown, theme: any) => ({
+		KEYMAP_WIDGET.set(ctx, (_tui: unknown, theme: any) => ({
 			invalidate() {},
 			render(): string[] {
 				return [
@@ -122,7 +125,7 @@ function setBriefKeymapWidget(ctx: { mode?: string; ui: { setWidget: (...args: a
 		return;
 	}
 
-	ctx.ui.setWidget("brief-keymap", ["Structured prompt form controls", "submit · follow-up · newline · cancel"]);
+	KEYMAP_WIDGET.set(ctx, ["Structured prompt form controls", "submit · follow-up · newline · cancel"]);
 }
 
 export default function formExtension(pi: ExtensionAPI) {
@@ -148,7 +151,7 @@ export default function formExtension(pi: ExtensionAPI) {
 				buildTemplate(prefilledObjective),
 			);
 		} finally {
-			ctx.ui.setWidget("brief-keymap", undefined);
+			KEYMAP_WIDGET.clear(ctx);
 		}
 
 		if (edited === undefined) {

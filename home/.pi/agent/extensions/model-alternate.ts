@@ -1,10 +1,12 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-interface ModelRef {
-	provider: string;
-	id: string;
-}
+import {
+	findModel,
+	sameModel,
+	toRef,
+	type ModelRef,
+} from "./lib/model-ref.ts";
 
 interface ModelAltState {
 	previous?: ModelRef;
@@ -13,26 +15,11 @@ interface ModelAltState {
 const STATE_ENTRY = "model-alt-state";
 const SHORTCUT = "alt+l";
 
-function toRef(model?: Model<Api>): ModelRef | undefined {
-	if (!model) return undefined;
-	return {
-		provider: model.provider,
-		id: model.id,
-	};
-}
-
-function sameModel(a?: ModelRef, b?: ModelRef): boolean {
-	return !!a && !!b && a.provider === b.provider && a.id === b.id;
-}
 
 function formatModel(ref?: ModelRef): string {
 	return ref ? `${ref.provider}/${ref.id}` : "none";
 }
 
-function findModel(ctx: ExtensionContext, ref?: ModelRef): Model<Api> | undefined {
-	if (!ref) return undefined;
-	return ctx.modelRegistry.find(ref.provider, ref.id);
-}
 
 function readSavedState(ctx: ExtensionContext): ModelAltState | undefined {
 	const entry = [...ctx.sessionManager.getEntries()]

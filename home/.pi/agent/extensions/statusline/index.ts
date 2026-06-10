@@ -3,6 +3,7 @@ import { basename } from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { ManagedWidget } from "../lib/ui-widgets.ts";
 import {
   createStatuslineItem,
   getStatuslineSessionKey,
@@ -46,6 +47,8 @@ const LEFT_BACKGROUNDS: StatuslineBackground[] = [
 ];
 
 const RIGHT_BACKGROUNDS: StatuslineBackground[] = ["selectedBg", "customMessageBg", "userMessageBg"];
+
+const STATUSLINE_WIDGET = new ManagedWidget("statusline", { placement: "belowEditor" });
 
 function bgAnsiToFgAnsi(ansi: string) {
   return ansi.replace(/\[48;/g, "[38;").replace(/\[48m/g, "[38m");
@@ -383,7 +386,7 @@ function renderRpcStatusline(ctx: ExtensionContext, sessionKey: string) {
   const leftText = renderLeftChain(theme, left);
   const rightText = renderRightChain(theme, right);
   const line = leftText && rightText ? `${leftText} ${rightText}` : leftText || rightText;
-  ctx.ui.setWidget("statusline", [line || ""], { placement: "belowEditor" });
+  STATUSLINE_WIDGET.set(ctx, [line || ""]);
 }
 
 export default function statusline(pi: ExtensionAPI) {
@@ -462,7 +465,7 @@ export default function statusline(pi: ExtensionAPI) {
       rpcStatuslineRefreshTimer = undefined;
     }
     if (ctx.hasUI && ctx.mode !== "tui") {
-      ctx.ui.setWidget("statusline", undefined);
+      STATUSLINE_WIDGET.clear(ctx);
       return;
     }
     ctx.ui.setFooter(undefined);

@@ -1,14 +1,19 @@
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename, join, relative } from "node:path";
+import { readFile } from "node:fs/promises";
+import { relative } from "node:path";
+import {
+  buildSubagentMetrics,
+  extractFinalAssistantText,
+  runSubagentProcess,
+  type SubagentMetrics,
+  type SubagentRunState,
+} from "./lib/subagent-runtime.ts";
 
 const REVIEW_REPORT_TYPE = "reviewer-report";
 const MAX_CONTEXT_CHARS = 12_000;
@@ -16,28 +21,6 @@ const MAX_DIFF_CHARS = 40_000;
 const MAX_UNTRACKED_FILES = 3;
 const MAX_UNTRACKED_FILE_CHARS = 4_000;
 const MAX_MESSAGES = 12;
-const TOKENS_PER_MILLION = 1_000_000;
-
-const MODEL_RATES: Record<string, { input: number; cachedInput: number; output: number; cacheWrite?: number }> = {
-  "gpt-4.1": { input: 2.0, cachedInput: 0.5, output: 8.0 },
-  "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2.0 },
-  "gpt-5.2": { input: 1.75, cachedInput: 0.175, output: 14.0 },
-  "gpt-5.2-codex": { input: 1.75, cachedInput: 0.175, output: 14.0 },
-  "gpt-5.3-codex": { input: 1.75, cachedInput: 0.175, output: 14.0 },
-  "gpt-5.4": { input: 2.5, cachedInput: 0.25, output: 15.0 },
-  "gpt-5.4-mini": { input: 0.75, cachedInput: 0.075, output: 4.5 },
-  "gpt-5.4-nano": { input: 0.2, cachedInput: 0.02, output: 1.25 },
-  "gpt-5.5": { input: 5.0, cachedInput: 0.5, output: 30.0 },
-  "claude-haiku-4.5": { input: 1.0, cachedInput: 0.1, cacheWrite: 1.25, output: 5.0 },
-  "claude-sonnet-4": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
-  "claude-sonnet-4.5": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
-  "claude-sonnet-4.6": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
-  "claude-opus-4.5": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
-  "claude-opus-4.6": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
-  "claude-opus-4.7": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
-  "claude-opus-4.8": { input: 5.0, cachedInput: 0.5, cacheWrite: 6.25, output: 25.0 },
-  "mai-code-1-flash": { input: 0.75, cachedInput: 0.075, output: 4.5 },
-};
 
 const REVIEW_SYSTEM_PROMPT = `You are a reviewer subagent for a coding session.
 
@@ -67,29 +50,12 @@ Output exactly this Markdown structure:
 - [brief note]
 - If none: (none)`;
 
-type ReviewSubagentMetrics = {
-  provider?: string;
-  model?: string;
-  cost?: {
-    amount?: number;
-    estimated: boolean;
-    knownRate: boolean;
-    unknownModel?: string;
-  };
-  throughput: {
-    ttftMs?: number;
-    generationDurationMs?: number;
-    outputTokens: number;
-    generationTokensPerSecond?: number;
-  };
-};
-
 type ReviewResult = {
   report: string;
   repoRoot?: string;
   changedFiles: string[];
   reviewerModel: string;
-  subagentMetrics?: ReviewSubagentMetrics;
+  subagentMetrics?: SubagentMetrics;
 };
 
 type ReviewParams = {
@@ -97,143 +63,17 @@ type ReviewParams = {
   focus?: string;
 };
 
-type ReviewRunState = {
-  messages: Message[];
-  streamedText: string;
-  lastAssistantPartial?: Message;
-  turnEndMessage?: Message;
-  agentEndMessage?: Message;
-  stderr: string;
-  exitCode: number;
-  stopReason?: string;
-  errorMessage?: string;
-  providerRequestStartedAt?: number;
-  firstTextAt?: number;
-  assistantCompletedAt?: number;
-  finishedAt?: number;
-};
+type ReviewRunState = SubagentRunState;
 
-function truncate(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
-  return `${text.slice(0, maxChars)}\n\n...[truncated ${text.length - maxChars} chars]`;
-}
+import {
+  entryToMessage,
+  getSessionMessages,
+  textFromMessage,
+  truncate,
+} from "./lib/session-messages.ts";
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
-}
-
-function normalizeModelId(model: string | undefined): string {
-  const raw = (model ?? "").trim().toLowerCase();
-  const withoutBuildSuffix = raw.split("@")[0] || raw;
-  const withoutThinkingSuffix = withoutBuildSuffix.replace(/:(off|minimal|low|medium|high|xhigh)$/, "");
-  const withoutPathPrefix = withoutThinkingSuffix.split("/").pop() || withoutThinkingSuffix;
-  const withoutProviderPrefix = withoutPathPrefix.includes(":")
-    ? withoutPathPrefix.split(":").slice(1).join(":") || withoutPathPrefix
-    : withoutPathPrefix;
-  return withoutProviderPrefix.replace(/[_\s]+/g, "-").replace(/-+/g, "-");
-}
-
-function estimateUsageCost(message: AssistantMessage): {
-  amount?: number;
-  estimated: boolean;
-  knownRate: boolean;
-  unknownModel?: string;
-} {
-  const usage = message.usage;
-  if (!usage) {
-    return { estimated: false, knownRate: true };
-  }
-
-  const actualCost = usage.cost?.total;
-  const provider = message.provider ?? "";
-  if (
-    typeof actualCost === "number" &&
-    (actualCost > 0 || (actualCost === 0 && provider !== "" && provider !== "github-copilot"))
-  ) {
-    return { amount: actualCost, estimated: false, knownRate: true };
-  }
-
-  const normalizedModel = normalizeModelId(message.model);
-  const rates = MODEL_RATES[normalizedModel];
-  if (!rates) {
-    return {
-      estimated: true,
-      knownRate: false,
-      unknownModel: normalizedModel || "unknown-model",
-    };
-  }
-
-  const input = usage.input ?? 0;
-  const cacheRead = usage.cacheRead ?? 0;
-  const cacheWrite = usage.cacheWrite ?? 0;
-  const output = usage.output ?? 0;
-  const amount =
-    (input * rates.input +
-      cacheRead * rates.cachedInput +
-      output * rates.output +
-      cacheWrite * (rates.cacheWrite ?? 0)) /
-    TOKENS_PER_MILLION;
-
-  return { amount, estimated: true, knownRate: true };
-}
-
-function textFromMessage(message: AgentMessage): string {
-  if (message.role === "assistant" || message.role === "user" || message.role === "system") {
-    return (message.content ?? [])
-      .map((part) => {
-        if (part.type === "text") return part.text ?? "";
-        if (part.type === "thinking") return "";
-        return "";
-      })
-      .join("\n")
-      .trim();
-  }
-
-  if (message.role === "compactionSummary") {
-    return message.summary?.trim() ?? "";
-  }
-
-  return "";
-}
-
-function entryToMessage(entry: SessionEntry): AgentMessage | undefined {
-  if (entry.type === "message") {
-    return entry.message;
-  }
-  if (entry.type === "compaction") {
-    return {
-      role: "compactionSummary",
-      summary: entry.summary,
-      tokensBefore: entry.tokensBefore,
-      timestamp: new Date(entry.timestamp).getTime(),
-    };
-  }
-  return undefined;
-}
-
-function getSessionMessages(branch: SessionEntry[]): AgentMessage[] {
-  let compactionIndex = -1;
-  for (let i = branch.length - 1; i >= 0; i--) {
-    if (branch[i].type === "compaction") {
-      compactionIndex = i;
-      break;
-    }
-  }
-
-  if (compactionIndex < 0) {
-    return branch.map(entryToMessage).filter((message): message is AgentMessage => message !== undefined);
-  }
-
-  const compaction = branch[compactionIndex];
-  const firstKeptIndex =
-    compaction.type === "compaction" ? branch.findIndex((entry) => entry.id === compaction.firstKeptEntryId) : -1;
-  const compactedBranch = [
-    compaction,
-    ...(firstKeptIndex >= 0 ? branch.slice(firstKeptIndex, compactionIndex) : []),
-    ...branch.slice(compactionIndex + 1),
-  ];
-
-  return compactedBranch.map(entryToMessage).filter((message): message is AgentMessage => message !== undefined);
 }
 
 function buildConversationContext(branch: SessionEntry[]): string {
@@ -251,103 +91,8 @@ function buildConversationContext(branch: SessionEntry[]): string {
   return truncate(serializeConversation(llmMessages), MAX_CONTEXT_CHARS);
 }
 
-function getPiInvocation(args: string[]): { command: string; args: string[] } {
-  const currentScript = process.argv[1];
-  const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
-  if (currentScript && !isBunVirtualScript && existsSync(currentScript)) {
-    return { command: process.execPath, args: [currentScript, ...args] };
-  }
-
-  const execName = basename(process.execPath).toLowerCase();
-  const isGenericRuntime = /^(node|bun)(\.exe)?$/.test(execName);
-  if (!isGenericRuntime) {
-    return { command: process.execPath, args };
-  }
-
-  return { command: "pi", args };
-}
-
-function extractFinalAssistantMessage(messages: Message[]): AssistantMessage | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role === "assistant") {
-      return msg as AssistantMessage;
-    }
-  }
-
-  return undefined;
-}
-
-function extractFinalAssistantText(
-  messages: Message[],
-  streamedText = "",
-): { text: string; stopReason?: string; errorMessage?: string } {
-  const msg = extractFinalAssistantMessage(messages);
-  if (!msg) {
-    return { text: "" };
-  }
-
-  const text = msg.content
-    .filter((part): part is { type: "text"; text: string } => part.type === "text")
-    .map((part) => part.text)
-    .join("\n")
-    .trim();
-
-  return {
-    text: text || streamedText.trim(),
-    stopReason: msg.stopReason,
-    errorMessage: msg.errorMessage,
-  };
-}
-
-function buildReviewSubagentMetrics(run: ReviewRunState): ReviewSubagentMetrics | undefined {
-  const partialAssistant =
-    run.lastAssistantPartial?.role === "assistant" ? (run.lastAssistantPartial as AssistantMessage) : undefined;
-  const finalizedAssistant = extractFinalAssistantMessage([
-    ...run.messages,
-    ...(run.turnEndMessage ? [run.turnEndMessage] : []),
-    ...(run.agentEndMessage ? [run.agentEndMessage] : []),
-  ]);
-  const finalAssistant = finalizedAssistant ?? partialAssistant;
-  if (!finalAssistant) {
-    return undefined;
-  }
-
-  const assistantForUsage = {
-    ...finalAssistant,
-    provider: finalAssistant.provider ?? partialAssistant?.provider,
-    model: finalAssistant.model ?? partialAssistant?.model,
-    usage: finalAssistant.usage ?? partialAssistant?.usage,
-  } as AssistantMessage;
-
-  const ttftMs =
-    run.providerRequestStartedAt !== undefined && run.firstTextAt !== undefined
-      ? Math.max(0, run.firstTextAt - run.providerRequestStartedAt)
-      : undefined;
-  const generationDurationMs =
-    run.firstTextAt !== undefined && run.assistantCompletedAt !== undefined
-      ? Math.max(1, run.assistantCompletedAt - run.firstTextAt)
-      : undefined;
-  const outputTokens = Math.max(0, assistantForUsage.usage?.output ?? 0);
-  const generationTokensPerSecond =
-    outputTokens > 0 && generationDurationMs !== undefined
-      ? outputTokens / (generationDurationMs / 1_000)
-      : undefined;
-
-  const cost = estimateUsageCost(assistantForUsage);
-  const hasUsage = assistantForUsage.usage !== undefined;
-
-  return {
-    provider: assistantForUsage.provider,
-    model: assistantForUsage.model,
-    cost: hasUsage ? cost : undefined,
-    throughput: {
-      ttftMs,
-      generationDurationMs,
-      outputTokens,
-      generationTokensPerSecond,
-    },
-  };
+function buildReviewSubagentMetrics(run: ReviewRunState): SubagentMetrics | undefined {
+  return buildSubagentMetrics(run);
 }
 
 async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
@@ -523,16 +268,30 @@ async function runReviewerSubagent(
   cwd: string,
   prompt: string,
   modelArg: string,
-  apiKey: string | undefined,
+  auth: { apiKey?: string; headers?: Record<string, string> },
   signal?: AbortSignal,
 ): Promise<ReviewRunState> {
-  const tempDir = await mkdtemp(join(tmpdir(), "pi-reviewer-"));
-  const systemPromptPath = join(tempDir, "system-prompt.md");
-  const timingExtensionPath = join(tempDir, "timing-extension.ts");
-  await writeFile(systemPromptPath, REVIEW_SYSTEM_PROMPT, "utf8");
-  await writeFile(
-    timingExtensionPath,
-    `export default function (pi) {
+  return await runSubagentProcess({
+    cwd,
+    prompt,
+    modelArg,
+    apiKey: auth.apiKey,
+    providerName: modelArg.split("/", 1)[0],
+    authHeaders: auth.headers,
+    systemPrompt: REVIEW_SYSTEM_PROMPT,
+    extraArgs: [
+      "--no-tools",
+      "--no-extensions",
+      "-e",
+      "@temp/timing-extension.ts",
+      "--no-skills",
+      "--no-prompt-templates",
+      "--no-context-files",
+    ],
+    tempFiles: [
+      {
+        name: "timing-extension.ts",
+        content: `export default function (pi) {
   const emit = (payload) => {
     process.stdout.write(JSON.stringify({ type: "reviewer_metric", ...payload }) + "\\n");
   };
@@ -546,158 +305,15 @@ async function runReviewerSubagent(
   });
 }
 `,
-    "utf8",
-  );
-
-  try {
-    const args = [
-      "--mode",
-      "json",
-      "-p",
-      "--no-session",
-      "--no-tools",
-      "--no-extensions",
-      "-e",
-      timingExtensionPath,
-      "--no-skills",
-      "--no-prompt-templates",
-      "--no-context-files",
-      "--model",
-      modelArg,
-      ...(apiKey ? ["--api-key", apiKey] : []),
-      "--append-system-prompt",
-      systemPromptPath,
-      prompt,
-    ];
-    const invocation = getPiInvocation(args);
-
-    return await new Promise<ReviewRunState>((resolve) => {
-      const proc = spawn(invocation.command, invocation.args, {
-        cwd,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      const state: ReviewRunState = {
-        messages: [],
-        streamedText: "",
-        stderr: "",
-        exitCode: 1,
-      };
-      let buffer = "";
-      let settled = false;
-      const streamedTextParts: string[] = [];
-
-      const finish = (exitCode: number) => {
-        if (settled) return;
-        settled = true;
-        state.exitCode = exitCode;
-        state.finishedAt = Date.now();
-        state.streamedText = streamedTextParts.map((part) => part ?? "").join("").trim();
-        const final = extractFinalAssistantText(
-          [
-            ...(state.lastAssistantPartial ? [state.lastAssistantPartial] : []),
-            ...state.messages,
-            ...(state.turnEndMessage ? [state.turnEndMessage] : []),
-            ...(state.agentEndMessage ? [state.agentEndMessage] : []),
-          ],
-          state.streamedText,
-        );
-        state.stopReason = final.stopReason;
-        state.errorMessage = final.errorMessage;
-        resolve(state);
-      };
-
-      const processLine = (line: string) => {
-        if (!line.trim()) return;
-        try {
-          const event = JSON.parse(line);
-          if (event.type === "message_update") {
-            const assistantEvent = event.assistantMessageEvent;
-            if (assistantEvent?.partial) {
-              state.lastAssistantPartial = assistantEvent.partial as Message;
-            }
-            if (assistantEvent?.type === "text_start") {
-              streamedTextParts[assistantEvent.contentIndex] ??= "";
-            }
-            if (assistantEvent?.type === "text_delta") {
-              if (assistantEvent.delta) {
-                state.firstTextAt ??= Date.now();
-              }
-              const index = assistantEvent.contentIndex;
-              streamedTextParts[index] = `${streamedTextParts[index] ?? ""}${assistantEvent.delta ?? ""}`;
-            }
-            if (assistantEvent?.type === "text_end") {
-              streamedTextParts[assistantEvent.contentIndex] = assistantEvent.content ?? "";
-            }
-          }
-          if (event.type === "reviewer_metric") {
-            if (event.event === "before_provider_request") {
-              state.providerRequestStartedAt ??= typeof event.timestamp === "number" ? event.timestamp : Date.now();
-            }
-          }
-          if (event.type === "message_end" && event.message) {
-            if (event.message.role === "assistant") {
-              state.assistantCompletedAt = Date.now();
-            }
-            state.messages.push(event.message as Message);
-          }
-          if (event.type === "turn_end" && event.message) {
-            state.turnEndMessage = event.message as Message;
-          }
-          if (event.type === "agent_end" && Array.isArray(event.messages)) {
-            for (let i = event.messages.length - 1; i >= 0; i--) {
-              if (event.messages[i]?.role === "assistant") {
-                state.agentEndMessage = event.messages[i] as Message;
-                break;
-              }
-            }
-          }
-          if (event.type === "error" && typeof event.error === "string") {
-            state.stderr += `${event.error}\n`;
-          }
-        } catch {
-          // ignore malformed lines
-        }
-      };
-
-      proc.stdout.on("data", (chunk) => {
-        buffer += chunk.toString();
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) processLine(line);
-      });
-
-      proc.stderr.on("data", (chunk) => {
-        state.stderr += chunk.toString();
-      });
-
-      proc.on("close", (code) => {
-        if (buffer.trim()) processLine(buffer);
-        finish(code ?? 1);
-      });
-      proc.on("error", (error) => {
-        state.stderr += `${error instanceof Error ? error.message : String(error)}\n`;
-        finish(1);
-      });
-
-      if (signal) {
-        const onAbort = () => {
-          proc.kill("SIGTERM");
-          setTimeout(() => {
-            try {
-              proc.kill("SIGKILL");
-            } catch {
-              // ignore
-            }
-          }, 5000);
-        };
-        if (signal.aborted) onAbort();
-        else signal.addEventListener("abort", onAbort, { once: true });
+      },
+    ],
+    signal,
+    onEvent: (event, state) => {
+      if (event.type === "reviewer_metric" && event.event === "before_provider_request") {
+        state.providerRequestStartedAt ??= typeof event.timestamp === "number" ? event.timestamp : Date.now();
       }
-    });
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
-  }
+    },
+  });
 }
 
 async function generateReview(
@@ -729,7 +345,7 @@ async function generateReview(
   if (!auth.ok) {
     throw new Error(`Unable to resolve auth for reviewer subagent: ${auth.error}`);
   }
-  const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth.apiKey, signal);
+  const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth, signal);
   const final = extractFinalAssistantText(
     [
       ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
@@ -812,7 +428,7 @@ export default function (pi: ExtensionAPI) {
       const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal);
       const generatedAt = Date.now();
       const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-      pi.events.emit("reviewer-subagent:metrics", {
+      pi.events.emit("subagent:metrics", {
         generatedAt,
         sessionKey,
         subagentMetrics: result.subagentMetrics,
@@ -854,7 +470,7 @@ export default function (pi: ExtensionAPI) {
             subagentMetrics: result.subagentMetrics,
           },
         });
-        pi.events.emit("reviewer-subagent:metrics", {
+        pi.events.emit("subagent:metrics", {
           generatedAt,
           sessionKey,
           subagentMetrics: result.subagentMetrics,

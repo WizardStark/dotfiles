@@ -1,5 +1,12 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { formatDuration } from "./lib/format.ts";
+import {
+  getSubagentDetails,
+  getSubagentMetrics,
+  type SubagentMetrics,
+  type SubagentMetricsEvent,
+} from "./lib/subagent-metrics.ts";
 import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
 
 const STATUS_KEY = "token-throughput";
@@ -41,32 +48,6 @@ type UsageStats = {
   mean?: number;
   median?: number;
 };
-
-type SubagentMetrics = {
-  throughput?: {
-    ttftMs?: number;
-    generationDurationMs?: number;
-    outputTokens?: number;
-    generationTokensPerSecond?: number;
-  };
-};
-
-type ReviewerMetricsEvent = {
-  generatedAt?: number;
-  sessionKey?: string;
-  subagentMetrics?: SubagentMetrics;
-};
-
-function formatDuration(durationMs: number): string {
-  if (durationMs < 1_000) return `${durationMs}ms`;
-  if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(1)}s`;
-  if (durationMs < 60_000) return `${Math.round(durationMs / 1_000)}s`;
-
-  const totalSeconds = Math.round(durationMs / 1_000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
-}
 
 function formatTokensPerSecond(tokensPerSecond: number | undefined): string {
   if (!tokensPerSecond || !Number.isFinite(tokensPerSecond) || tokensPerSecond <= 0) {
@@ -178,31 +159,6 @@ function setStatus(ctx: ExtensionContext, content: string | undefined, compactCo
   statuslineItem.set({ content, compactContent }, getStatuslineSessionKey(ctx));
 }
 
-function getSubagentDetails(message: unknown): ReviewerMetricsEvent | undefined {
-  if (!message || typeof message !== "object") {
-    return undefined;
-  }
-
-  const details = (message as { details?: unknown }).details;
-  if (!details || typeof details !== "object") {
-    return undefined;
-  }
-
-  const generatedAt = (details as { generatedAt?: unknown }).generatedAt;
-  const metrics = (details as { subagentMetrics?: unknown }).subagentMetrics;
-  if (typeof generatedAt !== "number" && (!metrics || typeof metrics !== "object")) {
-    return undefined;
-  }
-
-  return {
-    generatedAt: typeof generatedAt === "number" ? generatedAt : undefined,
-    subagentMetrics: metrics && typeof metrics === "object" ? (metrics as SubagentMetrics) : undefined,
-  };
-}
-
-function getSubagentMetrics(message: unknown): SubagentMetrics | undefined {
-  return getSubagentDetails(message)?.subagentMetrics;
-}
 
 function isSubagentMessage(message: unknown): boolean {
   if (!message || typeof message !== "object") {
@@ -244,7 +200,7 @@ function withEstimatedInputUsage(
   };
 }
 
-function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: ReviewerMetricsEvent): string {
+function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetricsEvent): string {
   const branch = ctx.sessionManager.getBranch();
   let latestPersistedGeneratedAt: number | undefined;
   let latestPersistedThroughput: SubagentMetrics["throughput"] | undefined;
@@ -287,7 +243,7 @@ function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: ReviewerMetr
 export default function tokenThroughput(pi: ExtensionAPI) {
   let currentCtx: ExtensionContext | undefined;
   let currentSessionKey = "ephemeral";
-  let pendingReviewerMetrics: ReviewerMetricsEvent | undefined;
+  let pendingReviewerMetrics: SubagentMetricsEvent | undefined;
   let activeRequest: ActiveRequest | undefined;
   let currentTurnIndex: number | undefined;
   let lastCompleted: CompletedSnapshot | undefined;
@@ -536,8 +492,8 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     renderIdleStatus(ctx);
   });
 
-  pi.events.on("reviewer-subagent:metrics", (data) => {
-    const event = (data ?? {}) as ReviewerMetricsEvent;
+  pi.events.on("subagent:metrics", (data) => {
+    const event = (data ?? {}) as SubagentMetricsEvent;
     if (event.sessionKey && event.sessionKey !== currentSessionKey) {
       return;
     }

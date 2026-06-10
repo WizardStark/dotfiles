@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { formatDuration } from "./lib/format.ts";
 import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
 
 const STATUS_KEY = "turn-timer";
@@ -12,16 +12,6 @@ const statuslineItem = createStatuslineItem({
   background: "toolSuccessBg",
 });
 
-function formatDuration(durationMs: number) {
-  if (durationMs < 1_000) return `${durationMs}ms`;
-  if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(1)}s`;
-  if (durationMs < 60_000) return `${Math.round(durationMs / 1_000)}s`;
-
-  const totalSeconds = Math.round(durationMs / 1_000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
-}
 
 function setStatus(ctx: ExtensionContext, content: string, compactContent = content) {
   if (!ctx.hasUI) {

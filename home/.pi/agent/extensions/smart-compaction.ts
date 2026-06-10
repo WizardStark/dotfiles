@@ -3,6 +3,9 @@ import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext, Theme } f
 import { convertToLlm, estimateTokens, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 
+import { estimateTextTokens, chunkText, chunkSections } from "./lib/text-chunking.ts";
+import { TransientWidget } from "./lib/ui-widgets.ts";
+
 type ModelLike = {
 	id: string;
 	provider: string;
@@ -35,6 +38,7 @@ type Thresholds = {
 };
 
 const STATUS_KEY = "smart-compact";
+const THRESHOLD_WIDGET = new TransientWidget("smart-compaction-thresholds", { placement: "belowEditor" });
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 8_192;
 const PARTIAL_SUMMARY_MAX_TOKENS = 12_000;
@@ -53,8 +57,6 @@ const PREFERRED_SUMMARIZERS: Array<{ provider: string; id: string }> = [
 	{ provider: "openai", id: "gpt-5.4-mini" },
 	{ provider: "openai", id: "gpt-5.4" },
 ];
-
-let thresholdWidgetClearTimer: ReturnType<typeof setTimeout> | undefined;
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
@@ -82,111 +84,6 @@ function summarizeFileOps(fileOps: FileOps | undefined): string {
 		serializeFileSection("read-files", details.readFiles),
 		serializeFileSection("modified-files", details.modifiedFiles),
 	].join("\n\n");
-}
-
-function estimateTextTokens(text: string): number {
-	return Math.max(1, estimateTokens(text));
-}
-
-function splitOversizedText(text: string, maxTokens: number): string[] {
-	const trimmed = text.trim();
-	if (!trimmed) return [];
-	if (estimateTextTokens(trimmed) <= maxTokens) return [trimmed];
-
-	const parts: string[] = [];
-	let remaining = trimmed;
-
-	while (remaining) {
-		const estimated = estimateTextTokens(remaining);
-		if (estimated <= maxTokens) {
-			parts.push(remaining);
-			break;
-		}
-
-		const ratio = maxTokens / estimated;
-		let targetChars = Math.max(500, Math.floor(remaining.length * ratio));
-		targetChars = Math.min(targetChars, remaining.length);
-
-		let cut = -1;
-		for (const separator of ["\n\n", "\n", ". ", "; ", ", ", " "]) {
-			cut = remaining.lastIndexOf(separator, targetChars);
-			if (cut >= Math.floor(targetChars * 0.5)) {
-				cut += separator.length;
-				break;
-			}
-			cut = -1;
-		}
-		if (cut <= 0) cut = targetChars;
-
-		const head = remaining.slice(0, cut).trim();
-		if (!head) {
-			parts.push(remaining.slice(0, targetChars));
-			remaining = remaining.slice(targetChars).trimStart();
-			continue;
-		}
-
-		parts.push(head);
-		remaining = remaining.slice(cut).trimStart();
-	}
-
-	return parts;
-}
-
-function chunkText(text: string, maxTokens: number): string[] {
-	const chunks: string[] = [];
-	let current = "";
-	let currentTokens = 0;
-
-	for (const rawLine of text.replace(/\r\n/g, "\n").split("\n")) {
-		const line = rawLine.length > 0 ? rawLine : " ";
-		const segments = splitOversizedText(line, maxTokens);
-		if (segments.length === 0) {
-			if (current) {
-				current += "\n";
-			}
-			continue;
-		}
-
-		for (const segment of segments) {
-			const segmentText = current ? `\n${segment}` : segment;
-			const segmentTokens = estimateTextTokens(segmentText);
-			if (current && currentTokens + segmentTokens > maxTokens) {
-				chunks.push(current.trim());
-				current = segment;
-				currentTokens = estimateTextTokens(segment);
-				continue;
-			}
-			current += segmentText;
-			currentTokens += segmentTokens;
-		}
-	}
-
-	if (current.trim()) chunks.push(current.trim());
-	return chunks;
-}
-
-function chunkSections(sections: string[], maxTokens: number): string[] {
-	const chunks: string[] = [];
-	let current = "";
-	let currentTokens = 0;
-
-	for (const section of sections) {
-		const sectionText = current ? `\n\n${section}` : section;
-		const sectionTokens = estimateTextTokens(sectionText);
-
-		if (current && currentTokens + sectionTokens > maxTokens) {
-			chunks.push(current.trim());
-			current = section;
-			currentTokens = estimateTextTokens(section);
-			continue;
-		}
-
-		current += sectionText;
-		currentTokens += sectionTokens;
-	}
-
-	if (current.trim()) chunks.push(current.trim());
-	return chunks;
 }
 
 function responseText(response: { content: Array<{ type: string; text?: string }> }): string {
@@ -317,13 +214,7 @@ async function showThresholdOverlay(ctx: ExtensionCommandContext) {
 	if (!ctx.hasUI) return;
 
 	if (ctx.mode !== "tui") {
-		if (thresholdWidgetClearTimer) clearTimeout(thresholdWidgetClearTimer);
-		ctx.ui.setWidget("smart-compaction-thresholds", lines, { placement: "belowEditor" });
-		thresholdWidgetClearTimer = setTimeout(() => {
-			ctx.ui.setWidget("smart-compaction-thresholds", undefined);
-			thresholdWidgetClearTimer = undefined;
-		}, 15000);
-		thresholdWidgetClearTimer.unref?.();
+		THRESHOLD_WIDGET.set(ctx, lines);
 		return;
 	}
 
@@ -585,13 +476,7 @@ export default function smartCompaction(pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {
-		if (thresholdWidgetClearTimer) {
-			clearTimeout(thresholdWidgetClearTimer);
-			thresholdWidgetClearTimer = undefined;
-		}
-		if (ctx.hasUI) {
-			ctx.ui.setWidget("smart-compaction-thresholds", undefined);
-		}
+		THRESHOLD_WIDGET.clear(ctx);
 	});
 
 	pi.on("context", async (event) => {
