@@ -15,9 +15,13 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
-import { readdir, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readdir, readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { homedir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import {
   entryToMessage,
   getSessionMessages,
@@ -41,6 +45,10 @@ import { ManagedWidget } from "./lib/ui-widgets.ts";
 interface SupervisorWorkerState {
   override?: ModelRef;
   thinkingLevel?: ThinkingLevel;
+  scoutOverride?: ModelRef;
+  scoutThinkingLevel?: ThinkingLevel;
+  reviewerOverride?: ModelRef;
+  reviewerThinkingLevel?: ThinkingLevel;
   autoMode?: "conservative" | "off";
 }
 
@@ -57,7 +65,21 @@ interface TurnDelegationState {
   enforcePlanSplit: boolean;
   completedWorkerDelegations: number;
   completedScoutDelegations: number;
+  completedReviewDelegations: number;
   nudgedDirectMutation: boolean;
+  nudgedReviewDeferral: boolean;
+  usedExplicitReviewBypass: boolean;
+}
+
+interface HandoffPointer {
+  source: string;
+  toolName: string;
+  title: string;
+  status: string;
+  generatedAt: number;
+  summary: string;
+  filesChanged: string[];
+  indexed?: boolean;
 }
 
 type DelegateParams = {
@@ -137,9 +159,18 @@ const STATE_ENTRY = "supervisor-worker-state";
 const DEFAULT_WORKER_PROVIDER = "github-copilot";
 const DEFAULT_WORKER_MODEL_ID = "gemini-3-flash-preview";
 const DEFAULT_WORKER_THINKING_LEVEL: ThinkingLevel = "minimal";
+
+const DEFAULT_SCOUT_PROVIDER = "github-copilot";
+const DEFAULT_SCOUT_MODEL_ID = "gemini-3-flash-preview";
+const DEFAULT_SCOUT_THINKING_LEVEL: ThinkingLevel = "minimal";
+
+const DEFAULT_REVIEWER_PROVIDER = "github-copilot";
+const DEFAULT_REVIEWER_MODEL_ID = "gemini-3-flash-preview";
+const DEFAULT_REVIEWER_THINKING_LEVEL: ThinkingLevel = "minimal";
+
 const DEFAULT_AUTO_MODE = "conservative" as const;
-const MAX_CONTEXT_CHARS = 10_000;
-const MAX_MESSAGES = 10;
+const MAX_CONTEXT_CHARS = 6_000;
+const MAX_MESSAGES = 6;
 const DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY = 2;
 const MAX_PARALLEL_SUBAGENT_CONCURRENCY = 4;
 const MAX_PARALLEL_SUBAGENT_TASKS = 4;
@@ -153,6 +184,31 @@ const THINKING_LEVELS = [
   "xhigh",
 ] as const;
 const WORKER_ENV_FLAG = "PI_SUPERVISOR_WORKER_ROLE";
+const HANDOFF_ENTRY = "subagent-handoff";
+const REVIEW_STATE_ENTRY = "review-dedupe-state";
+const HANDOFF_SOURCE_PREFIX = "subagent-handoff";
+const MAX_RECENT_HANDOFFS = 4;
+const MAX_HANDOFF_PROMPT_CHARS = 4_000;
+const MAX_PERSISTED_REVIEW_KEYS = 8;
+const HANDOFF_RELEVANCE_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "again",
+  "also",
+  "and",
+  "from",
+  "have",
+  "into",
+  "just",
+  "need",
+  "that",
+  "their",
+  "them",
+  "then",
+  "this",
+  "with",
+  "would",
+]);
 const SUBAGENTS_WIDGET = new ManagedWidget("subagents", { placement: "belowEditor" });
 const IMPLEMENTATION_PROMPT_PATTERNS: RegExp[] = [
   /\b(implement|refactor|fix|change|update|edit|modify|rewrite|extract|rename|migrate|wire|hook up)\b/i,
@@ -290,6 +346,10 @@ function readSavedState(
 
   const override = entry?.data?.override;
   const thinkingLevel = entry?.data?.thinkingLevel;
+  const scoutOverride = entry?.data?.scoutOverride;
+  const scoutThinkingLevel = entry?.data?.scoutThinkingLevel;
+  const reviewerOverride = entry?.data?.reviewerOverride;
+  const reviewerThinkingLevel = entry?.data?.reviewerThinkingLevel;
   const autoMode = entry?.data?.autoMode;
   const nextState: SupervisorWorkerState = {};
 
@@ -299,13 +359,45 @@ function readSavedState(
   if (thinkingLevel && THINKING_LEVELS.includes(thinkingLevel)) {
     nextState.thinkingLevel = thinkingLevel;
   }
+  if (scoutOverride?.provider && scoutOverride?.id) {
+    nextState.scoutOverride = scoutOverride;
+  }
+  if (scoutThinkingLevel && THINKING_LEVELS.includes(scoutThinkingLevel)) {
+    nextState.scoutThinkingLevel = scoutThinkingLevel;
+  }
+  if (reviewerOverride?.provider && reviewerOverride?.id) {
+    nextState.reviewerOverride = reviewerOverride;
+  }
+  if (reviewerThinkingLevel && THINKING_LEVELS.includes(reviewerThinkingLevel)) {
+    nextState.reviewerThinkingLevel = reviewerThinkingLevel;
+  }
   if (autoMode === "conservative" || autoMode === "off") {
     nextState.autoMode = autoMode;
   }
 
-  return nextState.override || nextState.thinkingLevel || nextState.autoMode
+  return nextState.override ||
+    nextState.thinkingLevel ||
+    nextState.scoutOverride ||
+    nextState.scoutThinkingLevel ||
+    nextState.reviewerOverride ||
+    nextState.reviewerThinkingLevel ||
+    nextState.autoMode
     ? nextState
     : undefined;
+}
+
+function readSavedReviewKeys(ctx: ExtensionContext): string[] {
+  const entry = [...ctx.sessionManager.getEntries()]
+    .reverse()
+    .find(
+      (item) => item.type === "custom" && item.customType === REVIEW_STATE_ENTRY,
+    ) as { data?: { recentReviewKeys?: string[] } } | undefined;
+
+  return Array.isArray(entry?.data?.recentReviewKeys)
+    ? entry.data.recentReviewKeys.filter(
+        (item): item is string => typeof item === "string" && item.trim().length > 0,
+      )
+    : [];
 }
 
 function getDefaultWorkerRef(ctx: ExtensionContext): ModelRef | undefined {
@@ -321,6 +413,38 @@ function getEffectiveWorkerRef(
   state: SupervisorWorkerState,
 ): ModelRef | undefined {
   return state.override ?? getDefaultWorkerRef(ctx);
+}
+
+function getEffectiveScoutRef(
+  ctx: ExtensionContext,
+  state: SupervisorWorkerState,
+): ModelRef | undefined {
+  return state.scoutOverride ?? {
+    provider: DEFAULT_SCOUT_PROVIDER,
+    id: DEFAULT_SCOUT_MODEL_ID,
+  };
+}
+
+function getEffectiveScoutThinkingLevel(
+  state: SupervisorWorkerState,
+): ThinkingLevel {
+  return state.scoutThinkingLevel ?? DEFAULT_SCOUT_THINKING_LEVEL;
+}
+
+function getEffectiveReviewerRef(
+  ctx: ExtensionContext,
+  state: SupervisorWorkerState,
+): ModelRef | undefined {
+  return state.reviewerOverride ?? {
+    provider: DEFAULT_REVIEWER_PROVIDER,
+    id: DEFAULT_REVIEWER_MODEL_ID,
+  };
+}
+
+function getEffectiveReviewerThinkingLevel(
+  state: SupervisorWorkerState,
+): ThinkingLevel {
+  return state.reviewerThinkingLevel ?? DEFAULT_REVIEWER_THINKING_LEVEL;
 }
 
 function getEffectiveThinkingLevel(
@@ -352,10 +476,10 @@ function resultScoutLabelFallback(
   params: ScoutParams,
 ): string {
   const thinkingLevel =
-    params.scoutThinkingLevel ?? getEffectiveThinkingLevel(state);
+    params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state);
   const requestedRef = params.scoutModel
     ? parseModelRef(params.scoutModel, ctx.model?.provider)
-    : getEffectiveWorkerRef(ctx, state);
+    : getEffectiveScoutRef(ctx, state);
   return formatModel(requestedRef, thinkingLevel);
 }
 
@@ -570,16 +694,101 @@ async function hashFile(filePath: string): Promise<string> {
   return createHash("sha1").update(content).digest("hex");
 }
 
+type GitDirtyEntry = {
+  path: string;
+  status: string;
+  marker?: string;
+};
+
+async function getGitDirtyEntries(
+  root: string,
+  signal?: AbortSignal,
+): Promise<GitDirtyEntry[] | undefined> {
+  const result = await execCapture(
+    "git",
+    ["status", "--porcelain=v1", "-z", "-uall"],
+    root,
+    10_000,
+    signal,
+  );
+  if (result.code !== 0) return undefined;
+
+  const tokens = result.stdout.split("\0").filter(Boolean);
+  const entries: GitDirtyEntry[] = [];
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token.length < 4) continue;
+    const status = token.slice(0, 2);
+    const firstPath = normalizePath(token.slice(3));
+    if (!firstPath) continue;
+
+    const renamedOrCopied = /[RC]/.test(status);
+    if (renamedOrCopied) {
+      const secondPath = normalizePath(tokens[index + 1] ?? "");
+      if (secondPath) {
+        entries.push({
+          path: secondPath,
+          status,
+          marker: `rename-old:${status}:${firstPath}`,
+        });
+        index += 1;
+      }
+      entries.push({
+        path: firstPath,
+        status,
+        marker: `rename-new:${status}:${secondPath || "(unknown)"}`,
+      });
+      continue;
+    }
+
+    entries.push({
+      path: firstPath,
+      status,
+    });
+  }
+
+  return entries;
+}
+
 async function snapshotWorkingTree(
   cwd: string,
   signal?: AbortSignal,
 ): Promise<WorkingTreeSnapshot> {
   const repoRoot = await getGitRepoRoot(cwd, signal);
   const root = repoRoot ?? cwd;
+  const dirtyEntries = repoRoot ? await getGitDirtyEntries(root, signal) : undefined;
+  const files = new Map<string, string>();
+
+  if (dirtyEntries) {
+    for (const entry of dirtyEntries) {
+      if (!entry.path) continue;
+      const relativePath = entry.path;
+      if (isBlockedDotenvPath(relativePath)) {
+        files.set(relativePath, `secret-file:${basename(relativePath)}`);
+        continue;
+      }
+
+      const absolutePath = resolve(root, relativePath);
+      try {
+        const deleted = entry.status.includes("D");
+        if (deleted) {
+          files.set(relativePath, entry.marker ?? `deleted:${entry.status}`);
+          continue;
+        }
+        files.set(
+          relativePath,
+          `${entry.marker ?? entry.status}:${await hashFile(absolutePath)}`,
+        );
+      } catch {
+        files.set(relativePath, entry.marker ?? `missing:${entry.status}`);
+      }
+    }
+    return { root, files };
+  }
+
   const relativeFiles = repoRoot
     ? await listGitFiles(repoRoot, signal)
     : await listFilesRecursive(root);
-  const files = new Map<string, string>();
 
   for (const relativePath of relativeFiles ?? []) {
     const absolutePath = resolve(root, relativePath);
@@ -1192,6 +1401,561 @@ function parseStatus(report: string): DelegateStatus {
   return "unknown";
 }
 
+function parseReviewVerdict(report: string): string {
+  return parseSectionItems(report, "Verdict")[0] ?? "review complete";
+}
+
+function parseSummaryLikeItems(report: string): string[] {
+  return [
+    ...parseSectionItems(report, "Summary"),
+    ...parseSectionItems(report, "Findings"),
+  ];
+}
+
+function extractTextContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content.trim();
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => extractTextContent(item))
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+
+  if (content && typeof content === "object") {
+    if ("text" in content && typeof (content as { text?: unknown }).text === "string") {
+      return (content as { text: string }).text.trim();
+    }
+    if ("role" in content && "content" in content) {
+      return textFromMessage(content as AgentMessage).trim();
+    }
+    if ("content" in content) {
+      return extractTextContent((content as { content?: unknown }).content);
+    }
+  }
+
+  return "";
+}
+
+function summarizeHandoff(
+  toolName: string,
+  report: string,
+  details: Record<string, unknown>,
+): string {
+  if (toolName === "review_changes") {
+    const verdict = parseReviewVerdict(report);
+    const findings = parseSectionItems(report, "Findings").slice(0, 2);
+    return truncate(
+      [verdict, ...findings].map((item) => singleLine(item)).join(" | "),
+      320,
+    );
+  }
+
+  const explicitSummary = parseSummaryLikeItems(report).slice(0, 3);
+  if (explicitSummary.length > 0) {
+    return truncate(
+      explicitSummary.map((item) => singleLine(item)).join(" | "),
+      320,
+    );
+  }
+
+  const status = typeof details.status === "string" ? details.status : "completed";
+  return truncate(singleLine(`${toolName} ${status}`), 320);
+}
+
+function inferHandoffTitle(
+  toolName: string,
+  input: Record<string, unknown>,
+  details: Record<string, unknown>,
+): string {
+  if (typeof input.objective === "string" && input.objective.trim()) {
+    return formatTaskTitle(input.objective);
+  }
+  if (typeof input.context === "string" && input.context.trim()) {
+    return formatTaskTitle(input.context);
+  }
+  if (typeof input.focus === "string" && input.focus.trim()) {
+    return formatTaskTitle(`Review: ${input.focus}`);
+  }
+  const completedCount =
+    typeof details.completedCount === "number" ? details.completedCount : undefined;
+  const totalCount =
+    typeof details.totalCount === "number" ? details.totalCount : undefined;
+  if (completedCount !== undefined && totalCount !== undefined) {
+    return `${toolName} ${completedCount}/${totalCount}`;
+  }
+  return toolName;
+}
+
+function inferHandoffStatus(
+  toolName: string,
+  report: string,
+  details: Record<string, unknown>,
+): string {
+  if (typeof details.status === "string" && details.status.trim()) {
+    return details.status;
+  }
+  if (toolName === "review_changes") {
+    return "completed";
+  }
+  return parseStatus(report);
+}
+
+function collectHandoffFiles(details: Record<string, unknown>): string[] {
+  const directFiles = Array.isArray(details.filesChanged)
+    ? details.filesChanged.filter((item): item is string => typeof item === "string")
+    : [];
+  const nestedFiles = Array.isArray(details.results)
+    ? details.results.flatMap((result) => {
+      if (!result || typeof result !== "object") return [] as string[];
+      const filesChanged = (result as { filesChanged?: unknown }).filesChanged;
+      return Array.isArray(filesChanged)
+        ? filesChanged.filter((item): item is string => typeof item === "string")
+        : [];
+    })
+    : [];
+  return [...new Set([...directFiles, ...nestedFiles])].sort();
+}
+
+function buildHandoffSource(
+  toolName: string,
+  sessionKey: string,
+  generatedAt: number,
+  title: string,
+): string {
+  const hash = createHash("sha1")
+    .update([toolName, sessionKey, String(generatedAt), title].join("\n"))
+    .digest("hex")
+    .slice(0, 12);
+  return `${HANDOFF_SOURCE_PREFIX}:${toolName}:${hash}`;
+}
+
+function buildHandoffMarkdown(input: {
+  source: string;
+  toolName: string;
+  title: string;
+  status: string;
+  sessionKey: string;
+  generatedAt: number;
+  summary: string;
+  filesChanged: string[];
+  modelLabel?: string;
+  promptInput: Record<string, unknown>;
+  details: Record<string, unknown>;
+  report: string;
+}): string {
+  const lines = [
+    `# Subagent handoff`,
+    "",
+    `- Source: ${input.source}`,
+    `- Tool: ${input.toolName}`,
+    `- Title: ${input.title}`,
+    `- Status: ${input.status}`,
+    `- Generated at: ${new Date(input.generatedAt).toISOString()}`,
+    `- Session: ${input.sessionKey}`,
+    ...(input.modelLabel ? [`- Model: ${input.modelLabel}`] : []),
+    ...(input.filesChanged.length > 0
+      ? [`- Files changed: ${input.filesChanged.join(", ")}`]
+      : [`- Files changed: (none)`]),
+    "",
+    `## Summary`,
+    input.summary || "(none)",
+  ];
+
+  if (typeof input.promptInput.objective === "string" && input.promptInput.objective.trim()) {
+    lines.push("", "## Objective", input.promptInput.objective.trim());
+  }
+  if (typeof input.promptInput.scope === "string" && input.promptInput.scope.trim()) {
+    lines.push("", "## Scope", input.promptInput.scope.trim());
+  }
+  if (Array.isArray(input.promptInput.acceptanceCriteria)) {
+    const acceptanceCriteria = input.promptInput.acceptanceCriteria
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map((item) => `- ${item.trim()}`);
+    if (acceptanceCriteria.length > 0) {
+      lines.push("", "## Acceptance Criteria", ...acceptanceCriteria);
+    }
+  }
+  if (typeof input.promptInput.context === "string" && input.promptInput.context.trim()) {
+    lines.push("", "## Review Context", input.promptInput.context.trim());
+  }
+  if (typeof input.promptInput.focus === "string" && input.promptInput.focus.trim()) {
+    lines.push("", "## Review Focus", input.promptInput.focus.trim());
+  }
+  if (Array.isArray(input.details.validation)) {
+    const validationLines = input.details.validation
+      .filter((item): item is ValidationResult => Boolean(item) && typeof item === "object")
+      .map((item) => {
+        const exitText = item.exitCode === null ? "signal" : String(item.exitCode);
+        return `- ${item.command} - ${item.outcome} (exit ${exitText}) - ${item.note}`;
+      });
+    if (validationLines.length > 0) {
+      lines.push("", "## Validation", ...validationLines);
+    }
+  }
+  if (input.report.trim()) {
+    lines.push("", "## Full Report", input.report.trim());
+  }
+
+  return lines.join("\n");
+}
+
+type SharedContentStore = {
+  index(options: {
+    content?: string;
+    path?: string;
+    source?: string;
+    attribution?: { sessionId?: string; eventId?: string };
+  }): { label: string; totalChunks: number; codeChunks: number };
+  searchWithFallback(
+    query: string,
+    limit?: number,
+    source?: string,
+    contentType?: "code" | "prose",
+    sourceMatchMode?: "like" | "exact",
+  ): Array<{ title: string; content: string; highlighted?: string; source?: string }>;
+  close(): void;
+};
+
+const extensionRequire = createRequire(import.meta.url);
+
+function resolveContextModeBuildRoot(): string {
+  const configDir = process.env.PI_CONFIG_DIR?.trim() || join(homedir(), ".pi");
+  const candidates = [
+    (() => {
+      try {
+        return extensionRequire.resolve("context-mode/cli");
+      } catch {
+        return undefined;
+      }
+    })(),
+    join(configDir, "agent", "npm", "node_modules", "context-mode"),
+  ].filter((value): value is string => Boolean(value));
+
+  for (const candidate of candidates) {
+    const probeRoots = [candidate, resolve(candidate, "..")];
+    for (const probeRoot of probeRoots) {
+      if (existsSync(join(probeRoot, "store.js"))) {
+        return probeRoot;
+      }
+      const buildRoot = join(probeRoot, "build");
+      if (existsSync(join(buildRoot, "store.js"))) {
+        return buildRoot;
+      }
+    }
+  }
+
+  throw new Error("Unable to resolve the installed context-mode build path.");
+}
+
+let contextModeModulesPromise:
+  | Promise<{
+      ContentStore: new (dbPath?: string) => SharedContentStore;
+      resolveContentStorageDir: (getDefaultDir: () => string) => {
+        path: string;
+      };
+      ensureWritableStorageDir: (dir: { path: string }) => string;
+      resolveDefaultSessionDir: (opts: {
+        configDir: string;
+        configDirEnv?: string;
+        legacySessionDirEnv?: string;
+        env?: NodeJS.ProcessEnv;
+      }) => string;
+      resolveContentStorePath: (opts: {
+        projectDir: string;
+        contentDir: string;
+      }) => string;
+      resolvePiWorkspaceDir: (opts: {
+        env: Record<string, string | undefined>;
+        pwd: string | undefined;
+        cwd: string;
+        home?: string;
+      }) => string;
+    }>
+  | undefined;
+let cachedHandoffStore:
+  | {
+      dbPath: string;
+      store: SharedContentStore;
+    }
+  | undefined;
+
+async function loadContextModeModules() {
+  if (!contextModeModulesPromise) {
+    contextModeModulesPromise = (async () => {
+      try {
+        const root = resolveContextModeBuildRoot();
+        const [{ ContentStore }, sessionDbModule, piAdapterModule] = await Promise.all([
+          import(pathToFileURL(join(root, "store.js")).href),
+          import(pathToFileURL(join(root, "session", "db.js")).href),
+          import(pathToFileURL(join(root, "adapters", "pi", "extension.js")).href),
+        ]);
+
+        return {
+          ContentStore,
+          resolveContentStorageDir: sessionDbModule.resolveContentStorageDir,
+          ensureWritableStorageDir: sessionDbModule.ensureWritableStorageDir,
+          resolveDefaultSessionDir: sessionDbModule.resolveDefaultSessionDir,
+          resolveContentStorePath: sessionDbModule.resolveContentStorePath,
+          resolvePiWorkspaceDir: piAdapterModule.resolvePiWorkspaceDir,
+        };
+      } catch (error) {
+        contextModeModulesPromise = undefined;
+        throw error;
+      }
+    })();
+  }
+
+  return await contextModeModulesPromise;
+}
+
+async function getOrCreateHandoffStore(ctx: ExtensionContext) {
+  const modules = await loadContextModeModules();
+  const projectDir = modules.resolvePiWorkspaceDir({
+    env: process.env,
+    pwd: ctx.cwd,
+    cwd: ctx.cwd,
+    home: homedir(),
+  });
+  const defaultSessionDir = modules.resolveDefaultSessionDir({
+    configDir: process.env.PI_CONFIG_DIR?.trim() || join(homedir(), ".pi"),
+    configDirEnv: "PI_CONFIG_DIR",
+    env: process.env,
+  });
+  const contentDir = modules.ensureWritableStorageDir(
+    modules.resolveContentStorageDir(() => defaultSessionDir),
+  );
+  await mkdir(contentDir, { recursive: true });
+  const dbPath = modules.resolveContentStorePath({ projectDir, contentDir });
+  if (!cachedHandoffStore || cachedHandoffStore.dbPath !== dbPath) {
+    cachedHandoffStore?.store.close();
+    cachedHandoffStore = {
+      dbPath,
+      store: new modules.ContentStore(dbPath),
+    };
+  }
+  return cachedHandoffStore.store;
+}
+
+async function indexHandoff(
+  ctx: ExtensionContext,
+  pointer: HandoffPointer,
+  markdown: string,
+): Promise<boolean> {
+  try {
+    const store = await getOrCreateHandoffStore(ctx);
+    store.index({ content: markdown, source: pointer.source });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
+  return [...ctx.sessionManager.getEntries()]
+    .filter(
+      (entry) => entry.type === "custom" && entry.customType === HANDOFF_ENTRY,
+    )
+    .map((entry) => (entry as { data?: HandoffPointer }).data)
+    .filter((item): item is HandoffPointer => Boolean(item?.source))
+    .reverse()
+    .filter((item, index, all) =>
+      index === all.findIndex((candidate) => candidate.source === item.source)
+    );
+}
+
+async function buildRecentHandoffPrompt(
+  ctx: ExtensionContext,
+  prompt: string,
+): Promise<string> {
+  const rawSessionHandoffs = readRecentHandoffPointers(ctx).filter(
+    (handoff) => handoff.toolName !== "review_changes",
+  );
+  const scoredSessionHandoffs = prompt.trim()
+    ? rawSessionHandoffs
+        .map((handoff) => ({ handoff, score: scoreHandoffRelevance(prompt, handoff) }))
+        .filter((item) => item.score > 0)
+        .sort((left, right) => right.score - left.score)
+        .map((item) => item.handoff)
+    : rawSessionHandoffs;
+  const sessionHandoffs = [
+    ...rawSessionHandoffs.slice(0, 1),
+    ...scoredSessionHandoffs,
+  ]
+    .filter(
+      (handoff, index, all) =>
+        index === all.findIndex((candidate) => candidate.source === handoff.source),
+    )
+    .slice(0, MAX_RECENT_HANDOFFS);
+  const store = await getOrCreateHandoffStore(ctx).catch(() => undefined);
+  const handoffs = [...sessionHandoffs];
+
+  if (store && handoffs.length < MAX_RECENT_HANDOFFS && prompt.trim()) {
+    try {
+      const knownSources = new Set(handoffs.map((handoff) => handoff.source));
+      const extraMatches = store.searchWithFallback(
+        truncate(singleLine(prompt), 240),
+        MAX_RECENT_HANDOFFS * 3,
+        `${HANDOFF_SOURCE_PREFIX}:`,
+        undefined,
+        "like",
+      );
+
+      for (const match of extraMatches) {
+        const source = typeof match.source === "string" ? match.source : "";
+        if (!source || knownSources.has(source)) continue;
+        const [, toolName = "indexed handoff"] = source.split(":");
+        if (toolName === "review_changes") continue;
+        knownSources.add(source);
+        handoffs.push({
+          source,
+          toolName,
+          title: match.title || "Relevant prior handoff",
+          status: "indexed",
+          generatedAt: 0,
+          summary: singleLine(match.highlighted || match.content || "") ||
+            "Relevant indexed handoff from another session in this project.",
+          filesChanged: [],
+          indexed: true,
+        });
+        if (handoffs.length >= MAX_RECENT_HANDOFFS) break;
+      }
+    } catch {
+      // Fall back to current-session handoffs only.
+    }
+  }
+
+  if (handoffs.length === 0) return "";
+
+  const sections: string[] = [];
+  for (const handoff of handoffs) {
+    let detail = handoff.summary;
+    if (store) {
+      try {
+        const matches = store.searchWithFallback(
+          "summary findings validation files changed",
+          2,
+          handoff.source,
+          undefined,
+          "exact",
+        );
+        if (matches.length > 0) {
+          detail = truncate(
+            matches
+              .map((match) => {
+                const snippet = singleLine(match.highlighted || match.content || "");
+                return snippet ? `${match.title}: ${snippet}` : match.title;
+              })
+              .join(" | "),
+            420,
+          );
+        }
+      } catch {
+        // Fall back to the session-persisted summary.
+      }
+    }
+
+    const filesText =
+      handoff.filesChanged.length > 0 ? handoff.filesChanged.join(", ") : "(none)";
+    sections.push(
+      [
+        `### ${handoff.toolName} — ${handoff.title}`,
+        `- status: ${handoff.status}`,
+        `- source: ${handoff.source}`,
+        `- files: ${filesText}`,
+        `- summary: ${detail || "(none)"}`,
+      ].join("\n"),
+    );
+  }
+
+  const anyIndexed = handoffs.some((handoff) => handoff.indexed);
+
+  return truncate(
+    [
+      "## Recent Delegated Handoffs",
+      "",
+      anyIndexed
+        ? "- Relevant delegate/review results for this prompt have been indexed into the shared context-mode store for this project."
+        : "- Relevant delegate/review results for this prompt are available below as session-local summaries.",
+      "- Treat successful bounded worker handoffs with passing validation and no boundary violations as trusted by default.",
+      anyIndexed
+        ? "- Reuse these handoffs before re-discovering the same context; when you need more detail, query the indexed source labels listed below."
+        : "- Reuse these handoffs before re-discovering the same context; rely on the summaries below when store-backed retrieval is unavailable.",
+      "",
+      ...sections,
+    ].join("\n"),
+    MAX_HANDOFF_PROMPT_CHARS,
+  );
+}
+
+function workingTreeSignature(snapshot: WorkingTreeSnapshot): string {
+  const hash = createHash("sha1");
+  hash.update(`${snapshot.root}\n`);
+  for (const [file, digest] of [...snapshot.files.entries()].sort(([left], [right]) =>
+    left.localeCompare(right)
+  )) {
+    hash.update(`${file}:${digest}\n`);
+  }
+  return hash.digest("hex");
+}
+
+function userExplicitlyAskedForReview(prompt: string): boolean {
+  return (
+    /\b(review|audit|code review)\b/i.test(prompt) ||
+    /\b(final pass|look over|sanity check|second opinion)\b/i.test(prompt) ||
+    /\b(check|inspect)\b.{0,24}\b(changes|diff|code|implementation|patch|work)\b/i.test(prompt)
+  );
+}
+
+function buildReviewDedupeKey(
+  signature: string,
+  input: Record<string, unknown>,
+): string {
+  const context =
+    typeof input.context === "string" ? singleLine(input.context).toLowerCase() : "";
+  const focus =
+    typeof input.focus === "string" ? singleLine(input.focus).toLowerCase() : "";
+  const stage = typeof input.stage === "string" ? input.stage.toLowerCase() : "final";
+  return `${signature}::${context}::${focus}::${stage}`;
+}
+
+function tokenizeHandoffText(text: string): string[] {
+  return singleLine(text)
+    .toLowerCase()
+    .split(/[^a-z0-9_./:-]+/)
+    .filter(
+      (token) =>
+        token.length >= 4 && !HANDOFF_RELEVANCE_STOP_WORDS.has(token),
+    );
+}
+
+function scoreHandoffRelevance(prompt: string, handoff: HandoffPointer): number {
+  const promptTokens = new Set(tokenizeHandoffText(prompt));
+  if (promptTokens.size === 0) return 0;
+  const handoffText = [
+    handoff.toolName,
+    handoff.title,
+    handoff.status,
+    handoff.summary,
+    handoff.filesChanged.join(" "),
+  ].join(" ");
+  return tokenizeHandoffText(handoffText).filter((token) => promptTokens.has(token)).length;
+}
+
+async function resolveReviewSignature(
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    return workingTreeSignature(await snapshotWorkingTree(cwd, signal));
+  } catch {
+    return undefined;
+  }
+}
+
 async function resolveWorkerSelection(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
@@ -1224,13 +1988,13 @@ async function resolveScoutSelection(
   params: ScoutParams,
 ): Promise<{ ref: ModelRef; model: Model<Api>; thinkingLevel: ThinkingLevel }> {
   const thinkingLevel =
-    params.scoutThinkingLevel ?? getEffectiveThinkingLevel(state);
+    params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state);
   const requestedRef = params.scoutModel
     ? parseModelRef(params.scoutModel, ctx.model?.provider)
-    : getEffectiveWorkerRef(ctx, state);
+    : getEffectiveScoutRef(ctx, state);
   if (!requestedRef) {
     throw new Error(
-      "No scout model could be resolved. Select a model first or configure /worker-model.",
+      "No scout model could be resolved. Select a model first or configure /scout-model.",
     );
   }
 
@@ -1647,6 +2411,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   let state: SupervisorWorkerState = {};
   let sessionEpoch = 0;
   let turnDelegationState: TurnDelegationState | undefined;
+  let recentReviewKeys: string[] = [];
+  const pendingReviewKeys = new Map<string, string>();
   const activeDelegations = new Map<string, ActiveDelegation>();
 
   function persistState() {
@@ -1676,6 +2442,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     sessionEpoch += 1;
     turnDelegationState = undefined;
+    recentReviewKeys = readSavedReviewKeys(ctx);
+    pendingReviewKeys.clear();
     activeDelegations.clear();
     state = readSavedState(ctx) ?? {};
     refreshStatus(ctx);
@@ -1684,6 +2452,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   pi.on("session_shutdown", async (_event, ctx) => {
     sessionEpoch += 1;
     turnDelegationState = undefined;
+    pendingReviewKeys.clear();
     activeDelegations.clear();
     SUBAGENTS_WIDGET.clear(ctx);
     ctx.ui.setStatus("worker", undefined);
@@ -1709,7 +2478,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       enforcePlanSplit: shouldEnforcePlanSplit,
       completedWorkerDelegations: 0,
       completedScoutDelegations: 0,
+      completedReviewDelegations: 0,
       nudgedDirectMutation: false,
+      nudgedReviewDeferral: false,
+      usedExplicitReviewBypass: false,
     };
 
     const strictSection = shouldEnforcePlanSplit
@@ -1738,7 +2510,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - When multiple read-only scouting tasks are independent, prefer \`delegate_scouts\`.
 - When multiple implementation tasks are independent and have disjoint \`allowedFiles\`, prefer \`delegate_workers\`.
 - If a delegated task comes back escalated or blocked, handle the decision on the current model instead of retrying blindly.
-- After a worker returns, review its result, enforce boundaries, and decide whether to continue, revise, or take over on the supervisor model.${strictSection}`
+- Treat successful bounded worker handoffs with passing validation and no boundary violations as trusted building blocks by default.
+- Chain additional bounded worker tasks when needed; do not reflexively run \`review_changes\` after each successful sub-step.
+- Prefer a single review pass once you believe the overall user request is implemented, unless the user explicitly asked for an interim review, a worker escalated/blocked, validation failed, or you are checking risky supervisor-owned integration.${strictSection}`
         : `
 
 ## Delegation Policy
@@ -1748,44 +2522,185 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - Use \`delegate_scout\` only when you explicitly decide a read-only reconnaissance task should be delegated.
 - Use \`delegate_worker\` only when the user explicitly asks for delegation or when you explicitly decide a bounded local implementation task should be delegated.
 - Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and broad cross-cutting refactors on the current model.
-- If you delegate, provide explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers, then review the result before proceeding.`;
+- If you delegate, provide explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
+- When delegations succeed with clean validation, trust them enough to continue chaining bounded tasks; avoid repeated intermediate \`review_changes\` calls and prefer one final review near completion.`;
+
+    const recentHandoffs = await buildRecentHandoffPrompt(ctx, event.prompt);
 
     return {
-      systemPrompt: `${event.systemPrompt}${policy}`,
+      systemPrompt: `${event.systemPrompt}${policy}${recentHandoffs ? `\n\n${recentHandoffs}` : ""}`,
     };
   });
 
-  pi.on("tool_result", async (event) => {
-    if (!turnDelegationState || event.isError) return;
-    if (event.toolName === "delegate_worker") {
-      const details = (event.details ?? {}) as { status?: string };
-      if (details.status === "completed") {
-        turnDelegationState.completedWorkerDelegations += 1;
+  pi.on("tool_result", async (event, ctx) => {
+    if (event.toolName === "review_changes") {
+      if (!event.isError && event.toolCallId) {
+        const reviewKey = pendingReviewKeys.get(event.toolCallId);
+        if (reviewKey) {
+          recentReviewKeys = [
+            reviewKey,
+            ...recentReviewKeys.filter((item) => item !== reviewKey),
+          ].slice(0, MAX_PERSISTED_REVIEW_KEYS);
+          pi.appendEntry(REVIEW_STATE_ENTRY, { recentReviewKeys });
+        }
       }
+      if (event.toolCallId) {
+        pendingReviewKeys.delete(event.toolCallId);
+      }
+    }
+
+    if (!event.isError && turnDelegationState) {
+      if (event.toolName === "delegate_worker") {
+        const details = (event.details ?? {}) as { status?: string };
+        if (details.status === "completed") {
+          turnDelegationState.completedWorkerDelegations += 1;
+        }
+      } else if (event.toolName === "delegate_workers") {
+        const details = (event.details ?? {}) as {
+          results?: Array<{ status?: string }>;
+        };
+        turnDelegationState.completedWorkerDelegations +=
+          details.results?.filter((result) => result.status === "completed").length ?? 0;
+      } else if (event.toolName === "delegate_scout") {
+        turnDelegationState.completedScoutDelegations += 1;
+      } else if (event.toolName === "delegate_scouts") {
+        const details = (event.details ?? {}) as {
+          results?: Array<{ status?: string }>;
+        };
+        turnDelegationState.completedScoutDelegations +=
+          details.results?.filter((result) => result.status === "completed").length ?? 0;
+      } else if (event.toolName === "review_changes") {
+        turnDelegationState.completedReviewDelegations += 1;
+      }
+    }
+
+    if (event.isError) return;
+    if (![
+      "delegate_worker",
+      "delegate_workers",
+      "delegate_scout",
+      "delegate_scouts",
+      "review_changes",
+    ].includes(event.toolName)) {
       return;
     }
-    if (event.toolName === "delegate_workers") {
-      const details = (event.details ?? {}) as {
-        results?: Array<{ status?: string }>;
-      };
-      turnDelegationState.completedWorkerDelegations +=
-        details.results?.filter((result) => result.status === "completed").length ?? 0;
-      return;
-    }
-    if (event.toolName === "delegate_scout") {
-      turnDelegationState.completedScoutDelegations += 1;
-      return;
-    }
-    if (event.toolName === "delegate_scouts") {
-      const details = (event.details ?? {}) as {
-        results?: Array<{ status?: string }>;
-      };
-      turnDelegationState.completedScoutDelegations +=
-        details.results?.filter((result) => result.status === "completed").length ?? 0;
-    }
+
+    const details =
+      event.details && typeof event.details === "object"
+        ? (event.details as Record<string, unknown>)
+        : {};
+    const input =
+      event.input && typeof event.input === "object"
+        ? (event.input as Record<string, unknown>)
+        : {};
+    const report = extractTextContent(
+      event.content as Array<{ type?: string; text?: string }> | undefined,
+    );
+    if (!report) return;
+
+    const generatedAt =
+      typeof details.generatedAt === "number" ? details.generatedAt : Date.now();
+    const sessionKey =
+      typeof details.sessionKey === "string"
+        ? details.sessionKey
+        : ctx.sessionManager.getSessionFile() ?? "ephemeral";
+    const title = inferHandoffTitle(event.toolName, input, details);
+    const status = inferHandoffStatus(event.toolName, report, details);
+    const filesChanged = collectHandoffFiles(details);
+    const summary = summarizeHandoff(event.toolName, report, details);
+    const pointer: HandoffPointer = {
+      source: buildHandoffSource(event.toolName, sessionKey, generatedAt, title),
+      toolName: event.toolName,
+      title,
+      status,
+      generatedAt,
+      summary,
+      filesChanged,
+    };
+    const modelLabel = [details.workerModel, details.scoutModel, details.reviewer]
+      .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+    const markdown = buildHandoffMarkdown({
+      source: pointer.source,
+      toolName: event.toolName,
+      title,
+      status,
+      sessionKey,
+      generatedAt,
+      summary,
+      filesChanged,
+      modelLabel,
+      promptInput: input,
+      details,
+      report,
+    });
+    const handoffIndexed = await indexHandoff(ctx, pointer, markdown);
+    pointer.indexed = handoffIndexed;
+    pi.appendEntry(HANDOFF_ENTRY, pointer);
+
+    return {
+      details: {
+        ...details,
+        handoffSource: pointer.source,
+        handoffIndexed,
+        handoffSummary: pointer.summary,
+      },
+    };
   });
 
   pi.on("tool_call", async (event, ctx) => {
+    if (event.toolName === "review_changes") {
+      const reviewInput =
+        event.input && typeof event.input === "object"
+          ? (event.input as Record<string, unknown>)
+          : {};
+      const signature = await resolveReviewSignature(ctx.cwd, ctx.signal);
+      const explicitReviewRequest = Boolean(
+        turnDelegationState && userExplicitlyAskedForReview(turnDelegationState.prompt),
+      );
+      const reviewKey = signature
+        ? buildReviewDedupeKey(signature, reviewInput)
+        : undefined;
+      const duplicatePending = Boolean(
+        reviewKey && [...pendingReviewKeys.values()].includes(reviewKey),
+      );
+      const duplicateReviewed = Boolean(
+        reviewKey && recentReviewKeys.includes(reviewKey),
+      );
+      const allowExplicitBypass = Boolean(
+        reviewKey &&
+          explicitReviewRequest &&
+          turnDelegationState &&
+          !turnDelegationState.usedExplicitReviewBypass &&
+          !duplicatePending,
+      );
+      if (reviewKey && (duplicatePending || (duplicateReviewed && !allowExplicitBypass))) {
+        return {
+          block: true,
+          reason:
+            "review_changes is already pending or already ran for this exact working tree and review focus. Make additional changes, change the requested review focus, or answer the user instead of repeating the same review.",
+        };
+      }
+      if (allowExplicitBypass && turnDelegationState) {
+        turnDelegationState.usedExplicitReviewBypass = true;
+      }
+      if (reviewKey && event.toolCallId) {
+        pendingReviewKeys.set(event.toolCallId, reviewKey);
+      }
+      if (
+        turnDelegationState?.completedWorkerDelegations &&
+        !turnDelegationState.nudgedReviewDeferral &&
+        !explicitReviewRequest
+      ) {
+        turnDelegationState.nudgedReviewDeferral = true;
+        if (ctx.hasUI) {
+          ctx.ui.notify(
+            "Recent worker handoffs are trusted by default; prefer one final review near completion instead of reviewing every successful sub-step.",
+            "warning",
+          );
+        }
+      }
+    }
+
     if (!turnDelegationState?.enforcePlanSplit) return;
     if (turnDelegationState.completedWorkerDelegations > 0) return;
     if (turnDelegationState.nudgedDirectMutation) return;
@@ -1833,8 +2748,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         title: formatTaskTitle(params.objective),
         workerModel:
           params.scoutModel?.trim() ||
-          getEffectiveWorkerRef(ctx, state)?.id ||
-          DEFAULT_WORKER_MODEL_ID,
+          getEffectiveScoutRef(ctx, state)?.id ||
+          DEFAULT_SCOUT_MODEL_ID,
         phase: "starting",
         role: "scout",
       });
@@ -1980,8 +2895,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             title: label,
             workerModel:
               task.scoutModel?.trim() ||
-              getEffectiveWorkerRef(ctx, state)?.id ||
-              DEFAULT_WORKER_MODEL_ID,
+              getEffectiveScoutRef(ctx, state)?.id ||
+              DEFAULT_SCOUT_MODEL_ID,
             phase: "starting",
             role: "scout",
           });
@@ -2448,6 +3363,136 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       refreshStatus(ctx);
       ctx.ui.notify(
         `Worker set to ${formatModel(ref, getEffectiveThinkingLevel(state))}`,
+        "info",
+      );
+    },
+  });
+
+  pi.registerCommand("scout-model", {
+    description:
+      "Show or set the default scout model for delegate_scout. Usage: /scout-model [default|model|provider/model] [thinking-level]",
+    handler: async (args, ctx) => {
+      const trimmed = args.trim();
+      if (!trimmed) {
+        const scoutRef = getEffectiveScoutRef(ctx, state);
+        ctx.ui.notify(
+          `Scout: ${formatModel(scoutRef, getEffectiveScoutThinkingLevel(state))}${state.scoutOverride ? " (override)" : " (default)"}`,
+          "info",
+        );
+        return;
+      }
+
+      const parts = trimmed.split(/\s+/).filter(Boolean);
+      const modelArg = parts[0];
+      const thinkingArg = parts[1] as ThinkingLevel | undefined;
+      if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
+        ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
+        return;
+      }
+
+      if (modelArg === "default") {
+        const { scoutOverride, scoutThinkingLevel, ...rest } = state;
+        state = rest;
+        persistState();
+        refreshStatus(ctx);
+        ctx.ui.notify(
+          `Scout reset to ${formatModel(getEffectiveScoutRef(ctx, state), getEffectiveScoutThinkingLevel(state))}`,
+          "info",
+        );
+        return;
+      }
+
+      const ref = parseModelRef(modelArg, ctx.model?.provider);
+      if (!ref) {
+        ctx.ui.notify(
+          "Unable to parse scout model. Use model or provider/model.",
+          "error",
+        );
+        return;
+      }
+      const model = findModel(ctx, ref);
+      if (!model) {
+        ctx.ui.notify(
+          `Scout model not found: ${formatModel(ref, thinkingArg)}`,
+          "error",
+        );
+        return;
+      }
+
+      state = {
+        ...state,
+        scoutOverride: ref,
+        scoutThinkingLevel: thinkingArg ?? getEffectiveScoutThinkingLevel(state),
+      };
+      persistState();
+      refreshStatus(ctx);
+      ctx.ui.notify(
+        `Scout set to ${formatModel(ref, getEffectiveScoutThinkingLevel(state))}`,
+        "info",
+      );
+    },
+  });
+
+  pi.registerCommand("reviewer-model", {
+    description:
+      "Show or set the default interim reviewer model for review_changes. Usage: /reviewer-model [default|model|provider/model] [thinking-level]",
+    handler: async (args, ctx) => {
+      const trimmed = args.trim();
+      if (!trimmed) {
+        const reviewerRef = getEffectiveReviewerRef(ctx, state);
+        ctx.ui.notify(
+          `Reviewer: ${formatModel(reviewerRef, getEffectiveReviewerThinkingLevel(state))}${state.reviewerOverride ? " (override)" : " (default)"}`,
+          "info",
+        );
+        return;
+      }
+
+      const parts = trimmed.split(/\s+/).filter(Boolean);
+      const modelArg = parts[0];
+      const thinkingArg = parts[1] as ThinkingLevel | undefined;
+      if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
+        ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
+        return;
+      }
+
+      if (modelArg === "default") {
+        const { reviewerOverride, reviewerThinkingLevel, ...rest } = state;
+        state = rest;
+        persistState();
+        refreshStatus(ctx);
+        ctx.ui.notify(
+          `Reviewer reset to ${formatModel(getEffectiveReviewerRef(ctx, state), getEffectiveReviewerThinkingLevel(state))}`,
+          "info",
+        );
+        return;
+      }
+
+      const ref = parseModelRef(modelArg, ctx.model?.provider);
+      if (!ref) {
+        ctx.ui.notify(
+          "Unable to parse reviewer model. Use model or provider/model.",
+          "error",
+        );
+        return;
+      }
+      const model = findModel(ctx, ref);
+      if (!model) {
+        ctx.ui.notify(
+          `Reviewer model not found: ${formatModel(ref, thinkingArg)}`,
+          "error",
+        );
+        return;
+      }
+
+      state = {
+        ...state,
+        reviewerOverride: ref,
+        reviewerThinkingLevel: thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
+      };
+      persistState();
+      refreshStatus(ctx);
+      ctx.ui.notify(
+        `Reviewer set to ${formatModel(ref, getEffectiveReviewerThinkingLevel(state))}`,
         "info",
       );
     },

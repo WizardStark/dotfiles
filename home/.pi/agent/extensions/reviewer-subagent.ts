@@ -1,5 +1,5 @@
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { Message } from "@earendil-works/pi-ai";
+import { StringEnum, type Message } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
@@ -61,6 +61,7 @@ type ReviewResult = {
 type ReviewParams = {
   context?: string;
   focus?: string;
+  stage?: "interim" | "final";
 };
 
 type ReviewRunState = SubagentRunState;
@@ -318,14 +319,10 @@ async function runReviewerSubagent(
 
 async function generateReview(
   ctx: ExtensionContext,
-  thinkingLevel: ThinkingLevel,
+  defaultThinkingLevel: ThinkingLevel,
   input: ReviewParams,
   signal?: AbortSignal,
 ): Promise<ReviewResult> {
-  if (!ctx.model) {
-    throw new Error("No active model selected for reviewer subagent.");
-  }
-
   const git = await collectGitContext(ctx.cwd, signal);
   if (!git.ok) {
     throw new Error(git.reason);
@@ -339,9 +336,44 @@ async function generateReview(
     gitContext: git.gitContext,
   });
 
+  const stage = input.stage ?? "interim";
+  let modelToUse = undefined as typeof ctx.model | undefined;
+  let thinkingLevelToUse = defaultThinkingLevel;
+
+  if (stage === "interim") {
+    // Attempt to load supervisor-worker state to find the cheap reviewer model
+    const stateEntry = [...ctx.sessionManager.getEntries()]
+      .reverse()
+      .find((e) => e.type === "custom" && e.customType === "supervisor-worker-state") as { data?: any } | undefined;
+
+    thinkingLevelToUse = stateEntry?.data?.reviewerThinkingLevel ?? "minimal";
+
+    if (stateEntry?.data?.reviewerOverride) {
+      const ref = stateEntry.data.reviewerOverride;
+      modelToUse = ctx.modelRegistry.getModels().find(
+        (m) => m.provider === ref.provider && m.id === ref.id,
+      );
+    }
+
+    if (!modelToUse) {
+      modelToUse = ctx.modelRegistry.getModels().find(
+        (m) => m.provider === "github-copilot" && m.id === "gemini-3-flash-preview",
+      );
+    }
+  } else {
+    if (!ctx.model) {
+      throw new Error("No active model selected for final reviewer subagent.");
+    }
+    modelToUse = ctx.model;
+  }
+
+  if (!modelToUse) {
+    throw new Error("No reviewer model could be resolved.");
+  }
+
   const modelArg =
-    thinkingLevel === "off" ? `${ctx.model.provider}/${ctx.model.id}` : `${ctx.model.provider}/${ctx.model.id}:${thinkingLevel}`;
-  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(ctx.model);
+    thinkingLevelToUse === "off" ? `${modelToUse.provider}/${modelToUse.id}` : `${modelToUse.provider}/${modelToUse.id}:${thinkingLevelToUse}`;
+  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(modelToUse);
   if (!auth.ok) {
     throw new Error(`Unable to resolve auth for reviewer subagent: ${auth.error}`);
   }
@@ -403,13 +435,16 @@ export default function (pi: ExtensionAPI) {
     name: "review_changes",
     label: "Review changes",
     description:
-      "Spawn a reviewer subagent in a fresh no-session pi process using the exact current model to inspect current git changes and report issues, improvements, and style drift.",
+      "Spawn a reviewer subagent in a fresh no-session pi process to inspect current git changes and report issues, improvements, and style drift. Interim reviews use a cheaper reviewer model; final reviews use the active model.",
     promptSnippet:
-      "Spawn a reviewer subagent in a fresh isolated pi process using the exact current model to inspect code changes and report issues.",
+      "Spawn a reviewer subagent to inspect code changes; use a cheaper model for interim reviews and the active model only for final reviews.",
     promptGuidelines: [
       "Use review_changes when the user explicitly asks for review, or after large/risky changes such as multi-file edits, refactors, migrations, non-trivial behavior changes, or broad code generation.",
       "Do not use review_changes for tiny, obvious, or single-line changes unless the user specifically asks for a review.",
       "When using review_changes, pass a short context summary describing what changed and why so the reviewer can judge correctness against intent.",
+      "When bounded worker tasks are succeeding with clean validation, trust those sub-steps by default and avoid calling review_changes after each successful worker return.",
+      "Prefer one final review pass once you believe the full user request is implemented, unless the user asked for an interim review, a worker escalated or failed validation, or you need to inspect risky supervisor-owned integration.",
+      "Use stage: interim for automated or early-cycle checks to save costs. Use stage: final only for the definitive review before completion.",
     ],
     parameters: Type.Object({
       context: Type.Optional(
@@ -420,6 +455,11 @@ export default function (pi: ExtensionAPI) {
       focus: Type.Optional(
         Type.String({
           description: "Optional review focus, such as edge cases, correctness, API compatibility, or style drift.",
+        }),
+      ),
+      stage: Type.Optional(
+        StringEnum(["interim", "final"], {
+          description: "Review stage. interim uses a cheaper model for early checks. final uses the current active model. Defaults to interim.",
         }),
       ),
     }),
@@ -450,11 +490,15 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand("review", {
-    description: "Run a reviewer subagent on current git changes using the exact current model. Usage: /review [focus or context]",
+    description: "Run a reviewer subagent on current git changes. Usage: /review [interim|final] [focus or context]",
     handler: async (args, ctx) => {
       try {
+        const trimmed = args.trim();
+        const stageMatch = trimmed.match(/^(interim|final)\b/i);
+        const stage = stageMatch?.[1]?.toLowerCase() as "interim" | "final" | undefined;
+        const rest = stage ? trimmed.slice(stageMatch?.[0].length ?? 0).trim() : trimmed;
         ctx.ui.notify("Reviewer subagent: collecting context and reviewing changes...", "info");
-        const result = await generateReview(ctx, pi.getThinkingLevel(), { context: args.trim() || undefined }, ctx.signal);
+        const result = await generateReview(ctx, pi.getThinkingLevel(), { stage, context: rest || undefined }, ctx.signal);
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
         pi.sendMessage({

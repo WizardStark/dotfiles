@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import type { ExtensionAPI, ExtensionContext, KeybindingsManager } from "@earendil-works/pi-coding-agent";
+import { CustomEditor } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth, type Component, type EditorTheme, type TUI } from "@earendil-works/pi-tui";
 import { ManagedWidget } from "../lib/ui-widgets.ts";
 import {
   createStatuslineItem,
@@ -389,6 +390,56 @@ function renderRpcStatusline(ctx: ExtensionContext, sessionKey: string) {
   STATUSLINE_WIDGET.set(ctx, [line || ""]);
 }
 
+function componentContains(root: Component, target: Component): boolean {
+  if (root === target) {
+    return true;
+  }
+
+  const children = (root as Component & { children?: Component[] }).children;
+  return Array.isArray(children) && children.some((child) => componentContains(child, target));
+}
+
+function measureSiblingHeights(tui: TUI, width: number, target: Component) {
+  const index = tui.children.findIndex((child) => componentContains(child, target));
+  if (index < 0) {
+    return { above: 0, below: 0 };
+  }
+
+  let above = 0;
+  for (const child of tui.children.slice(0, index)) {
+    above += child.render(width).length;
+  }
+
+  let below = 0;
+  for (const child of tui.children.slice(index + 1)) {
+    below += child.render(width).length;
+  }
+
+  return { above, below };
+}
+
+class AnchoredEditor extends CustomEditor {
+  constructor(tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) {
+    super(tui, theme, keybindings);
+  }
+
+  render(width: number): string[] {
+    const lines = super.render(width);
+    const terminalRows = this.tui.terminal.rows;
+    if (terminalRows <= 0) {
+      return lines;
+    }
+
+    const { above, below } = measureSiblingHeights(this.tui, width, this);
+    const padding = terminalRows - above - below - lines.length;
+    if (padding <= 0) {
+      return lines;
+    }
+
+    return [...Array.from({ length: padding }, () => ""), ...lines];
+  }
+}
+
 export default function statusline(pi: ExtensionAPI) {
   let currentSessionKey = "ephemeral";
   let unsubscribeRpcStatusline: (() => void) | undefined;
@@ -406,6 +457,8 @@ export default function statusline(pi: ExtensionAPI) {
     renderBuiltinSegments(pi, ctx);
 
     if (ctx.mode === "tui") {
+      ctx.ui.setEditorComponent((tui, theme, kb) => new AnchoredEditor(tui, theme, kb));
+
       ctx.ui.setFooter((tui, theme, footerData) => {
         const unsubscribeStatusline = subscribeStatusline(() => tui.requestRender());
         const unsubscribeBranch = footerData.onBranchChange(() => tui.requestRender());
@@ -468,6 +521,7 @@ export default function statusline(pi: ExtensionAPI) {
       STATUSLINE_WIDGET.clear(ctx);
       return;
     }
+    ctx.ui.setEditorComponent(undefined);
     ctx.ui.setFooter(undefined);
   });
 }

@@ -8,7 +8,7 @@ const BASH_ALLOWLIST: RegExp[] = [
   /^\s*git\s+(add|commit|push|checkout|branch|merge)\b/i,
   /^\s*(cd|pwd|which)\b/i,
   /^\s*(kill|pkill)\b/i,
-  /^\s*(npm|pnpm|yarn)\s+(install|add|publish)\b/i,
+  /^\s*(npm|pnpm|yarn|bun)\s+(install|add|publish)\b/i,
   /^\s*(pip|pip3)\s+install\b/i,
   /^\s*uv\s+pip\s+install\b/i,
   /^\s*(echo|printf)\b/i,
