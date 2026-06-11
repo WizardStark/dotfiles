@@ -156,6 +156,7 @@ type ParallelScoutTaskResult = ScoutResult & {
 };
 
 const STATE_ENTRY = "supervisor-worker-state";
+const SUBAGENT_EVENT_ENTRY = "subagent-event";
 const DEFAULT_WORKER_PROVIDER = "github-copilot";
 const DEFAULT_WORKER_MODEL_ID = "gemini-3-flash-preview";
 const DEFAULT_WORKER_THINKING_LEVEL: ThinkingLevel = "minimal";
@@ -1325,32 +1326,137 @@ function buildScoutPrompt(
   return sections.join("\n\n");
 }
 
+function appendSubagentEvent(
+  pi: ExtensionAPI,
+  payload: Record<string, unknown>,
+  shouldLog?: () => boolean,
+) {
+  if (shouldLog && !shouldLog()) {
+    return;
+  }
+  try {
+    pi.appendEntry(SUBAGENT_EVENT_ENTRY, payload);
+  } catch {
+    // Observability should not break delegation.
+  }
+}
+
+function classifySubagentOutcome(
+  run: { exitCode: number; stopReason?: string; errorMessage?: string },
+  signal?: AbortSignal,
+): "completed" | "failed" | "aborted" {
+  const stopReason = run.stopReason?.toLowerCase() ?? "";
+  if (
+    signal?.aborted ||
+    stopReason.includes("abort") ||
+    stopReason.includes("cancel")
+  ) {
+    return "aborted";
+  }
+  if (run.exitCode === 0 && !run.errorMessage && stopReason !== "error") {
+    return "completed";
+  }
+  return "failed";
+}
+
 async function runWorkerSubagent(
   cwd: string,
   prompt: string,
   modelArg: string,
   auth: { apiKey?: string; headers?: Record<string, string> },
   tools: string[] | undefined,
+  delegationId: string,
+  startDetails: Record<string, unknown>,
+  pi: ExtensionAPI,
+  shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
 ) {
-  return await runSubagentProcess({
+  let eventIndex = 0;
+  const generatedAt = Date.now();
+  appendSubagentEvent(pi, {
+    type: "subagent_process_start",
+    delegationId,
+    role: "worker",
+    model: modelArg,
     cwd,
-    prompt,
-    modelArg,
-    apiKey: auth.apiKey,
-    providerName: modelArg.split("/", 1)[0],
-    authHeaders: auth.headers,
-    systemPrompt: WORKER_SYSTEM_PROMPT,
-    extraArgs: [
-      ...(tools && tools.length > 0 ? ["--tools", tools.join(",")] : []),
-    ],
-    env: {
-      [WORKER_ENV_FLAG]: "worker",
-    },
-    signal,
-    onUpdate,
-  });
+    generatedAt,
+    ...startDetails,
+  }, shouldLog);
+
+  try {
+    const run = await runSubagentProcess({
+      cwd,
+      prompt,
+      modelArg,
+      apiKey: auth.apiKey,
+      providerName: modelArg.split("/", 1)[0],
+      authHeaders: auth.headers,
+      systemPrompt: WORKER_SYSTEM_PROMPT,
+      extraArgs: [
+        ...(tools && tools.length > 0 ? ["--tools", tools.join(",")] : []),
+      ],
+      env: {
+        [WORKER_ENV_FLAG]: "worker",
+      },
+      signal,
+      onUpdate,
+      onEvent: (event) => {
+        eventIndex += 1;
+        appendSubagentEvent(pi, {
+          type: "subagent_raw_event",
+          delegationId,
+          role: "worker",
+          model: modelArg,
+          cwd,
+          eventType: typeof event?.type === "string" ? event.type : undefined,
+          eventIndex,
+          event,
+          generatedAt: Date.now(),
+        }, shouldLog);
+      },
+    });
+
+    const outcome = classifySubagentOutcome(run, signal);
+    appendSubagentEvent(pi, {
+      type: "subagent_process_end",
+      delegationId,
+      role: "worker",
+      model: modelArg,
+      cwd,
+      outcome,
+      exitCode: run.exitCode,
+      stopReason: run.stopReason,
+      errorMessage: run.errorMessage,
+      stderr: run.stderr.trim() || undefined,
+      metrics: buildSubagentMetrics(run),
+      generatedAt: Date.now(),
+    }, shouldLog);
+
+    return run;
+  } catch (error) {
+    const details = error && typeof error === "object"
+      ? error as Record<string, unknown>
+      : undefined;
+    appendSubagentEvent(pi, {
+      type: "subagent_process_end",
+      delegationId,
+      role: "worker",
+      model: modelArg,
+      cwd,
+      outcome: classifySubagentOutcome({
+        exitCode: typeof details?.exitCode === "number" ? details.exitCode : 1,
+        stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }, signal),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      exitCode: typeof details?.exitCode === "number" ? details.exitCode : undefined,
+      stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
+      stderr: typeof details?.stderr === "string" ? details.stderr : undefined,
+      generatedAt: Date.now(),
+    }, shouldLog);
+    throw error;
+  }
 }
 
 async function runScoutSubagent(
@@ -1359,25 +1465,99 @@ async function runScoutSubagent(
   modelArg: string,
   auth: { apiKey?: string; headers?: Record<string, string> },
   tools: string[] | undefined,
+  delegationId: string,
+  startDetails: Record<string, unknown>,
+  pi: ExtensionAPI,
+  shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
 ) {
   const scoutTools = sanitizeScoutTools(tools);
-  return await runSubagentProcess({
+  let eventIndex = 0;
+  const generatedAt = Date.now();
+  appendSubagentEvent(pi, {
+    type: "subagent_process_start",
+    delegationId,
+    role: "scout",
+    model: modelArg,
     cwd,
-    prompt,
-    modelArg,
-    apiKey: auth.apiKey,
-    providerName: modelArg.split("/", 1)[0],
-    authHeaders: auth.headers,
-    systemPrompt: SCOUT_SYSTEM_PROMPT,
-    extraArgs: ["--tools", scoutTools.join(",")],
-    env: {
-      [WORKER_ENV_FLAG]: "scout",
-    },
-    signal,
-    onUpdate,
-  });
+    generatedAt,
+    ...startDetails,
+    requestedTools: startDetails.tools,
+    tools: scoutTools,
+  }, shouldLog);
+
+  try {
+    const run = await runSubagentProcess({
+      cwd,
+      prompt,
+      modelArg,
+      apiKey: auth.apiKey,
+      providerName: modelArg.split("/", 1)[0],
+      authHeaders: auth.headers,
+      systemPrompt: SCOUT_SYSTEM_PROMPT,
+      extraArgs: ["--tools", scoutTools.join(",")],
+      env: {
+        [WORKER_ENV_FLAG]: "scout",
+      },
+      signal,
+      onUpdate,
+      onEvent: (event) => {
+        eventIndex += 1;
+        appendSubagentEvent(pi, {
+          type: "subagent_raw_event",
+          delegationId,
+          role: "scout",
+          model: modelArg,
+          cwd,
+          eventType: typeof event?.type === "string" ? event.type : undefined,
+          eventIndex,
+          event,
+          generatedAt: Date.now(),
+        }, shouldLog);
+      },
+    });
+
+    const outcome = classifySubagentOutcome(run, signal);
+    appendSubagentEvent(pi, {
+      type: "subagent_process_end",
+      delegationId,
+      role: "scout",
+      model: modelArg,
+      cwd,
+      outcome,
+      exitCode: run.exitCode,
+      stopReason: run.stopReason,
+      errorMessage: run.errorMessage,
+      stderr: run.stderr.trim() || undefined,
+      metrics: buildSubagentMetrics(run),
+      generatedAt: Date.now(),
+    }, shouldLog);
+
+    return run;
+  } catch (error) {
+    const details = error && typeof error === "object"
+      ? error as Record<string, unknown>
+      : undefined;
+    appendSubagentEvent(pi, {
+      type: "subagent_process_end",
+      delegationId,
+      role: "scout",
+      model: modelArg,
+      cwd,
+      outcome: classifySubagentOutcome({
+        exitCode: typeof details?.exitCode === "number" ? details.exitCode : 1,
+        stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }, signal),
+      errorMessage: error instanceof Error ? error.message : String(error),
+      exitCode: typeof details?.exitCode === "number" ? details.exitCode : undefined,
+      stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
+      stderr: typeof details?.stderr === "string" ? details.stderr : undefined,
+      generatedAt: Date.now(),
+    }, shouldLog);
+    throw error;
+  }
 }
 
 function parseSectionItems(report: string, heading: string): string[] {
@@ -2012,133 +2192,382 @@ async function generateDelegation(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
   params: DelegateParams,
+  delegationId: string,
+  pi: ExtensionAPI,
+  shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
 ): Promise<DelegateResult> {
+  const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
+    appendSubagentEvent(pi, {
+      type: "subagent_start",
+      delegationId,
+      role: "worker",
+      cwd,
+      requestedModel: params.workerModel,
+      objective: params.objective,
+      scope: params.scope,
+      allowedFiles: params.allowedFiles,
+      blockedFiles: params.blockedFiles,
+      acceptanceCriteria: params.acceptanceCriteria,
+      validationCommands: params.validationCommands,
+      escalationTriggers: params.escalationTriggers,
+      tools: params.tools,
+      generatedAt: Date.now(),
+    }, shouldLog);
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "worker",
+      model: params.workerModel,
+      cwd,
+      outcome: "failed",
+      phase: "preflight",
+      errorMessage: "No active supervisor model selected.",
+      generatedAt: Date.now(),
+    }, shouldLog);
     throw new Error("No active supervisor model selected.");
   }
 
-  const worker = await resolveWorkerSelection(ctx, state, params);
-  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(worker.model);
-  if (!auth.ok) {
-    throw new Error(`Unable to resolve auth for worker model: ${auth.error}`);
-  }
-
-  const cwd = params.cwd?.trim() || ctx.cwd;
-  const beforeSnapshot = await snapshotWorkingTree(cwd, signal);
-  const workerModelArg = formatModel(worker.ref, worker.thinkingLevel);
-  const conversationContext = buildConversationContext(
-    ctx.sessionManager.getBranch(),
-  );
-  const prompt = buildWorkerPrompt(params, conversationContext);
-  const run = await runWorkerSubagent(
+  appendSubagentEvent(pi, {
+    type: "subagent_start",
+    delegationId,
+    role: "worker",
     cwd,
-    prompt,
-    workerModelArg,
-    auth,
-    params.tools,
-    signal,
-    onUpdate,
-  );
-  const final = extractFinalAssistantText(
-    [
-      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
-      ...run.messages,
-      ...(run.turnEndMessage ? [run.turnEndMessage] : []),
-      ...(run.agentEndMessage ? [run.agentEndMessage] : []),
-    ],
-    run.streamedText,
-    true,
-  );
+    requestedModel: params.workerModel,
+    objective: params.objective,
+    scope: params.scope,
+    allowedFiles: params.allowedFiles,
+    blockedFiles: params.blockedFiles,
+    acceptanceCriteria: params.acceptanceCriteria,
+    validationCommands: params.validationCommands,
+    escalationTriggers: params.escalationTriggers,
+    tools: params.tools,
+    generatedAt: Date.now(),
+  }, shouldLog);
 
-  if (!final.text) {
-    const stderr = run.stderr.trim();
-    throw new Error(
-      `Worker subagent returned no text (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${stderr ? `; stderr: ${stderr}` : ""}).`,
+  let auth: { apiKey?: string; headers?: Record<string, string> };
+  let beforeSnapshot: WorkingTreeSnapshot;
+  let workerModelArg: string;
+  let prompt: string;
+  try {
+    const worker = await resolveWorkerSelection(ctx, state, params);
+    const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(worker.model);
+    if (!authResult.ok) {
+      throw new Error(`Unable to resolve auth for worker model: ${authResult.error}`);
+    }
+    auth = { apiKey: authResult.apiKey, headers: authResult.headers };
+
+    beforeSnapshot = await snapshotWorkingTree(cwd, signal);
+    workerModelArg = formatModel(worker.ref, worker.thinkingLevel);
+    const conversationContext = buildConversationContext(
+      ctx.sessionManager.getBranch(),
     );
+    prompt = buildWorkerPrompt(params, conversationContext);
+  } catch (error) {
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "worker",
+      model: params.workerModel,
+      cwd,
+      outcome: classifySubagentOutcome({
+        exitCode: 1,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }, signal),
+      phase: "preflight",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      generatedAt: Date.now(),
+    }, shouldLog);
+    throw error;
   }
+  let run: Awaited<ReturnType<typeof runWorkerSubagent>> | undefined;
+  try {
+    run = await runWorkerSubagent(
+      cwd,
+      prompt,
+      workerModelArg,
+      auth,
+      params.tools,
+      delegationId,
+      {
+        objective: params.objective,
+        scope: params.scope,
+        allowedFiles: params.allowedFiles,
+        blockedFiles: params.blockedFiles,
+        acceptanceCriteria: params.acceptanceCriteria,
+        validationCommands: params.validationCommands,
+        escalationTriggers: params.escalationTriggers,
+        tools: params.tools,
+      },
+      pi,
+      shouldLog,
+      signal,
+      onUpdate,
+    );
+    const final = extractFinalAssistantText(
+      [
+        ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
+        ...run.messages,
+        ...(run.turnEndMessage ? [run.turnEndMessage] : []),
+        ...(run.agentEndMessage ? [run.agentEndMessage] : []),
+      ],
+      run.streamedText,
+      true,
+    );
 
-  const afterSnapshot = await snapshotWorkingTree(cwd, signal);
-  const actualFilesChanged = diffSnapshots(beforeSnapshot, afterSnapshot);
-  const boundaryViolations = findBoundaryViolations(
-    actualFilesChanged,
-    params.allowedFiles,
-    params.blockedFiles,
-  );
-  const validation = await runValidationCommands(
-    cwd,
-    params.validationCommands,
-    signal,
-  );
-  const hasValidationFailures = validation.some(
-    (item) => item.outcome === "fail",
-  );
-  let status = parseStatus(final.text);
-  if (boundaryViolations.length > 0 || hasValidationFailures) {
-    status = "blocked";
+    if (!final.text) {
+      const stderr = run.stderr.trim();
+      throw new Error(
+        `Worker subagent returned no text (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${stderr ? `; stderr: ${stderr}` : ""}).`,
+      );
+    }
+
+    const afterSnapshot = await snapshotWorkingTree(cwd, signal);
+    const actualFilesChanged = diffSnapshots(beforeSnapshot, afterSnapshot);
+    const boundaryViolations = findBoundaryViolations(
+      actualFilesChanged,
+      params.allowedFiles,
+      params.blockedFiles,
+    );
+    const validation = await runValidationCommands(
+      cwd,
+      params.validationCommands,
+      signal,
+    );
+    const hasValidationFailures = validation.some(
+      (item) => item.outcome === "fail",
+    );
+    let status = parseStatus(final.text);
+    if (boundaryViolations.length > 0 || hasValidationFailures) {
+      status = "blocked";
+    }
+
+    const baseOutcome = classifySubagentOutcome(run, signal);
+    const blockedReasons = [
+      ...(boundaryViolations.length > 0 ? ["boundary"] : []),
+      ...(hasValidationFailures ? ["validation"] : []),
+    ];
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "worker",
+      model: workerModelArg,
+      cwd,
+      outcome: baseOutcome,
+      status,
+      blockedReasons: blockedReasons.length > 0 ? blockedReasons : undefined,
+      exitCode: run.exitCode,
+      stopReason: run.stopReason,
+      errorMessage: final.errorMessage,
+      stderr: run.stderr.trim() || undefined,
+      metrics: buildSubagentMetrics(run),
+      generatedAt: Date.now(),
+    }, shouldLog);
+
+    return {
+      report: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}`,
+      workerModel: workerModelArg,
+      status,
+      filesChanged: actualFilesChanged,
+      boundaryViolations,
+      validation,
+      subagentMetrics: buildSubagentMetrics(run),
+      stopReason: run.stopReason,
+      errorMessage: final.errorMessage,
+    };
+  } catch (error) {
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "worker",
+      model: workerModelArg,
+      cwd,
+      outcome: classifySubagentOutcome({
+        exitCode: run?.exitCode ?? 1,
+        stopReason: run?.stopReason,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }, signal),
+      phase: run ? "postprocess" : "subprocess",
+      exitCode: run?.exitCode,
+      stopReason: run?.stopReason,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      stderr: run?.stderr.trim() || undefined,
+      metrics: run ? buildSubagentMetrics(run) : undefined,
+      generatedAt: Date.now(),
+    }, shouldLog);
+    throw error;
   }
-
-  return {
-    report: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}`,
-    workerModel: workerModelArg,
-    status,
-    filesChanged: actualFilesChanged,
-    boundaryViolations,
-    validation,
-    subagentMetrics: buildSubagentMetrics(run),
-    stopReason: run.stopReason,
-    errorMessage: final.errorMessage,
-  };
 }
 
 async function generateScouting(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
   params: ScoutParams,
+  delegationId: string,
+  pi: ExtensionAPI,
+  shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
 ): Promise<ScoutResult> {
+  const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
+    appendSubagentEvent(pi, {
+      type: "subagent_start",
+      delegationId,
+      role: "scout",
+      cwd,
+      requestedModel: params.scoutModel,
+      objective: params.objective,
+      scope: params.scope,
+      questions: params.questions,
+      expectedOutputs: params.expectedOutputs,
+      tools: params.tools,
+      generatedAt: Date.now(),
+    }, shouldLog);
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "scout",
+      model: params.scoutModel,
+      cwd,
+      outcome: "failed",
+      phase: "preflight",
+      errorMessage: "No active supervisor model selected.",
+      generatedAt: Date.now(),
+    }, shouldLog);
     throw new Error("No active supervisor model selected.");
   }
 
-  const scout = await resolveScoutSelection(ctx, state, params);
-  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(scout.model);
-  if (!auth.ok) {
-    throw new Error(`Unable to resolve auth for scout model: ${auth.error}`);
+  appendSubagentEvent(pi, {
+    type: "subagent_start",
+    delegationId,
+    role: "scout",
+    cwd,
+    requestedModel: params.scoutModel,
+    objective: params.objective,
+    scope: params.scope,
+    questions: params.questions,
+    expectedOutputs: params.expectedOutputs,
+    tools: params.tools,
+    generatedAt: Date.now(),
+  }, shouldLog);
+
+  let auth: { apiKey?: string; headers?: Record<string, string> };
+  let scoutModelArg: string;
+  let prompt: string;
+  try {
+    const scout = await resolveScoutSelection(ctx, state, params);
+    const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(scout.model);
+    if (!authResult.ok) {
+      throw new Error(`Unable to resolve auth for scout model: ${authResult.error}`);
+    }
+    auth = { apiKey: authResult.apiKey, headers: authResult.headers };
+
+    scoutModelArg = formatModel(scout.ref, scout.thinkingLevel);
+    const conversationContext = buildConversationContext(ctx.sessionManager.getBranch());
+    prompt = buildScoutPrompt(params, conversationContext);
+  } catch (error) {
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "scout",
+      model: params.scoutModel,
+      cwd,
+      outcome: classifySubagentOutcome({
+        exitCode: 1,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }, signal),
+      phase: "preflight",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      generatedAt: Date.now(),
+    }, shouldLog);
+    throw error;
   }
-
-  const cwd = params.cwd?.trim() || ctx.cwd;
-  const scoutModelArg = formatModel(scout.ref, scout.thinkingLevel);
-  const conversationContext = buildConversationContext(ctx.sessionManager.getBranch());
-  const prompt = buildScoutPrompt(params, conversationContext);
-  const run = await runScoutSubagent(cwd, prompt, scoutModelArg, auth, params.tools, signal, onUpdate);
-  const final = extractFinalAssistantText(
-    [
-      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
-      ...run.messages,
-      ...(run.turnEndMessage ? [run.turnEndMessage] : []),
-      ...(run.agentEndMessage ? [run.agentEndMessage] : []),
-    ],
-    run.streamedText,
-    true,
-  );
-
-  if (!final.text) {
-    const stderr = run.stderr.trim();
-    throw new Error(
-      `Scout subagent returned no text (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${stderr ? `; stderr: ${stderr}` : ""}).`,
+  let run: Awaited<ReturnType<typeof runScoutSubagent>> | undefined;
+  try {
+    run = await runScoutSubagent(
+      cwd,
+      prompt,
+      scoutModelArg,
+      auth,
+      params.tools,
+      delegationId,
+      {
+        objective: params.objective,
+        scope: params.scope,
+        questions: params.questions,
+        expectedOutputs: params.expectedOutputs,
+        tools: params.tools,
+      },
+      pi,
+      shouldLog,
+      signal,
+      onUpdate,
     );
-  }
+    const final = extractFinalAssistantText(
+      [
+        ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
+        ...run.messages,
+        ...(run.turnEndMessage ? [run.turnEndMessage] : []),
+        ...(run.agentEndMessage ? [run.agentEndMessage] : []),
+      ],
+      run.streamedText,
+      true,
+    );
 
-  return {
-    report: final.text,
-    scoutModel: scoutModelArg,
-    subagentMetrics: buildSubagentMetrics(run),
-    stopReason: run.stopReason,
-    errorMessage: final.errorMessage,
-  };
+    if (!final.text) {
+      const stderr = run.stderr.trim();
+      throw new Error(
+        `Scout subagent returned no text (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${stderr ? `; stderr: ${stderr}` : ""}).`,
+      );
+    }
+
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "scout",
+      model: scoutModelArg,
+      cwd,
+      outcome: classifySubagentOutcome(run, signal),
+      exitCode: run.exitCode,
+      stopReason: run.stopReason,
+      errorMessage: final.errorMessage,
+      stderr: run.stderr.trim() || undefined,
+      metrics: buildSubagentMetrics(run),
+      generatedAt: Date.now(),
+    }, shouldLog);
+
+    return {
+      report: final.text,
+      scoutModel: scoutModelArg,
+      subagentMetrics: buildSubagentMetrics(run),
+      stopReason: run.stopReason,
+      errorMessage: final.errorMessage,
+    };
+  } catch (error) {
+    appendSubagentEvent(pi, {
+      type: "subagent_end",
+      delegationId,
+      role: "scout",
+      model: scoutModelArg,
+      cwd,
+      outcome: classifySubagentOutcome({
+        exitCode: run?.exitCode ?? 1,
+        stopReason: run?.stopReason,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }, signal),
+      phase: run ? "postprocess" : "subprocess",
+      exitCode: run?.exitCode,
+      stopReason: run?.stopReason,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      stderr: run?.stderr.trim() || undefined,
+      metrics: run ? buildSubagentMetrics(run) : undefined,
+      generatedAt: Date.now(),
+    }, shouldLog);
+    throw error;
+  }
 }
 
 const DelegateWorkerParams = Type.Object({
@@ -2758,7 +3187,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         content: [{ type: "text", text: "Starting scout subagent..." }],
       });
       try {
-        const result = await generateScouting(ctx, state, params, signal, (text) => {
+        const result = await generateScouting(ctx, state, params, delegationKey, pi, isCurrentSession, signal, (text) => {
           if (!isCurrentSession()) {
             return;
           }
@@ -2908,6 +3337,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               ctx,
               state,
               task,
+              delegationKey,
+              pi,
+              isCurrentSession,
               signal,
               () => {
                 if (!isCurrentSession()) return;
@@ -3109,6 +3541,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               ctx,
               state,
               task,
+              delegationKey,
+              pi,
+              isCurrentSession,
               signal,
               () => {
                 if (!isCurrentSession()) return;
@@ -3243,6 +3678,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           ctx,
           state,
           params,
+          delegationKey,
+          pi,
+          isCurrentSession,
           signal,
           (text) => {
             if (!isCurrentSession()) {

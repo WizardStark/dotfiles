@@ -21,6 +21,6 @@
   },
   "enabledModels": [
     "github-copilot/gpt-5.4",
-    "github-copilot/gemini-3.1-pro-preview"
+    "github-copilot/gemini-3-flash-preview"
   ]
 }
