@@ -30,6 +30,7 @@ import {
 } from "./lib/session-messages.ts";
 import {
   findModel,
+  resolveExactModelReference,
   sameModel,
   toRef,
   type ModelRef,
@@ -191,16 +192,10 @@ type ParallelScoutTaskResult = ScoutResult & {
 
 const STATE_ENTRY = "supervisor-worker-state";
 const SUBAGENT_EVENT_ENTRY = "subagent-event";
-const DEFAULT_WORKER_PROVIDER = "github-copilot";
-const DEFAULT_WORKER_MODEL_ID = "gemini-3-flash-preview";
 const DEFAULT_WORKER_THINKING_LEVEL: ThinkingLevel = "minimal";
 
-const DEFAULT_SCOUT_PROVIDER = "github-copilot";
-const DEFAULT_SCOUT_MODEL_ID = "gemini-3-flash-preview";
 const DEFAULT_SCOUT_THINKING_LEVEL: ThinkingLevel = "minimal";
 
-const DEFAULT_REVIEWER_PROVIDER = "github-copilot";
-const DEFAULT_REVIEWER_MODEL_ID = "gemini-3-flash-preview";
 const DEFAULT_REVIEWER_THINKING_LEVEL: ThinkingLevel = "minimal";
 
 const DEFAULT_AUTO_MODE = "conservative" as const;
@@ -363,21 +358,48 @@ function formatModel(ref?: ModelRef, thinkingLevel?: ThinkingLevel): string {
 }
 
 function parseModelRef(
+  ctx: ExtensionContext,
   raw: string,
-  fallbackProvider?: string,
 ): ModelRef | undefined {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  if (trimmed.includes("/")) {
-    const [provider, ...rest] = trimmed.split("/");
-    const id = rest.join("/").trim();
-    if (!provider || !id) return undefined;
-    return { provider: provider.trim(), id };
-  }
-  if (!fallbackProvider) return undefined;
-  return { provider: fallbackProvider, id: trimmed };
+  const resolved = resolveExactModelReference(
+    raw,
+    ctx.modelRegistry.getAvailable(),
+  );
+  return resolved.status === "matched" ? toRef(resolved.model) : undefined;
 }
 
+function resolveRequestedModel(
+  ctx: ExtensionContext,
+  raw: string,
+  role: "worker" | "scout" | "reviewer",
+): { ref: ModelRef; model: Model<Api> } | { error: string } {
+  const resolved = resolveExactModelReference(
+    raw,
+    ctx.modelRegistry.getAvailable(),
+  );
+
+  if (resolved.status === "matched") {
+    const ref = toRef(resolved.model);
+    if (ref) {
+      return { ref, model: resolved.model };
+    }
+  }
+
+  const roleLabel = `${role[0].toUpperCase()}${role.slice(1)}`;
+  if (resolved.status === "ambiguous") {
+    return {
+      error: `${roleLabel} model is ambiguous: ${raw.trim()}. Use provider/model.`,
+    };
+  }
+  if (resolved.status === "not_found") {
+    return {
+      error: `${roleLabel} model not found: ${raw.trim()}. Use provider/model if needed.`,
+    };
+  }
+  return {
+    error: `Unable to parse ${role} model. Use model or provider/model.`,
+  };
+}
 
 function readSavedState(
   ctx: ExtensionContext,
@@ -444,12 +466,19 @@ function readSavedReviewKeys(ctx: ExtensionContext): string[] {
     : [];
 }
 
+function getPreferredFallbackRef(ctx: ExtensionContext): ModelRef | undefined {
+  const preferred = resolveExactModelReference(
+    "github-copilot/gemini-3-flash-preview",
+    ctx.modelRegistry.getAvailable(),
+  );
+  if (preferred.status === "matched") {
+    return toRef(preferred.model);
+  }
+  return toRef(ctx.model);
+}
+
 function getDefaultWorkerRef(ctx: ExtensionContext): ModelRef | undefined {
-  if (!ctx.model) return undefined;
-  return {
-    provider: DEFAULT_WORKER_PROVIDER,
-    id: DEFAULT_WORKER_MODEL_ID,
-  };
+  return getPreferredFallbackRef(ctx);
 }
 
 function getEffectiveWorkerRef(
@@ -463,10 +492,7 @@ function getEffectiveScoutRef(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
 ): ModelRef | undefined {
-  return state.scoutOverride ?? {
-    provider: DEFAULT_SCOUT_PROVIDER,
-    id: DEFAULT_SCOUT_MODEL_ID,
-  };
+  return state.scoutOverride ?? getPreferredFallbackRef(ctx);
 }
 
 function getEffectiveScoutThinkingLevel(
@@ -479,10 +505,7 @@ function getEffectiveReviewerRef(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
 ): ModelRef | undefined {
-  return state.reviewerOverride ?? {
-    provider: DEFAULT_REVIEWER_PROVIDER,
-    id: DEFAULT_REVIEWER_MODEL_ID,
-  };
+  return state.reviewerOverride ?? getPreferredFallbackRef(ctx);
 }
 
 function getEffectiveReviewerThinkingLevel(
@@ -509,7 +532,7 @@ function resultWorkerLabelFallback(
   const thinkingLevel =
     params.workerThinkingLevel ?? getEffectiveThinkingLevel(state);
   const requestedRef = params.workerModel
-    ? parseModelRef(params.workerModel, ctx.model?.provider)
+    ? parseModelRef(ctx, params.workerModel)
     : getEffectiveWorkerRef(ctx, state);
   return formatModel(requestedRef, thinkingLevel);
 }
@@ -522,7 +545,7 @@ function resultScoutLabelFallback(
   const thinkingLevel =
     params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state);
   const requestedRef = params.scoutModel
-    ? parseModelRef(params.scoutModel, ctx.model?.provider)
+    ? parseModelRef(ctx, params.scoutModel)
     : getEffectiveScoutRef(ctx, state);
   return formatModel(requestedRef, thinkingLevel);
 }
@@ -2818,23 +2841,29 @@ async function resolveWorkerSelection(
 ): Promise<{ ref: ModelRef; model: Model<Api>; thinkingLevel: ThinkingLevel }> {
   const thinkingLevel =
     params.workerThinkingLevel ?? getEffectiveThinkingLevel(state);
-  const requestedRef = params.workerModel
-    ? parseModelRef(params.workerModel, ctx.model?.provider)
-    : getEffectiveWorkerRef(ctx, state);
-  if (!requestedRef) {
+  if (params.workerModel) {
+    const requested = resolveRequestedModel(ctx, params.workerModel, "worker");
+    if ("error" in requested) {
+      throw new Error(requested.error);
+    }
+    return { ...requested, thinkingLevel };
+  }
+
+  const ref = getEffectiveWorkerRef(ctx, state);
+  if (!ref) {
     throw new Error(
       "No worker model could be resolved. Select a model first or configure /worker-model.",
     );
   }
 
-  const model = findModel(ctx, requestedRef);
+  const model = findModel(ctx, ref);
   if (!model) {
     throw new Error(
-      `Worker model not found: ${formatModel(requestedRef, thinkingLevel)}. Use provider/id form if needed.`,
+      `Worker model not found: ${formatModel(ref, thinkingLevel)}. Use provider/model if needed.`,
     );
   }
 
-  return { ref: requestedRef, model, thinkingLevel };
+  return { ref, model, thinkingLevel };
 }
 
 async function resolveScoutSelection(
@@ -2844,23 +2873,29 @@ async function resolveScoutSelection(
 ): Promise<{ ref: ModelRef; model: Model<Api>; thinkingLevel: ThinkingLevel }> {
   const thinkingLevel =
     params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state);
-  const requestedRef = params.scoutModel
-    ? parseModelRef(params.scoutModel, ctx.model?.provider)
-    : getEffectiveScoutRef(ctx, state);
-  if (!requestedRef) {
+  if (params.scoutModel) {
+    const requested = resolveRequestedModel(ctx, params.scoutModel, "scout");
+    if ("error" in requested) {
+      throw new Error(requested.error);
+    }
+    return { ...requested, thinkingLevel };
+  }
+
+  const ref = getEffectiveScoutRef(ctx, state);
+  if (!ref) {
     throw new Error(
       "No scout model could be resolved. Select a model first or configure /scout-model.",
     );
   }
 
-  const model = findModel(ctx, requestedRef);
+  const model = findModel(ctx, ref);
   if (!model) {
     throw new Error(
-      `Scout model not found: ${formatModel(requestedRef, thinkingLevel)}. Use provider/id form if needed.`,
+      `Scout model not found: ${formatModel(ref, thinkingLevel)}. Use provider/model if needed.`,
     );
   }
 
-  return { ref: requestedRef, model, thinkingLevel };
+  return { ref, model, thinkingLevel };
 }
 
 async function generateDelegation(
@@ -3946,7 +3981,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         workerModel:
           params.scoutModel?.trim() ||
           getEffectiveScoutRef(ctx, state)?.id ||
-          DEFAULT_SCOUT_MODEL_ID,
+          "unresolved",
         phase: "starting",
         role: "scout",
       });
@@ -3964,9 +3999,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             active.phase = "running";
             active.workerModel = formatModel(
               params.scoutModel
-                ? parseModelRef(params.scoutModel, ctx.model?.provider)
-                : getEffectiveWorkerRef(ctx, state),
-              params.scoutThinkingLevel ?? getEffectiveThinkingLevel(state),
+                ? parseModelRef(ctx, params.scoutModel)
+                : getEffectiveScoutRef(ctx, state),
+              params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
             );
             updateDelegationWidget(ctx);
           }
@@ -4096,7 +4131,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             workerModel:
               task.scoutModel?.trim() ||
               getEffectiveScoutRef(ctx, state)?.id ||
-              DEFAULT_SCOUT_MODEL_ID,
+              "unresolved",
             phase: "starting",
             role: "scout",
           });
@@ -4300,7 +4335,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             workerModel:
               task.workerModel?.trim() ||
               getEffectiveWorkerRef(ctx, state)?.id ||
-              DEFAULT_WORKER_MODEL_ID,
+              "unresolved",
             phase: "starting",
             role: "worker",
           });
@@ -4436,7 +4471,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         workerModel:
           params.workerModel?.trim() ||
           getEffectiveWorkerRef(ctx, state)?.id ||
-          DEFAULT_WORKER_MODEL_ID,
+          "unresolved",
         phase: "starting",
         role: "worker",
       });
@@ -4537,8 +4572,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       }
 
       if (modelArg === "default") {
+        const { override, thinkingLevel, ...rest } = state;
         state = {
-          autoMode: getAutoMode(state),
+          ...rest,
           thinkingLevel: thinkingArg ?? DEFAULT_WORKER_THINKING_LEVEL,
         };
         persistState();
@@ -4550,32 +4586,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         return;
       }
 
-      const ref = parseModelRef(modelArg, ctx.model?.provider);
-      if (!ref) {
-        ctx.ui.notify(
-          "Unable to parse worker model. Use model or provider/model.",
-          "error",
-        );
-        return;
-      }
-      const model = findModel(ctx, ref);
-      if (!model) {
-        ctx.ui.notify(
-          `Worker model not found: ${formatModel(ref, thinkingArg)}`,
-          "error",
-        );
+      const requested = resolveRequestedModel(ctx, modelArg, "worker");
+      if ("error" in requested) {
+        ctx.ui.notify(requested.error, "error");
         return;
       }
 
       state = {
-        autoMode: getAutoMode(state),
-        override: ref,
+        ...state,
+        override: requested.ref,
         thinkingLevel: thinkingArg ?? getEffectiveThinkingLevel(state),
       };
       persistState();
       refreshStatus(ctx);
       ctx.ui.notify(
-        `Worker set to ${formatModel(ref, getEffectiveThinkingLevel(state))}`,
+        `Worker set to ${formatModel(requested.ref, getEffectiveThinkingLevel(state))}`,
         "info",
       );
     },
@@ -4605,7 +4630,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
       if (modelArg === "default") {
         const { scoutOverride, scoutThinkingLevel, ...rest } = state;
-        state = rest;
+        state = {
+          ...rest,
+          scoutThinkingLevel: thinkingArg ?? DEFAULT_SCOUT_THINKING_LEVEL,
+        };
         persistState();
         refreshStatus(ctx);
         ctx.ui.notify(
@@ -4615,32 +4643,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         return;
       }
 
-      const ref = parseModelRef(modelArg, ctx.model?.provider);
-      if (!ref) {
-        ctx.ui.notify(
-          "Unable to parse scout model. Use model or provider/model.",
-          "error",
-        );
-        return;
-      }
-      const model = findModel(ctx, ref);
-      if (!model) {
-        ctx.ui.notify(
-          `Scout model not found: ${formatModel(ref, thinkingArg)}`,
-          "error",
-        );
+      const requested = resolveRequestedModel(ctx, modelArg, "scout");
+      if ("error" in requested) {
+        ctx.ui.notify(requested.error, "error");
         return;
       }
 
       state = {
         ...state,
-        scoutOverride: ref,
+        scoutOverride: requested.ref,
         scoutThinkingLevel: thinkingArg ?? getEffectiveScoutThinkingLevel(state),
       };
       persistState();
       refreshStatus(ctx);
       ctx.ui.notify(
-        `Scout set to ${formatModel(ref, getEffectiveScoutThinkingLevel(state))}`,
+        `Scout set to ${formatModel(requested.ref, getEffectiveScoutThinkingLevel(state))}`,
         "info",
       );
     },
@@ -4670,7 +4687,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
       if (modelArg === "default") {
         const { reviewerOverride, reviewerThinkingLevel, ...rest } = state;
-        state = rest;
+        state = {
+          ...rest,
+          reviewerThinkingLevel: thinkingArg ?? DEFAULT_REVIEWER_THINKING_LEVEL,
+        };
         persistState();
         refreshStatus(ctx);
         ctx.ui.notify(
@@ -4680,32 +4700,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         return;
       }
 
-      const ref = parseModelRef(modelArg, ctx.model?.provider);
-      if (!ref) {
-        ctx.ui.notify(
-          "Unable to parse reviewer model. Use model or provider/model.",
-          "error",
-        );
-        return;
-      }
-      const model = findModel(ctx, ref);
-      if (!model) {
-        ctx.ui.notify(
-          `Reviewer model not found: ${formatModel(ref, thinkingArg)}`,
-          "error",
-        );
+      const requested = resolveRequestedModel(ctx, modelArg, "reviewer");
+      if ("error" in requested) {
+        ctx.ui.notify(requested.error, "error");
         return;
       }
 
       state = {
         ...state,
-        reviewerOverride: ref,
+        reviewerOverride: requested.ref,
         reviewerThinkingLevel: thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
       };
       persistState();
       refreshStatus(ctx);
       ctx.ui.notify(
-        `Reviewer set to ${formatModel(ref, getEffectiveReviewerThinkingLevel(state))}`,
+        `Reviewer set to ${formatModel(requested.ref, getEffectiveReviewerThinkingLevel(state))}`,
         "info",
       );
     },
