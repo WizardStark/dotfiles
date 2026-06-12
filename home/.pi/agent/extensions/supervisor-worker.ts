@@ -71,6 +71,15 @@ interface TurnDelegationState {
   usedExplicitReviewBypass: boolean;
 }
 
+type HandoffEditLocation = {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+  summary?: string;
+  sourceTool?: "edit" | "write" | "file";
+  precision?: "range" | "file";
+};
+
 interface HandoffPointer {
   source: string;
   toolName: string;
@@ -79,6 +88,10 @@ interface HandoffPointer {
   generatedAt: number;
   summary: string;
   filesChanged: string[];
+  editLocations: HandoffEditLocation[];
+  artifactSources: string[];
+  artifactQueries: string[];
+  artifactSummary?: string;
   indexed?: boolean;
 }
 
@@ -94,6 +107,9 @@ type DelegateParams = {
   workerThinkingLevel?: ThinkingLevel;
   cwd?: string;
   tools?: string[];
+  artifactSources?: string[];
+  artifactQueries?: string[];
+  artifactSummary?: string;
 };
 
 type ScoutParams = {
@@ -105,6 +121,9 @@ type ScoutParams = {
   scoutThinkingLevel?: ThinkingLevel;
   cwd?: string;
   tools?: string[];
+  artifactSources?: string[];
+  artifactQueries?: string[];
+  artifactSummary?: string;
 };
 
 type DelegateStatus = "completed" | "escalated" | "blocked" | "unknown";
@@ -118,11 +137,23 @@ type ValidationResult = {
   note: string;
 };
 
+type WorkerToolExecution = {
+  toolCallId?: string;
+  toolName: string;
+  args?: Record<string, unknown>;
+  result?: unknown;
+  isError?: boolean;
+};
+
 type DelegateResult = {
   report: string;
   workerModel: string;
   status: DelegateStatus;
   filesChanged: string[];
+  editLocations: HandoffEditLocation[];
+  artifactSources: string[];
+  artifactQueries: string[];
+  artifactSummary?: string;
   boundaryViolations: string[];
   validation: ValidationResult[];
   subagentMetrics?: SubagentMetrics;
@@ -141,6 +172,9 @@ type ParallelDelegateTaskResult = DelegateResult & {
 type ScoutResult = {
   report: string;
   scoutModel: string;
+  artifactSources: string[];
+  artifactQueries: string[];
+  artifactSummary?: string;
   subagentMetrics?: SubagentMetrics;
   stopReason?: string;
   errorMessage?: string;
@@ -263,6 +297,8 @@ Your job:
 - Do not ask the user questions directly.
 - If the task becomes ambiguous, risky, cross-cutting, or requires touching forbidden files, stop and escalate instead of guessing.
 - Use tools, tests, lint, and typechecks as the source of truth when available.
+- Prefer reusable artifact-producing tools (ctx_batch_execute, ctx_index, ctx_fetch_and_index, large ctx_execute with intent) for shared research.
+- When reusing an existing artifact, reference its source label in your Summary/Edits and mention why it was useful.
 
 Return exactly this Markdown structure:
 
@@ -274,6 +310,11 @@ Return exactly this Markdown structure:
 
 ## Files Changed
 - one file per bullet
+- If none: (none)
+
+## Edits
+- file:path:line or file:path:start-end - concise description of the changed location
+- If you only know the file, say file:path - file-level change
 - If none: (none)
 
 ## Validation
@@ -293,6 +334,8 @@ Your job:
 - Prefer concrete findings with file paths over speculation.
 - Call out uncertainty clearly when evidence is incomplete.
 - Recommend a practical next step for the supervisor.
+- Prefer scout-safe reusable artifact workflows such as ctx_search, ctx_execute with intent, and any allowed indexing tools for shared research.
+- When reusing an existing artifact, reference its source label in your Summary/Findings and mention why it was useful.
 
 Return exactly this Markdown structure:
 
@@ -504,6 +547,146 @@ function updateStatus(ctx: ExtensionContext, state: SupervisorWorkerState) {
 
 function singleLine(text: string): string {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function countLines(text: string): number {
+  return text.length === 0 ? 1 : text.split("\n").length;
+}
+
+function formatLineRange(startLine?: number, endLine?: number): string {
+  if (typeof startLine !== "number" && typeof endLine !== "number") {
+    return "";
+  }
+  const start = startLine ?? endLine;
+  const end = endLine ?? startLine;
+  if (start === undefined || end === undefined) {
+    return "";
+  }
+  return start === end ? `${start}` : `${start}-${end}`;
+}
+
+function normalizeEditLocation(
+  location: HandoffEditLocation,
+): HandoffEditLocation | undefined {
+  const path = typeof location.path === "string" ? normalizePath(location.path) : "";
+  if (!path) return undefined;
+  const startLine = Number.isFinite(location.startLine) ? Number(location.startLine) : undefined;
+  const endLine = Number.isFinite(location.endLine) ? Number(location.endLine) : undefined;
+  const summary = typeof location.summary === "string" && location.summary.trim()
+    ? singleLine(location.summary)
+    : undefined;
+  const sourceTool = location.sourceTool;
+  const precision = location.precision ?? (startLine !== undefined || endLine !== undefined ? "range" : "file");
+  return {
+    path,
+    startLine,
+    endLine,
+    summary,
+    sourceTool,
+    precision,
+  };
+}
+
+function dedupeEditLocations(locations: HandoffEditLocation[]): HandoffEditLocation[] {
+  const seen = new Set<string>();
+  return locations
+    .map((location) => normalizeEditLocation(location))
+    .filter((location): location is HandoffEditLocation => Boolean(location))
+    .filter((location) => {
+      const key = [
+        location.path,
+        location.startLine ?? "",
+        location.endLine ?? "",
+        location.summary ?? "",
+        location.sourceTool ?? "",
+        location.precision ?? "",
+      ].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => {
+      if (left.path !== right.path) return left.path.localeCompare(right.path);
+      const leftStart = left.startLine ?? Number.MAX_SAFE_INTEGER;
+      const rightStart = right.startLine ?? Number.MAX_SAFE_INTEGER;
+      if (leftStart !== rightStart) return leftStart - rightStart;
+      const leftEnd = left.endLine ?? Number.MAX_SAFE_INTEGER;
+      const rightEnd = right.endLine ?? Number.MAX_SAFE_INTEGER;
+      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
+      return (left.summary ?? "").localeCompare(right.summary ?? "");
+    });
+}
+
+function formatEditLocation(location: HandoffEditLocation): string {
+  const normalized = normalizeEditLocation(location);
+  if (!normalized) return "(unknown edit)";
+  const range = formatLineRange(normalized.startLine, normalized.endLine);
+  const target = range ? `${normalized.path}:${range}` : normalized.path;
+  const summary = normalized.summary
+    ? normalized.summary
+    : normalized.precision === "file"
+      ? "file-level change"
+      : "inspect changed block";
+  return `${target} - ${summary}`;
+}
+
+function formatEditLocationsInline(
+  locations: HandoffEditLocation[],
+  limit = 4,
+): string {
+  const normalized = dedupeEditLocations(locations);
+  if (normalized.length === 0) return "(none)";
+  const preview = normalized.slice(0, limit).map((location) => formatEditLocation(location));
+  const remaining = normalized.length - preview.length;
+  return remaining > 0 ? `${preview.join("; ")}; +${remaining} more` : preview.join("; ");
+}
+
+function buildInspectionTargets(
+  editLocations: HandoffEditLocation[],
+  filesChanged: string[],
+): HandoffEditLocation[] {
+  const normalizedEdits = dedupeEditLocations(editLocations);
+  if (normalizedEdits.length > 0) {
+    return normalizedEdits;
+  }
+  return dedupeEditLocations(
+    filesChanged.map((path) => ({
+      path,
+      sourceTool: "file",
+      precision: "file",
+      summary: "changed file (precise range unavailable)",
+    })),
+  );
+}
+
+function buildInspectionBullets(
+  editLocations: HandoffEditLocation[],
+  filesChanged: string[],
+  limit = 6,
+): string[] {
+  const targets = buildInspectionTargets(editLocations, filesChanged);
+  if (targets.length === 0) return ["(none)"];
+  const bullets = [
+    "Prefer one ctx_batch_execute call to inspect these locations together before falling back to serial read calls.",
+    ...targets.slice(0, limit).map((location) => formatEditLocation(location)),
+    "Use read only when you need one exact excerpt for quoting or a direct supervisor edit.",
+  ];
+  const remaining = targets.length - Math.min(targets.length, limit);
+  if (remaining > 0) {
+    bullets.splice(bullets.length - 1, 0, `+${remaining} additional changed location(s)`);
+  }
+  return bullets;
+}
+
+function buildInspectionAppendix(
+  editLocations: HandoffEditLocation[],
+  filesChanged: string[],
+): string {
+  const bullets = buildInspectionBullets(editLocations, filesChanged).filter(
+    (item) => item !== "(none)",
+  );
+  if (bullets.length === 0) return "";
+  return `\n\n## Supervisor Follow-up\n\n### Suggested Inspection\n${bullets.map((item) => `- ${item}`).join("\n")}`;
 }
 
 function formatTaskTitle(text: string): string {
@@ -1135,7 +1318,7 @@ function finalizeParallelWorkerResults(
   const resolvedTasks = resolveParallelWorkerTasks(baseCwd, tasks);
   const ownership = attributeParallelWorkerFiles(root, resolvedTasks, changedFiles);
 
-  const finalizedResults = results.map((result, index) => {
+  const finalizedResults: ParallelDelegateTaskResult[] = results.map((result, index) => {
     const taskOwnership = ownership.resolvedTasks[index];
     const attributedFiles = ownership.filesByTaskIndex[index] ?? [];
     const taskBoundaryViolations = findAbsoluteBoundaryViolations(
@@ -1156,9 +1339,9 @@ function finalizeParallelWorkerResults(
       label: taskOwnership.label,
       filesChanged: attributedFiles,
       boundaryViolations,
-      status: baseStatus === "blocked" || hasValidationFailures || boundaryViolations.length > 0
+      status: (baseStatus === "blocked" || hasValidationFailures || boundaryViolations.length > 0
         ? "blocked"
-        : baseStatus,
+        : baseStatus) as DelegateStatus,
       report: `${stripSupervisorAppendix(result.report)}${buildSupervisorAppendix(boundaryViolations, result.validation)}`,
     };
   });
@@ -1179,10 +1362,11 @@ function buildWorkerFailureResult(
   ) || "Worker delegation failed before the subagent completed.";
   return {
     label,
-    report: `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Files Changed\n- (none)\n\n## Validation\n- (none)\n\n## Escalation\n- ${message}`,
+    report: `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Files Changed\n- (none)\n\n## Edits\n- (none)\n\n## Validation\n- (none)\n\n## Escalation\n- ${message}`,
     workerModel,
     status: "blocked",
     filesChanged: [],
+    editLocations: [],
     boundaryViolations: [],
     validation: [],
     errorMessage: message,
@@ -1218,6 +1402,7 @@ function buildParallelWorkerSummary(
       `- status: ${result.status}`,
       `- worker: ${result.workerModel}`,
       `- files changed: ${result.filesChanged.length > 0 ? result.filesChanged.join(", ") : "(none)"}`,
+      `- edit locations: ${formatEditLocationsInline(result.editLocations, 3)}`,
       `- validation: ${result.validation.length > 0 ? `${passedValidation} pass, ${failedValidation} fail` : "(none)"}`,
     ];
     if (result.boundaryViolations.length > 0) {
@@ -1298,6 +1483,21 @@ function buildWorkerPrompt(
   const sections = [
     `## Objective\n${params.objective.trim()}`,
     `## Scope\n${params.scope?.trim() || "Stay within the stated task only."}`,
+  ];
+
+  if (params.artifactSources && params.artifactSources.length > 0) {
+    sections.push(`## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`);
+  }
+
+  if (params.artifactQueries && params.artifactQueries.length > 0) {
+    sections.push(`## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`);
+  }
+
+  if (params.artifactSummary) {
+    sections.push(`## Artifact summary\n${params.artifactSummary.trim()}`);
+  }
+
+  sections.push(
     `## Allowed files\n${formatBullets(params.allowedFiles, "Any file needed within scope.")}`,
     `## Blocked files\n${formatBullets(params.blockedFiles)}`,
     `## Acceptance criteria\n${formatBullets(params.acceptanceCriteria)}`,
@@ -1305,7 +1505,7 @@ function buildWorkerPrompt(
     `## Escalation triggers\n${formatBullets(params.escalationTriggers)}`,
     `## Recent conversation context\n${conversationContext}`,
     `## Execution rules\n- Read nearby code when needed for context.\n- Only edit files that fit the scope.\n${hasAllowedFiles ? "- If you need to change files outside the allowed set, stop and escalate.\n" : ""}- Run the provided validation commands when possible after editing.\n- Prefer a minimal patch over a broad refactor.`,
-  ].filter(Boolean);
+  );
 
   return sections.join("\n\n");
 }
@@ -1317,11 +1517,26 @@ function buildScoutPrompt(
   const sections = [
     `## Objective\n${params.objective.trim()}`,
     `## Scope\n${params.scope?.trim() || "Read-only reconnaissance only. Stay focused on the stated question."}`,
+  ];
+
+  if (params.artifactSources && params.artifactSources.length > 0) {
+    sections.push(`## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`);
+  }
+
+  if (params.artifactQueries && params.artifactQueries.length > 0) {
+    sections.push(`## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`);
+  }
+
+  if (params.artifactSummary) {
+    sections.push(`## Artifact summary\n${params.artifactSummary.trim()}`);
+  }
+
+  sections.push(
     `## Questions to answer\n${formatBullets(params.questions)}`,
     `## Expected outputs\n${formatBullets(params.expectedOutputs)}`,
     `## Recent conversation context\n${conversationContext}`,
     `## Execution rules\n- Use only read-only exploration.\n- Prefer path-backed findings and short evidence.\n- If the relevant answer depends on code changes, stop at recommendations rather than implementing them.`,
-  ].filter(Boolean);
+  );
 
   return sections.join("\n\n");
 }
@@ -1371,9 +1586,13 @@ async function runWorkerSubagent(
   shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
-) {
+): Promise<Awaited<ReturnType<typeof runSubagentProcess>> & {
+  toolExecutions: WorkerToolExecution[];
+}> {
   let eventIndex = 0;
   const generatedAt = Date.now();
+  const activeToolCalls = new Map<string, WorkerToolExecution>();
+  const toolExecutions: WorkerToolExecution[] = [];
   appendSubagentEvent(pi, {
     type: "subagent_process_start",
     delegationId,
@@ -1414,6 +1633,38 @@ async function runWorkerSubagent(
           event,
           generatedAt: Date.now(),
         }, shouldLog);
+
+        const toolEvent = event && typeof event === "object"
+          ? event as Record<string, unknown>
+          : undefined;
+        const toolCallId = typeof toolEvent?.toolCallId === "string"
+          ? toolEvent.toolCallId
+          : undefined;
+        const toolName = typeof toolEvent?.toolName === "string"
+          ? toolEvent.toolName
+          : undefined;
+        if (toolEvent?.type === "tool_execution_start" && toolCallId && toolName) {
+          activeToolCalls.set(toolCallId, {
+            toolCallId,
+            toolName,
+            args: toolEvent.args && typeof toolEvent.args === "object"
+              ? toolEvent.args as Record<string, unknown>
+              : undefined,
+          });
+        }
+        if (toolEvent?.type === "tool_execution_end" && toolName) {
+          const prior = toolCallId ? activeToolCalls.get(toolCallId) : undefined;
+          toolExecutions.push({
+            toolCallId,
+            toolName,
+            args: prior?.args,
+            result: toolEvent.result,
+            isError: toolEvent.isError === true,
+          });
+          if (toolCallId) {
+            activeToolCalls.delete(toolCallId);
+          }
+        }
       },
     });
 
@@ -1433,7 +1684,10 @@ async function runWorkerSubagent(
       generatedAt: Date.now(),
     }, shouldLog);
 
-    return run;
+    return {
+      ...run,
+      toolExecutions,
+    };
   } catch (error) {
     const details = error && typeof error === "object"
       ? error as Record<string, unknown>
@@ -1459,6 +1713,228 @@ async function runWorkerSubagent(
   }
 }
 
+function extractDiffRanges(diff: string): Array<{ startLine: number; endLine: number }> {
+  const ranges: Array<{ startLine: number; endLine: number }> = [];
+  let currentStart: number | undefined;
+  let currentEnd: number | undefined;
+  let sawChange = false;
+
+  const flush = () => {
+    if (sawChange && currentStart !== undefined && currentEnd !== undefined) {
+      ranges.push({ startLine: currentStart, endLine: currentEnd });
+    }
+    currentStart = undefined;
+    currentEnd = undefined;
+    sawChange = false;
+  };
+
+  for (const rawLine of diff.split("\n")) {
+    if (rawLine.includes("...")) {
+      flush();
+      continue;
+    }
+    const match = rawLine.match(/^([ +\-])\s*(\d+)(?:\s|$)/);
+    if (!match) continue;
+    if (match[1] !== "+" && match[1] !== "-") continue;
+    const lineNumber = Number(match[2]);
+    if (!Number.isFinite(lineNumber)) continue;
+    currentStart = currentStart === undefined ? lineNumber : Math.min(currentStart, lineNumber);
+    currentEnd = currentEnd === undefined ? lineNumber : Math.max(currentEnd, lineNumber);
+    sawChange = true;
+  }
+
+  flush();
+  return ranges;
+}
+
+function normalizeArtifactLabel(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function extractArtifactSourcesFromText(text: string): string[] {
+  const sources: string[] = [];
+  const patterns = [
+    /Use source:\s*"([^"]+)"/g,
+    /Indexed\s+\d+\s+sections(?:\s*\([^\n]+\))?\s+from:\s*([^\n]+)/g,
+    /^- \[(?:new|cache)\]\s+(.+?)\s+—/gm,
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const label = normalizeArtifactLabel(match[1]);
+      if (label) sources.push(label);
+    }
+  }
+  return [...new Set(sources)];
+}
+
+function buildBatchArtifactSource(commands: unknown): string | undefined {
+  if (!Array.isArray(commands) || commands.length === 0) return undefined;
+  const labels = commands
+    .flatMap((command) => {
+      if (!command || typeof command !== "object") return [] as string[];
+      const label = normalizeArtifactLabel((command as { label?: unknown }).label);
+      return label ? [label] : [];
+    });
+  if (labels.length === 0) return undefined;
+  return `batch:${labels.join(",").slice(0, 80)}`;
+}
+
+function extractArtifactPointers(
+  execution: WorkerToolExecution,
+): { sources: string[]; queries: string[] } {
+  const sources: string[] = [];
+  const queries: string[] = [];
+  const toolName = execution.toolName;
+  const args = execution.args;
+  const result = execution.result && typeof execution.result === "object"
+    ? execution.result as Record<string, unknown>
+    : undefined;
+  const resultText = extractTextContent(result);
+
+  if (Array.isArray(args?.queries)) {
+    queries.push(...args.queries.filter((q): q is string => typeof q === "string" && q.trim().length > 0));
+  }
+
+  if (toolName === "ctx_search") {
+    const source = normalizeArtifactLabel(args?.source);
+    if (source) sources.push(source);
+  }
+
+  if (toolName === "ctx_batch_execute") {
+    const source = buildBatchArtifactSource(args?.commands);
+    if (source) sources.push(source);
+  }
+
+  if (toolName === "ctx_index") {
+    const source = normalizeArtifactLabel(args?.source) ?? normalizeArtifactLabel(args?.path);
+    if (source) sources.push(source);
+  }
+
+  if (toolName === "ctx_fetch_and_index") {
+    const directSource = normalizeArtifactLabel(args?.source);
+    if (directSource) {
+      sources.push(directSource);
+    }
+    if (Array.isArray(args?.requests)) {
+      for (const request of args.requests) {
+        if (!request || typeof request !== "object") continue;
+        const label = normalizeArtifactLabel((request as { source?: unknown }).source);
+        if (label) sources.push(label);
+      }
+    }
+  }
+
+  if ((toolName === "ctx_execute" || toolName === "ctx_execute_file") && args?.intent) {
+    sources.push(...extractArtifactSourcesFromText(resultText));
+  }
+
+  if (toolName === "ctx_index" || toolName === "ctx_fetch_and_index") {
+    sources.push(...extractArtifactSourcesFromText(resultText));
+  }
+
+  return {
+    sources: [...new Set(sources)],
+    queries: [...new Set(queries.map((query) => query.trim()).filter(Boolean))],
+  };
+}
+
+async function readFileLineCount(
+  root: string,
+  filePath: string,
+): Promise<number | undefined> {
+  try {
+    const content = await readFile(resolve(root, filePath), "utf8");
+    return countLines(content);
+  } catch {
+    return undefined;
+  }
+}
+
+async function deriveEditLocations(
+  root: string,
+  toolExecutions: WorkerToolExecution[],
+  filesChanged: string[],
+): Promise<{ editLocations: HandoffEditLocation[]; artifactSources: string[]; artifactQueries: string[] }> {
+  const locations: HandoffEditLocation[] = [];
+  const artifactSources: string[] = [];
+  const artifactQueries: string[] = [];
+
+  for (const execution of toolExecutions) {
+    if (execution.isError) continue;
+    const toolName = execution.toolName;
+    const artifactPointers = extractArtifactPointers(execution);
+    artifactSources.push(...artifactPointers.sources);
+    artifactQueries.push(...artifactPointers.queries);
+
+    const path = typeof execution.args?.path === "string"
+      ? normalizePath(execution.args.path)
+      : "";
+    if (!path) continue;
+
+    if (toolName === "edit") {
+      const result = execution.result && typeof execution.result === "object"
+        ? execution.result as Record<string, unknown>
+        : undefined;
+      const details = result?.details && typeof result.details === "object"
+        ? result.details as Record<string, unknown>
+        : undefined;
+      const diff = typeof details?.diff === "string" ? details.diff : "";
+      const ranges = diff ? extractDiffRanges(diff) : [];
+      if (ranges.length > 0) {
+        locations.push(
+          ...ranges.map((range) => ({
+            path,
+            startLine: range.startLine,
+            endLine: range.endLine,
+            summary: "inspect changed block",
+            sourceTool: "edit" as const,
+            precision: "range" as const,
+          })),
+        );
+        continue;
+      }
+    }
+
+    if (toolName === "write") {
+      const content = typeof execution.args?.content === "string"
+        ? execution.args.content
+        : undefined;
+      const lineCount = content ? countLines(content) : await readFileLineCount(root, path);
+      locations.push({
+        path,
+        startLine: lineCount ? 1 : undefined,
+        endLine: lineCount,
+        summary: "inspect rewritten file",
+        sourceTool: "write",
+        precision: lineCount ? "range" : "file",
+      });
+      continue;
+    }
+  }
+
+  const coveredFiles = new Set(locations.map((location) => location.path));
+  for (const file of filesChanged.map((item) => normalizePath(item)).filter(Boolean)) {
+    if (coveredFiles.has(file)) continue;
+    const lineCount = await readFileLineCount(root, file);
+    locations.push({
+      path: file,
+      startLine: lineCount ? 1 : undefined,
+      endLine: lineCount,
+      summary: lineCount
+        ? "changed file (precise range unavailable)"
+        : "changed file (unreadable or deleted after worker run)",
+      sourceTool: "file",
+      precision: lineCount ? "range" : "file",
+    });
+  }
+
+  return {
+    editLocations: dedupeEditLocations(locations),
+    artifactSources: [...new Set(artifactSources)].sort(),
+    artifactQueries: [...new Set(artifactQueries)].sort(),
+  };
+}
+
 async function runScoutSubagent(
   cwd: string,
   prompt: string,
@@ -1471,10 +1947,14 @@ async function runScoutSubagent(
   shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
-) {
+): Promise<Awaited<ReturnType<typeof runSubagentProcess>> & {
+  toolExecutions: WorkerToolExecution[];
+}> {
   const scoutTools = sanitizeScoutTools(tools);
   let eventIndex = 0;
   const generatedAt = Date.now();
+  const activeToolCalls = new Map<string, WorkerToolExecution>();
+  const toolExecutions: WorkerToolExecution[] = [];
   appendSubagentEvent(pi, {
     type: "subagent_process_start",
     delegationId,
@@ -1515,6 +1995,38 @@ async function runScoutSubagent(
           event,
           generatedAt: Date.now(),
         }, shouldLog);
+
+        const toolEvent = event && typeof event === "object"
+          ? event as Record<string, unknown>
+          : undefined;
+        const toolCallId = typeof toolEvent?.toolCallId === "string"
+          ? toolEvent.toolCallId
+          : undefined;
+        const toolName = typeof toolEvent?.toolName === "string"
+          ? toolEvent.toolName
+          : undefined;
+        if (toolEvent?.type === "tool_execution_start" && toolCallId && toolName) {
+          activeToolCalls.set(toolCallId, {
+            toolCallId,
+            toolName,
+            args: toolEvent.args && typeof toolEvent.args === "object"
+              ? toolEvent.args as Record<string, unknown>
+              : undefined,
+          });
+        }
+        if (toolEvent?.type === "tool_execution_end" && toolName) {
+          const prior = toolCallId ? activeToolCalls.get(toolCallId) : undefined;
+          toolExecutions.push({
+            toolCallId,
+            toolName,
+            args: prior?.args,
+            result: toolEvent.result,
+            isError: toolEvent.isError === true,
+          });
+          if (toolCallId) {
+            activeToolCalls.delete(toolCallId);
+          }
+        }
       },
     });
 
@@ -1534,7 +2046,10 @@ async function runScoutSubagent(
       generatedAt: Date.now(),
     }, shouldLog);
 
-    return run;
+    return {
+      ...run,
+      toolExecutions,
+    };
   } catch (error) {
     const details = error && typeof error === "object"
       ? error as Record<string, unknown>
@@ -1642,6 +2157,14 @@ function summarizeHandoff(
     );
   }
 
+  const editLocations = collectHandoffEditLocations(details);
+  if (editLocations.length > 0) {
+    return truncate(
+      `Edited ${formatEditLocationsInline(editLocations, 2)}`,
+      320,
+    );
+  }
+
   const status = typeof details.status === "string" ? details.status : "completed";
   return truncate(singleLine(`${toolName} ${status}`), 320);
 }
@@ -1684,6 +2207,40 @@ function inferHandoffStatus(
   return parseStatus(report);
 }
 
+function parseDetailEditLocations(value: unknown): HandoffEditLocation[] {
+  if (!Array.isArray(value)) return [];
+  return dedupeEditLocations(
+    value.flatMap((item) => {
+      if (!item || typeof item !== "object") return [] as HandoffEditLocation[];
+      const location = item as Record<string, unknown>;
+      if (typeof location.path !== "string") return [] as HandoffEditLocation[];
+      return [{
+        path: location.path,
+        startLine: typeof location.startLine === "number" ? location.startLine : undefined,
+        endLine: typeof location.endLine === "number" ? location.endLine : undefined,
+        summary: typeof location.summary === "string" ? location.summary : undefined,
+        sourceTool: location.sourceTool === "edit" || location.sourceTool === "write" || location.sourceTool === "file"
+          ? location.sourceTool
+          : undefined,
+        precision: location.precision === "range" || location.precision === "file"
+          ? location.precision
+          : undefined,
+      }];
+    }),
+  );
+}
+
+function collectHandoffEditLocations(details: Record<string, unknown>): HandoffEditLocation[] {
+  const directLocations = parseDetailEditLocations(details.editLocations);
+  const nestedLocations = Array.isArray(details.results)
+    ? details.results.flatMap((result) => {
+      if (!result || typeof result !== "object") return [] as HandoffEditLocation[];
+      return parseDetailEditLocations((result as { editLocations?: unknown }).editLocations);
+    })
+    : [];
+  return dedupeEditLocations([...directLocations, ...nestedLocations]);
+}
+
 function collectHandoffFiles(details: Record<string, unknown>): string[] {
   const directFiles = Array.isArray(details.filesChanged)
     ? details.filesChanged.filter((item): item is string => typeof item === "string")
@@ -1697,7 +2254,8 @@ function collectHandoffFiles(details: Record<string, unknown>): string[] {
         : [];
     })
     : [];
-  return [...new Set([...directFiles, ...nestedFiles])].sort();
+  const editFiles = collectHandoffEditLocations(details).map((location) => location.path);
+  return [...new Set([...directFiles, ...nestedFiles, ...editFiles].map((item) => normalizePath(item)).filter(Boolean))].sort();
 }
 
 function buildHandoffSource(
@@ -1713,6 +2271,56 @@ function buildHandoffSource(
   return `${HANDOFF_SOURCE_PREFIX}:${toolName}:${hash}`;
 }
 
+function collectHandoffArtifacts(details: Record<string, unknown>): {
+  sources: string[];
+  queries: string[];
+  summary?: string;
+} {
+  const directSources = Array.isArray(details.artifactSources)
+    ? details.artifactSources.filter((item): item is string => typeof item === "string")
+    : [];
+  const directQueries = Array.isArray(details.artifactQueries)
+    ? details.artifactQueries.filter((item): item is string => typeof item === "string")
+    : [];
+  const directSummary = typeof details.artifactSummary === "string" && details.artifactSummary.trim()
+    ? details.artifactSummary.trim()
+    : undefined;
+
+  const nestedSources = Array.isArray(details.results)
+    ? details.results.flatMap((result) => {
+      if (!result || typeof result !== "object") return [] as string[];
+      const sources = (result as { artifactSources?: unknown }).artifactSources;
+      return Array.isArray(sources)
+        ? sources.filter((item): item is string => typeof item === "string")
+        : [];
+    })
+    : [];
+
+  const nestedQueries = Array.isArray(details.results)
+    ? details.results.flatMap((result) => {
+      if (!result || typeof result !== "object") return [] as string[];
+      const queries = (result as { artifactQueries?: unknown }).artifactQueries;
+      return Array.isArray(queries)
+        ? queries.filter((item): item is string => typeof item === "string")
+        : [];
+    })
+    : [];
+
+  const nestedSummaries = Array.isArray(details.results)
+    ? details.results.flatMap((result) => {
+      if (!result || typeof result !== "object") return [] as string[];
+      const summary = (result as { artifactSummary?: unknown }).artifactSummary;
+      return typeof summary === "string" && summary.trim() ? [summary.trim()] : [];
+    })
+    : [];
+
+  return {
+    sources: [...new Set([...directSources, ...nestedSources].map((item) => item.trim()).filter(Boolean))].sort(),
+    queries: [...new Set([...directQueries, ...nestedQueries].map((item) => item.trim()).filter(Boolean))].sort(),
+    summary: directSummary ?? (nestedSummaries.length > 0 ? nestedSummaries.join(" | ") : undefined),
+  };
+}
+
 function buildHandoffMarkdown(input: {
   source: string;
   toolName: string;
@@ -1722,6 +2330,10 @@ function buildHandoffMarkdown(input: {
   generatedAt: number;
   summary: string;
   filesChanged: string[];
+  editLocations: HandoffEditLocation[];
+  artifactSources: string[];
+  artifactQueries: string[];
+  artifactSummary?: string;
   modelLabel?: string;
   promptInput: Record<string, unknown>;
   details: Record<string, unknown>;
@@ -1740,10 +2352,23 @@ function buildHandoffMarkdown(input: {
     ...(input.filesChanged.length > 0
       ? [`- Files changed: ${input.filesChanged.join(", ")}`]
       : [`- Files changed: (none)`]),
+    ...(input.editLocations.length > 0
+      ? [`- Edit locations: ${formatEditLocationsInline(input.editLocations, 4)}`]
+      : [`- Edit locations: (none)`]),
+    ...(input.artifactSources.length > 0
+      ? [`- Artifact sources: ${input.artifactSources.join(", ")}`]
+      : []),
+    ...(input.artifactQueries.length > 0
+      ? [`- Artifact queries: ${input.artifactQueries.join(", ")}`]
+      : []),
     "",
     `## Summary`,
     input.summary || "(none)",
   ];
+
+  if (input.artifactSummary) {
+    lines.push("", "## Artifact Summary", input.artifactSummary);
+  }
 
   if (typeof input.promptInput.objective === "string" && input.promptInput.objective.trim()) {
     lines.push("", "## Objective", input.promptInput.objective.trim());
@@ -1764,6 +2389,18 @@ function buildHandoffMarkdown(input: {
   }
   if (typeof input.promptInput.focus === "string" && input.promptInput.focus.trim()) {
     lines.push("", "## Review Focus", input.promptInput.focus.trim());
+  }
+  if (input.editLocations.length > 0) {
+    lines.push(
+      "",
+      "## Edit Locations",
+      ...input.editLocations.map((location) => `- ${formatEditLocation(location)}`),
+    );
+    lines.push(
+      "",
+      "## Suggested Inspection",
+      ...buildInspectionBullets(input.editLocations, input.filesChanged).map((item) => `- ${item}`),
+    );
   }
   if (Array.isArray(input.details.validation)) {
     const validationLines = input.details.validation
@@ -1935,12 +2572,35 @@ async function indexHandoff(
 }
 
 function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
-  return [...ctx.sessionManager.getEntries()]
-    .filter(
-      (entry) => entry.type === "custom" && entry.customType === HANDOFF_ENTRY,
-    )
-    .map((entry) => (entry as { data?: HandoffPointer }).data)
-    .filter((item): item is HandoffPointer => Boolean(item?.source))
+  const pointers: HandoffPointer[] = [];
+  for (const entry of ctx.sessionManager.getEntries()) {
+    if (entry.type !== "custom" || entry.customType !== HANDOFF_ENTRY) continue;
+    const data = (entry as { data?: Partial<HandoffPointer> }).data;
+    if (!data?.source) continue;
+    pointers.push({
+      source: data.source,
+      toolName: data.toolName ?? "unknown",
+      title: data.title ?? data.toolName ?? "handoff",
+      status: data.status ?? "unknown",
+      generatedAt: typeof data.generatedAt === "number" ? data.generatedAt : 0,
+      summary: data.summary ?? "",
+      filesChanged: Array.isArray(data.filesChanged)
+        ? data.filesChanged.filter((item): item is string => typeof item === "string")
+        : [],
+      editLocations: Array.isArray(data.editLocations)
+        ? parseDetailEditLocations(data.editLocations)
+        : [],
+      artifactSources: Array.isArray(data.artifactSources)
+        ? data.artifactSources.filter((item): item is string => typeof item === "string")
+        : [],
+      artifactQueries: Array.isArray(data.artifactQueries)
+        ? data.artifactQueries.filter((item): item is string => typeof item === "string")
+        : [],
+      artifactSummary: data.artifactSummary,
+      indexed: data.indexed,
+    });
+  }
+  return pointers
     .reverse()
     .filter((item, index, all) =>
       index === all.findIndex((candidate) => candidate.source === item.source)
@@ -1999,6 +2659,9 @@ async function buildRecentHandoffPrompt(
           summary: singleLine(match.highlighted || match.content || "") ||
             "Relevant indexed handoff from another session in this project.",
           filesChanged: [],
+          editLocations: [],
+          artifactSources: [],
+          artifactQueries: [],
           indexed: true,
         });
         if (handoffs.length >= MAX_RECENT_HANDOFFS) break;
@@ -2016,8 +2679,8 @@ async function buildRecentHandoffPrompt(
     if (store) {
       try {
         const matches = store.searchWithFallback(
-          "summary findings validation files changed",
-          2,
+          "summary findings validation files changed edit locations suggested inspection supervisor follow-up artifact sources artifact queries artifact summary reusable project artifacts",
+          4,
           handoff.source,
           undefined,
           "exact",
@@ -2040,12 +2703,20 @@ async function buildRecentHandoffPrompt(
 
     const filesText =
       handoff.filesChanged.length > 0 ? handoff.filesChanged.join(", ") : "(none)";
+    const editsText = formatEditLocationsInline(handoff.editLocations, 3);
+    const artifactsText = handoff.artifactSources.length > 0
+      ? `\n- artifacts: ${handoff.artifactSources.join(", ")}`
+      : "";
+    const queriesText = handoff.artifactQueries.length > 0
+      ? `\n- artifact queries: ${handoff.artifactQueries.join(", ")}`
+      : "";
     sections.push(
       [
         `### ${handoff.toolName} — ${handoff.title}`,
         `- status: ${handoff.status}`,
         `- source: ${handoff.source}`,
         `- files: ${filesText}`,
+        `- edits: ${editsText}${artifactsText}${queriesText}`,
         `- summary: ${detail || "(none)"}`,
       ].join("\n"),
     );
@@ -2121,6 +2792,10 @@ function scoreHandoffRelevance(prompt: string, handoff: HandoffPointer): number 
     handoff.status,
     handoff.summary,
     handoff.filesChanged.join(" "),
+    handoff.editLocations.map((location) => formatEditLocation(location)).join(" "),
+    handoff.artifactSources.join(" "),
+    handoff.artifactQueries.join(" "),
+    handoff.artifactSummary ?? "",
   ].join(" ");
   return tokenizeHandoffText(handoffText).filter((token) => promptTokens.has(token)).length;
 }
@@ -2326,6 +3001,11 @@ async function generateDelegation(
 
     const afterSnapshot = await snapshotWorkingTree(cwd, signal);
     const actualFilesChanged = diffSnapshots(beforeSnapshot, afterSnapshot);
+    const { editLocations, artifactSources, artifactQueries } = await deriveEditLocations(
+      afterSnapshot.root,
+      run.toolExecutions,
+      actualFilesChanged,
+    );
     const boundaryViolations = findBoundaryViolations(
       actualFilesChanged,
       params.allowedFiles,
@@ -2367,10 +3047,14 @@ async function generateDelegation(
     }, shouldLog);
 
     return {
-      report: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}`,
+      report: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}${buildInspectionAppendix(editLocations, actualFilesChanged)}`,
       workerModel: workerModelArg,
       status,
       filesChanged: actualFilesChanged,
+      editLocations,
+      artifactSources,
+      artifactQueries,
+      artifactSummary: params.artifactSummary,
       boundaryViolations,
       validation,
       subagentMetrics: buildSubagentMetrics(run),
@@ -2524,6 +3208,12 @@ async function generateScouting(
       );
     }
 
+    const { artifactSources, artifactQueries } = await deriveEditLocations(
+      cwd,
+      run.toolExecutions,
+      [],
+    );
+
     appendSubagentEvent(pi, {
       type: "subagent_end",
       delegationId,
@@ -2542,6 +3232,9 @@ async function generateScouting(
     return {
       report: final.text,
       scoutModel: scoutModelArg,
+      artifactSources,
+      artifactQueries,
+      artifactSummary: params.artifactSummary,
       subagentMetrics: buildSubagentMetrics(run),
       stopReason: run.stopReason,
       errorMessage: final.errorMessage,
@@ -2626,6 +3319,21 @@ const DelegateWorkerParams = Type.Object({
       description: "Optional explicit tool allowlist for the worker process.",
     }),
   ),
+  artifactSources: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+    }),
+  ),
+  artifactQueries: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+    }),
+  ),
+  artifactSummary: Type.Optional(
+    Type.String({
+      description: "Optional high-level summary of relevant prior research to prime the subagent.",
+    }),
+  ),
 });
 
 const DelegateScoutParams = Type.Object({
@@ -2662,6 +3370,21 @@ const DelegateScoutParams = Type.Object({
   tools: Type.Optional(
     Type.Array(Type.String(), {
       description: "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
+    }),
+  ),
+  artifactSources: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+    }),
+  ),
+  artifactQueries: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+    }),
+  ),
+  artifactSummary: Type.Optional(
+    Type.String({
+      description: "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -2727,6 +3450,21 @@ const ParallelDelegateWorkerTaskParams = Type.Object({
       description: "Optional explicit tool allowlist for the worker process.",
     }),
   ),
+  artifactSources: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+    }),
+  ),
+  artifactQueries: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+    }),
+  ),
+  artifactSummary: Type.Optional(
+    Type.String({
+      description: "Optional high-level summary of relevant prior research to prime the subagent.",
+    }),
+  ),
 });
 
 const ParallelDelegateWorkersParams = Type.Object({
@@ -2782,6 +3520,21 @@ const ParallelDelegateScoutTaskParams = Type.Object({
   tools: Type.Optional(
     Type.Array(Type.String(), {
       description: "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
+    }),
+  ),
+  artifactSources: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+    }),
+  ),
+  artifactQueries: Type.Optional(
+    Type.Array(Type.String(), {
+      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+    }),
+  ),
+  artifactSummary: Type.Optional(
+    Type.String({
+      description: "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -2918,6 +3671,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - Strict plan-implement split is active for this turn.
 - Before making any direct file mutation with \`edit\`, \`write\`, or mutating \`bash\`, first break the work into a bounded implementation step and run \`delegate_worker\`.
 - After at least one worker task completes, you may do small supervisor-side integration edits if still needed.
+- After a successful worker handoff, prefer one \`ctx_batch_execute\` follow-up across the returned edit locations instead of serial \`read\` calls when you need to inspect multiple changed spots.
 - The runtime will warn when you bypass worker-first implementation in this turn.`
       : "";
 
@@ -2931,6 +3685,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - Use a scout-plan-implement split by default: cheap scout subagents explore and gather evidence, the current model plans/scopes/reviews/escalates, and worker subagents implement bounded steps.
 - Proactively use \`delegate_scout\` for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or scoping likely edit sites.
 - For coding requests, proactively use \`delegate_worker\` without asking first when the next step is a bounded implementation task that is local, well-specified, and objectively checkable.
+- For reusable research that another agent may need later, prefer artifact-producing tools such as \`ctx_batch_execute\`, \`ctx_index\`, \`ctx_fetch_and_index\`, or large \`ctx_execute\` calls with an \`intent\`.
+- When a reusable artifact matters to a delegated task, pass its source labels via \`artifactSources\` and suggested lookups via \`artifactQueries\`.
 - Good scout candidates: file discovery, behavior tracing, implementation precedent searches, config inventory, and test surface mapping.
 - Good auto-delegation candidates for workers: small code edits, focused tests, local refactors, narrow bug fixes, and file-scoped implementation work.
 - Delegate only bounded work with explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
@@ -2940,6 +3696,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - When multiple implementation tasks are independent and have disjoint \`allowedFiles\`, prefer \`delegate_workers\`.
 - If a delegated task comes back escalated or blocked, handle the decision on the current model instead of retrying blindly.
 - Treat successful bounded worker handoffs with passing validation and no boundary violations as trusted building blocks by default.
+- After a successful worker handoff with multiple edit locations, prefer one \`ctx_batch_execute\` inspection pass over serial \`read\` calls; use \`read\` only for one exact excerpt or a direct edit target.
 - Chain additional bounded worker tasks when needed; do not reflexively run \`review_changes\` after each successful sub-step.
 - Prefer a single review pass once you believe the overall user request is implemented, unless the user explicitly asked for an interim review, a worker escalated/blocked, validation failed, or you are checking risky supervisor-owned integration.${strictSection}`
         : `
@@ -3036,6 +3793,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     const title = inferHandoffTitle(event.toolName, input, details);
     const status = inferHandoffStatus(event.toolName, report, details);
     const filesChanged = collectHandoffFiles(details);
+    const editLocations = collectHandoffEditLocations(details);
+    const artifacts = collectHandoffArtifacts(details);
     const summary = summarizeHandoff(event.toolName, report, details);
     const pointer: HandoffPointer = {
       source: buildHandoffSource(event.toolName, sessionKey, generatedAt, title),
@@ -3045,6 +3804,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       generatedAt,
       summary,
       filesChanged,
+      editLocations,
+      artifactSources: artifacts.sources,
+      artifactQueries: artifacts.queries,
+      artifactSummary: artifacts.summary,
     };
     const modelLabel = [details.workerModel, details.scoutModel, details.reviewer]
       .find((value): value is string => typeof value === "string" && value.trim().length > 0);
@@ -3057,6 +3820,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       generatedAt,
       summary,
       filesChanged,
+      editLocations,
+      artifactSources: pointer.artifactSources,
+      artifactQueries: pointer.artifactQueries,
+      artifactSummary: pointer.artifactSummary,
       modelLabel,
       promptInput: input,
       details,
@@ -3072,6 +3839,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         handoffSource: pointer.source,
         handoffIndexed,
         handoffSummary: pointer.summary,
+        handoffEditLocations: pointer.editLocations,
       },
     };
   });
@@ -3226,6 +3994,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             generatedAt,
             sessionKey,
             scoutModel: result.scoutModel,
+            artifactSources: result.artifactSources,
+            artifactQueries: result.artifactQueries,
+            artifactSummary: result.artifactSummary,
             subagentMetrics: result.subagentMetrics,
             stopReason: result.stopReason,
             errorMessage: result.errorMessage,
@@ -3723,6 +4494,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             workerModel: result.workerModel,
             status: result.status,
             filesChanged: result.filesChanged,
+            editLocations: result.editLocations,
+            artifactSources: result.artifactSources,
+            artifactQueries: result.artifactQueries,
+            artifactSummary: result.artifactSummary,
             boundaryViolations: result.boundaryViolations,
             validation: result.validation,
             subagentMetrics: result.subagentMetrics,
