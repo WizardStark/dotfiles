@@ -588,11 +588,49 @@ function formatLineRange(startLine?: number, endLine?: number): string {
   return start === end ? `${start}` : `${start}-${end}`;
 }
 
+function normalizeRepoPath(root: string, value: string): string {
+  const normalizedRoot = normalizeComparablePath(root);
+  const trimmed = value.replace(/\\/g, "/").trim();
+  if (!trimmed) return "";
+
+  const normalizedValue = normalizeComparablePath(trimmed);
+  if (normalizedValue === normalizedRoot) {
+    return "";
+  }
+  if (normalizedValue.startsWith(`${normalizedRoot}/`)) {
+    return normalizePath(normalizedValue.slice(normalizedRoot.length + 1));
+  }
+
+  const rootWithoutLeadingSlash = normalizedRoot.replace(/^\//, "");
+  if (rootWithoutLeadingSlash && trimmed.startsWith(`${rootWithoutLeadingSlash}/`)) {
+    return normalizePath(trimmed.slice(rootWithoutLeadingSlash.length + 1));
+  }
+
+  const hasGitRoot = existsSync(join(root, ".git"));
+  if (/^(?:[A-Za-z]:\/|\/)/.test(trimmed)) {
+    return hasGitRoot ? "" : trimmed.replace(/\\/g, "/").replace(/\/+$/, "");
+  }
+
+  return normalizePath(trimmed);
+}
+
+function isIncidentalHandoffPath(filePath: string): boolean {
+  const normalized = normalizePath(filePath).toLowerCase();
+  if (!normalized) return false;
+  const name = basename(normalized);
+  return [
+    "grep_results.txt",
+    "rg_results.txt",
+    "ripgrep_results.txt",
+    "search_results.txt",
+  ].includes(name);
+}
+
 function normalizeEditLocation(
   location: HandoffEditLocation,
 ): HandoffEditLocation | undefined {
   const path = typeof location.path === "string" ? normalizePath(location.path) : "";
-  if (!path) return undefined;
+  if (!path || isIncidentalHandoffPath(path)) return undefined;
   const startLine = Number.isFinite(location.startLine) ? Number(location.startLine) : undefined;
   const endLine = Number.isFinite(location.endLine) ? Number(location.endLine) : undefined;
   const summary = typeof location.summary === "string" && location.summary.trim()
@@ -662,6 +700,18 @@ function formatEditLocationsInline(
   const preview = normalized.slice(0, limit).map((location) => formatEditLocation(location));
   const remaining = normalized.length - preview.length;
   return remaining > 0 ? `${preview.join("; ")}; +${remaining} more` : preview.join("; ");
+}
+
+function summarizeStructuredHandoff(
+  handoff: HandoffPointer,
+): string {
+  const artifactText = handoff.artifactSources.length > 0
+    ? `artifacts=${handoff.artifactSources.join(", ")}`
+    : "";
+  const queryText = handoff.artifactQueries.length > 0
+    ? `queries=${handoff.artifactQueries.join(", ")}`
+    : "";
+  return [handoff.summary, artifactText, queryText].filter(Boolean).join(" | ");
 }
 
 function buildInspectionTargets(
@@ -1890,7 +1940,7 @@ async function deriveEditLocations(
     artifactQueries.push(...artifactPointers.queries);
 
     const path = typeof execution.args?.path === "string"
-      ? normalizePath(execution.args.path)
+      ? normalizeRepoPath(root, execution.args.path)
       : "";
     if (!path) continue;
 
@@ -1936,7 +1986,9 @@ async function deriveEditLocations(
   }
 
   const coveredFiles = new Set(locations.map((location) => location.path));
-  for (const file of filesChanged.map((item) => normalizePath(item)).filter(Boolean)) {
+  for (const file of filesChanged
+    .map((item) => normalizeRepoPath(root, item))
+    .filter((item) => item && !isIncidentalHandoffPath(item))) {
     if (coveredFiles.has(file)) continue;
     const lineCount = await readFileLineCount(root, file);
     locations.push({
@@ -2277,8 +2329,13 @@ function collectHandoffFiles(details: Record<string, unknown>): string[] {
         : [];
     })
     : [];
-  const editFiles = collectHandoffEditLocations(details).map((location) => location.path);
-  return [...new Set([...directFiles, ...nestedFiles, ...editFiles].map((item) => normalizePath(item)).filter(Boolean))].sort();
+  const normalizedFiles = [...new Set([...directFiles, ...nestedFiles]
+    .map((item) => normalizePath(item))
+    .filter((item) => item && !isIncidentalHandoffPath(item)))].sort();
+  if (normalizedFiles.length > 0) {
+    return normalizedFiles;
+  }
+  return [...new Set(collectHandoffEditLocations(details).map((location) => location.path))].sort();
 }
 
 function buildHandoffSource(
@@ -2372,12 +2429,6 @@ function buildHandoffMarkdown(input: {
     `- Generated at: ${new Date(input.generatedAt).toISOString()}`,
     `- Session: ${input.sessionKey}`,
     ...(input.modelLabel ? [`- Model: ${input.modelLabel}`] : []),
-    ...(input.filesChanged.length > 0
-      ? [`- Files changed: ${input.filesChanged.join(", ")}`]
-      : [`- Files changed: (none)`]),
-    ...(input.editLocations.length > 0
-      ? [`- Edit locations: ${formatEditLocationsInline(input.editLocations, 4)}`]
-      : [`- Edit locations: (none)`]),
     ...(input.artifactSources.length > 0
       ? [`- Artifact sources: ${input.artifactSources.join(", ")}`]
       : []),
@@ -2413,7 +2464,7 @@ function buildHandoffMarkdown(input: {
   if (typeof input.promptInput.focus === "string" && input.promptInput.focus.trim()) {
     lines.push("", "## Review Focus", input.promptInput.focus.trim());
   }
-  if (input.editLocations.length > 0) {
+  if (input.editLocations.length > 0 && !input.report.trim()) {
     lines.push(
       "",
       "## Edit Locations",
@@ -2630,6 +2681,74 @@ function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
     );
 }
 
+function inferDelegationArtifacts(
+  ctx: ExtensionContext,
+  prompt: string,
+): {
+  artifactSources?: string[];
+  artifactQueries?: string[];
+  artifactSummary?: string;
+} {
+  const normalizedPrompt = singleLine(prompt);
+  if (!normalizedPrompt) return {};
+
+  const candidates = readRecentHandoffPointers(ctx)
+    .filter((handoff) => handoff.toolName !== "review_changes")
+    .filter((handoff) => handoff.artifactSources.length > 0 || handoff.artifactQueries.length > 0)
+    .map((handoff) => ({
+      handoff,
+      score: scoreHandoffRelevance(normalizedPrompt, handoff),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3)
+    .map((item) => item.handoff);
+
+  if (candidates.length === 0) return {};
+
+  const artifactSources = [...new Set(candidates.flatMap((handoff) => handoff.artifactSources))].slice(0, 6);
+  const artifactQueries = [...new Set(candidates.flatMap((handoff) => handoff.artifactQueries))].slice(0, 6);
+  const artifactSummary = truncate(
+    candidates
+      .slice(0, 2)
+      .map((handoff) => `${handoff.title}: ${summarizeStructuredHandoff(handoff)}`)
+      .join(" | "),
+    320,
+  );
+
+  return {
+    artifactSources: artifactSources.length > 0 ? artifactSources : undefined,
+    artifactQueries: artifactQueries.length > 0 ? artifactQueries : undefined,
+    artifactSummary: artifactSummary || undefined,
+  };
+}
+
+function withInferredArtifacts<T extends DelegateParams | ScoutParams>(
+  ctx: ExtensionContext,
+  params: T,
+  promptText: string,
+): T {
+  if (
+    (params.artifactSources?.length ?? 0) > 0 ||
+    (params.artifactQueries?.length ?? 0) > 0 ||
+    (params.artifactSummary?.trim().length ?? 0) > 0
+  ) {
+    return params;
+  }
+
+  const inferred = inferDelegationArtifacts(ctx, promptText);
+  if (!inferred.artifactSources && !inferred.artifactQueries && !inferred.artifactSummary) {
+    return params;
+  }
+
+  return {
+    ...params,
+    artifactSources: inferred.artifactSources,
+    artifactQueries: inferred.artifactQueries,
+    artifactSummary: inferred.artifactSummary,
+  };
+}
+
 async function buildRecentHandoffPrompt(
   ctx: ExtensionContext,
   prompt: string,
@@ -2696,14 +2815,16 @@ async function buildRecentHandoffPrompt(
 
   if (handoffs.length === 0) return "";
 
+  const freshSessionSources = new Set(sessionHandoffs.slice(0, 2).map((handoff) => handoff.source));
   const sections: string[] = [];
   for (const handoff of handoffs) {
+    const isFreshCurrentHandoff = handoff.generatedAt > 0 && freshSessionSources.has(handoff.source);
     let detail = handoff.summary;
-    if (store) {
+    if (store && !isFreshCurrentHandoff) {
       try {
         const matches = store.searchWithFallback(
-          "summary findings validation files changed edit locations suggested inspection supervisor follow-up artifact sources artifact queries artifact summary reusable project artifacts",
-          4,
+          "summary findings validation artifact sources artifact queries artifact summary reusable project artifacts",
+          3,
           handoff.source,
           undefined,
           "exact",
@@ -2716,7 +2837,7 @@ async function buildRecentHandoffPrompt(
                 return snippet ? `${match.title}: ${snippet}` : match.title;
               })
               .join(" | "),
-            420,
+            320,
           );
         }
       } catch {
@@ -2724,25 +2845,23 @@ async function buildRecentHandoffPrompt(
       }
     }
 
-    const filesText =
-      handoff.filesChanged.length > 0 ? handoff.filesChanged.join(", ") : "(none)";
-    const editsText = formatEditLocationsInline(handoff.editLocations, 3);
-    const artifactsText = handoff.artifactSources.length > 0
-      ? `\n- artifacts: ${handoff.artifactSources.join(", ")}`
-      : "";
-    const queriesText = handoff.artifactQueries.length > 0
-      ? `\n- artifact queries: ${handoff.artifactQueries.join(", ")}`
-      : "";
-    sections.push(
-      [
-        `### ${handoff.toolName} — ${handoff.title}`,
-        `- status: ${handoff.status}`,
-        `- source: ${handoff.source}`,
-        `- files: ${filesText}`,
-        `- edits: ${editsText}${artifactsText}${queriesText}`,
-        `- summary: ${detail || "(none)"}`,
-      ].join("\n"),
-    );
+    const lines = [
+      `### ${handoff.toolName} — ${handoff.title}`,
+      `- status: ${handoff.status}`,
+      `- source: ${handoff.source}`,
+    ];
+    if (handoff.artifactSources.length > 0) {
+      lines.push(`- artifacts: ${handoff.artifactSources.join(", ")}`);
+    }
+    if (handoff.artifactQueries.length > 0) {
+      lines.push(`- artifact queries: ${handoff.artifactQueries.join(", ")}`);
+    }
+    if (isFreshCurrentHandoff) {
+      lines.push("- summary: already visible in recent tool history; reuse the structured handoff source if needed.");
+    } else {
+      lines.push(`- summary: ${detail || "(none)"}`);
+    }
+    sections.push(lines.join("\n"));
   }
 
   const anyIndexed = handoffs.some((handoff) => handoff.indexed);
@@ -3041,6 +3160,14 @@ async function generateDelegation(
       run.toolExecutions,
       actualFilesChanged,
     );
+    const effectiveArtifactSources = [
+      ...(params.artifactSources ?? []),
+      ...artifactSources,
+    ];
+    const effectiveArtifactQueries = [
+      ...(params.artifactQueries ?? []),
+      ...artifactQueries,
+    ];
     const boundaryViolations = findBoundaryViolations(
       actualFilesChanged,
       params.allowedFiles,
@@ -3087,8 +3214,8 @@ async function generateDelegation(
       status,
       filesChanged: actualFilesChanged,
       editLocations,
-      artifactSources,
-      artifactQueries,
+      artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
+      artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
       artifactSummary: params.artifactSummary,
       boundaryViolations,
       validation,
@@ -3248,6 +3375,14 @@ async function generateScouting(
       run.toolExecutions,
       [],
     );
+    const effectiveArtifactSources = [
+      ...(params.artifactSources ?? []),
+      ...artifactSources,
+    ];
+    const effectiveArtifactQueries = [
+      ...(params.artifactQueries ?? []),
+      ...artifactQueries,
+    ];
 
     appendSubagentEvent(pi, {
       type: "subagent_end",
@@ -3267,8 +3402,8 @@ async function generateScouting(
     return {
       report: final.text,
       scoutModel: scoutModelArg,
-      artifactSources,
-      artifactQueries,
+      artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
+      artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
       artifactSummary: params.artifactSummary,
       subagentMetrics: buildSubagentMetrics(run),
       stopReason: run.stopReason,
@@ -3356,7 +3491,7 @@ const DelegateWorkerParams = Type.Object({
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
@@ -3409,7 +3544,7 @@ const DelegateScoutParams = Type.Object({
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
@@ -3487,7 +3622,7 @@ const ParallelDelegateWorkerTaskParams = Type.Object({
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
@@ -3559,7 +3694,7 @@ const ParallelDelegateScoutTaskParams = Type.Object({
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (e.g., 'ctx:123') to include in the subagent's working context.",
+      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
@@ -3990,7 +4125,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         content: [{ type: "text", text: "Starting scout subagent..." }],
       });
       try {
-        const result = await generateScouting(ctx, state, params, delegationKey, pi, isCurrentSession, signal, (text) => {
+        const effectiveParams = withInferredArtifacts(
+          ctx,
+          params,
+          [params.objective, params.scope, ...(params.questions ?? [])].filter(Boolean).join("\n"),
+        );
+        const result = await generateScouting(ctx, state, effectiveParams, delegationKey, pi, isCurrentSession, signal, (text) => {
           if (!isCurrentSession()) {
             return;
           }
@@ -4139,10 +4279,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           emitProgress();
 
           try {
+            const effectiveTask = withInferredArtifacts(
+              ctx,
+              task,
+              [task.objective, task.scope, ...(task.questions ?? [])].filter(Boolean).join("\n"),
+            );
             const result = await generateScouting(
               ctx,
               state,
-              task,
+              effectiveTask,
               delegationKey,
               pi,
               isCurrentSession,
@@ -4343,10 +4488,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           emitProgress();
 
           try {
+            const effectiveTask = withInferredArtifacts(
+              ctx,
+              task,
+              [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])].filter(Boolean).join("\n"),
+            );
             const result = await generateDelegation(
               ctx,
               state,
-              task,
+              effectiveTask,
               delegationKey,
               pi,
               isCurrentSession,
@@ -4480,10 +4630,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         content: [{ type: "text", text: "Starting worker subagent..." }],
       });
       try {
+        const effectiveParams = withInferredArtifacts(
+          ctx,
+          params,
+          [params.objective, params.scope, ...(params.acceptanceCriteria ?? [])].filter(Boolean).join("\n"),
+        );
         const result = await generateDelegation(
           ctx,
           state,
-          params,
+          effectiveParams,
           delegationKey,
           pi,
           isCurrentSession,
