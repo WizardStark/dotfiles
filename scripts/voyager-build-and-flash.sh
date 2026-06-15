@@ -83,6 +83,15 @@ read_qmk_home_from_ini() {
   ' "$ini_path" | tail -1
 }
 
+read_qmk_home_from_cli() {
+  command -v qmk >/dev/null 2>&1 || return 1
+
+  qmk config user.qmk_home 2>/dev/null \
+    | sed -n 's/^[^=]*=[[:space:]]*//p' \
+    | sed 's/[[:space:]]*(.*)$//' \
+    | tail -1
+}
+
 find_qmk_home() {
   if [[ -n "$qmk_home" ]]; then
     return
@@ -93,18 +102,16 @@ find_qmk_home() {
     return
   fi
 
-  if command -v qmk >/dev/null 2>&1; then
-    qmk_home=$(qmk config user.qmk_home 2>/dev/null | awk -F'=' 'NF >= 2 {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}' | tail -1)
-  fi
+  for ini_path in \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/qmk/qmk.ini" \
+    "$HOME/Library/Application Support/qmk/qmk.ini"
+  do
+    qmk_home=$(read_qmk_home_from_ini "$ini_path" || true)
+    [[ -n "$qmk_home" ]] && break
+  done
 
   if [[ -z "$qmk_home" ]]; then
-    for ini_path in \
-      "${XDG_CONFIG_HOME:-$HOME/.config}/qmk/qmk.ini" \
-      "$HOME/Library/Application Support/qmk/qmk.ini"
-    do
-      qmk_home=$(read_qmk_home_from_ini "$ini_path" || true)
-      [[ -n "$qmk_home" ]] && break
-    done
+    qmk_home=$(read_qmk_home_from_cli || true)
   fi
 
   if [[ -z "$qmk_home" ]]; then

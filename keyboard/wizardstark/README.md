@@ -1,26 +1,18 @@
 # Voyager keymap (`wizardstark`)
 
-This keymap is updated to build against a current ZSA QMK checkout without flashing the keyboard.
+This keymap now uses stock QMK tap-hold keys plus core Achordion. `sm_td` and `qmk-vim` are no longer part of the active build.
 
 ## What changed
 
 - migrated ZSA integration to modern community modules via `keymap.json`
   - `zsa/oryx`
   - `zsa/defaults`
-- updated `sm_td` integration for the current package API
-- migrated combos to `COMBO_ACTION` handling for compatibility with the current `sm_td` behavior
+- replaced the previous `sm_td`/`qmk-vim` stack with stock QMK `MT()` / `LT()` / `HYPR_T()` keys
+- enabled core QMK Achordion for home-row mod / layer-tap chord handling
+- kept combos, but disabled them on `GAME` and `GAME2`
 - made the `T+A` Caps Word combo tap-only so it does not interfere with using those keys as Shift holds
 - removed the old `RGB_MATRIX_CUSTOM_KB` flag that now requires a missing `rgb_matrix_kb.inc`
-- kept `qmk-vim` as direct source files from the bundled submodule
 - compile-tested against a fresh `zsa/qmk_firmware` checkout
-
-## Repo dependencies
-
-Initialize the bundled dependencies first:
-
-```sh
-git submodule update --init --recursive keyboard/wizardstark/qmk-vim keyboard/wizardstark/sm_td
-```
 
 ## Link into QMK
 

@@ -116,12 +116,6 @@ if [[ ! -d "$qmk_home/keyboards/zsa/voyager" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$keymap_src/qmk-vim/src/vim.h" || ! -f "$keymap_src/sm_td/sm_td/sm_td.h" ]]; then
-  echo "Keymap dependencies are missing. Run:" >&2
-  echo "  git submodule update --init --recursive keyboard/wizardstark/qmk-vim keyboard/wizardstark/sm_td" >&2
-  exit 1
-fi
-
 mkdir -p "$target_dir"
 
 if [[ -e "$target_link" || -L "$target_link" ]]; then
