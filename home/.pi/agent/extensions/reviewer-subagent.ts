@@ -66,6 +66,11 @@ type ReviewParams = {
 
 type ReviewRunState = SubagentRunState;
 
+type ReviewProgress = {
+  phase: string;
+  turns?: number;
+};
+
 import {
   entryToMessage,
   getSessionMessages,
@@ -94,6 +99,13 @@ function buildConversationContext(branch: SessionEntry[]): string {
 
 function buildReviewSubagentMetrics(run: ReviewRunState): SubagentMetrics | undefined {
   return buildSubagentMetrics(run);
+}
+
+function buildReviewerProgressText(progress: ReviewProgress): string {
+  return [
+    progress.phase,
+    progress.turns !== undefined && progress.turns > 0 ? `${progress.turns} turns` : "",
+  ].filter(Boolean).join(" · ");
 }
 
 async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
@@ -271,7 +283,9 @@ async function runReviewerSubagent(
   modelArg: string,
   auth: { apiKey?: string; headers?: Record<string, string> },
   signal?: AbortSignal,
+  onProgress?: (progress: ReviewProgress) => void,
 ): Promise<ReviewRunState> {
+  let completedTurns = 0;
   return await runSubagentProcess({
     cwd,
     prompt,
@@ -312,6 +326,14 @@ async function runReviewerSubagent(
     onEvent: (event, state) => {
       if (event.type === "reviewer_metric" && event.event === "before_provider_request") {
         state.providerRequestStartedAt ??= typeof event.timestamp === "number" ? event.timestamp : Date.now();
+        onProgress?.({ phase: "thinking", turns: completedTurns });
+      }
+      if (event.type === "message_update") {
+        onProgress?.({ phase: "responding", turns: completedTurns });
+      }
+      if (event.type === "turn_end") {
+        completedTurns += 1;
+        onProgress?.({ phase: "responding", turns: completedTurns });
       }
     },
   });
@@ -322,6 +344,7 @@ async function generateReview(
   defaultThinkingLevel: ThinkingLevel,
   input: ReviewParams,
   signal?: AbortSignal,
+  onProgress?: (progress: ReviewProgress) => void,
 ): Promise<ReviewResult> {
   const git = await collectGitContext(ctx.cwd, signal);
   if (!git.ok) {
@@ -377,7 +400,8 @@ async function generateReview(
   if (!auth.ok) {
     throw new Error(`Unable to resolve auth for reviewer subagent: ${auth.error}`);
   }
-  const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth, signal);
+  onProgress?.({ phase: "starting" });
+  const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth, signal, onProgress);
   const final = extractFinalAssistantText(
     [
       ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
@@ -465,7 +489,12 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }] });
-      const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal);
+      const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal, (progress) => {
+        onUpdate?.({
+          content: [{ type: "text", text: buildReviewerProgressText(progress) }],
+          details: progress,
+        });
+      });
       const generatedAt = Date.now();
       const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
       pi.events.emit("subagent:metrics", {

@@ -59,7 +59,14 @@ interface ActiveDelegation {
   workerModel: string;
   phase: string;
   role: "worker" | "scout";
+  turns?: number;
+  currentTool?: string;
 }
+
+type SubagentProgress = {
+  turns?: number;
+  currentTool?: string;
+};
 
 interface TurnDelegationState {
   prompt: string;
@@ -70,6 +77,9 @@ interface TurnDelegationState {
   nudgedDirectMutation: boolean;
   nudgedReviewDeferral: boolean;
   usedExplicitReviewBypass: boolean;
+  postHandoffReads: number;
+  postHandoffEdits: number;
+  nudgedExpensivePostHandoff: boolean;
 }
 
 type HandoffEditLocation = {
@@ -148,6 +158,7 @@ type WorkerToolExecution = {
 
 type DelegateResult = {
   report: string;
+  fullReport: string;
   workerModel: string;
   status: DelegateStatus;
   filesChanged: string[];
@@ -172,6 +183,8 @@ type ParallelDelegateTaskResult = DelegateResult & {
 
 type ScoutResult = {
   report: string;
+  fullReport: string;
+  status: DelegateStatus;
   scoutModel: string;
   artifactSources: string[];
   artifactQueries: string[];
@@ -292,6 +305,7 @@ Your job:
 - Do not ask the user questions directly.
 - If the task becomes ambiguous, risky, cross-cutting, or requires touching forbidden files, stop and escalate instead of guessing.
 - Use tools, tests, lint, and typechecks as the source of truth when available.
+- For late-session work, prioritize narrow follow-up fixes, integration polish, and validation-driven refactors.
 - Prefer reusable artifact-producing tools (ctx_batch_execute, ctx_index, ctx_fetch_and_index, large ctx_execute with intent) for shared research.
 - When reusing an existing artifact, reference its source label in your Summary/Edits and mention why it was useful.
 
@@ -301,14 +315,14 @@ Return exactly this Markdown structure:
 - completed | escalated | blocked
 
 ## Summary
-- concise bullets describing what you changed or why you stopped
+- concise bullets (one line each) describing what you changed or why you stopped
 
 ## Files Changed
 - one file per bullet
 - If none: (none)
 
 ## Edits
-- file:path:line or file:path:start-end - concise description of the changed location
+- file:path:line or file:path:start-end - concise description (one line) of the changed location
 - If you only know the file, say file:path - file-level change
 - If none: (none)
 
@@ -318,7 +332,13 @@ Return exactly this Markdown structure:
 
 ## Escalation
 - concrete blocker, risk, or question
-- If none: (none)`;
+- If none: (none)
+
+Report style:
+- Be extremely concise.
+- Use single-line bullets for Summary and Edits.
+- Omit discussion or meta-commentary outside the sections.
+- The supervisor sees your full output; favor brevity over repetition.`;
 
 const SCOUT_SYSTEM_PROMPT = `You are a scouting subagent inside pi.
 
@@ -335,7 +355,7 @@ Your job:
 Return exactly this Markdown structure:
 
 ## Summary
-- concise bullets with the top findings
+- concise bullets (one line each) with the top findings
 
 ## Relevant Files
 - one file per bullet
@@ -347,7 +367,13 @@ Return exactly this Markdown structure:
 
 ## Recommended Next Step
 - the best next action for the supervisor
-- If none: (none)`;
+- If none: (none)
+
+Report style:
+- Be extremely concise.
+- Use single-line bullets for Summary and Findings.
+- Omit discussion or meta-commentary outside the sections.
+- The supervisor sees your full output; favor brevity over repetition.`;
 
 
 function formatModel(ref?: ModelRef, thinkingLevel?: ThinkingLevel): string {
@@ -735,15 +761,26 @@ function buildInspectionTargets(
 function buildInspectionBullets(
   editLocations: HandoffEditLocation[],
   filesChanged: string[],
-  limit = 6,
+  limit = 8,
 ): string[] {
   const targets = buildInspectionTargets(editLocations, filesChanged);
   if (targets.length === 0) return ["(none)"];
   const bullets = [
-    "Prefer one ctx_batch_execute call to inspect these locations together before falling back to serial read calls.",
+    "Prefer one ctx_batch_execute pass to inspect these changed locations before falling back to serial read calls.",
     ...targets.slice(0, limit).map((location) => formatEditLocation(location)),
-    "Use read only when you need one exact excerpt for quoting or a direct supervisor edit.",
   ];
+  if (targets.length > 1) {
+    const previewCommands = targets.slice(0, 4).map((target, index) => {
+      const label = target.path.split("/").pop() || `target-${index + 1}`;
+      const command = target.startLine && target.endLine
+        ? `sed -n '${target.startLine},${target.endLine}p' ${target.path}`
+        : `sed -n '1,160p' ${target.path}`;
+      return `{label: ${JSON.stringify(label)}, command: ${JSON.stringify(command)}}`;
+    });
+    const batchCmd = `ctx_batch_execute(commands: [${previewCommands.join(", ")}${targets.length > 4 ? ", ..." : ""}], queries: ["changed block", "follow-up context"])`;
+    bullets.push(`Ready-to-run pattern: ${batchCmd}`);
+    bullets.push("Always batch multiple inspections when they fit in one turn.");
+  }
   const remaining = targets.length - Math.min(targets.length, limit);
   if (remaining > 0) {
     bullets.splice(bullets.length - 1, 0, `+${remaining} additional changed location(s)`);
@@ -1433,9 +1470,11 @@ function buildWorkerFailureResult(
   const message = singleLine(
     error instanceof Error ? error.message : String(error),
   ) || "Worker delegation failed before the subagent completed.";
+  const report = `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Files Changed\n- (none)\n\n## Edits\n- (none)\n\n## Validation\n- (none)\n\n## Escalation\n- ${message}`;
   return {
     label,
-    report: `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Files Changed\n- (none)\n\n## Edits\n- (none)\n\n## Validation\n- (none)\n\n## Escalation\n- ${message}`,
+    report: buildCompactReport(report, [], [], { kind: "worker", status: "blocked" }),
+    fullReport: report,
     workerModel,
     status: "blocked",
     filesChanged: [],
@@ -1443,6 +1482,8 @@ function buildWorkerFailureResult(
     boundaryViolations: [],
     validation: [],
     errorMessage: message,
+    artifactSources: [],
+    artifactQueries: [],
   };
 }
 
@@ -1454,12 +1495,16 @@ function buildScoutFailureResult(
   const message = singleLine(
     error instanceof Error ? error.message : String(error),
   ) || "Scout delegation failed before the subagent completed.";
+  const report = `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Relevant Files\n- (none)\n\n## Findings\n- (none)\n\n## Recommended Next Step\n- ${message}`;
   return {
     label,
     status: "blocked",
-    report: `## Summary\n- ${message}\n\n## Relevant Files\n- (none)\n\n## Findings\n- (none)\n\n## Recommended Next Step\n- ${message}`,
+    report: buildCompactReport(report, [], [], { kind: "scout", status: "blocked" }),
+    fullReport: report,
     scoutModel,
     errorMessage: message,
+    artifactSources: [],
+    artifactQueries: [],
   };
 }
 
@@ -1647,6 +1692,13 @@ function classifySubagentOutcome(
   return "failed";
 }
 
+function getLatestActiveToolName(
+  activeToolCalls: Map<string, WorkerToolExecution>,
+): string | undefined {
+  const activeTools = [...activeToolCalls.values()];
+  return activeTools.length > 0 ? activeTools[activeTools.length - 1]?.toolName : undefined;
+}
+
 async function runWorkerSubagent(
   cwd: string,
   prompt: string,
@@ -1659,10 +1711,12 @@ async function runWorkerSubagent(
   shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
+  onProgress?: (progress: SubagentProgress) => void,
 ): Promise<Awaited<ReturnType<typeof runSubagentProcess>> & {
   toolExecutions: WorkerToolExecution[];
 }> {
   let eventIndex = 0;
+  let completedTurns = 0;
   const generatedAt = Date.now();
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
@@ -1710,6 +1764,13 @@ async function runWorkerSubagent(
         const toolEvent = event && typeof event === "object"
           ? event as Record<string, unknown>
           : undefined;
+        if (toolEvent?.type === "turn_end") {
+          completedTurns += 1;
+          onProgress?.({
+            turns: completedTurns,
+            currentTool: undefined,
+          });
+        }
         const toolCallId = typeof toolEvent?.toolCallId === "string"
           ? toolEvent.toolCallId
           : undefined;
@@ -1724,6 +1785,10 @@ async function runWorkerSubagent(
               ? toolEvent.args as Record<string, unknown>
               : undefined,
           });
+          onProgress?.({
+            turns: completedTurns,
+            currentTool: toolName,
+          });
         }
         if (toolEvent?.type === "tool_execution_end" && toolName) {
           const prior = toolCallId ? activeToolCalls.get(toolCallId) : undefined;
@@ -1737,6 +1802,10 @@ async function runWorkerSubagent(
           if (toolCallId) {
             activeToolCalls.delete(toolCallId);
           }
+          onProgress?.({
+            turns: completedTurns,
+            currentTool: getLatestActiveToolName(activeToolCalls),
+          });
         }
       },
     });
@@ -2022,11 +2091,13 @@ async function runScoutSubagent(
   shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
+  onProgress?: (progress: SubagentProgress) => void,
 ): Promise<Awaited<ReturnType<typeof runSubagentProcess>> & {
   toolExecutions: WorkerToolExecution[];
 }> {
   const scoutTools = sanitizeScoutTools(tools);
   let eventIndex = 0;
+  let completedTurns = 0;
   const generatedAt = Date.now();
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
@@ -2074,6 +2145,13 @@ async function runScoutSubagent(
         const toolEvent = event && typeof event === "object"
           ? event as Record<string, unknown>
           : undefined;
+        if (toolEvent?.type === "turn_end") {
+          completedTurns += 1;
+          onProgress?.({
+            turns: completedTurns,
+            currentTool: undefined,
+          });
+        }
         const toolCallId = typeof toolEvent?.toolCallId === "string"
           ? toolEvent.toolCallId
           : undefined;
@@ -2088,6 +2166,10 @@ async function runScoutSubagent(
               ? toolEvent.args as Record<string, unknown>
               : undefined,
           });
+          onProgress?.({
+            turns: completedTurns,
+            currentTool: toolName,
+          });
         }
         if (toolEvent?.type === "tool_execution_end" && toolName) {
           const prior = toolCallId ? activeToolCalls.get(toolCallId) : undefined;
@@ -2101,6 +2183,10 @@ async function runScoutSubagent(
           if (toolCallId) {
             activeToolCalls.delete(toolCallId);
           }
+          onProgress?.({
+            turns: completedTurns,
+            currentTool: getLatestActiveToolName(activeToolCalls),
+          });
         }
       },
     });
@@ -2217,31 +2303,31 @@ function summarizeHandoff(
 ): string {
   if (toolName === "review_changes") {
     const verdict = parseReviewVerdict(report);
-    const findings = parseSectionItems(report, "Findings").slice(0, 2);
+    const findings = parseSectionItems(report, "Findings").slice(0, 1);
     return truncate(
       [verdict, ...findings].map((item) => singleLine(item)).join(" | "),
-      320,
+      240,
     );
   }
 
-  const explicitSummary = parseSummaryLikeItems(report).slice(0, 3);
+  const explicitSummary = parseSummaryLikeItems(report).slice(0, 2);
   if (explicitSummary.length > 0) {
     return truncate(
       explicitSummary.map((item) => singleLine(item)).join(" | "),
-      320,
+      240,
     );
   }
 
   const editLocations = collectHandoffEditLocations(details);
   if (editLocations.length > 0) {
     return truncate(
-      `Edited ${formatEditLocationsInline(editLocations, 2)}`,
-      320,
+      `Edited ${formatEditLocationsInline(editLocations, 1)}`,
+      240,
     );
   }
 
   const status = typeof details.status === "string" ? details.status : "completed";
-  return truncate(singleLine(`${toolName} ${status}`), 320);
+  return truncate(singleLine(`${toolName} ${status}`), 240);
 }
 
 function inferHandoffTitle(
@@ -3017,6 +3103,110 @@ async function resolveScoutSelection(
   return { ref, model, thinkingLevel };
 }
 
+function buildCompactReport(
+  report: string,
+  filesChanged: string[],
+  editLocations: HandoffEditLocation[],
+  options?: {
+    kind?: "worker" | "scout";
+    status?: DelegateStatus | "completed" | "blocked";
+    validation?: ValidationResult[];
+    boundaryViolations?: string[];
+    artifactSources?: string[];
+    artifactQueries?: string[];
+  },
+): string {
+  const statusLine = options?.status || parseSectionItems(report, "Status")[0] || "completed";
+  const summaryItems = parseSummaryLikeItems(report).slice(0, 3);
+  const fallbackSummary = report.trim() ? truncate(singleLine(report.trim()), 220) : "(none)";
+  const findingsItems = parseSectionItems(report, "Findings").slice(0, 2);
+  const relevantFiles = parseSectionItems(report, "Relevant Files").slice(0, 3);
+  const escalationItems = parseSectionItems(report, "Escalation");
+  const nextStepItems = parseSectionItems(report, "Recommended Next Step").slice(0, 2);
+  const validationSummary = options?.validation && options.validation.length > 0
+    ? `${options.validation.filter((item) => item.outcome === "pass").length} pass, ${options.validation.filter((item) => item.outcome === "fail").length} fail, ${options.validation.filter((item) => item.outcome !== "pass" && item.outcome !== "fail").length} not run`
+    : "";
+  const boundaryLines = options?.boundaryViolations?.slice(0, 2).map((item) => singleLine(item)) ?? [];
+  const workerFiles = filesChanged.slice(0, 5).map((item) => `- ${item}`);
+  if (filesChanged.length > 5) {
+    workerFiles.push(`- +${filesChanged.length - 5} more`);
+  }
+  const normalizedEdits = dedupeEditLocations(editLocations);
+  const editLines = normalizedEdits.slice(0, 3).map((item) => `- ${formatEditLocation(item)}`);
+  if (normalizedEdits.length > 3) {
+    editLines.push(`- +${normalizedEdits.length - 3} more`);
+  }
+  const artifactLines = [
+    ...(options?.artifactSources?.length ? [`- sources: ${options.artifactSources.join(", ")}`] : []),
+    ...(options?.artifactQueries?.length ? [`- queries: ${options.artifactQueries.join(", ")}`] : []),
+  ];
+  const kind = options?.kind ?? (relevantFiles.length > 0 || findingsItems.length > 0 || nextStepItems.length > 0 ? "scout" : "worker");
+
+  const lines = [
+    "## Status",
+    `- ${statusLine}`,
+    "",
+    "## Summary",
+    ...(summaryItems.length > 0 ? summaryItems.map((item) => `- ${singleLine(item)}`) : [`- ${fallbackSummary}`]),
+  ];
+
+  if (kind === "scout") {
+    lines.push(
+      "",
+      "## Relevant Files",
+      ...(relevantFiles.length > 0 ? relevantFiles.map((item) => `- ${singleLine(item)}`) : ["- (none)"]),
+      "",
+      "## Findings",
+      ...(findingsItems.length > 0 ? findingsItems.map((item) => `- ${singleLine(item)}`) : [`- ${fallbackSummary}`]),
+    );
+    if (artifactLines.length > 0) {
+      lines.push("", "## Artifacts", ...artifactLines);
+    }
+    lines.push(
+      "",
+      "## Recommended Next Step",
+      ...(nextStepItems.length > 0 ? nextStepItems.map((item) => `- ${singleLine(item)}`) : [`- ${fallbackSummary}`]),
+    );
+    return lines.join("\n");
+  }
+
+  lines.push(
+    "",
+    "## Files Changed",
+    ...(workerFiles.length > 0 ? workerFiles : ["- (none)"]),
+    "",
+    "## Edits",
+    ...(editLines.length > 0 ? editLines : ["- (none)"]),
+  );
+
+  const failedValidationLines = (options?.validation ?? [])
+    .filter((item) => item.outcome === "fail")
+    .slice(0, 2)
+    .map((item) => {
+      const exitText = item.exitCode === null ? "signal" : String(item.exitCode);
+      return `- ${item.command} - ${item.outcome} (exit ${exitText}) - ${item.note}`;
+    });
+  lines.push(
+    "",
+    "## Validation",
+    ...(failedValidationLines.length > 0
+      ? failedValidationLines
+      : [validationSummary ? `- ${validationSummary}` : "- (none)"]),
+  );
+
+  if (artifactLines.length > 0) {
+    lines.push("", "## Artifacts", ...artifactLines);
+  }
+
+  const combinedEscalation = [
+    ...boundaryLines.map((item) => `boundary: ${item}`),
+    ...escalationItems.map((item) => singleLine(item)),
+  ].slice(0, 3);
+  lines.push("", "## Escalation", ...(combinedEscalation.length > 0 ? combinedEscalation.map((item) => `- ${item}`) : ["- (none)"]));
+
+  return lines.join("\n");
+}
+
 async function generateDelegation(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
@@ -3026,6 +3216,7 @@ async function generateDelegation(
   shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
+  onProgress?: (progress: SubagentProgress) => void,
 ): Promise<DelegateResult> {
   const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
@@ -3134,6 +3325,7 @@ async function generateDelegation(
       shouldLog,
       signal,
       onUpdate,
+      onProgress,
     );
     const final = extractFinalAssistantText(
       [
@@ -3209,7 +3401,15 @@ async function generateDelegation(
     }, shouldLog);
 
     return {
-      report: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}${buildInspectionAppendix(editLocations, actualFilesChanged)}`,
+      report: buildCompactReport(final.text, actualFilesChanged, editLocations, {
+        kind: "worker",
+        status,
+        validation,
+        boundaryViolations,
+        artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
+        artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
+      }),
+      fullReport: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}${buildInspectionAppendix(editLocations, actualFilesChanged)}`,
       workerModel: workerModelArg,
       status,
       filesChanged: actualFilesChanged,
@@ -3256,6 +3456,7 @@ async function generateScouting(
   shouldLog?: () => boolean,
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
+  onProgress?: (progress: SubagentProgress) => void,
 ): Promise<ScoutResult> {
   const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
@@ -3279,6 +3480,7 @@ async function generateScouting(
       model: params.scoutModel,
       cwd,
       outcome: "failed",
+      status: "blocked",
       phase: "preflight",
       errorMessage: "No active supervisor model selected.",
       generatedAt: Date.now(),
@@ -3325,6 +3527,7 @@ async function generateScouting(
         exitCode: 1,
         errorMessage: error instanceof Error ? error.message : String(error),
       }, signal),
+      status: "blocked",
       phase: "preflight",
       errorMessage: error instanceof Error ? error.message : String(error),
       generatedAt: Date.now(),
@@ -3351,6 +3554,7 @@ async function generateScouting(
       shouldLog,
       signal,
       onUpdate,
+      onProgress,
     );
     const final = extractFinalAssistantText(
       [
@@ -3375,6 +3579,18 @@ async function generateScouting(
       run.toolExecutions,
       [],
     );
+    const stopReason = run.stopReason?.toLowerCase() ?? "";
+    const scoutStatus: DelegateStatus =
+      !signal?.aborted &&
+      run.exitCode === 0 &&
+      !final.errorMessage &&
+      !stopReason.includes("limit") &&
+      !stopReason.includes("max") &&
+      !stopReason.includes("abort") &&
+      !stopReason.includes("cancel") &&
+      !stopReason.includes("interrupt")
+        ? "completed"
+        : "blocked";
     const effectiveArtifactSources = [
       ...(params.artifactSources ?? []),
       ...artifactSources,
@@ -3384,13 +3600,15 @@ async function generateScouting(
       ...artifactQueries,
     ];
 
+    const scoutOutcome = classifySubagentOutcome(run, signal);
     appendSubagentEvent(pi, {
       type: "subagent_end",
       delegationId,
       role: "scout",
       model: scoutModelArg,
       cwd,
-      outcome: classifySubagentOutcome(run, signal),
+      outcome: scoutOutcome,
+      status: scoutStatus,
       exitCode: run.exitCode,
       stopReason: run.stopReason,
       errorMessage: final.errorMessage,
@@ -3400,7 +3618,14 @@ async function generateScouting(
     }, shouldLog);
 
     return {
-      report: final.text,
+      report: buildCompactReport(final.text, [], [], {
+        kind: "scout",
+        status: scoutStatus,
+        artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
+        artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
+      }),
+      fullReport: `## Status\n- ${scoutStatus}\n\n${final.text}`,
+      status: scoutStatus,
       scoutModel: scoutModelArg,
       artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
       artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
@@ -3416,11 +3641,8 @@ async function generateScouting(
       role: "scout",
       model: scoutModelArg,
       cwd,
-      outcome: classifySubagentOutcome({
-        exitCode: run?.exitCode ?? 1,
-        stopReason: run?.stopReason,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      }, signal),
+      outcome: "failed",
+      status: "blocked",
       phase: run ? "postprocess" : "subprocess",
       exitCode: run?.exitCode,
       stopReason: run?.stopReason,
@@ -3771,6 +3993,27 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     pi.appendEntry(STATE_ENTRY, state);
   }
 
+  function middleDot(text: string): string {
+    return text ? `· ${text}` : "";
+  }
+
+  function formatDelegationStatus(item: Pick<ActiveDelegation, "phase" | "turns" | "currentTool">): string {
+    return [
+      item.phase,
+      item.turns !== undefined && item.turns > 0 ? `${item.turns} turns` : "",
+      item.currentTool ?? "",
+    ].filter(Boolean).join(" · ");
+  }
+
+  function buildSingleDelegationProgressText(
+    item: ActiveDelegation,
+    detailText?: string,
+  ): string {
+    const header = formatDelegationStatus(item) || item.phase;
+    const detail = detailText?.trim();
+    return detail ? `${header}\n${detail}` : header;
+  }
+
   function updateDelegationWidget(ctx: ExtensionContext) {
     const items = [...activeDelegations.values()];
     if (items.length === 0) {
@@ -3780,10 +4023,57 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     SUBAGENTS_WIDGET.set(ctx, [
       `Subagents (${items.length})`,
-      ...items.map(
-        (item) => `• ${item.role} ${item.workerModel} [${item.phase}] — ${item.title}`,
-      ),
+      ...items.map((item) => {
+        const parts = [
+          `• ${item.role} ${item.workerModel} [${item.phase}]`,
+          middleDot(item.turns !== undefined && item.turns > 0 ? `${item.turns} turns` : ""),
+          middleDot(item.currentTool ?? ""),
+        ].filter(Boolean);
+        return `${parts.join(" ")} — ${item.title}`;
+      }),
     ]);
+  }
+
+  function patchActiveDelegation(
+    ctx: ExtensionContext,
+    delegationKey: string,
+    patch: Partial<Pick<ActiveDelegation, "phase" | "workerModel" | "turns" | "currentTool">>,
+  ): ActiveDelegation | undefined {
+    const active = activeDelegations.get(delegationKey);
+    if (!active) return undefined;
+
+    let changed = false;
+    for (const [key, value] of Object.entries(patch)) {
+      if (active[key as keyof typeof active] === value) {
+        continue;
+      }
+      (active as Record<string, unknown>)[key] = value;
+      changed = true;
+    }
+
+    if (changed) {
+      updateDelegationWidget(ctx);
+    }
+    return active;
+  }
+
+  function emitSingleDelegationUpdate(
+    onUpdate: ((update: any) => void) | undefined,
+    item: ActiveDelegation | undefined,
+    detailText?: string,
+  ) {
+    if (!onUpdate || !item) return;
+    onUpdate({
+      content: [{ type: "text", text: buildSingleDelegationProgressText(item, detailText) }],
+      details: {
+        role: item.role,
+        title: item.title,
+        phase: item.phase,
+        model: item.workerModel,
+        turns: item.turns,
+        currentTool: item.currentTool,
+      },
+    });
   }
 
   function refreshStatus(ctx: ExtensionContext) {
@@ -3834,6 +4124,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       nudgedDirectMutation: false,
       nudgedReviewDeferral: false,
       usedExplicitReviewBypass: false,
+      postHandoffReads: 0,
+      postHandoffEdits: 0,
+      nudgedExpensivePostHandoff: false,
     };
 
     const strictSection = shouldEnforcePlanSplit
@@ -3859,6 +4152,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - When a reusable artifact matters to a delegated task, pass its source labels via \`artifactSources\` and suggested lookups via \`artifactQueries\`.
 - Good scout candidates: file discovery, behavior tracing, implementation precedent searches, config inventory, and test surface mapping.
 - Good auto-delegation candidates for workers: small code edits, focused tests, local refactors, narrow bug fixes, and file-scoped implementation work.
+- Later in a session, still consider \`delegate_worker\` for narrow follow-up fixes (e.g. fixing a lint error, wiring a missing handler), integration polish (e.g. updating a theme, refining a UI widget), validation-driven refactors, and file-scoped cleanup after earlier worker handoffs.
 - Delegate only bounded work with explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
 - Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and broad cross-cutting refactors on the current model unless the user explicitly asks otherwise.
 - Delegate one independently checkable task at a time by default.
@@ -3961,11 +4255,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         ? details.sessionKey
         : ctx.sessionManager.getSessionFile() ?? "ephemeral";
     const title = inferHandoffTitle(event.toolName, input, details);
-    const status = inferHandoffStatus(event.toolName, report, details);
+    const actualReport = typeof details.fullReport === "string" ? details.fullReport : report;
+    const status = inferHandoffStatus(event.toolName, actualReport, details);
     const filesChanged = collectHandoffFiles(details);
     const editLocations = collectHandoffEditLocations(details);
     const artifacts = collectHandoffArtifacts(details);
-    const summary = summarizeHandoff(event.toolName, report, details);
+    const summary = summarizeHandoff(event.toolName, actualReport, details);
     const pointer: HandoffPointer = {
       source: buildHandoffSource(event.toolName, sessionKey, generatedAt, title),
       toolName: event.toolName,
@@ -3997,7 +4292,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       modelLabel,
       promptInput: input,
       details,
-      report,
+      report: actualReport,
     });
     const handoffIndexed = await indexHandoff(ctx, pointer, markdown);
     pointer.indexed = handoffIndexed;
@@ -4068,6 +4363,31 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       }
     }
 
+    if (turnDelegationState && turnDelegationState.completedWorkerDelegations > 0) {
+      if (event.toolName === "read") {
+        turnDelegationState.postHandoffReads += 1;
+      } else if (
+        event.toolName === "edit" ||
+        event.toolName === "write" ||
+        (event.toolName === "bash" && isMutatingBashCommand((event.input as { command?: unknown } | undefined)?.command))
+      ) {
+        turnDelegationState.postHandoffEdits += 1;
+      }
+
+      if (
+        !turnDelegationState.nudgedExpensivePostHandoff &&
+        (turnDelegationState.postHandoffReads >= 3 || turnDelegationState.postHandoffEdits >= 2)
+      ) {
+        turnDelegationState.nudgedExpensivePostHandoff = true;
+        if (ctx.hasUI) {
+          ctx.ui.notify(
+            "This follow-up work still looks bounded; consider another delegate_worker to maintain scout-plan-implement separation.",
+            "warning",
+          );
+        }
+      }
+    }
+
     if (!turnDelegationState?.enforcePlanSplit) return;
     if (turnDelegationState.completedWorkerDelegations > 0) return;
     if (turnDelegationState.nudgedDirectMutation) return;
@@ -4083,7 +4403,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     turnDelegationState.nudgedDirectMutation = true;
     if (ctx.hasUI) {
       ctx.ui.notify(
-        "Worker-first plan split is active for this turn; consider delegate_worker before direct supervisor edits.",
+        "Worker-first plan split is active for this turn; consider delegate_worker before direct supervisor edits, especially for narrow follow-up fixes or file-scoped integration polish.",
         "warning",
       );
     }
@@ -4121,39 +4441,60 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         role: "scout",
       });
       updateDelegationWidget(ctx);
-      onUpdate?.({
-        content: [{ type: "text", text: "Starting scout subagent..." }],
-      });
+      emitSingleDelegationUpdate(onUpdate, activeDelegations.get(delegationKey));
       try {
         const effectiveParams = withInferredArtifacts(
           ctx,
           params,
           [params.objective, params.scope, ...(params.questions ?? [])].filter(Boolean).join("\n"),
         );
-        const result = await generateScouting(ctx, state, effectiveParams, delegationKey, pi, isCurrentSession, signal, (text) => {
-          if (!isCurrentSession()) {
-            return;
-          }
-          const active = activeDelegations.get(delegationKey);
-          if (active) {
-            active.phase = "running";
-            active.workerModel = formatModel(
-              params.scoutModel
-                ? parseModelRef(ctx, params.scoutModel)
-                : getEffectiveScoutRef(ctx, state),
-              params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
-            );
-            updateDelegationWidget(ctx);
-          }
-          onUpdate?.({ content: [{ type: "text", text }] });
-        });
+        const result = await generateScouting(
+          ctx,
+          state,
+          effectiveParams,
+          delegationKey,
+          pi,
+          isCurrentSession,
+          signal,
+          (text) => {
+            if (!isCurrentSession()) {
+              return;
+            }
+            const active = patchActiveDelegation(ctx, delegationKey, {
+              phase: "running",
+              workerModel: formatModel(
+                params.scoutModel
+                  ? parseModelRef(ctx, params.scoutModel)
+                  : getEffectiveScoutRef(ctx, state),
+                params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
+              ),
+            });
+            emitSingleDelegationUpdate(onUpdate, active, text);
+          },
+          (progress) => {
+            if (!isCurrentSession()) {
+              return;
+            }
+            const active = patchActiveDelegation(ctx, delegationKey, {
+              phase: "running",
+              workerModel: formatModel(
+                params.scoutModel
+                  ? parseModelRef(ctx, params.scoutModel)
+                  : getEffectiveScoutRef(ctx, state),
+                params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
+              ),
+              turns: progress.turns,
+              currentTool: progress.currentTool,
+            });
+            emitSingleDelegationUpdate(onUpdate, active);
+          },
+        );
         if (isCurrentSession()) {
-          const active = activeDelegations.get(delegationKey);
-          if (active) {
-            active.phase = "completed";
-            active.workerModel = result.scoutModel;
-            updateDelegationWidget(ctx);
-          }
+          patchActiveDelegation(ctx, delegationKey, {
+            phase: "completed",
+            workerModel: result.scoutModel,
+            currentTool: undefined,
+          });
         }
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
@@ -4169,12 +4510,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             generatedAt,
             sessionKey,
             scoutModel: result.scoutModel,
+            status: result.status,
             artifactSources: result.artifactSources,
             artifactQueries: result.artifactQueries,
             artifactSummary: result.artifactSummary,
             subagentMetrics: result.subagentMetrics,
             stopReason: result.stopReason,
             errorMessage: result.errorMessage,
+            fullReport: result.fullReport,
           },
         };
       } finally {
@@ -4239,14 +4582,32 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const emitProgress = () => {
         const done = partialResults.filter(Boolean).length;
         const running = params.tasks.length - done;
+        const activeItems = [...activeDelegations.values()]
+          .filter((item) => item.id.startsWith(`${sessionEpoch}:${toolCallId}:`))
+          .sort((left, right) => left.title.localeCompare(right.title));
+        const lines = [
+          `Parallel scouts: ${done}/${params.tasks.length} finished, ${running} running...`,
+          ...activeItems.map((item) => `- ${item.title} · ${formatDelegationStatus(item)}`),
+        ];
+        if (running > 0 && activeItems.length === 0) {
+          lines.push("- awaiting first subagent update...");
+        }
         onUpdate?.({
           content: [{
             type: "text",
-            text: `Parallel scouts: ${done}/${params.tasks.length} finished, ${running} running...`,
+            text: lines.join("\n"),
           }],
           details: {
             completedCount: done,
             totalCount: params.tasks.length,
+            activeDelegations: activeItems.map((item) => ({
+              title: item.title,
+              role: item.role,
+              phase: item.phase,
+              model: item.workerModel,
+              turns: item.turns,
+              currentTool: item.currentTool,
+            })),
             results: partialResults.filter(
               (result): result is ParallelScoutTaskResult => Boolean(result),
             ),
@@ -4294,12 +4655,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               signal,
               () => {
                 if (!isCurrentSession()) return;
-                const active = activeDelegations.get(delegationKey);
-                if (active) {
-                  active.phase = "running";
-                  active.workerModel = resultScoutLabelFallback(ctx, state, task);
-                  updateDelegationWidget(ctx);
-                }
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultScoutLabelFallback(ctx, state, task),
+                });
+                emitProgress();
+              },
+              (progress) => {
+                if (!isCurrentSession()) return;
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultScoutLabelFallback(ctx, state, task),
+                  turns: progress.turns,
+                  currentTool: progress.currentTool,
+                });
+                emitProgress();
               },
             );
             const finalResult: ParallelScoutTaskResult = {
@@ -4309,12 +4679,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             };
             partialResults[index] = finalResult;
             if (isCurrentSession()) {
-              const active = activeDelegations.get(delegationKey);
-              if (active) {
-                active.phase = finalResult.status;
-                active.workerModel = finalResult.scoutModel;
-                updateDelegationWidget(ctx);
-              }
+              patchActiveDelegation(ctx, delegationKey, {
+                phase: finalResult.status,
+                workerModel: finalResult.scoutModel,
+                currentTool: undefined,
+              });
             }
             emitProgress();
             return finalResult;
@@ -4326,12 +4695,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             );
             partialResults[index] = finalResult;
             if (isCurrentSession()) {
-              const active = activeDelegations.get(delegationKey);
-              if (active) {
-                active.phase = finalResult.status;
-                active.workerModel = finalResult.scoutModel;
-                updateDelegationWidget(ctx);
-              }
+              patchActiveDelegation(ctx, delegationKey, {
+                phase: finalResult.status,
+                workerModel: finalResult.scoutModel,
+                currentTool: undefined,
+              });
             }
             emitProgress();
             return finalResult;
@@ -4445,10 +4813,20 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         const finishedResults = partialResults.filter(
           (result): result is ParallelDelegateTaskResult => Boolean(result),
         );
+        const activeItems = [...activeDelegations.values()]
+          .filter((item) => item.id.startsWith(`${sessionEpoch}:${toolCallId}:`))
+          .sort((left, right) => left.title.localeCompare(right.title));
+        const lines = [
+          `Parallel workers: ${done}/${params.tasks.length} finished, ${running} running...`,
+          ...activeItems.map((item) => `- ${item.title} · ${formatDelegationStatus(item)}`),
+        ];
+        if (running > 0 && activeItems.length === 0) {
+          lines.push("- awaiting first subagent update...");
+        }
         onUpdate?.({
           content: [{
             type: "text",
-            text: `Parallel workers: ${done}/${params.tasks.length} finished, ${running} running...`,
+            text: lines.join("\n"),
           }],
           details: {
             status: finishedResults.length > 0
@@ -4458,6 +4836,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               (result) => result?.status === "completed",
             ).length,
             totalCount: params.tasks.length,
+            activeDelegations: activeItems.map((item) => ({
+              title: item.title,
+              role: item.role,
+              phase: item.phase,
+              model: item.workerModel,
+              turns: item.turns,
+              currentTool: item.currentTool,
+            })),
             results: finishedResults,
           },
         });
@@ -4503,12 +4889,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               signal,
               () => {
                 if (!isCurrentSession()) return;
-                const active = activeDelegations.get(delegationKey);
-                if (active) {
-                  active.phase = "running";
-                  active.workerModel = resultWorkerLabelFallback(ctx, state, task);
-                  updateDelegationWidget(ctx);
-                }
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultWorkerLabelFallback(ctx, state, task),
+                });
+                emitProgress();
+              },
+              (progress) => {
+                if (!isCurrentSession()) return;
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultWorkerLabelFallback(ctx, state, task),
+                  turns: progress.turns,
+                  currentTool: progress.currentTool,
+                });
+                emitProgress();
               },
             );
             const finalResult: ParallelDelegateTaskResult = {
@@ -4517,12 +4912,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             };
             partialResults[index] = finalResult;
             if (isCurrentSession()) {
-              const active = activeDelegations.get(delegationKey);
-              if (active) {
-                active.phase = finalResult.status;
-                active.workerModel = finalResult.workerModel;
-                updateDelegationWidget(ctx);
-              }
+              patchActiveDelegation(ctx, delegationKey, {
+                phase: finalResult.status,
+                workerModel: finalResult.workerModel,
+                currentTool: undefined,
+              });
             }
             emitProgress();
             return finalResult;
@@ -4534,12 +4928,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             );
             partialResults[index] = finalResult;
             if (isCurrentSession()) {
-              const active = activeDelegations.get(delegationKey);
-              if (active) {
-                active.phase = finalResult.status;
-                active.workerModel = finalResult.workerModel;
-                updateDelegationWidget(ctx);
-              }
+              patchActiveDelegation(ctx, delegationKey, {
+                phase: finalResult.status,
+                workerModel: finalResult.workerModel,
+                currentTool: undefined,
+              });
             }
             emitProgress();
             return finalResult;
@@ -4626,9 +5019,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         role: "worker",
       });
       updateDelegationWidget(ctx);
-      onUpdate?.({
-        content: [{ type: "text", text: "Starting worker subagent..." }],
-      });
+      emitSingleDelegationUpdate(onUpdate, activeDelegations.get(delegationKey));
       try {
         const effectiveParams = withInferredArtifacts(
           ctx,
@@ -4647,26 +5038,39 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             if (!isCurrentSession()) {
               return;
             }
-            const active = activeDelegations.get(delegationKey);
-            if (active) {
-              active.phase = "running";
-              active.workerModel = resultWorkerLabelFallback(
+            const active = patchActiveDelegation(ctx, delegationKey, {
+              phase: "running",
+              workerModel: resultWorkerLabelFallback(
                 ctx,
                 state,
                 params,
-              );
-              updateDelegationWidget(ctx);
+              ),
+            });
+            emitSingleDelegationUpdate(onUpdate, active, text);
+          },
+          (progress) => {
+            if (!isCurrentSession()) {
+              return;
             }
-            onUpdate?.({ content: [{ type: "text", text }] });
+            const active = patchActiveDelegation(ctx, delegationKey, {
+              phase: "running",
+              workerModel: resultWorkerLabelFallback(
+                ctx,
+                state,
+                params,
+              ),
+              turns: progress.turns,
+              currentTool: progress.currentTool,
+            });
+            emitSingleDelegationUpdate(onUpdate, active);
           },
         );
         if (isCurrentSession()) {
-          const active = activeDelegations.get(delegationKey);
-          if (active) {
-            active.phase = result.status;
-            active.workerModel = result.workerModel;
-            updateDelegationWidget(ctx);
-          }
+          patchActiveDelegation(ctx, delegationKey, {
+            phase: result.status,
+            workerModel: result.workerModel,
+            currentTool: undefined,
+          });
         }
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
@@ -4693,6 +5097,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             subagentMetrics: result.subagentMetrics,
             stopReason: result.stopReason,
             errorMessage: result.errorMessage,
+            fullReport: result.fullReport,
           },
         };
       } finally {

@@ -1,0 +1,670 @@
+#!/usr/bin/env node
+
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+function printHelp() {
+  console.log(`Usage: pi-session-analyze [options]
+
+Compare Pi session efficiency across workflow eras for one project.
+Era boundaries are derived from the first session that contains delegation
+and the first session that contains artifact-bearing handoffs.
+
+Options:
+  --project-dir <path>   Project directory to analyze (default: current directory)
+  --sessions-root <dir>  Override session root (default: ~/.pi/agent/sessions)
+  --since <date>         Only include sessions starting on or after this date (ISO 8601; date-only means local start of day)
+  --until <date>         Only include sessions starting on or before this date (ISO 8601; date-only means local end of day)
+  --ignore-parse-errors  Continue even if a session file contains malformed JSONL
+  --json                 Print machine-readable JSON instead of the text report
+  --help                 Show this help message
+`);
+}
+
+function parseArgs(argv) {
+  const options = {
+    projectDir: process.cwd(),
+    sessionsRoot: path.join(os.homedir(), '.pi', 'agent', 'sessions'),
+    json: false,
+    ignoreParseErrors: false,
+    since: null,
+    until: null,
+  };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--help') {
+      options.help = true;
+    } else if (arg === '--json') {
+      options.json = true;
+    } else if (arg === '--ignore-parse-errors') {
+      options.ignoreParseErrors = true;
+    } else if (arg === '--project-dir') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('-')) {
+        throw new Error('--project-dir requires a path value');
+      }
+      options.projectDir = path.resolve(argv[i + 1]);
+      i += 1;
+    } else if (arg === '--sessions-root') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('-')) {
+        throw new Error('--sessions-root requires a directory value');
+      }
+      options.sessionsRoot = path.resolve(argv[i + 1]);
+      i += 1;
+    } else if (arg === '--since') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('-')) {
+        throw new Error('--since requires a date value');
+      }
+      const date = parseFilterDate(argv[i + 1], 'since');
+      if (!date) throw new Error(`Invalid --since date: ${argv[i + 1]}`);
+      options.since = date;
+      i += 1;
+    } else if (arg === '--until') {
+      if (!argv[i + 1] || argv[i + 1].startsWith('-')) {
+        throw new Error('--until requires a date value');
+      }
+      const date = parseFilterDate(argv[i + 1], 'until');
+      if (!date) throw new Error(`Invalid --until date: ${argv[i + 1]}`);
+      options.until = date;
+      i += 1;
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  if (options.since && options.until && options.since > options.until) {
+    throw new Error('--since must be earlier than or equal to --until');
+  }
+
+  return options;
+}
+
+function normalizeProjectDir(projectDir) {
+  try {
+    return fs.realpathSync(projectDir);
+  } catch (error) {
+    throw new Error(`Could not resolve project directory ${projectDir}: ${error.message}`);
+  }
+}
+
+function projectSlug(projectDir) {
+  return projectDir.replace(/^\//, '').replace(/\//g, '-');
+}
+
+function sessionDirFor(projectDir, sessionsRoot) {
+  return path.join(sessionsRoot, `--${projectSlug(normalizeProjectDir(projectDir))}--`);
+}
+
+function parseIso(value) {
+  if (!value || typeof value !== 'string') return null;
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:([Zz])|([+-])(\d{2}):(\d{2}))?)?$/,
+  );
+  if (!match) return null;
+
+  const [
+    ,
+    yearText,
+    monthText,
+    dayText,
+    hourText,
+    minuteText,
+    secondText,
+    millisText,
+    zulu,
+    offsetSign,
+    offsetHourText,
+    offsetMinuteText,
+  ] = match;
+
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = hourText ? Number(hourText) : 0;
+  const minute = minuteText ? Number(minuteText) : 0;
+  const second = secondText ? Number(secondText) : 0;
+  const millisecond = millisText ? Number(millisText.padEnd(3, '0')) : 0;
+
+  if (
+    month < 1 || month > 12 ||
+    day < 1 || day > 31 ||
+    hour < 0 || hour > 23 ||
+    minute < 0 || minute > 59 ||
+    second < 0 || second > 59 ||
+    millisecond < 0 || millisecond > 999
+  ) {
+    return null;
+  }
+
+  const hasExplicitOffset = Boolean(zulu || offsetSign);
+  if (hasExplicitOffset) {
+    const offsetHours = offsetHourText ? Number(offsetHourText) : 0;
+    const offsetMinutes = offsetMinuteText ? Number(offsetMinuteText) : 0;
+    if (offsetHours > 23 || offsetMinutes > 59) return null;
+    const offsetTotalMinutes = zulu
+      ? 0
+      : ((offsetHours * 60) + offsetMinutes) * (offsetSign === '-' ? -1 : 1);
+    const utcMillis = Date.UTC(year, month - 1, day, hour, minute, second, millisecond)
+      - (offsetTotalMinutes * 60 * 1000);
+    const date = new Date(utcMillis);
+    const roundTripMinutes = Math.abs(offsetTotalMinutes);
+    const normalized = new Date(utcMillis + (offsetTotalMinutes * 60 * 1000));
+    if (
+      normalized.getUTCFullYear() !== year ||
+      normalized.getUTCMonth() + 1 !== month ||
+      normalized.getUTCDate() !== day ||
+      normalized.getUTCHours() !== hour ||
+      normalized.getUTCMinutes() !== minute ||
+      normalized.getUTCSeconds() !== second ||
+      normalized.getUTCMilliseconds() !== millisecond ||
+      roundTripMinutes > (23 * 60 + 59)
+    ) {
+      return null;
+    }
+    return date;
+  }
+
+  const date = new Date(year, month - 1, day, hour, minute, second, millisecond);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() + 1 !== month ||
+    date.getDate() !== day ||
+    date.getHours() !== hour ||
+    date.getMinutes() !== minute ||
+    date.getSeconds() !== second ||
+    date.getMilliseconds() !== millisecond
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function parseFilterDate(value, boundary) {
+  if (!value) return null;
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (dateOnly) {
+    return parseIso(
+      boundary === 'until'
+        ? `${value}T23:59:59.999`
+        : `${value}T00:00:00.000`,
+    );
+  }
+  return parseIso(value);
+}
+
+function usageValue(obj, key) {
+  return Number(obj?.[key] || 0);
+}
+
+function hasArtifactMetadata(data) {
+  return Boolean(data?.artifactSources?.length || data?.artifactQueries?.length || data?.artifactSummary);
+}
+
+function safeReadJsonLines(filePath) {
+  const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+  const entries = [];
+  const parseErrors = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim()) continue;
+    try {
+      entries.push(JSON.parse(line));
+    } catch (error) {
+      parseErrors.push({
+        file: filePath,
+        line: index + 1,
+        message: error.message,
+      });
+    }
+  }
+  return { entries, parseErrors };
+}
+
+function analyzeSession(filePath) {
+  const { entries, parseErrors } = safeReadJsonLines(filePath);
+  const stats = {
+    file: path.basename(filePath),
+    firstTimestamp: null,
+    messageIndex: 0,
+    assistantMessages: 0,
+    userMessages: 0,
+    toolResults: 0,
+    mainInput: 0,
+    mainOutput: 0,
+    mainCacheRead: 0,
+    subInput: 0,
+    subOutput: 0,
+    subCacheRead: 0,
+    delegateCalls: 0,
+    workerCalls: 0,
+    handoffs: 0,
+    workerHandoffs: 0,
+    artifactHandoffs: 0,
+    handoffsWithFilesChanged: 0,
+    handoffsWithEditLocations: 0,
+    workerHandoffsWithFilesChanged: 0,
+    workerHandoffsWithEditLocations: 0,
+    postHandoffReads: 0,
+    postHandoffBatch: 0,
+    postHandoffCtx: 0,
+    delegateQuartiles: [0, 0, 0, 0],
+    workerQuartiles: [0, 0, 0, 0],
+    toolCounts: {},
+  };
+
+  let afterHandoff = false;
+  const delegatePositions = [];
+  const workerPositions = [];
+
+  for (const entry of entries) {
+    const entryTimestamp = parseIso(entry.timestamp);
+    if (!stats.firstTimestamp && entryTimestamp) {
+      stats.firstTimestamp = entryTimestamp;
+    }
+
+    if (entry.type === 'custom' && entry.customType === 'subagent-event') {
+      const eventMessage = entry.data?.event?.message;
+      if (eventMessage?.role === 'assistant') {
+        const usage = eventMessage.usage || {};
+        stats.subInput += usageValue(usage, 'input');
+        stats.subOutput += usageValue(usage, 'output');
+        stats.subCacheRead += usageValue(usage, 'cacheRead');
+      }
+      continue;
+    }
+
+    if (entry.type === 'custom' && entry.customType === 'subagent-handoff') {
+      afterHandoff = true;
+      stats.handoffs += 1;
+
+      const data = entry.data || {};
+      const isWorker = data.toolName === 'delegate_worker' || data.toolName === 'delegate_workers';
+      if (isWorker) {
+        stats.workerHandoffs += 1;
+      }
+      if (hasArtifactMetadata(data)) {
+        stats.artifactHandoffs += 1;
+      }
+      if (Array.isArray(data.filesChanged) && data.filesChanged.length > 0) {
+        stats.handoffsWithFilesChanged += 1;
+        if (isWorker) stats.workerHandoffsWithFilesChanged += 1;
+      }
+      if (Array.isArray(data.editLocations) && data.editLocations.length > 0) {
+        stats.handoffsWithEditLocations += 1;
+        if (isWorker) stats.workerHandoffsWithEditLocations += 1;
+      }
+      continue;
+    }
+
+    if (entry.type !== 'message') {
+      continue;
+    }
+
+    stats.messageIndex += 1;
+    const message = entry.message || {};
+    const role = message.role;
+    const usage = message.usage || {};
+
+    if (role === 'assistant') {
+      stats.assistantMessages += 1;
+      stats.mainInput += usageValue(usage, 'input');
+      stats.mainOutput += usageValue(usage, 'output');
+      stats.mainCacheRead += usageValue(usage, 'cacheRead');
+      continue;
+    }
+
+    if (role === 'user') {
+      stats.userMessages += 1;
+      continue;
+    }
+
+    if (role !== 'toolResult') {
+      continue;
+    }
+
+    stats.toolResults += 1;
+    const toolName = message.toolName;
+    if (toolName) {
+      stats.toolCounts[toolName] = (stats.toolCounts[toolName] || 0) + 1;
+    }
+
+    if (toolName?.startsWith('delegate_')) {
+      stats.delegateCalls += 1;
+      delegatePositions.push(stats.messageIndex);
+      if (toolName === 'delegate_worker' || toolName === 'delegate_workers') {
+        stats.workerCalls += 1;
+        workerPositions.push(stats.messageIndex);
+      }
+    }
+
+    if (!afterHandoff) {
+      continue;
+    }
+
+    if (toolName === 'read') {
+      stats.postHandoffReads += 1;
+    }
+    if (toolName === 'ctx_batch_execute') {
+      stats.postHandoffBatch += 1;
+    }
+    if (toolName === 'ctx_execute' || toolName === 'ctx_execute_file' || toolName === 'ctx_batch_execute') {
+      stats.postHandoffCtx += 1;
+    }
+  }
+
+  const bucket = (position) => {
+    if (stats.messageIndex <= 0) return 0;
+    return Math.min(3, Math.floor(((position - 1) / stats.messageIndex) * 4));
+  };
+  for (const position of delegatePositions) {
+    stats.delegateQuartiles[bucket(position)] += 1;
+  }
+  for (const position of workerPositions) {
+    stats.workerQuartiles[bucket(position)] += 1;
+  }
+
+  stats.parseErrors = parseErrors;
+  return stats;
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function median(values) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+function pct(part, total) {
+  if (!total) return 0;
+  return (part / total) * 100;
+}
+
+function formatPct(part, total) {
+  return `${pct(part, total).toFixed(1)}%`;
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('en-US').format(Math.round(value));
+}
+
+function formatTokenCount(value) {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return String(value);
+}
+
+function formatQuartiles(quartiles) {
+  const total = sum(quartiles);
+  return quartiles.map((count) => Number(pct(count, total).toFixed(1)));
+}
+
+function summarizeEra(name, rows) {
+  const sessions = rows.length;
+  const mainSum = sum(rows.map((row) => row.mainInput));
+  const subSum = sum(rows.map((row) => row.subInput));
+  const knownTotal = mainSum + subSum;
+  const delegateCalls = sum(rows.map((row) => row.delegateCalls));
+  const workerCalls = sum(rows.map((row) => row.workerCalls));
+  const handoffs = sum(rows.map((row) => row.handoffs));
+  const artifactHandoffs = sum(rows.map((row) => row.artifactHandoffs));
+  const postReads = sum(rows.map((row) => row.postHandoffReads));
+  const postBatch = sum(rows.map((row) => row.postHandoffBatch));
+  const postCtx = sum(rows.map((row) => row.postHandoffCtx));
+  const workerHandoffs = sum(rows.map((row) => row.workerHandoffs));
+  const workerEditLocationCoverage = sum(rows.map((row) => row.workerHandoffsWithEditLocations));
+  const workerFilesCoverage = sum(rows.map((row) => row.workerHandoffsWithFilesChanged));
+  const mainInputs = rows.map((row) => row.mainInput);
+  const quartiles = [0, 0, 0, 0];
+  const workerQuartiles = [0, 0, 0, 0];
+  const toolCounts = {};
+
+  for (const row of rows) {
+    for (let i = 0; i < 4; i += 1) {
+      quartiles[i] += row.delegateQuartiles[i];
+      workerQuartiles[i] += row.workerQuartiles[i];
+    }
+    for (const [tool, count] of Object.entries(row.toolCounts)) {
+      toolCounts[tool] = (toolCounts[tool] || 0) + count;
+    }
+  }
+
+  return {
+    name,
+    sessions,
+    mainSum,
+    subSum,
+    knownTotal,
+    mainSharePct: Number(pct(mainSum, knownTotal).toFixed(1)),
+    avgMainInput: sessions ? Math.round(mainSum / sessions) : 0,
+    medianMainInput: median(mainInputs),
+    delegateCalls,
+    workerCalls,
+    handoffs,
+    artifactHandoffs,
+    postReads,
+    postBatch,
+    postCtx,
+    workerHandoffs,
+    workerFilesCoverage,
+    workerEditLocationCoverage,
+    delegateQuartiles: formatQuartiles(quartiles),
+    workerQuartiles: formatQuartiles(workerQuartiles),
+    toolCounts,
+  };
+}
+
+function deriveEras(rows) {
+  const firstDelegate = rows.find((row) => row.delegateCalls > 0)?.firstTimestamp || null;
+  const firstArtifact = rows.find((row) => row.artifactHandoffs > 0)?.firstTimestamp || null;
+
+  const eras = [];
+  if (firstDelegate) {
+    eras.push({ key: 'pre_supervisor', name: 'Pre-supervisor', filter: (row) => row.firstTimestamp < firstDelegate });
+  } else {
+    eras.push({ key: 'all', name: 'All sessions', filter: () => true });
+    return { firstDelegate: null, firstArtifact: null, eras };
+  }
+
+  if (firstArtifact) {
+    eras.push({
+      key: 'delegation_pre_artifacts',
+      name: 'Delegation, pre-artifacts',
+      filter: (row) => row.firstTimestamp >= firstDelegate && row.firstTimestamp < firstArtifact,
+    });
+    eras.push({
+      key: 'artifacts',
+      name: 'Structured artifacts',
+      filter: (row) => row.firstTimestamp >= firstArtifact,
+    });
+  } else {
+    eras.push({
+      key: 'delegation',
+      name: 'Delegation era',
+      filter: (row) => row.firstTimestamp >= firstDelegate,
+    });
+  }
+
+  return { firstDelegate, firstArtifact, eras };
+}
+
+function buildReport(rows, projectDir, sessionDir, filters = {}) {
+  const { firstDelegate, firstArtifact, eras } = deriveEras(rows);
+  const summaries = eras.map((era) => summarizeEra(era.name, rows.filter(era.filter)));
+
+  const latest = summaries[summaries.length - 1] || null;
+  const previous = summaries.length > 1 ? summaries[summaries.length - 2] : null;
+  const improvedMainShare = latest && previous ? latest.mainSharePct < previous.mainSharePct : null;
+  const improvedReads = latest && previous
+    ? latest.postReads <= previous.postReads || latest.postBatch >= previous.postBatch
+    : null;
+
+  const recommendations = [];
+  if (latest) {
+    if (latest.workerHandoffs && latest.workerEditLocationCoverage < latest.workerHandoffs) {
+      recommendations.push('Improve worker handoffs so filesChanged and editLocations are present more consistently.');
+    }
+    if (latest.postReads > latest.postBatch) {
+      recommendations.push('Post-handoff inspection still leans on serial read calls; prefer ctx_batch_execute when a handoff points to multiple files or locations.');
+    }
+    if (latest.delegateQuartiles[0] > 50 || latest.delegateQuartiles[3] < 20 || latest.workerQuartiles[3] < 20) {
+      recommendations.push('Broaden worker guidance for late-session follow-up work: small validation-driven fixes, file-scoped integration polish, and narrow refactors are still good worker candidates.');
+    }
+    recommendations.push('Keep inline handoff summaries short and rely on artifactSources/artifactQueries for detail-on-demand.');
+  }
+
+  return {
+    projectDir,
+    sessionDir,
+    filters: {
+      since: filters.since ? filters.since.toISOString() : null,
+      until: filters.until ? filters.until.toISOString() : null,
+    },
+    sessionCount: rows.length,
+    classification: 'session_start',
+    boundaries: {
+      firstDelegate: firstDelegate ? firstDelegate.toISOString() : null,
+      firstArtifact: firstArtifact ? firstArtifact.toISOString() : null,
+    },
+    summaries,
+    verdict: {
+      improvedMainModelShare: improvedMainShare,
+      improvedPostHandoffInspectionMix: improvedReads,
+      note: 'More delegation and artifact use improved work partitioning, but large sessions can still send dense context to the main model.',
+    },
+    recommendations,
+  };
+}
+
+function printTextReport(report) {
+  console.log(`Analyzing ${report.sessionCount} sessions in ${report.sessionDir}`);
+  console.log(`Project: ${report.projectDir}`);
+  if (report.filters.since || report.filters.until) {
+    const range = [
+      report.filters.since ? `since ${report.filters.since}` : '',
+      report.filters.until ? `until ${report.filters.until}` : '',
+    ].filter(Boolean).join(' ');
+    console.log(`Filters: ${range}`);
+  }
+  if (report.boundaries.firstDelegate) {
+    console.log(`First delegate session: ${report.boundaries.firstDelegate}`);
+  }
+  if (report.boundaries.firstArtifact) {
+    console.log(`First artifact handoff: ${report.boundaries.firstArtifact}`);
+  }
+  console.log('Classification: whole sessions are grouped by session start, using the first session that shows delegation/artifact activity as the boundary.');
+
+  for (const summary of report.summaries) {
+    console.log(`\n== ${summary.name} ==`);
+    console.log(`Sessions: ${summary.sessions}`);
+    if (!summary.sessions) {
+      console.log('No sessions in this era.');
+      continue;
+    }
+    console.log(`Known input: main ${formatTokenCount(summary.mainSum)}, subagents ${formatTokenCount(summary.subSum)} (${summary.mainSharePct}% main-model share)`);
+    console.log(`Main input/session: avg ${formatTokenCount(summary.avgMainInput)}, median ${formatTokenCount(summary.medianMainInput)}`);
+    console.log(`Delegate calls/session: ${(summary.delegateCalls / summary.sessions).toFixed(2)} | worker calls/session: ${(summary.workerCalls / summary.sessions).toFixed(2)}`);
+    console.log(`Handoffs/session: ${(summary.handoffs / summary.sessions).toFixed(2)} | artifact handoffs/session: ${(summary.artifactHandoffs / summary.sessions).toFixed(2)}`);
+    if (summary.handoffs) {
+      console.log(`Post-handoff read:ctx_batch_execute = ${formatNumber(summary.postReads)}:${formatNumber(summary.postBatch)} (all ctx after handoff: ${formatNumber(summary.postCtx)})`);
+      console.log(`Delegate quartiles: ${summary.delegateQuartiles.join('% / ')}%`);
+    }
+    if (summary.workerHandoffs) {
+      console.log(`Worker handoffs with filesChanged: ${formatPct(summary.workerFilesCoverage, summary.workerHandoffs)} | with editLocations: ${formatPct(summary.workerEditLocationCoverage, summary.workerHandoffs)}`);
+      console.log(`Worker quartiles: ${summary.workerQuartiles.join('% / ')}%`);
+    }
+  }
+
+  console.log('\n== Verdict ==');
+  if (report.verdict.improvedMainModelShare === true) {
+    console.log('- Known input share moved away from the main model.');
+  } else if (report.verdict.improvedMainModelShare === false) {
+    console.log('- Main-model share of known input did not improve in the latest era.');
+  }
+  if (report.verdict.improvedPostHandoffInspectionMix === true) {
+    console.log('- Post-handoff inspection mix improved.');
+  } else if (report.verdict.improvedPostHandoffInspectionMix === false) {
+    console.log('- Post-handoff inspection mix did not improve.');
+  }
+  console.log(`- ${report.verdict.note}`);
+
+  if (report.recommendations.length) {
+    console.log('\n== Recommendations ==');
+    for (const recommendation of report.recommendations) {
+      console.log(`- ${recommendation}`);
+    }
+  }
+}
+
+function main() {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
+    printHelp();
+    return;
+  }
+
+  const projectDir = normalizeProjectDir(options.projectDir);
+  const sessionDir = sessionDirFor(projectDir, options.sessionsRoot);
+  if (!fs.existsSync(sessionDir)) {
+    console.error(`No Pi session directory found for ${options.projectDir}`);
+    console.error(`Checked: ${sessionDir}`);
+    process.exit(1);
+  }
+
+  const files = fs.readdirSync(sessionDir)
+    .filter((name) => name.endsWith('.jsonl'))
+    .sort();
+
+  if (!files.length) {
+    console.log(`No sessions found in ${sessionDir}`);
+    return;
+  }
+
+  const rows = files
+    .map((file) => analyzeSession(path.join(sessionDir, file)))
+    .filter((row) => {
+      if (!row.firstTimestamp) return false;
+      if (options.since && row.firstTimestamp < options.since) return false;
+      if (options.until && row.firstTimestamp > options.until) return false;
+      return true;
+    })
+    .sort((a, b) => a.firstTimestamp - b.firstTimestamp);
+
+  const parseErrors = rows.flatMap((row) => row.parseErrors || []);
+  if (parseErrors.length && !options.ignoreParseErrors) {
+    const preview = parseErrors.slice(0, 5)
+      .map((error) => `${error.file}:${error.line} ${error.message}`)
+      .join('\n');
+    throw new Error(`Encountered ${parseErrors.length} malformed JSONL line(s). Re-run with --ignore-parse-errors to continue.\n${preview}`);
+  }
+
+  if (!rows.length) {
+    console.log(`No sessions found matching filters in ${sessionDir}`);
+    return;
+  }
+
+  const report = buildReport(rows, projectDir, sessionDir, { since: options.since, until: options.until });
+  report.parseErrors = parseErrors;
+  if (options.json) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  if (parseErrors.length) {
+    console.log(`Warning: ignored ${parseErrors.length} malformed JSONL line(s).`);
+  }
+  printTextReport(report);
+}
+
+try {
+  main();
+} catch (error) {
+  console.error(error.message || String(error));
+  process.exit(1);
+}
