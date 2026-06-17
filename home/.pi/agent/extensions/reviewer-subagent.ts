@@ -373,15 +373,11 @@ async function generateReview(
 
     if (stateEntry?.data?.reviewerOverride) {
       const ref = stateEntry.data.reviewerOverride;
-      modelToUse = ctx.modelRegistry.getModels().find(
-        (m) => m.provider === ref.provider && m.id === ref.id,
-      );
+      modelToUse = ctx.modelRegistry.find(ref.provider, ref.id);
     }
 
     if (!modelToUse) {
-      modelToUse = ctx.modelRegistry.getModels().find(
-        (m) => m.provider === "github-copilot" && m.id === "gemini-3-flash-preview",
-      );
+      modelToUse = ctx.modelRegistry.find("github-copilot", "gemini-3-flash-preview");
     }
   } else {
     if (!ctx.model) {

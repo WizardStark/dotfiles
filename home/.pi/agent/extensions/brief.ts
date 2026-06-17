@@ -35,7 +35,7 @@ function normalizeSectionText(text: string): string {
 function buildTemplate(prefilledObjective: string): string {
 	const header = [
 		"Fill in any sections you want.",
-		"Leave a section blank to omit it from the final prompt sent to the agent.",
+		"Leave a section blank to omit it from the final prompt placed in the composer.",
 		"When you're done, submit this editor.",
 	].join("\n");
 
@@ -163,22 +163,21 @@ export default function formExtension(pi: ExtensionAPI) {
 		const prompt = buildPrompt(values);
 
 		if (!prompt) {
-			ctx.ui.notify("Form was empty, nothing was sent", "warning");
+			ctx.ui.notify("Form was empty, nothing was added", "warning");
 			return;
 		}
 
-		if (ctx.isIdle()) {
-			pi.sendUserMessage(prompt);
-			ctx.ui.notify("Structured prompt sent", "info");
-			return;
-		}
-
-		pi.sendUserMessage(prompt, { deliverAs: "followUp" });
-		ctx.ui.notify("Structured prompt queued as a follow-up", "info");
+		ctx.ui.setEditorText(prompt);
+		ctx.ui.notify(
+			ctx.isIdle()
+				? "Structured prompt ready in the composer — press Enter to send and keep it in ↑ history"
+				: "Structured prompt ready in the composer — send or queue it from there for normal ↑ history",
+			"info",
+		);
 	};
 
 	pi.registerCommand("brief", {
-		description: "Open a structured prompt brief and send it to the agent",
+		description: "Open a structured prompt brief and place it in the composer",
 		handler: openBrief,
 	});
 

@@ -275,21 +275,26 @@ const MUTATING_BASH_PATTERNS: RegExp[] = [
   /^\s*tee\b/i,
   /[>|]\s*[^>|]+\.[^>|]+/, // redirect or pipe to file (coarse)
 ];
+const PREFERRED_CONTEXT_MODE_TOOLS = [
+  "ctx_search",
+  "ctx_execute",
+  "ctx_execute_file",
+  "ctx_batch_execute",
+  "ctx_index",
+  "ctx_fetch_and_index",
+] as const;
 const DEFAULT_SCOUT_TOOLS = [
+  ...PREFERRED_CONTEXT_MODE_TOOLS,
   "read",
   "grep",
   "find",
   "ls",
-  "ctx_search",
-  "ctx_execute",
 ];
 const SCOUT_SAFE_TOOLS = new Set(DEFAULT_SCOUT_TOOLS);
 const SCOUT_BLOCKED_TOOLS = new Set([
   "edit",
   "write",
   "bash",
-  "ctx_execute_file",
-  "ctx_batch_execute",
 ]);
 
 const WORKER_SYSTEM_PROMPT = `You are a delegated worker subagent inside pi.
@@ -305,6 +310,9 @@ Your job:
 - Do not ask the user questions directly.
 - If the task becomes ambiguous, risky, cross-cutting, or requires touching forbidden files, stop and escalate instead of guessing.
 - Use tools, tests, lint, and typechecks as the source of truth when available.
+- Prefer ctx_* tools over bash/read for inspection, repository searches, docs lookup, tests, git/history, and large-output analysis.
+- Use bash mainly for safe mutations/navigation/process control, and use read mainly when you need exact file text for an edit or a tiny targeted excerpt.
+- If a tool policy blocks an inspection command, do not repeat the same bash/read attempt; switch to an allowed ctx_* workflow or escalate.
 - For late-session work, prioritize narrow follow-up fixes, integration polish, and validation-driven refactors.
 - Prefer reusable artifact-producing tools (ctx_batch_execute, ctx_index, ctx_fetch_and_index, large ctx_execute with intent) for shared research.
 - When reusing an existing artifact, reference its source label in your Summary/Edits and mention why it was useful.
@@ -346,6 +354,9 @@ Your job:
 - Perform read-only reconnaissance for the supervisor.
 - Explore the codebase, search for relevant files, trace behavior, and summarize evidence.
 - Do not edit files, write files, or run mutating shell commands.
+- Prefer ctx_* tools over read-oriented primitives for searches, summaries, logs, diffs, test output, and other analysis work.
+- Use read only for exact small excerpts the supervisor is likely to need verbatim.
+- If a tool policy blocks an inspection approach, switch to an allowed ctx_* workflow instead of retrying the same call.
 - Prefer concrete findings with file paths over speculation.
 - Call out uncertainty clearly when evidence is incomplete.
 - Recommend a practical next step for the supervisor.
@@ -817,8 +828,13 @@ function isMutatingBashCommand(command: unknown): boolean {
   return typeof command === "string" && MUTATING_BASH_PATTERNS.some((pattern) => pattern.test(command));
 }
 
+function mergePreferredContextTools(tools: string[] | undefined): string[] | undefined {
+  if (!tools || tools.length === 0) return tools;
+  return [...new Set([...PREFERRED_CONTEXT_MODE_TOOLS, ...tools])];
+}
+
 function sanitizeScoutTools(tools: string[] | undefined): string[] {
-  const requested = tools && tools.length > 0 ? tools : DEFAULT_SCOUT_TOOLS;
+  const requested = mergePreferredContextTools(tools) ?? DEFAULT_SCOUT_TOOLS;
   const sanitized = requested.filter((tool) => SCOUT_SAFE_TOOLS.has(tool));
   return sanitized.length > 0 ? [...new Set(sanitized)] : DEFAULT_SCOUT_TOOLS;
 }
@@ -1718,6 +1734,7 @@ async function runWorkerSubagent(
   let eventIndex = 0;
   let completedTurns = 0;
   const generatedAt = Date.now();
+  const workerTools = mergePreferredContextTools(tools);
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
   appendSubagentEvent(pi, {
@@ -1728,6 +1745,8 @@ async function runWorkerSubagent(
     cwd,
     generatedAt,
     ...startDetails,
+    requestedTools: startDetails.tools,
+    tools: workerTools,
   }, shouldLog);
 
   try {
@@ -1740,7 +1759,7 @@ async function runWorkerSubagent(
       authHeaders: auth.headers,
       systemPrompt: WORKER_SYSTEM_PROMPT,
       extraArgs: [
-        ...(tools && tools.length > 0 ? ["--tools", tools.join(",")] : []),
+        ...(workerTools && workerTools.length > 0 ? ["--tools", workerTools.join(",")] : []),
       ],
       env: {
         [WORKER_ENV_FLAG]: "worker",
@@ -3978,6 +3997,18 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           };
         }
       }
+
+      if (event.toolName === "ctx_batch_execute") {
+        const input = event.input as {
+          commands?: Array<{ command?: string }>;
+        };
+        if (input.commands?.some((command) => isMutatingBashCommand(command?.command))) {
+          return {
+            block: true,
+            reason: "Mutating shell command detected in ctx_batch_execute. Scout mode is read-only.",
+          };
+        }
+      }
     });
     return;
   }
@@ -4149,6 +4180,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - Proactively use \`delegate_scout\` for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or scoping likely edit sites.
 - For coding requests, proactively use \`delegate_worker\` without asking first when the next step is a bounded implementation task that is local, well-specified, and objectively checkable.
 - For reusable research that another agent may need later, prefer artifact-producing tools such as \`ctx_batch_execute\`, \`ctx_index\`, \`ctx_fetch_and_index\`, or large \`ctx_execute\` calls with an \`intent\`.
+- When setting subagent tool allowlists, include the relevant \`ctx_*\` tools by default; subagents should prefer \`ctx_*\` over \`bash\`/\`read\` for inspection and analysis.
 - When a reusable artifact matters to a delegated task, pass its source labels via \`artifactSources\` and suggested lookups via \`artifactQueries\`.
 - Good scout candidates: file discovery, behavior tracing, implementation precedent searches, config inventory, and test surface mapping.
 - Good auto-delegation candidates for workers: small code edits, focused tests, local refactors, narrow bug fixes, and file-scoped implementation work.
