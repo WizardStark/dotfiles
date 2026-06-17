@@ -13,6 +13,7 @@ import {
   convertToLlm,
   serializeConversation,
 } from "@earendil-works/pi-coding-agent";
+import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -61,11 +62,14 @@ interface ActiveDelegation {
   role: "worker" | "scout";
   turns?: number;
   currentTool?: string;
+  detailText?: string;
+  recentActivity?: string[];
 }
 
 type SubagentProgress = {
   turns?: number;
   currentTool?: string;
+  lastActivityLine?: string;
 };
 
 interface TurnDelegationState {
@@ -253,6 +257,11 @@ const HANDOFF_RELEVANCE_STOP_WORDS = new Set([
   "would",
 ]);
 const SUBAGENTS_WIDGET = new ManagedWidget("subagents", { placement: "belowEditor" });
+const SUBAGENT_ACTIVITY_COMMAND = "subagents";
+const SUBAGENT_ACTIVITY_SHORTCUT = "ctrl+alt+o";
+const MAX_SUBAGENT_DETAIL_LINES = 6;
+const MAX_SUBAGENT_DETAIL_CHARS = 1_200;
+const MAX_SUBAGENT_ACTIVITY_LINES = 8;
 const IMPLEMENTATION_PROMPT_PATTERNS: RegExp[] = [
   /\b(implement|refactor|fix|change|update|edit|modify|rewrite|extract|rename|migrate|wire|hook up)\b/i,
   /\b(add|remove|create|write)\b.{0,24}\b(test|tests|code|function|component|extension|tool|handler|widget|command)\b/i,
@@ -1715,6 +1724,78 @@ function getLatestActiveToolName(
   return activeTools.length > 0 ? activeTools[activeTools.length - 1]?.toolName : undefined;
 }
 
+function compactSubagentLine(text: string, maxChars = 120): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, Math.max(1, maxChars - 1))}…`;
+}
+
+function summarizeSubagentArgs(
+  toolName: string,
+  args: Record<string, unknown> | undefined,
+): string | undefined {
+  if (!args) return undefined;
+  if (typeof args.command === "string") {
+    return compactSubagentLine(args.command, toolName === "bash" ? 96 : 84);
+  }
+  if (typeof args.path === "string") {
+    return compactSubagentLine(args.path, 84);
+  }
+  if (typeof args.url === "string") {
+    return compactSubagentLine(args.url, 84);
+  }
+  if (typeof args.source === "string") {
+    return compactSubagentLine(args.source, 84);
+  }
+  if (Array.isArray(args.commands)) {
+    return `${args.commands.length} commands`;
+  }
+  if (Array.isArray(args.queries)) {
+    return `${args.queries.length} queries`;
+  }
+  return undefined;
+}
+
+function extractSubagentResultText(result: unknown): string | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const record = result as Record<string, unknown>;
+  if (typeof record.error === "string") {
+    return record.error;
+  }
+  if (Array.isArray(record.content)) {
+    for (const part of record.content) {
+      if (
+        part &&
+        typeof part === "object" &&
+        (part as Record<string, unknown>).type === "text" &&
+        typeof (part as Record<string, unknown>).text === "string"
+      ) {
+        return (part as Record<string, unknown>).text as string;
+      }
+    }
+  }
+  return undefined;
+}
+
+function buildSubagentActivityLine(
+  phase: "start" | "end",
+  toolName: string,
+  args: Record<string, unknown> | undefined,
+  result?: unknown,
+  isError?: boolean,
+): string {
+  if (phase === "start") {
+    const detail = summarizeSubagentArgs(toolName, args);
+    return compactSubagentLine(detail ? `→ ${toolName} ${detail}` : `→ ${toolName}`);
+  }
+
+  const detail = compactSubagentLine(extractSubagentResultText(result) ?? "", 96);
+  if (isError) {
+    return compactSubagentLine(detail ? `✗ ${toolName} ${detail}` : `✗ ${toolName}`);
+  }
+  return compactSubagentLine(detail ? `✓ ${toolName} ${detail}` : `✓ ${toolName}`);
+}
+
 async function runWorkerSubagent(
   cwd: string,
   prompt: string,
@@ -1807,6 +1888,11 @@ async function runWorkerSubagent(
           onProgress?.({
             turns: completedTurns,
             currentTool: toolName,
+            lastActivityLine: buildSubagentActivityLine(
+              "start",
+              toolName,
+              activeToolCalls.get(toolCallId)?.args,
+            ),
           });
         }
         if (toolEvent?.type === "tool_execution_end" && toolName) {
@@ -1824,6 +1910,13 @@ async function runWorkerSubagent(
           onProgress?.({
             turns: completedTurns,
             currentTool: getLatestActiveToolName(activeToolCalls),
+            lastActivityLine: buildSubagentActivityLine(
+              "end",
+              toolName,
+              prior?.args,
+              toolEvent.result,
+              toolEvent.isError === true,
+            ),
           });
         }
       },
@@ -2188,6 +2281,11 @@ async function runScoutSubagent(
           onProgress?.({
             turns: completedTurns,
             currentTool: toolName,
+            lastActivityLine: buildSubagentActivityLine(
+              "start",
+              toolName,
+              activeToolCalls.get(toolCallId)?.args,
+            ),
           });
         }
         if (toolEvent?.type === "tool_execution_end" && toolName) {
@@ -2205,6 +2303,13 @@ async function runScoutSubagent(
           onProgress?.({
             turns: completedTurns,
             currentTool: getLatestActiveToolName(activeToolCalls),
+            lastActivityLine: buildSubagentActivityLine(
+              "end",
+              toolName,
+              prior?.args,
+              toolEvent.result,
+              toolEvent.isError === true,
+            ),
           });
         }
       },
@@ -4045,15 +4150,182 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return detail ? `${header}\n${detail}` : header;
   }
 
+  const subagentPanelRefreshers = new Set<() => void>();
+  let subagentPanelOpen = false;
+
+  function refreshSubagentPanels() {
+    for (const refresh of subagentPanelRefreshers) {
+      refresh();
+    }
+  }
+
+  function sanitizeDelegationDetail(detailText: string | undefined): string | undefined {
+    const trimmed = detailText?.trim();
+    if (!trimmed) return undefined;
+    return trimmed.length > MAX_SUBAGENT_DETAIL_CHARS
+      ? trimmed.slice(trimmed.length - MAX_SUBAGENT_DETAIL_CHARS)
+      : trimmed;
+  }
+
+  function recordDelegationDetail(
+    delegationKey: string,
+    detailText: string | undefined,
+  ): ActiveDelegation | undefined {
+    const active = activeDelegations.get(delegationKey);
+    if (!active) return undefined;
+    const next = sanitizeDelegationDetail(detailText);
+    if (active.detailText === next) {
+      return active;
+    }
+    active.detailText = next;
+    refreshSubagentPanels();
+    return active;
+  }
+
+  function recordDelegationActivity(
+    delegationKey: string,
+    activityLine: string | undefined,
+  ): ActiveDelegation | undefined {
+    const active = activeDelegations.get(delegationKey);
+    if (!active) return undefined;
+    const next = activityLine?.trim();
+    if (!next) return active;
+    const recent = [...(active.recentActivity ?? [])];
+    recent.push(next);
+    active.recentActivity = recent.slice(-MAX_SUBAGENT_ACTIVITY_LINES);
+    refreshSubagentPanels();
+    return active;
+  }
+
+  function buildDetailPreviewLines(item: ActiveDelegation, width: number): string[] {
+    const text = item.detailText?.trim();
+    if (!text) return [];
+    const sourceLines = text
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(-MAX_SUBAGENT_DETAIL_LINES);
+    return sourceLines
+      .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)))
+      .slice(-MAX_SUBAGENT_DETAIL_LINES);
+  }
+
+  function buildRecentActivityLines(item: ActiveDelegation, width: number): string[] {
+    return (item.recentActivity ?? [])
+      .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
+      .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)));
+  }
+
+  function padPanelLine(text: string, width: number): string {
+    return text + " ".repeat(Math.max(0, width - visibleWidth(text)));
+  }
+
+  function renderSubagentActivityPanel(width: number, theme: ExtensionContext["ui"]["theme"], items: ActiveDelegation[]): string[] {
+    const innerWidth = Math.max(24, width - 2);
+    const row = (content = "") => {
+      const fitted = truncateToWidth(content, innerWidth, "");
+      return `${theme.fg("border", "│")}${padPanelLine(fitted, innerWidth)}${theme.fg("border", "│")}`;
+    };
+    const lines = [
+      theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
+      row(` ${theme.fg("accent", theme.bold("Subagent Activity"))}`),
+      row(` ${theme.fg("dim", `${items.length} active • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`),
+      row(),
+    ];
+
+    if (items.length === 0) {
+      lines.push(row(` ${theme.fg("dim", "No active subagents.")}`));
+      lines.push(row(` ${theme.fg("dim", "The widget below the editor will light up when new delegations start.")}`));
+    } else {
+      items.forEach((item, index) => {
+        const status = formatDelegationStatus(item) || item.phase;
+        lines.push(row(` ${theme.fg("accent", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`));
+        for (const wrapped of wrapTextWithAnsi(item.title, Math.max(12, innerWidth - 2))) {
+          lines.push(row(` ${theme.fg("text", wrapped)}`));
+        }
+        lines.push(row(` ${theme.fg("muted", status)}`));
+        const activityLines = buildRecentActivityLines(item, innerWidth - 4);
+        if (activityLines.length > 0) {
+          lines.push(row(` ${theme.fg("dim", "Recent activity:")}`));
+          for (const activityLine of activityLines) {
+            lines.push(row(` ${theme.fg("dim", `  ${activityLine}`)}`));
+          }
+        }
+        const detailLines = buildDetailPreviewLines(item, innerWidth - 4);
+        if (detailLines.length > 0) {
+          lines.push(row(` ${theme.fg("dim", "Latest output:")}`));
+          for (const detailLine of detailLines) {
+            lines.push(row(` ${theme.fg("dim", `  ${detailLine}`)}`));
+          }
+        }
+        if (index < items.length - 1) {
+          lines.push(row());
+        }
+      });
+    }
+
+    lines.push(row());
+    lines.push(row(` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`));
+    lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
+    return lines;
+  }
+
+  async function showSubagentActivityPanel(ctx: ExtensionContext) {
+    if (!ctx.hasUI || ctx.mode !== "tui") {
+      ctx.ui.notify("Subagent activity panel is only available in TUI mode.", "warning");
+      return;
+    }
+    if (subagentPanelOpen) {
+      ctx.ui.notify("Subagent activity panel is already open.", "info");
+      return;
+    }
+
+    subagentPanelOpen = true;
+    try {
+      await ctx.ui.custom<void>(
+        (tui, theme, _keybindings, done) => {
+          const refresh = () => tui.requestRender();
+          subagentPanelRefreshers.add(refresh);
+          return {
+            render: (panelWidth: number) => renderSubagentActivityPanel(panelWidth, theme, [...activeDelegations.values()]),
+            handleInput: (data: string) => {
+              if (matchesKey(data, "escape") || matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)) {
+                done(undefined);
+              }
+            },
+            invalidate: () => {},
+            dispose: () => {
+              subagentPanelRefreshers.delete(refresh);
+            },
+          };
+        },
+        {
+          overlay: true,
+          overlayOptions: {
+            anchor: "right-center",
+            width: "44%",
+            minWidth: 48,
+            maxHeight: "80%",
+            margin: 1,
+            visible: (termWidth) => termWidth >= 80,
+          },
+        },
+      );
+    } finally {
+      subagentPanelOpen = false;
+    }
+  }
+
   function updateDelegationWidget(ctx: ExtensionContext) {
     const items = [...activeDelegations.values()];
     if (items.length === 0) {
       SUBAGENTS_WIDGET.clear(ctx);
+      refreshSubagentPanels();
       return;
     }
 
     SUBAGENTS_WIDGET.set(ctx, [
-      `Subagents (${items.length})`,
+      `Subagents (${items.length}) — ${SUBAGENT_ACTIVITY_SHORTCUT} for activity`,
       ...items.map((item) => {
         const parts = [
           `• ${item.role} ${item.workerModel} [${item.phase}]`,
@@ -4063,6 +4335,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         return `${parts.join(" ")} — ${item.title}`;
       }),
     ]);
+    refreshSubagentPanels();
   }
 
   function patchActiveDelegation(
@@ -4118,6 +4391,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     recentReviewKeys = readSavedReviewKeys(ctx);
     pendingReviewKeys.clear();
     activeDelegations.clear();
+    subagentPanelRefreshers.clear();
+    subagentPanelOpen = false;
     state = readSavedState(ctx) ?? {};
     refreshStatus(ctx);
   });
@@ -4127,6 +4402,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     turnDelegationState = undefined;
     pendingReviewKeys.clear();
     activeDelegations.clear();
+    subagentPanelRefreshers.clear();
+    subagentPanelOpen = false;
     SUBAGENTS_WIDGET.clear(ctx);
     ctx.ui.setStatus("worker", undefined);
     ctx.ui.setStatus("worker-auto", undefined);
@@ -4134,6 +4411,20 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
   pi.on("model_select", async (_event, ctx) => {
     refreshStatus(ctx);
+  });
+
+  pi.registerCommand(SUBAGENT_ACTIVITY_COMMAND, {
+    description: "Show live subagent activity in a floating panel",
+    handler: async (_args, ctx) => {
+      await showSubagentActivityPanel(ctx);
+    },
+  });
+
+  pi.registerShortcut(SUBAGENT_ACTIVITY_SHORTCUT, {
+    description: "Show live subagent activity",
+    handler: async (ctx) => {
+      await showSubagentActivityPanel(ctx);
+    },
   });
 
   pi.on("before_agent_start", async (event, ctx) => {
@@ -4501,6 +4792,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
               ),
             });
+            recordDelegationDetail(delegationKey, text);
             emitSingleDelegationUpdate(onUpdate, active, text);
           },
           (progress) => {
@@ -4518,6 +4810,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               turns: progress.turns,
               currentTool: progress.currentTool,
             });
+            recordDelegationActivity(delegationKey, progress.lastActivityLine);
             emitSingleDelegationUpdate(onUpdate, active);
           },
         );
@@ -4685,12 +4978,13 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               pi,
               isCurrentSession,
               signal,
-              () => {
+              (text) => {
                 if (!isCurrentSession()) return;
                 patchActiveDelegation(ctx, delegationKey, {
                   phase: "running",
                   workerModel: resultScoutLabelFallback(ctx, state, task),
                 });
+                recordDelegationDetail(delegationKey, text);
                 emitProgress();
               },
               (progress) => {
@@ -4701,6 +4995,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   turns: progress.turns,
                   currentTool: progress.currentTool,
                 });
+                recordDelegationActivity(delegationKey, progress.lastActivityLine);
                 emitProgress();
               },
             );
@@ -4919,12 +5214,13 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               pi,
               isCurrentSession,
               signal,
-              () => {
+              (text) => {
                 if (!isCurrentSession()) return;
                 patchActiveDelegation(ctx, delegationKey, {
                   phase: "running",
                   workerModel: resultWorkerLabelFallback(ctx, state, task),
                 });
+                recordDelegationDetail(delegationKey, text);
                 emitProgress();
               },
               (progress) => {
@@ -4935,6 +5231,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   turns: progress.turns,
                   currentTool: progress.currentTool,
                 });
+                recordDelegationActivity(delegationKey, progress.lastActivityLine);
                 emitProgress();
               },
             );
@@ -5078,6 +5375,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 params,
               ),
             });
+            recordDelegationDetail(delegationKey, text);
             emitSingleDelegationUpdate(onUpdate, active, text);
           },
           (progress) => {
@@ -5094,6 +5392,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               turns: progress.turns,
               currentTool: progress.currentTool,
             });
+            recordDelegationActivity(delegationKey, progress.lastActivityLine);
             emitSingleDelegationUpdate(onUpdate, active);
           },
         );
