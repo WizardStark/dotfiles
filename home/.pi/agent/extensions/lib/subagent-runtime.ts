@@ -78,6 +78,17 @@ export function getPiInvocation(args: string[]): { command: string; args: string
 	return { command: "pi", args };
 }
 
+function extractAssistantTextParts(message: AssistantMessage | undefined): string {
+	if (!message) {
+		return "";
+	}
+	return message.content
+		.filter((part): part is { type: "text"; text: string } => part.type === "text")
+		.map((part) => part.text)
+		.join("\n")
+		.trim();
+}
+
 export function extractFinalAssistantMessage(messages: Message[]): AssistantMessage | undefined {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const message = messages[i];
@@ -86,6 +97,66 @@ export function extractFinalAssistantMessage(messages: Message[]): AssistantMess
 		}
 	}
 	return undefined;
+}
+
+export function extractBestAssistantText(
+	messages: Message[],
+	streamedText = "",
+): {
+	text: string;
+	stopReason?: string;
+	errorMessage?: string;
+	source: "final" | "history" | "stream" | "none";
+	recovered: boolean;
+} {
+	const finalMessage = extractFinalAssistantMessage(messages);
+	const finalText = extractAssistantTextParts(finalMessage);
+	if (finalText) {
+		return {
+			text: finalText,
+			stopReason: finalMessage?.stopReason,
+			errorMessage: finalMessage?.errorMessage,
+			source: "final",
+			recovered: false,
+		};
+	}
+
+	const streamed = streamedText.trim();
+	if (streamed) {
+		return {
+			text: streamed,
+			stopReason: finalMessage?.stopReason,
+			errorMessage: finalMessage?.errorMessage,
+			source: "stream",
+			recovered: true,
+		};
+	}
+
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const message = messages[i];
+		if (message.role !== "assistant") {
+			continue;
+		}
+		const assistantMessage = message as AssistantMessage;
+		const text = extractAssistantTextParts(assistantMessage);
+		if (text) {
+			return {
+				text,
+				stopReason: finalMessage?.stopReason ?? assistantMessage.stopReason,
+				errorMessage: finalMessage?.errorMessage ?? assistantMessage.errorMessage,
+				source: "history",
+				recovered: true,
+			};
+		}
+	}
+
+	return {
+		text: "",
+		stopReason: finalMessage?.stopReason,
+		errorMessage: finalMessage?.errorMessage,
+		source: "none",
+		recovered: false,
+	};
 }
 
 export function buildSubagentMetrics(run: SubagentRunState): SubagentMetrics | undefined {
@@ -148,11 +219,7 @@ export function extractFinalAssistantText(
 		return { text: allowStreamFallback ? streamedText.trim() : "" };
 	}
 
-	const text = message.content
-		.filter((part): part is { type: "text"; text: string } => part.type === "text")
-		.map((part) => part.text)
-		.join("\n")
-		.trim();
+	const text = extractAssistantTextParts(message);
 
 	return {
 		text: text || (allowStreamFallback ? streamedText.trim() : ""),

@@ -38,7 +38,7 @@ import {
 } from "./lib/model-ref.ts";
 import {
   buildSubagentMetrics,
-  extractFinalAssistantText,
+  extractBestAssistantText,
   runSubagentProcess,
   type SubagentMetrics,
 } from "./lib/subagent-runtime.ts";
@@ -158,6 +158,10 @@ type WorkerToolExecution = {
   args?: Record<string, unknown>;
   result?: unknown;
   isError?: boolean;
+};
+
+type DelegatedSubagentRun = Awaited<ReturnType<typeof runSubagentProcess>> & {
+  toolExecutions: WorkerToolExecution[];
 };
 
 type DelegateResult = {
@@ -1715,6 +1719,68 @@ function classifySubagentOutcome(
     return "completed";
   }
   return "failed";
+}
+
+function collectSubagentMessages(run: DelegatedSubagentRun) {
+  return [
+    ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
+    ...run.messages,
+    ...(run.turnEndMessage ? [run.turnEndMessage] : []),
+    ...(run.agentEndMessage ? [run.agentEndMessage] : []),
+  ];
+}
+
+function formatNoTextFailure(
+  roleLabel: "Worker" | "Scout",
+  run: DelegatedSubagentRun | undefined,
+  final: ReturnType<typeof extractBestAssistantText> | undefined,
+  attempts: number,
+): string {
+  const stderr = run?.stderr.trim() ?? "";
+  const errorSuffix = final?.errorMessage
+    ? `; error: ${final.errorMessage}`
+    : stderr
+      ? `; stderr: ${stderr}`
+      : "";
+  const attemptsSuffix = attempts > 1 ? `; attempts: ${attempts}` : "";
+  return `${roleLabel} subagent returned no text (exitCode: ${run?.exitCode ?? 1}; stopReason: ${run?.stopReason ?? final?.stopReason ?? "none"}${errorSuffix}${attemptsSuffix}).`;
+}
+
+async function runSubagentWithNoTextRetry(
+  roleLabel: "Worker" | "Scout",
+  execute: () => Promise<DelegatedSubagentRun>,
+  signal?: AbortSignal,
+): Promise<{ run: DelegatedSubagentRun; final: ReturnType<typeof extractBestAssistantText>; attempts: number }> {
+  const maxAttempts = 2;
+  let lastRun: DelegatedSubagentRun | undefined;
+  let lastFinal: ReturnType<typeof extractBestAssistantText> | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const run = await execute();
+    const final = extractBestAssistantText(
+      collectSubagentMessages(run),
+      run.streamedText,
+    );
+    if (final.text) {
+      return { run, final, attempts: attempt };
+    }
+
+    lastRun = run;
+    lastFinal = final;
+
+    const stopReason = run.stopReason?.toLowerCase() ?? "";
+    const shouldRetry =
+      attempt < maxAttempts &&
+      !signal?.aborted &&
+      !stopReason.includes("abort") &&
+      !stopReason.includes("cancel") &&
+      !stopReason.includes("interrupt");
+    if (!shouldRetry) {
+      break;
+    }
+  }
+
+  throw new Error(formatNoTextFailure(roleLabel, lastRun, lastFinal, maxAttempts));
 }
 
 function getLatestActiveToolName(
@@ -3428,46 +3494,35 @@ async function generateDelegation(
   }
   let run: Awaited<ReturnType<typeof runWorkerSubagent>> | undefined;
   try {
-    run = await runWorkerSubagent(
-      cwd,
-      prompt,
-      workerModelArg,
-      auth,
-      params.tools,
-      delegationId,
-      {
-        objective: params.objective,
-        scope: params.scope,
-        allowedFiles: params.allowedFiles,
-        blockedFiles: params.blockedFiles,
-        acceptanceCriteria: params.acceptanceCriteria,
-        validationCommands: params.validationCommands,
-        escalationTriggers: params.escalationTriggers,
-        tools: params.tools,
-      },
-      pi,
-      shouldLog,
+    const execution = await runSubagentWithNoTextRetry(
+      "Worker",
+      () => runWorkerSubagent(
+        cwd,
+        prompt,
+        workerModelArg,
+        auth,
+        params.tools,
+        delegationId,
+        {
+          objective: params.objective,
+          scope: params.scope,
+          allowedFiles: params.allowedFiles,
+          blockedFiles: params.blockedFiles,
+          acceptanceCriteria: params.acceptanceCriteria,
+          validationCommands: params.validationCommands,
+          escalationTriggers: params.escalationTriggers,
+          tools: params.tools,
+        },
+        pi,
+        shouldLog,
+        signal,
+        onUpdate,
+        onProgress,
+      ),
       signal,
-      onUpdate,
-      onProgress,
     );
-    const final = extractFinalAssistantText(
-      [
-        ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
-        ...run.messages,
-        ...(run.turnEndMessage ? [run.turnEndMessage] : []),
-        ...(run.agentEndMessage ? [run.agentEndMessage] : []),
-      ],
-      run.streamedText,
-      true,
-    );
-
-    if (!final.text) {
-      const stderr = run.stderr.trim();
-      throw new Error(
-        `Worker subagent returned no text (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${stderr ? `; stderr: ${stderr}` : ""}).`,
-      );
-    }
+    run = execution.run;
+    const final = execution.final;
 
     const afterSnapshot = await snapshotWorkingTree(cwd, signal);
     const actualFilesChanged = diffSnapshots(beforeSnapshot, afterSnapshot);
@@ -3660,43 +3715,32 @@ async function generateScouting(
   }
   let run: Awaited<ReturnType<typeof runScoutSubagent>> | undefined;
   try {
-    run = await runScoutSubagent(
-      cwd,
-      prompt,
-      scoutModelArg,
-      auth,
-      params.tools,
-      delegationId,
-      {
-        objective: params.objective,
-        scope: params.scope,
-        questions: params.questions,
-        expectedOutputs: params.expectedOutputs,
-        tools: params.tools,
-      },
-      pi,
-      shouldLog,
+    const execution = await runSubagentWithNoTextRetry(
+      "Scout",
+      () => runScoutSubagent(
+        cwd,
+        prompt,
+        scoutModelArg,
+        auth,
+        params.tools,
+        delegationId,
+        {
+          objective: params.objective,
+          scope: params.scope,
+          questions: params.questions,
+          expectedOutputs: params.expectedOutputs,
+          tools: params.tools,
+        },
+        pi,
+        shouldLog,
+        signal,
+        onUpdate,
+        onProgress,
+      ),
       signal,
-      onUpdate,
-      onProgress,
     );
-    const final = extractFinalAssistantText(
-      [
-        ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
-        ...run.messages,
-        ...(run.turnEndMessage ? [run.turnEndMessage] : []),
-        ...(run.agentEndMessage ? [run.agentEndMessage] : []),
-      ],
-      run.streamedText,
-      true,
-    );
-
-    if (!final.text) {
-      const stderr = run.stderr.trim();
-      throw new Error(
-        `Scout subagent returned no text (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${stderr ? `; stderr: ${stderr}` : ""}).`,
-      );
-    }
+    run = execution.run;
+    const final = execution.final;
 
     const { artifactSources, artifactQueries } = await deriveEditLocations(
       cwd,

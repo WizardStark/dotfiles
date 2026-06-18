@@ -368,6 +368,17 @@ uint16_t achordion_timeout(uint16_t tap_hold_keycode) {
   return TAPPING_TERM;
 }
 
+uint16_t get_quick_tap_term(uint16_t keycode, keyrecord_t *record) {
+  (void)record;
+
+  switch (keycode) {
+  case BASE_SPC:
+    return 0;
+  default:
+    return TAPPING_TERM;
+  }
+}
+
 bool achordion_eager_mod(uint8_t mod) {
   uint8_t normalized = mod_config(mod);
 
