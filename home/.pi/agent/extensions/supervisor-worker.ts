@@ -13,7 +13,12 @@ import {
   convertToLlm,
   serializeConversation,
 } from "@earendil-works/pi-coding-agent";
-import { matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import {
+  matchesKey,
+  truncateToWidth,
+  visibleWidth,
+  wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -260,7 +265,9 @@ const HANDOFF_RELEVANCE_STOP_WORDS = new Set([
   "with",
   "would",
 ]);
-const SUBAGENTS_WIDGET = new ManagedWidget("subagents", { placement: "belowEditor" });
+const SUBAGENTS_WIDGET = new ManagedWidget("subagents", {
+  placement: "belowEditor",
+});
 const SUBAGENT_ACTIVITY_COMMAND = "subagents";
 const SUBAGENT_ACTIVITY_SHORTCUT = "ctrl+alt+o";
 const MAX_SUBAGENT_DETAIL_LINES = 6;
@@ -304,11 +311,7 @@ const DEFAULT_SCOUT_TOOLS = [
   "ls",
 ];
 const SCOUT_SAFE_TOOLS = new Set(DEFAULT_SCOUT_TOOLS);
-const SCOUT_BLOCKED_TOOLS = new Set([
-  "edit",
-  "write",
-  "bash",
-]);
+const SCOUT_BLOCKED_TOOLS = new Set(["edit", "write", "bash"]);
 
 const WORKER_SYSTEM_PROMPT = `You are a delegated worker subagent inside pi.
 
@@ -399,7 +402,6 @@ Report style:
 - Omit discussion or meta-commentary outside the sections.
 - The supervisor sees your full output; favor brevity over repetition.`;
 
-
 function formatModel(ref?: ModelRef, thinkingLevel?: ThinkingLevel): string {
   if (!ref) return "none";
   return thinkingLevel && thinkingLevel !== "off"
@@ -484,7 +486,10 @@ function readSavedState(
   if (reviewerOverride?.provider && reviewerOverride?.id) {
     nextState.reviewerOverride = reviewerOverride;
   }
-  if (reviewerThinkingLevel && THINKING_LEVELS.includes(reviewerThinkingLevel)) {
+  if (
+    reviewerThinkingLevel &&
+    THINKING_LEVELS.includes(reviewerThinkingLevel)
+  ) {
     nextState.reviewerThinkingLevel = reviewerThinkingLevel;
   }
   if (autoMode === "conservative" || autoMode === "off") {
@@ -506,19 +511,21 @@ function readSavedReviewKeys(ctx: ExtensionContext): string[] {
   const entry = [...ctx.sessionManager.getEntries()]
     .reverse()
     .find(
-      (item) => item.type === "custom" && item.customType === REVIEW_STATE_ENTRY,
+      (item) =>
+        item.type === "custom" && item.customType === REVIEW_STATE_ENTRY,
     ) as { data?: { recentReviewKeys?: string[] } } | undefined;
 
   return Array.isArray(entry?.data?.recentReviewKeys)
     ? entry.data.recentReviewKeys.filter(
-        (item): item is string => typeof item === "string" && item.trim().length > 0,
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
       )
     : [];
 }
 
 function getPreferredFallbackRef(ctx: ExtensionContext): ModelRef | undefined {
   const preferred = resolveExactModelReference(
-    "github-copilot/gemini-3-flash-preview",
+    "github-copilot/gpt-5.4-mini",
     ctx.modelRegistry.getAvailable(),
   );
   if (preferred.status === "matched") {
@@ -617,7 +624,6 @@ function updateStatus(ctx: ExtensionContext, state: SupervisorWorkerState) {
   );
 }
 
-
 function singleLine(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
@@ -652,7 +658,10 @@ function normalizeRepoPath(root: string, value: string): string {
   }
 
   const rootWithoutLeadingSlash = normalizedRoot.replace(/^\//, "");
-  if (rootWithoutLeadingSlash && trimmed.startsWith(`${rootWithoutLeadingSlash}/`)) {
+  if (
+    rootWithoutLeadingSlash &&
+    trimmed.startsWith(`${rootWithoutLeadingSlash}/`)
+  ) {
     return normalizePath(trimmed.slice(rootWithoutLeadingSlash.length + 1));
   }
 
@@ -679,15 +688,23 @@ function isIncidentalHandoffPath(filePath: string): boolean {
 function normalizeEditLocation(
   location: HandoffEditLocation,
 ): HandoffEditLocation | undefined {
-  const path = typeof location.path === "string" ? normalizePath(location.path) : "";
+  const path =
+    typeof location.path === "string" ? normalizePath(location.path) : "";
   if (!path || isIncidentalHandoffPath(path)) return undefined;
-  const startLine = Number.isFinite(location.startLine) ? Number(location.startLine) : undefined;
-  const endLine = Number.isFinite(location.endLine) ? Number(location.endLine) : undefined;
-  const summary = typeof location.summary === "string" && location.summary.trim()
-    ? singleLine(location.summary)
+  const startLine = Number.isFinite(location.startLine)
+    ? Number(location.startLine)
     : undefined;
+  const endLine = Number.isFinite(location.endLine)
+    ? Number(location.endLine)
+    : undefined;
+  const summary =
+    typeof location.summary === "string" && location.summary.trim()
+      ? singleLine(location.summary)
+      : undefined;
   const sourceTool = location.sourceTool;
-  const precision = location.precision ?? (startLine !== undefined || endLine !== undefined ? "range" : "file");
+  const precision =
+    location.precision ??
+    (startLine !== undefined || endLine !== undefined ? "range" : "file");
   return {
     path,
     startLine,
@@ -698,7 +715,9 @@ function normalizeEditLocation(
   };
 }
 
-function dedupeEditLocations(locations: HandoffEditLocation[]): HandoffEditLocation[] {
+function dedupeEditLocations(
+  locations: HandoffEditLocation[],
+): HandoffEditLocation[] {
   const seen = new Set<string>();
   return locations
     .map((location) => normalizeEditLocation(location))
@@ -747,20 +766,24 @@ function formatEditLocationsInline(
 ): string {
   const normalized = dedupeEditLocations(locations);
   if (normalized.length === 0) return "(none)";
-  const preview = normalized.slice(0, limit).map((location) => formatEditLocation(location));
+  const preview = normalized
+    .slice(0, limit)
+    .map((location) => formatEditLocation(location));
   const remaining = normalized.length - preview.length;
-  return remaining > 0 ? `${preview.join("; ")}; +${remaining} more` : preview.join("; ");
+  return remaining > 0
+    ? `${preview.join("; ")}; +${remaining} more`
+    : preview.join("; ");
 }
 
-function summarizeStructuredHandoff(
-  handoff: HandoffPointer,
-): string {
-  const artifactText = handoff.artifactSources.length > 0
-    ? `artifacts=${handoff.artifactSources.join(", ")}`
-    : "";
-  const queryText = handoff.artifactQueries.length > 0
-    ? `queries=${handoff.artifactQueries.join(", ")}`
-    : "";
+function summarizeStructuredHandoff(handoff: HandoffPointer): string {
+  const artifactText =
+    handoff.artifactSources.length > 0
+      ? `artifacts=${handoff.artifactSources.join(", ")}`
+      : "";
+  const queryText =
+    handoff.artifactQueries.length > 0
+      ? `queries=${handoff.artifactQueries.join(", ")}`
+      : "";
   return [handoff.summary, artifactText, queryText].filter(Boolean).join(" | ");
 }
 
@@ -796,18 +819,25 @@ function buildInspectionBullets(
   if (targets.length > 1) {
     const previewCommands = targets.slice(0, 4).map((target, index) => {
       const label = target.path.split("/").pop() || `target-${index + 1}`;
-      const command = target.startLine && target.endLine
-        ? `sed -n '${target.startLine},${target.endLine}p' ${target.path}`
-        : `sed -n '1,160p' ${target.path}`;
+      const command =
+        target.startLine && target.endLine
+          ? `sed -n '${target.startLine},${target.endLine}p' ${target.path}`
+          : `sed -n '1,160p' ${target.path}`;
       return `{label: ${JSON.stringify(label)}, command: ${JSON.stringify(command)}}`;
     });
     const batchCmd = `ctx_batch_execute(commands: [${previewCommands.join(", ")}${targets.length > 4 ? ", ..." : ""}], queries: ["changed block", "follow-up context"])`;
     bullets.push(`Ready-to-run pattern: ${batchCmd}`);
-    bullets.push("Always batch multiple inspections when they fit in one turn.");
+    bullets.push(
+      "Always batch multiple inspections when they fit in one turn.",
+    );
   }
   const remaining = targets.length - Math.min(targets.length, limit);
   if (remaining > 0) {
-    bullets.splice(bullets.length - 1, 0, `+${remaining} additional changed location(s)`);
+    bullets.splice(
+      bullets.length - 1,
+      0,
+      `+${remaining} additional changed location(s)`,
+    );
   }
   return bullets;
 }
@@ -831,17 +861,28 @@ function formatTaskTitle(text: string): string {
 function isLikelyImplementationPrompt(prompt: string): boolean {
   const trimmed = prompt.trim();
   if (!trimmed) return false;
-  if (NON_IMPLEMENTATION_PROMPT_PATTERNS.some((pattern) => pattern.test(trimmed))) {
-    return IMPLEMENTATION_PROMPT_PATTERNS.some((pattern) => pattern.test(trimmed));
+  if (
+    NON_IMPLEMENTATION_PROMPT_PATTERNS.some((pattern) => pattern.test(trimmed))
+  ) {
+    return IMPLEMENTATION_PROMPT_PATTERNS.some((pattern) =>
+      pattern.test(trimmed),
+    );
   }
-  return IMPLEMENTATION_PROMPT_PATTERNS.some((pattern) => pattern.test(trimmed));
+  return IMPLEMENTATION_PROMPT_PATTERNS.some((pattern) =>
+    pattern.test(trimmed),
+  );
 }
 
 function isMutatingBashCommand(command: unknown): boolean {
-  return typeof command === "string" && MUTATING_BASH_PATTERNS.some((pattern) => pattern.test(command));
+  return (
+    typeof command === "string" &&
+    MUTATING_BASH_PATTERNS.some((pattern) => pattern.test(command))
+  );
 }
 
-function mergePreferredContextTools(tools: string[] | undefined): string[] | undefined {
+function mergePreferredContextTools(
+  tools: string[] | undefined,
+): string[] | undefined {
   if (!tools || tools.length === 0) return tools;
   return [...new Set([...PREFERRED_CONTEXT_MODE_TOOLS, ...tools])];
 }
@@ -941,9 +982,7 @@ function normalizePath(value: string): string {
 }
 
 function normalizeComparablePath(value: string): string {
-  return resolve(value)
-    .replace(/\\/g, "/")
-    .replace(/\/+$/, "");
+  return resolve(value).replace(/\\/g, "/").replace(/\/+$/, "");
 }
 
 function resolvedPathsOverlap(a: string, b: string): boolean {
@@ -1079,7 +1118,9 @@ async function snapshotWorkingTree(
 ): Promise<WorkingTreeSnapshot> {
   const repoRoot = await getGitRepoRoot(cwd, signal);
   const root = repoRoot ?? cwd;
-  const dirtyEntries = repoRoot ? await getGitDirtyEntries(root, signal) : undefined;
+  const dirtyEntries = repoRoot
+    ? await getGitDirtyEntries(root, signal)
+    : undefined;
   const files = new Map<string, string>();
 
   if (dirtyEntries) {
@@ -1253,7 +1294,7 @@ function validateParallelWorkerTasks(
     return {
       label: formatParallelLabel(task.label, task.objective, index),
       allowedFiles: (task.allowedFiles ?? []).map((rule) =>
-        normalizeComparablePath(resolve(taskCwd, rule))
+        normalizeComparablePath(resolve(taskCwd, rule)),
       ),
     };
   });
@@ -1270,8 +1311,8 @@ function validateParallelWorkerTasks(
     for (let j = i + 1; j < normalized.length; j += 1) {
       const overlaps = normalized[i].allowedFiles.some((leftRule) =>
         normalized[j].allowedFiles.some((rightRule) =>
-          resolvedPathsOverlap(leftRule, rightRule)
-        )
+          resolvedPathsOverlap(leftRule, rightRule),
+        ),
       );
       if (overlaps) {
         issues.push(
@@ -1288,7 +1329,8 @@ function summarizeParallelWorkerStatus(
   results: ParallelDelegateTaskResult[],
 ): DelegateStatus {
   if (results.some((result) => result.status === "blocked")) return "blocked";
-  if (results.some((result) => result.status === "escalated")) return "escalated";
+  if (results.some((result) => result.status === "escalated"))
+    return "escalated";
   if (results.some((result) => result.status === "unknown")) return "unknown";
   return "completed";
 }
@@ -1316,10 +1358,10 @@ function resolveParallelWorkerTasks(
     return {
       label: formatParallelLabel(task.label, task.objective, index),
       allowedFiles: (task.allowedFiles ?? []).map((rule) =>
-        normalizeComparablePath(resolve(taskCwd, rule))
+        normalizeComparablePath(resolve(taskCwd, rule)),
       ),
       blockedFiles: (task.blockedFiles ?? []).map((rule) =>
-        normalizeComparablePath(resolve(taskCwd, rule))
+        normalizeComparablePath(resolve(taskCwd, rule)),
       ),
     };
   });
@@ -1336,7 +1378,9 @@ function attributeParallelWorkerFiles(
   for (const file of changedFiles) {
     const absoluteFile = normalizeComparablePath(resolve(root, file));
     const ownerIndex = resolvedTasks.findIndex((task) =>
-      task.allowedFiles.some((rule) => resolvedPathsOverlap(absoluteFile, rule))
+      task.allowedFiles.some((rule) =>
+        resolvedPathsOverlap(absoluteFile, rule),
+      ),
     );
     if (ownerIndex >= 0) {
       filesByTaskIndex[ownerIndex].push(file);
@@ -1360,13 +1404,17 @@ function findAbsoluteBoundaryViolations(
   const violations = new Set<string>();
   for (const file of filesChanged) {
     const absoluteFile = normalizeComparablePath(resolve(root, file));
-    if (task.blockedFiles.some((rule) => resolvedPathsOverlap(absoluteFile, rule))) {
+    if (
+      task.blockedFiles.some((rule) => resolvedPathsOverlap(absoluteFile, rule))
+    ) {
       violations.add(`${file} (blocked)`);
       continue;
     }
     if (
       task.allowedFiles.length > 0 &&
-      !task.allowedFiles.some((rule) => resolvedPathsOverlap(absoluteFile, rule))
+      !task.allowedFiles.some((rule) =>
+        resolvedPathsOverlap(absoluteFile, rule),
+      )
     ) {
       violations.add(`${file} (outside allowedFiles)`);
     }
@@ -1381,8 +1429,8 @@ function stripSupervisorAppendix(report: string): string {
 function aggregateSubagentMetrics(
   metricsList: Array<SubagentMetrics | undefined>,
 ): SubagentMetrics | undefined {
-  const metrics = metricsList.filter(
-    (item): item is SubagentMetrics => Boolean(item),
+  const metrics = metricsList.filter((item): item is SubagentMetrics =>
+    Boolean(item),
   );
   if (metrics.length === 0) return undefined;
 
@@ -1417,9 +1465,10 @@ function aggregateSubagentMetrics(
       throughputOutputTokens += throughput.outputTokens ?? 0;
       throughputDurationMs += throughput.generationDurationMs ?? 0;
       if (typeof throughput.ttftMs === "number") {
-        minTtftMs = minTtftMs === undefined
-          ? throughput.ttftMs
-          : Math.min(minTtftMs, throughput.ttftMs);
+        minTtftMs =
+          minTtftMs === undefined
+            ? throughput.ttftMs
+            : Math.min(minTtftMs, throughput.ttftMs);
       }
     }
   }
@@ -1455,35 +1504,45 @@ function finalizeParallelWorkerResults(
   changedFiles: string[],
 ): { results: ParallelDelegateTaskResult[]; unownedFiles: string[] } {
   const resolvedTasks = resolveParallelWorkerTasks(baseCwd, tasks);
-  const ownership = attributeParallelWorkerFiles(root, resolvedTasks, changedFiles);
+  const ownership = attributeParallelWorkerFiles(
+    root,
+    resolvedTasks,
+    changedFiles,
+  );
 
-  const finalizedResults: ParallelDelegateTaskResult[] = results.map((result, index) => {
-    const taskOwnership = ownership.resolvedTasks[index];
-    const attributedFiles = ownership.filesByTaskIndex[index] ?? [];
-    const taskBoundaryViolations = findAbsoluteBoundaryViolations(
-      root,
-      attributedFiles,
-      taskOwnership,
-    );
-    const boundaryViolations = [
-      ...taskBoundaryViolations,
-      ...ownership.unownedFiles.map((file) => `${file} (outside all allowedFiles)`),
-    ];
-    const baseStatus = parseStatus(stripSupervisorAppendix(result.report));
-    const hasValidationFailures = result.validation.some(
-      (item) => item.outcome === "fail",
-    );
-    return {
-      ...result,
-      label: taskOwnership.label,
-      filesChanged: attributedFiles,
-      boundaryViolations,
-      status: (baseStatus === "blocked" || hasValidationFailures || boundaryViolations.length > 0
-        ? "blocked"
-        : baseStatus) as DelegateStatus,
-      report: `${stripSupervisorAppendix(result.report)}${buildSupervisorAppendix(boundaryViolations, result.validation)}`,
-    };
-  });
+  const finalizedResults: ParallelDelegateTaskResult[] = results.map(
+    (result, index) => {
+      const taskOwnership = ownership.resolvedTasks[index];
+      const attributedFiles = ownership.filesByTaskIndex[index] ?? [];
+      const taskBoundaryViolations = findAbsoluteBoundaryViolations(
+        root,
+        attributedFiles,
+        taskOwnership,
+      );
+      const boundaryViolations = [
+        ...taskBoundaryViolations,
+        ...ownership.unownedFiles.map(
+          (file) => `${file} (outside all allowedFiles)`,
+        ),
+      ];
+      const baseStatus = parseStatus(stripSupervisorAppendix(result.report));
+      const hasValidationFailures = result.validation.some(
+        (item) => item.outcome === "fail",
+      );
+      return {
+        ...result,
+        label: taskOwnership.label,
+        filesChanged: attributedFiles,
+        boundaryViolations,
+        status: (baseStatus === "blocked" ||
+        hasValidationFailures ||
+        boundaryViolations.length > 0
+          ? "blocked"
+          : baseStatus) as DelegateStatus,
+        report: `${stripSupervisorAppendix(result.report)}${buildSupervisorAppendix(boundaryViolations, result.validation)}`,
+      };
+    },
+  );
 
   return {
     results: finalizedResults,
@@ -1496,13 +1555,16 @@ function buildWorkerFailureResult(
   workerModel: string,
   error: unknown,
 ): ParallelDelegateTaskResult {
-  const message = singleLine(
-    error instanceof Error ? error.message : String(error),
-  ) || "Worker delegation failed before the subagent completed.";
+  const message =
+    singleLine(error instanceof Error ? error.message : String(error)) ||
+    "Worker delegation failed before the subagent completed.";
   const report = `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Files Changed\n- (none)\n\n## Edits\n- (none)\n\n## Validation\n- (none)\n\n## Escalation\n- ${message}`;
   return {
     label,
-    report: buildCompactReport(report, [], [], { kind: "worker", status: "blocked" }),
+    report: buildCompactReport(report, [], [], {
+      kind: "worker",
+      status: "blocked",
+    }),
     fullReport: report,
     workerModel,
     status: "blocked",
@@ -1521,14 +1583,17 @@ function buildScoutFailureResult(
   scoutModel: string,
   error: unknown,
 ): ParallelScoutTaskResult {
-  const message = singleLine(
-    error instanceof Error ? error.message : String(error),
-  ) || "Scout delegation failed before the subagent completed.";
+  const message =
+    singleLine(error instanceof Error ? error.message : String(error)) ||
+    "Scout delegation failed before the subagent completed.";
   const report = `## Status\n- blocked\n\n## Summary\n- ${message}\n\n## Relevant Files\n- (none)\n\n## Findings\n- (none)\n\n## Recommended Next Step\n- ${message}`;
   return {
     label,
     status: "blocked",
-    report: buildCompactReport(report, [], [], { kind: "scout", status: "blocked" }),
+    report: buildCompactReport(report, [], [], {
+      kind: "scout",
+      status: "blocked",
+    }),
     fullReport: report,
     scoutModel,
     errorMessage: message,
@@ -1540,10 +1605,16 @@ function buildScoutFailureResult(
 function buildParallelWorkerSummary(
   results: ParallelDelegateTaskResult[],
 ): string {
-  const completedCount = results.filter((result) => result.status === "completed").length;
+  const completedCount = results.filter(
+    (result) => result.status === "completed",
+  ).length;
   const sections = results.map((result) => {
-    const passedValidation = result.validation.filter((item) => item.outcome === "pass").length;
-    const failedValidation = result.validation.filter((item) => item.outcome === "fail").length;
+    const passedValidation = result.validation.filter(
+      (item) => item.outcome === "pass",
+    ).length;
+    const failedValidation = result.validation.filter(
+      (item) => item.outcome === "fail",
+    ).length;
     const lines = [
       `### ${result.label}`,
       `- status: ${result.status}`,
@@ -1553,7 +1624,9 @@ function buildParallelWorkerSummary(
       `- validation: ${result.validation.length > 0 ? `${passedValidation} pass, ${failedValidation} fail` : "(none)"}`,
     ];
     if (result.boundaryViolations.length > 0) {
-      lines.push(`- boundary violations: ${result.boundaryViolations.join(", ")}`);
+      lines.push(
+        `- boundary violations: ${result.boundaryViolations.join(", ")}`,
+      );
     }
     return `${lines.join("\n")}\n\n${truncate(result.report, MAX_PARALLEL_REPORT_CHARS)}`;
   });
@@ -1561,7 +1634,9 @@ function buildParallelWorkerSummary(
 }
 
 function buildParallelScoutSummary(results: ParallelScoutTaskResult[]): string {
-  const completedCount = results.filter((result) => result.status === "completed").length;
+  const completedCount = results.filter(
+    (result) => result.status === "completed",
+  ).length;
   const sections = results.map((result) => {
     const lines = [
       `### ${result.label}`,
@@ -1633,11 +1708,15 @@ function buildWorkerPrompt(
   ];
 
   if (params.artifactSources && params.artifactSources.length > 0) {
-    sections.push(`## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`);
+    sections.push(
+      `## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
+    );
   }
 
   if (params.artifactQueries && params.artifactQueries.length > 0) {
-    sections.push(`## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`);
+    sections.push(
+      `## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`,
+    );
   }
 
   if (params.artifactSummary) {
@@ -1667,11 +1746,15 @@ function buildScoutPrompt(
   ];
 
   if (params.artifactSources && params.artifactSources.length > 0) {
-    sections.push(`## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`);
+    sections.push(
+      `## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
+    );
   }
 
   if (params.artifactQueries && params.artifactQueries.length > 0) {
-    sections.push(`## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`);
+    sections.push(
+      `## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`,
+    );
   }
 
   if (params.artifactSummary) {
@@ -1750,7 +1833,11 @@ async function runSubagentWithNoTextRetry(
   roleLabel: "Worker" | "Scout",
   execute: () => Promise<DelegatedSubagentRun>,
   signal?: AbortSignal,
-): Promise<{ run: DelegatedSubagentRun; final: ReturnType<typeof extractBestAssistantText>; attempts: number }> {
+): Promise<{
+  run: DelegatedSubagentRun;
+  final: ReturnType<typeof extractBestAssistantText>;
+  attempts: number;
+}> {
   const maxAttempts = 2;
   let lastRun: DelegatedSubagentRun | undefined;
   let lastFinal: ReturnType<typeof extractBestAssistantText> | undefined;
@@ -1780,14 +1867,18 @@ async function runSubagentWithNoTextRetry(
     }
   }
 
-  throw new Error(formatNoTextFailure(roleLabel, lastRun, lastFinal, maxAttempts));
+  throw new Error(
+    formatNoTextFailure(roleLabel, lastRun, lastFinal, maxAttempts),
+  );
 }
 
 function getLatestActiveToolName(
   activeToolCalls: Map<string, WorkerToolExecution>,
 ): string | undefined {
   const activeTools = [...activeToolCalls.values()];
-  return activeTools.length > 0 ? activeTools[activeTools.length - 1]?.toolName : undefined;
+  return activeTools.length > 0
+    ? activeTools[activeTools.length - 1]?.toolName
+    : undefined;
 }
 
 function compactSubagentLine(text: string, maxChars = 120): string {
@@ -1852,14 +1943,23 @@ function buildSubagentActivityLine(
 ): string {
   if (phase === "start") {
     const detail = summarizeSubagentArgs(toolName, args);
-    return compactSubagentLine(detail ? `→ ${toolName} ${detail}` : `→ ${toolName}`);
+    return compactSubagentLine(
+      detail ? `→ ${toolName} ${detail}` : `→ ${toolName}`,
+    );
   }
 
-  const detail = compactSubagentLine(extractSubagentResultText(result) ?? "", 96);
+  const detail = compactSubagentLine(
+    extractSubagentResultText(result) ?? "",
+    96,
+  );
   if (isError) {
-    return compactSubagentLine(detail ? `✗ ${toolName} ${detail}` : `✗ ${toolName}`);
+    return compactSubagentLine(
+      detail ? `✗ ${toolName} ${detail}` : `✗ ${toolName}`,
+    );
   }
-  return compactSubagentLine(detail ? `✓ ${toolName} ${detail}` : `✓ ${toolName}`);
+  return compactSubagentLine(
+    detail ? `✓ ${toolName} ${detail}` : `✓ ${toolName}`,
+  );
 }
 
 async function runWorkerSubagent(
@@ -1875,26 +1975,32 @@ async function runWorkerSubagent(
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
   onProgress?: (progress: SubagentProgress) => void,
-): Promise<Awaited<ReturnType<typeof runSubagentProcess>> & {
-  toolExecutions: WorkerToolExecution[];
-}> {
+): Promise<
+  Awaited<ReturnType<typeof runSubagentProcess>> & {
+    toolExecutions: WorkerToolExecution[];
+  }
+> {
   let eventIndex = 0;
   let completedTurns = 0;
   const generatedAt = Date.now();
   const workerTools = mergePreferredContextTools(tools);
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
-  appendSubagentEvent(pi, {
-    type: "subagent_process_start",
-    delegationId,
-    role: "worker",
-    model: modelArg,
-    cwd,
-    generatedAt,
-    ...startDetails,
-    requestedTools: startDetails.tools,
-    tools: workerTools,
-  }, shouldLog);
+  appendSubagentEvent(
+    pi,
+    {
+      type: "subagent_process_start",
+      delegationId,
+      role: "worker",
+      model: modelArg,
+      cwd,
+      generatedAt,
+      ...startDetails,
+      requestedTools: startDetails.tools,
+      tools: workerTools,
+    },
+    shouldLog,
+  );
 
   try {
     const run = await runSubagentProcess({
@@ -1906,7 +2012,9 @@ async function runWorkerSubagent(
       authHeaders: auth.headers,
       systemPrompt: WORKER_SYSTEM_PROMPT,
       extraArgs: [
-        ...(workerTools && workerTools.length > 0 ? ["--tools", workerTools.join(",")] : []),
+        ...(workerTools && workerTools.length > 0
+          ? ["--tools", workerTools.join(",")]
+          : []),
       ],
       env: {
         [WORKER_ENV_FLAG]: "worker",
@@ -1915,21 +2023,26 @@ async function runWorkerSubagent(
       onUpdate,
       onEvent: (event) => {
         eventIndex += 1;
-        appendSubagentEvent(pi, {
-          type: "subagent_raw_event",
-          delegationId,
-          role: "worker",
-          model: modelArg,
-          cwd,
-          eventType: typeof event?.type === "string" ? event.type : undefined,
-          eventIndex,
-          event,
-          generatedAt: Date.now(),
-        }, shouldLog);
+        appendSubagentEvent(
+          pi,
+          {
+            type: "subagent_raw_event",
+            delegationId,
+            role: "worker",
+            model: modelArg,
+            cwd,
+            eventType: typeof event?.type === "string" ? event.type : undefined,
+            eventIndex,
+            event,
+            generatedAt: Date.now(),
+          },
+          shouldLog,
+        );
 
-        const toolEvent = event && typeof event === "object"
-          ? event as Record<string, unknown>
-          : undefined;
+        const toolEvent =
+          event && typeof event === "object"
+            ? (event as Record<string, unknown>)
+            : undefined;
         if (toolEvent?.type === "turn_end") {
           completedTurns += 1;
           onProgress?.({
@@ -1937,19 +2050,26 @@ async function runWorkerSubagent(
             currentTool: undefined,
           });
         }
-        const toolCallId = typeof toolEvent?.toolCallId === "string"
-          ? toolEvent.toolCallId
-          : undefined;
-        const toolName = typeof toolEvent?.toolName === "string"
-          ? toolEvent.toolName
-          : undefined;
-        if (toolEvent?.type === "tool_execution_start" && toolCallId && toolName) {
+        const toolCallId =
+          typeof toolEvent?.toolCallId === "string"
+            ? toolEvent.toolCallId
+            : undefined;
+        const toolName =
+          typeof toolEvent?.toolName === "string"
+            ? toolEvent.toolName
+            : undefined;
+        if (
+          toolEvent?.type === "tool_execution_start" &&
+          toolCallId &&
+          toolName
+        ) {
           activeToolCalls.set(toolCallId, {
             toolCallId,
             toolName,
-            args: toolEvent.args && typeof toolEvent.args === "object"
-              ? toolEvent.args as Record<string, unknown>
-              : undefined,
+            args:
+              toolEvent.args && typeof toolEvent.args === "object"
+                ? (toolEvent.args as Record<string, unknown>)
+                : undefined,
           });
           onProgress?.({
             turns: completedTurns,
@@ -1962,7 +2082,9 @@ async function runWorkerSubagent(
           });
         }
         if (toolEvent?.type === "tool_execution_end" && toolName) {
-          const prior = toolCallId ? activeToolCalls.get(toolCallId) : undefined;
+          const prior = toolCallId
+            ? activeToolCalls.get(toolCallId)
+            : undefined;
           toolExecutions.push({
             toolCallId,
             toolName,
@@ -1989,51 +2111,75 @@ async function runWorkerSubagent(
     });
 
     const outcome = classifySubagentOutcome(run, signal);
-    appendSubagentEvent(pi, {
-      type: "subagent_process_end",
-      delegationId,
-      role: "worker",
-      model: modelArg,
-      cwd,
-      outcome,
-      exitCode: run.exitCode,
-      stopReason: run.stopReason,
-      errorMessage: run.errorMessage,
-      stderr: run.stderr.trim() || undefined,
-      metrics: buildSubagentMetrics(run),
-      generatedAt: Date.now(),
-    }, shouldLog);
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_process_end",
+        delegationId,
+        role: "worker",
+        model: modelArg,
+        cwd,
+        outcome,
+        exitCode: run.exitCode,
+        stopReason: run.stopReason,
+        errorMessage: run.errorMessage,
+        stderr: run.stderr.trim() || undefined,
+        metrics: buildSubagentMetrics(run),
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
 
     return {
       ...run,
       toolExecutions,
     };
   } catch (error) {
-    const details = error && typeof error === "object"
-      ? error as Record<string, unknown>
-      : undefined;
-    appendSubagentEvent(pi, {
-      type: "subagent_process_end",
-      delegationId,
-      role: "worker",
-      model: modelArg,
-      cwd,
-      outcome: classifySubagentOutcome({
-        exitCode: typeof details?.exitCode === "number" ? details.exitCode : 1,
-        stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
+    const details =
+      error && typeof error === "object"
+        ? (error as Record<string, unknown>)
+        : undefined;
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_process_end",
+        delegationId,
+        role: "worker",
+        model: modelArg,
+        cwd,
+        outcome: classifySubagentOutcome(
+          {
+            exitCode:
+              typeof details?.exitCode === "number" ? details.exitCode : 1,
+            stopReason:
+              typeof details?.stopReason === "string"
+                ? details.stopReason
+                : undefined,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          },
+          signal,
+        ),
         errorMessage: error instanceof Error ? error.message : String(error),
-      }, signal),
-      errorMessage: error instanceof Error ? error.message : String(error),
-      exitCode: typeof details?.exitCode === "number" ? details.exitCode : undefined,
-      stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
-      stderr: typeof details?.stderr === "string" ? details.stderr : undefined,
-      generatedAt: Date.now(),
-    }, shouldLog);
+        exitCode:
+          typeof details?.exitCode === "number" ? details.exitCode : undefined,
+        stopReason:
+          typeof details?.stopReason === "string"
+            ? details.stopReason
+            : undefined,
+        stderr:
+          typeof details?.stderr === "string" ? details.stderr : undefined,
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
     throw error;
   }
 }
 
-function extractDiffRanges(diff: string): Array<{ startLine: number; endLine: number }> {
+function extractDiffRanges(
+  diff: string,
+): Array<{ startLine: number; endLine: number }> {
   const ranges: Array<{ startLine: number; endLine: number }> = [];
   let currentStart: number | undefined;
   let currentEnd: number | undefined;
@@ -2058,8 +2204,12 @@ function extractDiffRanges(diff: string): Array<{ startLine: number; endLine: nu
     if (match[1] !== "+" && match[1] !== "-") continue;
     const lineNumber = Number(match[2]);
     if (!Number.isFinite(lineNumber)) continue;
-    currentStart = currentStart === undefined ? lineNumber : Math.min(currentStart, lineNumber);
-    currentEnd = currentEnd === undefined ? lineNumber : Math.max(currentEnd, lineNumber);
+    currentStart =
+      currentStart === undefined
+        ? lineNumber
+        : Math.min(currentStart, lineNumber);
+    currentEnd =
+      currentEnd === undefined ? lineNumber : Math.max(currentEnd, lineNumber);
     sawChange = true;
   }
 
@@ -2089,30 +2239,37 @@ function extractArtifactSourcesFromText(text: string): string[] {
 
 function buildBatchArtifactSource(commands: unknown): string | undefined {
   if (!Array.isArray(commands) || commands.length === 0) return undefined;
-  const labels = commands
-    .flatMap((command) => {
-      if (!command || typeof command !== "object") return [] as string[];
-      const label = normalizeArtifactLabel((command as { label?: unknown }).label);
-      return label ? [label] : [];
-    });
+  const labels = commands.flatMap((command) => {
+    if (!command || typeof command !== "object") return [] as string[];
+    const label = normalizeArtifactLabel(
+      (command as { label?: unknown }).label,
+    );
+    return label ? [label] : [];
+  });
   if (labels.length === 0) return undefined;
   return `batch:${labels.join(",").slice(0, 80)}`;
 }
 
-function extractArtifactPointers(
-  execution: WorkerToolExecution,
-): { sources: string[]; queries: string[] } {
+function extractArtifactPointers(execution: WorkerToolExecution): {
+  sources: string[];
+  queries: string[];
+} {
   const sources: string[] = [];
   const queries: string[] = [];
   const toolName = execution.toolName;
   const args = execution.args;
-  const result = execution.result && typeof execution.result === "object"
-    ? execution.result as Record<string, unknown>
-    : undefined;
+  const result =
+    execution.result && typeof execution.result === "object"
+      ? (execution.result as Record<string, unknown>)
+      : undefined;
   const resultText = extractTextContent(result);
 
   if (Array.isArray(args?.queries)) {
-    queries.push(...args.queries.filter((q): q is string => typeof q === "string" && q.trim().length > 0));
+    queries.push(
+      ...args.queries.filter(
+        (q): q is string => typeof q === "string" && q.trim().length > 0,
+      ),
+    );
   }
 
   if (toolName === "ctx_search") {
@@ -2126,7 +2283,9 @@ function extractArtifactPointers(
   }
 
   if (toolName === "ctx_index") {
-    const source = normalizeArtifactLabel(args?.source) ?? normalizeArtifactLabel(args?.path);
+    const source =
+      normalizeArtifactLabel(args?.source) ??
+      normalizeArtifactLabel(args?.path);
     if (source) sources.push(source);
   }
 
@@ -2138,13 +2297,18 @@ function extractArtifactPointers(
     if (Array.isArray(args?.requests)) {
       for (const request of args.requests) {
         if (!request || typeof request !== "object") continue;
-        const label = normalizeArtifactLabel((request as { source?: unknown }).source);
+        const label = normalizeArtifactLabel(
+          (request as { source?: unknown }).source,
+        );
         if (label) sources.push(label);
       }
     }
   }
 
-  if ((toolName === "ctx_execute" || toolName === "ctx_execute_file") && args?.intent) {
+  if (
+    (toolName === "ctx_execute" || toolName === "ctx_execute_file") &&
+    args?.intent
+  ) {
     sources.push(...extractArtifactSourcesFromText(resultText));
   }
 
@@ -2174,7 +2338,11 @@ async function deriveEditLocations(
   root: string,
   toolExecutions: WorkerToolExecution[],
   filesChanged: string[],
-): Promise<{ editLocations: HandoffEditLocation[]; artifactSources: string[]; artifactQueries: string[] }> {
+): Promise<{
+  editLocations: HandoffEditLocation[];
+  artifactSources: string[];
+  artifactQueries: string[];
+}> {
   const locations: HandoffEditLocation[] = [];
   const artifactSources: string[] = [];
   const artifactQueries: string[] = [];
@@ -2186,18 +2354,21 @@ async function deriveEditLocations(
     artifactSources.push(...artifactPointers.sources);
     artifactQueries.push(...artifactPointers.queries);
 
-    const path = typeof execution.args?.path === "string"
-      ? normalizeRepoPath(root, execution.args.path)
-      : "";
+    const path =
+      typeof execution.args?.path === "string"
+        ? normalizeRepoPath(root, execution.args.path)
+        : "";
     if (!path) continue;
 
     if (toolName === "edit") {
-      const result = execution.result && typeof execution.result === "object"
-        ? execution.result as Record<string, unknown>
-        : undefined;
-      const details = result?.details && typeof result.details === "object"
-        ? result.details as Record<string, unknown>
-        : undefined;
+      const result =
+        execution.result && typeof execution.result === "object"
+          ? (execution.result as Record<string, unknown>)
+          : undefined;
+      const details =
+        result?.details && typeof result.details === "object"
+          ? (result.details as Record<string, unknown>)
+          : undefined;
       const diff = typeof details?.diff === "string" ? details.diff : "";
       const ranges = diff ? extractDiffRanges(diff) : [];
       if (ranges.length > 0) {
@@ -2216,10 +2387,13 @@ async function deriveEditLocations(
     }
 
     if (toolName === "write") {
-      const content = typeof execution.args?.content === "string"
-        ? execution.args.content
-        : undefined;
-      const lineCount = content ? countLines(content) : await readFileLineCount(root, path);
+      const content =
+        typeof execution.args?.content === "string"
+          ? execution.args.content
+          : undefined;
+      const lineCount = content
+        ? countLines(content)
+        : await readFileLineCount(root, path);
       locations.push({
         path,
         startLine: lineCount ? 1 : undefined,
@@ -2270,26 +2444,32 @@ async function runScoutSubagent(
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
   onProgress?: (progress: SubagentProgress) => void,
-): Promise<Awaited<ReturnType<typeof runSubagentProcess>> & {
-  toolExecutions: WorkerToolExecution[];
-}> {
+): Promise<
+  Awaited<ReturnType<typeof runSubagentProcess>> & {
+    toolExecutions: WorkerToolExecution[];
+  }
+> {
   const scoutTools = sanitizeScoutTools(tools);
   let eventIndex = 0;
   let completedTurns = 0;
   const generatedAt = Date.now();
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
-  appendSubagentEvent(pi, {
-    type: "subagent_process_start",
-    delegationId,
-    role: "scout",
-    model: modelArg,
-    cwd,
-    generatedAt,
-    ...startDetails,
-    requestedTools: startDetails.tools,
-    tools: scoutTools,
-  }, shouldLog);
+  appendSubagentEvent(
+    pi,
+    {
+      type: "subagent_process_start",
+      delegationId,
+      role: "scout",
+      model: modelArg,
+      cwd,
+      generatedAt,
+      ...startDetails,
+      requestedTools: startDetails.tools,
+      tools: scoutTools,
+    },
+    shouldLog,
+  );
 
   try {
     const run = await runSubagentProcess({
@@ -2308,21 +2488,26 @@ async function runScoutSubagent(
       onUpdate,
       onEvent: (event) => {
         eventIndex += 1;
-        appendSubagentEvent(pi, {
-          type: "subagent_raw_event",
-          delegationId,
-          role: "scout",
-          model: modelArg,
-          cwd,
-          eventType: typeof event?.type === "string" ? event.type : undefined,
-          eventIndex,
-          event,
-          generatedAt: Date.now(),
-        }, shouldLog);
+        appendSubagentEvent(
+          pi,
+          {
+            type: "subagent_raw_event",
+            delegationId,
+            role: "scout",
+            model: modelArg,
+            cwd,
+            eventType: typeof event?.type === "string" ? event.type : undefined,
+            eventIndex,
+            event,
+            generatedAt: Date.now(),
+          },
+          shouldLog,
+        );
 
-        const toolEvent = event && typeof event === "object"
-          ? event as Record<string, unknown>
-          : undefined;
+        const toolEvent =
+          event && typeof event === "object"
+            ? (event as Record<string, unknown>)
+            : undefined;
         if (toolEvent?.type === "turn_end") {
           completedTurns += 1;
           onProgress?.({
@@ -2330,19 +2515,26 @@ async function runScoutSubagent(
             currentTool: undefined,
           });
         }
-        const toolCallId = typeof toolEvent?.toolCallId === "string"
-          ? toolEvent.toolCallId
-          : undefined;
-        const toolName = typeof toolEvent?.toolName === "string"
-          ? toolEvent.toolName
-          : undefined;
-        if (toolEvent?.type === "tool_execution_start" && toolCallId && toolName) {
+        const toolCallId =
+          typeof toolEvent?.toolCallId === "string"
+            ? toolEvent.toolCallId
+            : undefined;
+        const toolName =
+          typeof toolEvent?.toolName === "string"
+            ? toolEvent.toolName
+            : undefined;
+        if (
+          toolEvent?.type === "tool_execution_start" &&
+          toolCallId &&
+          toolName
+        ) {
           activeToolCalls.set(toolCallId, {
             toolCallId,
             toolName,
-            args: toolEvent.args && typeof toolEvent.args === "object"
-              ? toolEvent.args as Record<string, unknown>
-              : undefined,
+            args:
+              toolEvent.args && typeof toolEvent.args === "object"
+                ? (toolEvent.args as Record<string, unknown>)
+                : undefined,
           });
           onProgress?.({
             turns: completedTurns,
@@ -2355,7 +2547,9 @@ async function runScoutSubagent(
           });
         }
         if (toolEvent?.type === "tool_execution_end" && toolName) {
-          const prior = toolCallId ? activeToolCalls.get(toolCallId) : undefined;
+          const prior = toolCallId
+            ? activeToolCalls.get(toolCallId)
+            : undefined;
           toolExecutions.push({
             toolCallId,
             toolName,
@@ -2382,46 +2576,68 @@ async function runScoutSubagent(
     });
 
     const outcome = classifySubagentOutcome(run, signal);
-    appendSubagentEvent(pi, {
-      type: "subagent_process_end",
-      delegationId,
-      role: "scout",
-      model: modelArg,
-      cwd,
-      outcome,
-      exitCode: run.exitCode,
-      stopReason: run.stopReason,
-      errorMessage: run.errorMessage,
-      stderr: run.stderr.trim() || undefined,
-      metrics: buildSubagentMetrics(run),
-      generatedAt: Date.now(),
-    }, shouldLog);
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_process_end",
+        delegationId,
+        role: "scout",
+        model: modelArg,
+        cwd,
+        outcome,
+        exitCode: run.exitCode,
+        stopReason: run.stopReason,
+        errorMessage: run.errorMessage,
+        stderr: run.stderr.trim() || undefined,
+        metrics: buildSubagentMetrics(run),
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
 
     return {
       ...run,
       toolExecutions,
     };
   } catch (error) {
-    const details = error && typeof error === "object"
-      ? error as Record<string, unknown>
-      : undefined;
-    appendSubagentEvent(pi, {
-      type: "subagent_process_end",
-      delegationId,
-      role: "scout",
-      model: modelArg,
-      cwd,
-      outcome: classifySubagentOutcome({
-        exitCode: typeof details?.exitCode === "number" ? details.exitCode : 1,
-        stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
+    const details =
+      error && typeof error === "object"
+        ? (error as Record<string, unknown>)
+        : undefined;
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_process_end",
+        delegationId,
+        role: "scout",
+        model: modelArg,
+        cwd,
+        outcome: classifySubagentOutcome(
+          {
+            exitCode:
+              typeof details?.exitCode === "number" ? details.exitCode : 1,
+            stopReason:
+              typeof details?.stopReason === "string"
+                ? details.stopReason
+                : undefined,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          },
+          signal,
+        ),
         errorMessage: error instanceof Error ? error.message : String(error),
-      }, signal),
-      errorMessage: error instanceof Error ? error.message : String(error),
-      exitCode: typeof details?.exitCode === "number" ? details.exitCode : undefined,
-      stopReason: typeof details?.stopReason === "string" ? details.stopReason : undefined,
-      stderr: typeof details?.stderr === "string" ? details.stderr : undefined,
-      generatedAt: Date.now(),
-    }, shouldLog);
+        exitCode:
+          typeof details?.exitCode === "number" ? details.exitCode : undefined,
+        stopReason:
+          typeof details?.stopReason === "string"
+            ? details.stopReason
+            : undefined,
+        stderr:
+          typeof details?.stderr === "string" ? details.stderr : undefined,
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
     throw error;
   }
 }
@@ -2472,7 +2688,10 @@ function extractTextContent(content: unknown): string {
   }
 
   if (content && typeof content === "object") {
-    if ("text" in content && typeof (content as { text?: unknown }).text === "string") {
+    if (
+      "text" in content &&
+      typeof (content as { text?: unknown }).text === "string"
+    ) {
       return (content as { text: string }).text.trim();
     }
     if ("role" in content && "content" in content) {
@@ -2516,7 +2735,8 @@ function summarizeHandoff(
     );
   }
 
-  const status = typeof details.status === "string" ? details.status : "completed";
+  const status =
+    typeof details.status === "string" ? details.status : "completed";
   return truncate(singleLine(`${toolName} ${status}`), 240);
 }
 
@@ -2535,7 +2755,9 @@ function inferHandoffTitle(
     return formatTaskTitle(`Review: ${input.focus}`);
   }
   const completedCount =
-    typeof details.completedCount === "number" ? details.completedCount : undefined;
+    typeof details.completedCount === "number"
+      ? details.completedCount
+      : undefined;
   const totalCount =
     typeof details.totalCount === "number" ? details.totalCount : undefined;
   if (completedCount !== undefined && totalCount !== undefined) {
@@ -2565,53 +2787,82 @@ function parseDetailEditLocations(value: unknown): HandoffEditLocation[] {
       if (!item || typeof item !== "object") return [] as HandoffEditLocation[];
       const location = item as Record<string, unknown>;
       if (typeof location.path !== "string") return [] as HandoffEditLocation[];
-      return [{
-        path: location.path,
-        startLine: typeof location.startLine === "number" ? location.startLine : undefined,
-        endLine: typeof location.endLine === "number" ? location.endLine : undefined,
-        summary: typeof location.summary === "string" ? location.summary : undefined,
-        sourceTool: location.sourceTool === "edit" || location.sourceTool === "write" || location.sourceTool === "file"
-          ? location.sourceTool
-          : undefined,
-        precision: location.precision === "range" || location.precision === "file"
-          ? location.precision
-          : undefined,
-      }];
+      return [
+        {
+          path: location.path,
+          startLine:
+            typeof location.startLine === "number"
+              ? location.startLine
+              : undefined,
+          endLine:
+            typeof location.endLine === "number" ? location.endLine : undefined,
+          summary:
+            typeof location.summary === "string" ? location.summary : undefined,
+          sourceTool:
+            location.sourceTool === "edit" ||
+            location.sourceTool === "write" ||
+            location.sourceTool === "file"
+              ? location.sourceTool
+              : undefined,
+          precision:
+            location.precision === "range" || location.precision === "file"
+              ? location.precision
+              : undefined,
+        },
+      ];
     }),
   );
 }
 
-function collectHandoffEditLocations(details: Record<string, unknown>): HandoffEditLocation[] {
+function collectHandoffEditLocations(
+  details: Record<string, unknown>,
+): HandoffEditLocation[] {
   const directLocations = parseDetailEditLocations(details.editLocations);
   const nestedLocations = Array.isArray(details.results)
     ? details.results.flatMap((result) => {
-      if (!result || typeof result !== "object") return [] as HandoffEditLocation[];
-      return parseDetailEditLocations((result as { editLocations?: unknown }).editLocations);
-    })
+        if (!result || typeof result !== "object")
+          return [] as HandoffEditLocation[];
+        return parseDetailEditLocations(
+          (result as { editLocations?: unknown }).editLocations,
+        );
+      })
     : [];
   return dedupeEditLocations([...directLocations, ...nestedLocations]);
 }
 
 function collectHandoffFiles(details: Record<string, unknown>): string[] {
   const directFiles = Array.isArray(details.filesChanged)
-    ? details.filesChanged.filter((item): item is string => typeof item === "string")
+    ? details.filesChanged.filter(
+        (item): item is string => typeof item === "string",
+      )
     : [];
   const nestedFiles = Array.isArray(details.results)
     ? details.results.flatMap((result) => {
-      if (!result || typeof result !== "object") return [] as string[];
-      const filesChanged = (result as { filesChanged?: unknown }).filesChanged;
-      return Array.isArray(filesChanged)
-        ? filesChanged.filter((item): item is string => typeof item === "string")
-        : [];
-    })
+        if (!result || typeof result !== "object") return [] as string[];
+        const filesChanged = (result as { filesChanged?: unknown })
+          .filesChanged;
+        return Array.isArray(filesChanged)
+          ? filesChanged.filter(
+              (item): item is string => typeof item === "string",
+            )
+          : [];
+      })
     : [];
-  const normalizedFiles = [...new Set([...directFiles, ...nestedFiles]
-    .map((item) => normalizePath(item))
-    .filter((item) => item && !isIncidentalHandoffPath(item)))].sort();
+  const normalizedFiles = [
+    ...new Set(
+      [...directFiles, ...nestedFiles]
+        .map((item) => normalizePath(item))
+        .filter((item) => item && !isIncidentalHandoffPath(item)),
+    ),
+  ].sort();
   if (normalizedFiles.length > 0) {
     return normalizedFiles;
   }
-  return [...new Set(collectHandoffEditLocations(details).map((location) => location.path))].sort();
+  return [
+    ...new Set(
+      collectHandoffEditLocations(details).map((location) => location.path),
+    ),
+  ].sort();
 }
 
 function buildHandoffSource(
@@ -2633,47 +2884,72 @@ function collectHandoffArtifacts(details: Record<string, unknown>): {
   summary?: string;
 } {
   const directSources = Array.isArray(details.artifactSources)
-    ? details.artifactSources.filter((item): item is string => typeof item === "string")
+    ? details.artifactSources.filter(
+        (item): item is string => typeof item === "string",
+      )
     : [];
   const directQueries = Array.isArray(details.artifactQueries)
-    ? details.artifactQueries.filter((item): item is string => typeof item === "string")
+    ? details.artifactQueries.filter(
+        (item): item is string => typeof item === "string",
+      )
     : [];
-  const directSummary = typeof details.artifactSummary === "string" && details.artifactSummary.trim()
-    ? details.artifactSummary.trim()
-    : undefined;
+  const directSummary =
+    typeof details.artifactSummary === "string" &&
+    details.artifactSummary.trim()
+      ? details.artifactSummary.trim()
+      : undefined;
 
   const nestedSources = Array.isArray(details.results)
     ? details.results.flatMap((result) => {
-      if (!result || typeof result !== "object") return [] as string[];
-      const sources = (result as { artifactSources?: unknown }).artifactSources;
-      return Array.isArray(sources)
-        ? sources.filter((item): item is string => typeof item === "string")
-        : [];
-    })
+        if (!result || typeof result !== "object") return [] as string[];
+        const sources = (result as { artifactSources?: unknown })
+          .artifactSources;
+        return Array.isArray(sources)
+          ? sources.filter((item): item is string => typeof item === "string")
+          : [];
+      })
     : [];
 
   const nestedQueries = Array.isArray(details.results)
     ? details.results.flatMap((result) => {
-      if (!result || typeof result !== "object") return [] as string[];
-      const queries = (result as { artifactQueries?: unknown }).artifactQueries;
-      return Array.isArray(queries)
-        ? queries.filter((item): item is string => typeof item === "string")
-        : [];
-    })
+        if (!result || typeof result !== "object") return [] as string[];
+        const queries = (result as { artifactQueries?: unknown })
+          .artifactQueries;
+        return Array.isArray(queries)
+          ? queries.filter((item): item is string => typeof item === "string")
+          : [];
+      })
     : [];
 
   const nestedSummaries = Array.isArray(details.results)
     ? details.results.flatMap((result) => {
-      if (!result || typeof result !== "object") return [] as string[];
-      const summary = (result as { artifactSummary?: unknown }).artifactSummary;
-      return typeof summary === "string" && summary.trim() ? [summary.trim()] : [];
-    })
+        if (!result || typeof result !== "object") return [] as string[];
+        const summary = (result as { artifactSummary?: unknown })
+          .artifactSummary;
+        return typeof summary === "string" && summary.trim()
+          ? [summary.trim()]
+          : [];
+      })
     : [];
 
   return {
-    sources: [...new Set([...directSources, ...nestedSources].map((item) => item.trim()).filter(Boolean))].sort(),
-    queries: [...new Set([...directQueries, ...nestedQueries].map((item) => item.trim()).filter(Boolean))].sort(),
-    summary: directSummary ?? (nestedSummaries.length > 0 ? nestedSummaries.join(" | ") : undefined),
+    sources: [
+      ...new Set(
+        [...directSources, ...nestedSources]
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    ].sort(),
+    queries: [
+      ...new Set(
+        [...directQueries, ...nestedQueries]
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    ].sort(),
+    summary:
+      directSummary ??
+      (nestedSummaries.length > 0 ? nestedSummaries.join(" | ") : undefined),
   };
 }
 
@@ -2720,43 +2996,66 @@ function buildHandoffMarkdown(input: {
     lines.push("", "## Artifact Summary", input.artifactSummary);
   }
 
-  if (typeof input.promptInput.objective === "string" && input.promptInput.objective.trim()) {
+  if (
+    typeof input.promptInput.objective === "string" &&
+    input.promptInput.objective.trim()
+  ) {
     lines.push("", "## Objective", input.promptInput.objective.trim());
   }
-  if (typeof input.promptInput.scope === "string" && input.promptInput.scope.trim()) {
+  if (
+    typeof input.promptInput.scope === "string" &&
+    input.promptInput.scope.trim()
+  ) {
     lines.push("", "## Scope", input.promptInput.scope.trim());
   }
   if (Array.isArray(input.promptInput.acceptanceCriteria)) {
     const acceptanceCriteria = input.promptInput.acceptanceCriteria
-      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .filter(
+        (item): item is string =>
+          typeof item === "string" && item.trim().length > 0,
+      )
       .map((item) => `- ${item.trim()}`);
     if (acceptanceCriteria.length > 0) {
       lines.push("", "## Acceptance Criteria", ...acceptanceCriteria);
     }
   }
-  if (typeof input.promptInput.context === "string" && input.promptInput.context.trim()) {
+  if (
+    typeof input.promptInput.context === "string" &&
+    input.promptInput.context.trim()
+  ) {
     lines.push("", "## Review Context", input.promptInput.context.trim());
   }
-  if (typeof input.promptInput.focus === "string" && input.promptInput.focus.trim()) {
+  if (
+    typeof input.promptInput.focus === "string" &&
+    input.promptInput.focus.trim()
+  ) {
     lines.push("", "## Review Focus", input.promptInput.focus.trim());
   }
   if (input.editLocations.length > 0 && !input.report.trim()) {
     lines.push(
       "",
       "## Edit Locations",
-      ...input.editLocations.map((location) => `- ${formatEditLocation(location)}`),
+      ...input.editLocations.map(
+        (location) => `- ${formatEditLocation(location)}`,
+      ),
     );
     lines.push(
       "",
       "## Suggested Inspection",
-      ...buildInspectionBullets(input.editLocations, input.filesChanged).map((item) => `- ${item}`),
+      ...buildInspectionBullets(input.editLocations, input.filesChanged).map(
+        (item) => `- ${item}`,
+      ),
     );
   }
   if (Array.isArray(input.details.validation)) {
     const validationLines = input.details.validation
-      .filter((item): item is ValidationResult => Boolean(item) && typeof item === "object")
+      .filter(
+        (item): item is ValidationResult =>
+          Boolean(item) && typeof item === "object",
+      )
       .map((item) => {
-        const exitText = item.exitCode === null ? "signal" : String(item.exitCode);
+        const exitText =
+          item.exitCode === null ? "signal" : String(item.exitCode);
         return `- ${item.command} - ${item.outcome} (exit ${exitText}) - ${item.note}`;
       });
     if (validationLines.length > 0) {
@@ -2783,7 +3082,12 @@ type SharedContentStore = {
     source?: string,
     contentType?: "code" | "prose",
     sourceMatchMode?: "like" | "exact",
-  ): Array<{ title: string; content: string; highlighted?: string; source?: string }>;
+  ): Array<{
+    title: string;
+    content: string;
+    highlighted?: string;
+    source?: string;
+  }>;
   close(): void;
 };
 
@@ -2855,11 +3159,14 @@ async function loadContextModeModules() {
     contextModeModulesPromise = (async () => {
       try {
         const root = resolveContextModeBuildRoot();
-        const [{ ContentStore }, sessionDbModule, piAdapterModule] = await Promise.all([
-          import(pathToFileURL(join(root, "store.js")).href),
-          import(pathToFileURL(join(root, "session", "db.js")).href),
-          import(pathToFileURL(join(root, "adapters", "pi", "extension.js")).href),
-        ]);
+        const [{ ContentStore }, sessionDbModule, piAdapterModule] =
+          await Promise.all([
+            import(pathToFileURL(join(root, "store.js")).href),
+            import(pathToFileURL(join(root, "session", "db.js")).href),
+            import(
+              pathToFileURL(join(root, "adapters", "pi", "extension.js")).href
+            ),
+          ]);
 
         return {
           ContentStore,
@@ -2935,16 +3242,22 @@ function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
       generatedAt: typeof data.generatedAt === "number" ? data.generatedAt : 0,
       summary: data.summary ?? "",
       filesChanged: Array.isArray(data.filesChanged)
-        ? data.filesChanged.filter((item): item is string => typeof item === "string")
+        ? data.filesChanged.filter(
+            (item): item is string => typeof item === "string",
+          )
         : [],
       editLocations: Array.isArray(data.editLocations)
         ? parseDetailEditLocations(data.editLocations)
         : [],
       artifactSources: Array.isArray(data.artifactSources)
-        ? data.artifactSources.filter((item): item is string => typeof item === "string")
+        ? data.artifactSources.filter(
+            (item): item is string => typeof item === "string",
+          )
         : [],
       artifactQueries: Array.isArray(data.artifactQueries)
-        ? data.artifactQueries.filter((item): item is string => typeof item === "string")
+        ? data.artifactQueries.filter(
+            (item): item is string => typeof item === "string",
+          )
         : [],
       artifactSummary: data.artifactSummary,
       indexed: data.indexed,
@@ -2952,8 +3265,10 @@ function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
   }
   return pointers
     .reverse()
-    .filter((item, index, all) =>
-      index === all.findIndex((candidate) => candidate.source === item.source)
+    .filter(
+      (item, index, all) =>
+        index ===
+        all.findIndex((candidate) => candidate.source === item.source),
     );
 }
 
@@ -2970,7 +3285,11 @@ function inferDelegationArtifacts(
 
   const candidates = readRecentHandoffPointers(ctx)
     .filter((handoff) => handoff.toolName !== "review_changes")
-    .filter((handoff) => handoff.artifactSources.length > 0 || handoff.artifactQueries.length > 0)
+    .filter(
+      (handoff) =>
+        handoff.artifactSources.length > 0 ||
+        handoff.artifactQueries.length > 0,
+    )
     .map((handoff) => ({
       handoff,
       score: scoreHandoffRelevance(normalizedPrompt, handoff),
@@ -2982,12 +3301,18 @@ function inferDelegationArtifacts(
 
   if (candidates.length === 0) return {};
 
-  const artifactSources = [...new Set(candidates.flatMap((handoff) => handoff.artifactSources))].slice(0, 6);
-  const artifactQueries = [...new Set(candidates.flatMap((handoff) => handoff.artifactQueries))].slice(0, 6);
+  const artifactSources = [
+    ...new Set(candidates.flatMap((handoff) => handoff.artifactSources)),
+  ].slice(0, 6);
+  const artifactQueries = [
+    ...new Set(candidates.flatMap((handoff) => handoff.artifactQueries)),
+  ].slice(0, 6);
   const artifactSummary = truncate(
     candidates
       .slice(0, 2)
-      .map((handoff) => `${handoff.title}: ${summarizeStructuredHandoff(handoff)}`)
+      .map(
+        (handoff) => `${handoff.title}: ${summarizeStructuredHandoff(handoff)}`,
+      )
       .join(" | "),
     320,
   );
@@ -3013,7 +3338,11 @@ function withInferredArtifacts<T extends DelegateParams | ScoutParams>(
   }
 
   const inferred = inferDelegationArtifacts(ctx, promptText);
-  if (!inferred.artifactSources && !inferred.artifactQueries && !inferred.artifactSummary) {
+  if (
+    !inferred.artifactSources &&
+    !inferred.artifactQueries &&
+    !inferred.artifactSummary
+  ) {
     return params;
   }
 
@@ -3034,7 +3363,10 @@ async function buildRecentHandoffPrompt(
   );
   const scoredSessionHandoffs = prompt.trim()
     ? rawSessionHandoffs
-        .map((handoff) => ({ handoff, score: scoreHandoffRelevance(prompt, handoff) }))
+        .map((handoff) => ({
+          handoff,
+          score: scoreHandoffRelevance(prompt, handoff),
+        }))
         .filter((item) => item.score > 0)
         .sort((left, right) => right.score - left.score)
         .map((item) => item.handoff)
@@ -3045,7 +3377,8 @@ async function buildRecentHandoffPrompt(
   ]
     .filter(
       (handoff, index, all) =>
-        index === all.findIndex((candidate) => candidate.source === handoff.source),
+        index ===
+        all.findIndex((candidate) => candidate.source === handoff.source),
     )
     .slice(0, MAX_RECENT_HANDOFFS);
   const store = await getOrCreateHandoffStore(ctx).catch(() => undefined);
@@ -3074,7 +3407,8 @@ async function buildRecentHandoffPrompt(
           title: match.title || "Relevant prior handoff",
           status: "indexed",
           generatedAt: 0,
-          summary: singleLine(match.highlighted || match.content || "") ||
+          summary:
+            singleLine(match.highlighted || match.content || "") ||
             "Relevant indexed handoff from another session in this project.",
           filesChanged: [],
           editLocations: [],
@@ -3091,10 +3425,13 @@ async function buildRecentHandoffPrompt(
 
   if (handoffs.length === 0) return "";
 
-  const freshSessionSources = new Set(sessionHandoffs.slice(0, 2).map((handoff) => handoff.source));
+  const freshSessionSources = new Set(
+    sessionHandoffs.slice(0, 2).map((handoff) => handoff.source),
+  );
   const sections: string[] = [];
   for (const handoff of handoffs) {
-    const isFreshCurrentHandoff = handoff.generatedAt > 0 && freshSessionSources.has(handoff.source);
+    const isFreshCurrentHandoff =
+      handoff.generatedAt > 0 && freshSessionSources.has(handoff.source);
     let detail = handoff.summary;
     if (store && !isFreshCurrentHandoff) {
       try {
@@ -3109,7 +3446,9 @@ async function buildRecentHandoffPrompt(
           detail = truncate(
             matches
               .map((match) => {
-                const snippet = singleLine(match.highlighted || match.content || "");
+                const snippet = singleLine(
+                  match.highlighted || match.content || "",
+                );
                 return snippet ? `${match.title}: ${snippet}` : match.title;
               })
               .join(" | "),
@@ -3133,7 +3472,9 @@ async function buildRecentHandoffPrompt(
       lines.push(`- artifact queries: ${handoff.artifactQueries.join(", ")}`);
     }
     if (isFreshCurrentHandoff) {
-      lines.push("- summary: already visible in recent tool history; reuse the structured handoff source if needed.");
+      lines.push(
+        "- summary: already visible in recent tool history; reuse the structured handoff source if needed.",
+      );
     } else {
       lines.push(`- summary: ${detail || "(none)"}`);
     }
@@ -3163,8 +3504,8 @@ async function buildRecentHandoffPrompt(
 function workingTreeSignature(snapshot: WorkingTreeSnapshot): string {
   const hash = createHash("sha1");
   hash.update(`${snapshot.root}\n`);
-  for (const [file, digest] of [...snapshot.files.entries()].sort(([left], [right]) =>
-    left.localeCompare(right)
+  for (const [file, digest] of [...snapshot.files.entries()].sort(
+    ([left], [right]) => left.localeCompare(right),
   )) {
     hash.update(`${file}:${digest}\n`);
   }
@@ -3175,7 +3516,9 @@ function userExplicitlyAskedForReview(prompt: string): boolean {
   return (
     /\b(review|audit|code review)\b/i.test(prompt) ||
     /\b(final pass|look over|sanity check|second opinion)\b/i.test(prompt) ||
-    /\b(check|inspect)\b.{0,24}\b(changes|diff|code|implementation|patch|work)\b/i.test(prompt)
+    /\b(check|inspect)\b.{0,24}\b(changes|diff|code|implementation|patch|work)\b/i.test(
+      prompt,
+    )
   );
 }
 
@@ -3184,10 +3527,15 @@ function buildReviewDedupeKey(
   input: Record<string, unknown>,
 ): string {
   const context =
-    typeof input.context === "string" ? singleLine(input.context).toLowerCase() : "";
+    typeof input.context === "string"
+      ? singleLine(input.context).toLowerCase()
+      : "";
   const focus =
-    typeof input.focus === "string" ? singleLine(input.focus).toLowerCase() : "";
-  const stage = typeof input.stage === "string" ? input.stage.toLowerCase() : "final";
+    typeof input.focus === "string"
+      ? singleLine(input.focus).toLowerCase()
+      : "";
+  const stage =
+    typeof input.stage === "string" ? input.stage.toLowerCase() : "final";
   return `${signature}::${context}::${focus}::${stage}`;
 }
 
@@ -3196,12 +3544,14 @@ function tokenizeHandoffText(text: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9_./:-]+/)
     .filter(
-      (token) =>
-        token.length >= 4 && !HANDOFF_RELEVANCE_STOP_WORDS.has(token),
+      (token) => token.length >= 4 && !HANDOFF_RELEVANCE_STOP_WORDS.has(token),
     );
 }
 
-function scoreHandoffRelevance(prompt: string, handoff: HandoffPointer): number {
+function scoreHandoffRelevance(
+  prompt: string,
+  handoff: HandoffPointer,
+): number {
   const promptTokens = new Set(tokenizeHandoffText(prompt));
   if (promptTokens.size === 0) return 0;
   const handoffText = [
@@ -3210,12 +3560,16 @@ function scoreHandoffRelevance(prompt: string, handoff: HandoffPointer): number 
     handoff.status,
     handoff.summary,
     handoff.filesChanged.join(" "),
-    handoff.editLocations.map((location) => formatEditLocation(location)).join(" "),
+    handoff.editLocations
+      .map((location) => formatEditLocation(location))
+      .join(" "),
     handoff.artifactSources.join(" "),
     handoff.artifactQueries.join(" "),
     handoff.artifactSummary ?? "",
   ].join(" ");
-  return tokenizeHandoffText(handoffText).filter((token) => promptTokens.has(token)).length;
+  return tokenizeHandoffText(handoffText).filter((token) =>
+    promptTokens.has(token),
+  ).length;
 }
 
 async function resolveReviewSignature(
@@ -3306,48 +3660,75 @@ function buildCompactReport(
     artifactQueries?: string[];
   },
 ): string {
-  const statusLine = options?.status || parseSectionItems(report, "Status")[0] || "completed";
+  const statusLine =
+    options?.status || parseSectionItems(report, "Status")[0] || "completed";
   const summaryItems = parseSummaryLikeItems(report).slice(0, 3);
-  const fallbackSummary = report.trim() ? truncate(singleLine(report.trim()), 220) : "(none)";
+  const fallbackSummary = report.trim()
+    ? truncate(singleLine(report.trim()), 220)
+    : "(none)";
   const findingsItems = parseSectionItems(report, "Findings").slice(0, 2);
   const relevantFiles = parseSectionItems(report, "Relevant Files").slice(0, 3);
   const escalationItems = parseSectionItems(report, "Escalation");
-  const nextStepItems = parseSectionItems(report, "Recommended Next Step").slice(0, 2);
-  const validationSummary = options?.validation && options.validation.length > 0
-    ? `${options.validation.filter((item) => item.outcome === "pass").length} pass, ${options.validation.filter((item) => item.outcome === "fail").length} fail, ${options.validation.filter((item) => item.outcome !== "pass" && item.outcome !== "fail").length} not run`
-    : "";
-  const boundaryLines = options?.boundaryViolations?.slice(0, 2).map((item) => singleLine(item)) ?? [];
+  const nextStepItems = parseSectionItems(
+    report,
+    "Recommended Next Step",
+  ).slice(0, 2);
+  const validationSummary =
+    options?.validation && options.validation.length > 0
+      ? `${options.validation.filter((item) => item.outcome === "pass").length} pass, ${options.validation.filter((item) => item.outcome === "fail").length} fail, ${options.validation.filter((item) => item.outcome !== "pass" && item.outcome !== "fail").length} not run`
+      : "";
+  const boundaryLines =
+    options?.boundaryViolations?.slice(0, 2).map((item) => singleLine(item)) ??
+    [];
   const workerFiles = filesChanged.slice(0, 5).map((item) => `- ${item}`);
   if (filesChanged.length > 5) {
     workerFiles.push(`- +${filesChanged.length - 5} more`);
   }
   const normalizedEdits = dedupeEditLocations(editLocations);
-  const editLines = normalizedEdits.slice(0, 3).map((item) => `- ${formatEditLocation(item)}`);
+  const editLines = normalizedEdits
+    .slice(0, 3)
+    .map((item) => `- ${formatEditLocation(item)}`);
   if (normalizedEdits.length > 3) {
     editLines.push(`- +${normalizedEdits.length - 3} more`);
   }
   const artifactLines = [
-    ...(options?.artifactSources?.length ? [`- sources: ${options.artifactSources.join(", ")}`] : []),
-    ...(options?.artifactQueries?.length ? [`- queries: ${options.artifactQueries.join(", ")}`] : []),
+    ...(options?.artifactSources?.length
+      ? [`- sources: ${options.artifactSources.join(", ")}`]
+      : []),
+    ...(options?.artifactQueries?.length
+      ? [`- queries: ${options.artifactQueries.join(", ")}`]
+      : []),
   ];
-  const kind = options?.kind ?? (relevantFiles.length > 0 || findingsItems.length > 0 || nextStepItems.length > 0 ? "scout" : "worker");
+  const kind =
+    options?.kind ??
+    (relevantFiles.length > 0 ||
+    findingsItems.length > 0 ||
+    nextStepItems.length > 0
+      ? "scout"
+      : "worker");
 
   const lines = [
     "## Status",
     `- ${statusLine}`,
     "",
     "## Summary",
-    ...(summaryItems.length > 0 ? summaryItems.map((item) => `- ${singleLine(item)}`) : [`- ${fallbackSummary}`]),
+    ...(summaryItems.length > 0
+      ? summaryItems.map((item) => `- ${singleLine(item)}`)
+      : [`- ${fallbackSummary}`]),
   ];
 
   if (kind === "scout") {
     lines.push(
       "",
       "## Relevant Files",
-      ...(relevantFiles.length > 0 ? relevantFiles.map((item) => `- ${singleLine(item)}`) : ["- (none)"]),
+      ...(relevantFiles.length > 0
+        ? relevantFiles.map((item) => `- ${singleLine(item)}`)
+        : ["- (none)"]),
       "",
       "## Findings",
-      ...(findingsItems.length > 0 ? findingsItems.map((item) => `- ${singleLine(item)}`) : [`- ${fallbackSummary}`]),
+      ...(findingsItems.length > 0
+        ? findingsItems.map((item) => `- ${singleLine(item)}`)
+        : [`- ${fallbackSummary}`]),
     );
     if (artifactLines.length > 0) {
       lines.push("", "## Artifacts", ...artifactLines);
@@ -3355,7 +3736,9 @@ function buildCompactReport(
     lines.push(
       "",
       "## Recommended Next Step",
-      ...(nextStepItems.length > 0 ? nextStepItems.map((item) => `- ${singleLine(item)}`) : [`- ${fallbackSummary}`]),
+      ...(nextStepItems.length > 0
+        ? nextStepItems.map((item) => `- ${singleLine(item)}`)
+        : [`- ${fallbackSummary}`]),
     );
     return lines.join("\n");
   }
@@ -3373,7 +3756,8 @@ function buildCompactReport(
     .filter((item) => item.outcome === "fail")
     .slice(0, 2)
     .map((item) => {
-      const exitText = item.exitCode === null ? "signal" : String(item.exitCode);
+      const exitText =
+        item.exitCode === null ? "signal" : String(item.exitCode);
       return `- ${item.command} - ${item.outcome} (exit ${exitText}) - ${item.note}`;
     });
   lines.push(
@@ -3392,7 +3776,13 @@ function buildCompactReport(
     ...boundaryLines.map((item) => `boundary: ${item}`),
     ...escalationItems.map((item) => singleLine(item)),
   ].slice(0, 3);
-  lines.push("", "## Escalation", ...(combinedEscalation.length > 0 ? combinedEscalation.map((item) => `- ${item}`) : ["- (none)"]));
+  lines.push(
+    "",
+    "## Escalation",
+    ...(combinedEscalation.length > 0
+      ? combinedEscalation.map((item) => `- ${item}`)
+      : ["- (none)"]),
+  );
 
   return lines.join("\n");
 }
@@ -3410,7 +3800,47 @@ async function generateDelegation(
 ): Promise<DelegateResult> {
   const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
-    appendSubagentEvent(pi, {
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_start",
+        delegationId,
+        role: "worker",
+        cwd,
+        requestedModel: params.workerModel,
+        objective: params.objective,
+        scope: params.scope,
+        allowedFiles: params.allowedFiles,
+        blockedFiles: params.blockedFiles,
+        acceptanceCriteria: params.acceptanceCriteria,
+        validationCommands: params.validationCommands,
+        escalationTriggers: params.escalationTriggers,
+        tools: params.tools,
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "worker",
+        model: params.workerModel,
+        cwd,
+        outcome: "failed",
+        phase: "preflight",
+        errorMessage: "No active supervisor model selected.",
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
+    throw new Error("No active supervisor model selected.");
+  }
+
+  appendSubagentEvent(
+    pi,
+    {
       type: "subagent_start",
       delegationId,
       role: "worker",
@@ -3425,37 +3855,9 @@ async function generateDelegation(
       escalationTriggers: params.escalationTriggers,
       tools: params.tools,
       generatedAt: Date.now(),
-    }, shouldLog);
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "worker",
-      model: params.workerModel,
-      cwd,
-      outcome: "failed",
-      phase: "preflight",
-      errorMessage: "No active supervisor model selected.",
-      generatedAt: Date.now(),
-    }, shouldLog);
-    throw new Error("No active supervisor model selected.");
-  }
-
-  appendSubagentEvent(pi, {
-    type: "subagent_start",
-    delegationId,
-    role: "worker",
-    cwd,
-    requestedModel: params.workerModel,
-    objective: params.objective,
-    scope: params.scope,
-    allowedFiles: params.allowedFiles,
-    blockedFiles: params.blockedFiles,
-    acceptanceCriteria: params.acceptanceCriteria,
-    validationCommands: params.validationCommands,
-    escalationTriggers: params.escalationTriggers,
-    tools: params.tools,
-    generatedAt: Date.now(),
-  }, shouldLog);
+    },
+    shouldLog,
+  );
 
   let auth: { apiKey?: string; headers?: Record<string, string> };
   let beforeSnapshot: WorkingTreeSnapshot;
@@ -3463,9 +3865,13 @@ async function generateDelegation(
   let prompt: string;
   try {
     const worker = await resolveWorkerSelection(ctx, state, params);
-    const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(worker.model);
+    const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(
+      worker.model,
+    );
     if (!authResult.ok) {
-      throw new Error(`Unable to resolve auth for worker model: ${authResult.error}`);
+      throw new Error(
+        `Unable to resolve auth for worker model: ${authResult.error}`,
+      );
     }
     auth = { apiKey: authResult.apiKey, headers: authResult.headers };
 
@@ -3476,49 +3882,58 @@ async function generateDelegation(
     );
     prompt = buildWorkerPrompt(params, conversationContext);
   } catch (error) {
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "worker",
-      model: params.workerModel,
-      cwd,
-      outcome: classifySubagentOutcome({
-        exitCode: 1,
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "worker",
+        model: params.workerModel,
+        cwd,
+        outcome: classifySubagentOutcome(
+          {
+            exitCode: 1,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          },
+          signal,
+        ),
+        phase: "preflight",
         errorMessage: error instanceof Error ? error.message : String(error),
-      }, signal),
-      phase: "preflight",
-      errorMessage: error instanceof Error ? error.message : String(error),
-      generatedAt: Date.now(),
-    }, shouldLog);
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
     throw error;
   }
   let run: Awaited<ReturnType<typeof runWorkerSubagent>> | undefined;
   try {
     const execution = await runSubagentWithNoTextRetry(
       "Worker",
-      () => runWorkerSubagent(
-        cwd,
-        prompt,
-        workerModelArg,
-        auth,
-        params.tools,
-        delegationId,
-        {
-          objective: params.objective,
-          scope: params.scope,
-          allowedFiles: params.allowedFiles,
-          blockedFiles: params.blockedFiles,
-          acceptanceCriteria: params.acceptanceCriteria,
-          validationCommands: params.validationCommands,
-          escalationTriggers: params.escalationTriggers,
-          tools: params.tools,
-        },
-        pi,
-        shouldLog,
-        signal,
-        onUpdate,
-        onProgress,
-      ),
+      () =>
+        runWorkerSubagent(
+          cwd,
+          prompt,
+          workerModelArg,
+          auth,
+          params.tools,
+          delegationId,
+          {
+            objective: params.objective,
+            scope: params.scope,
+            allowedFiles: params.allowedFiles,
+            blockedFiles: params.blockedFiles,
+            acceptanceCriteria: params.acceptanceCriteria,
+            validationCommands: params.validationCommands,
+            escalationTriggers: params.escalationTriggers,
+            tools: params.tools,
+          },
+          pi,
+          shouldLog,
+          signal,
+          onUpdate,
+          onProgress,
+        ),
       signal,
     );
     run = execution.run;
@@ -3526,11 +3941,12 @@ async function generateDelegation(
 
     const afterSnapshot = await snapshotWorkingTree(cwd, signal);
     const actualFilesChanged = diffSnapshots(beforeSnapshot, afterSnapshot);
-    const { editLocations, artifactSources, artifactQueries } = await deriveEditLocations(
-      afterSnapshot.root,
-      run.toolExecutions,
-      actualFilesChanged,
-    );
+    const { editLocations, artifactSources, artifactQueries } =
+      await deriveEditLocations(
+        afterSnapshot.root,
+        run.toolExecutions,
+        actualFilesChanged,
+      );
     const effectiveArtifactSources = [
       ...(params.artifactSources ?? []),
       ...artifactSources,
@@ -3562,39 +3978,68 @@ async function generateDelegation(
       ...(boundaryViolations.length > 0 ? ["boundary"] : []),
       ...(hasValidationFailures ? ["validation"] : []),
     ];
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "worker",
-      model: workerModelArg,
-      cwd,
-      outcome: baseOutcome,
-      status,
-      blockedReasons: blockedReasons.length > 0 ? blockedReasons : undefined,
-      exitCode: run.exitCode,
-      stopReason: run.stopReason,
-      errorMessage: final.errorMessage,
-      stderr: run.stderr.trim() || undefined,
-      metrics: buildSubagentMetrics(run),
-      generatedAt: Date.now(),
-    }, shouldLog);
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "worker",
+        model: workerModelArg,
+        cwd,
+        outcome: baseOutcome,
+        status,
+        blockedReasons: blockedReasons.length > 0 ? blockedReasons : undefined,
+        exitCode: run.exitCode,
+        stopReason: run.stopReason,
+        errorMessage: final.errorMessage,
+        stderr: run.stderr.trim() || undefined,
+        metrics: buildSubagentMetrics(run),
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
 
     return {
-      report: buildCompactReport(final.text, actualFilesChanged, editLocations, {
-        kind: "worker",
-        status,
-        validation,
-        boundaryViolations,
-        artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
-        artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
-      }),
+      report: buildCompactReport(
+        final.text,
+        actualFilesChanged,
+        editLocations,
+        {
+          kind: "worker",
+          status,
+          validation,
+          boundaryViolations,
+          artifactSources: [
+            ...new Set(
+              effectiveArtifactSources
+                .map((item) => item.trim())
+                .filter(Boolean),
+            ),
+          ].sort(),
+          artifactQueries: [
+            ...new Set(
+              effectiveArtifactQueries
+                .map((item) => item.trim())
+                .filter(Boolean),
+            ),
+          ].sort(),
+        },
+      ),
       fullReport: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}${buildInspectionAppendix(editLocations, actualFilesChanged)}`,
       workerModel: workerModelArg,
       status,
       filesChanged: actualFilesChanged,
       editLocations,
-      artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
-      artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
+      artifactSources: [
+        ...new Set(
+          effectiveArtifactSources.map((item) => item.trim()).filter(Boolean),
+        ),
+      ].sort(),
+      artifactQueries: [
+        ...new Set(
+          effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean),
+        ),
+      ].sort(),
       artifactSummary: params.artifactSummary,
       boundaryViolations,
       validation,
@@ -3603,25 +4048,33 @@ async function generateDelegation(
       errorMessage: final.errorMessage,
     };
   } catch (error) {
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "worker",
-      model: workerModelArg,
-      cwd,
-      outcome: classifySubagentOutcome({
-        exitCode: run?.exitCode ?? 1,
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "worker",
+        model: workerModelArg,
+        cwd,
+        outcome: classifySubagentOutcome(
+          {
+            exitCode: run?.exitCode ?? 1,
+            stopReason: run?.stopReason,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          },
+          signal,
+        ),
+        phase: run ? "postprocess" : "subprocess",
+        exitCode: run?.exitCode,
         stopReason: run?.stopReason,
         errorMessage: error instanceof Error ? error.message : String(error),
-      }, signal),
-      phase: run ? "postprocess" : "subprocess",
-      exitCode: run?.exitCode,
-      stopReason: run?.stopReason,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      stderr: run?.stderr.trim() || undefined,
-      metrics: run ? buildSubagentMetrics(run) : undefined,
-      generatedAt: Date.now(),
-    }, shouldLog);
+        stderr: run?.stderr.trim() || undefined,
+        metrics: run ? buildSubagentMetrics(run) : undefined,
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
     throw error;
   }
 }
@@ -3639,7 +4092,45 @@ async function generateScouting(
 ): Promise<ScoutResult> {
   const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
-    appendSubagentEvent(pi, {
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_start",
+        delegationId,
+        role: "scout",
+        cwd,
+        requestedModel: params.scoutModel,
+        objective: params.objective,
+        scope: params.scope,
+        questions: params.questions,
+        expectedOutputs: params.expectedOutputs,
+        tools: params.tools,
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "scout",
+        model: params.scoutModel,
+        cwd,
+        outcome: "failed",
+        status: "blocked",
+        phase: "preflight",
+        errorMessage: "No active supervisor model selected.",
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
+    throw new Error("No active supervisor model selected.");
+  }
+
+  appendSubagentEvent(
+    pi,
+    {
       type: "subagent_start",
       delegationId,
       role: "scout",
@@ -3651,35 +4142,9 @@ async function generateScouting(
       expectedOutputs: params.expectedOutputs,
       tools: params.tools,
       generatedAt: Date.now(),
-    }, shouldLog);
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "scout",
-      model: params.scoutModel,
-      cwd,
-      outcome: "failed",
-      status: "blocked",
-      phase: "preflight",
-      errorMessage: "No active supervisor model selected.",
-      generatedAt: Date.now(),
-    }, shouldLog);
-    throw new Error("No active supervisor model selected.");
-  }
-
-  appendSubagentEvent(pi, {
-    type: "subagent_start",
-    delegationId,
-    role: "scout",
-    cwd,
-    requestedModel: params.scoutModel,
-    objective: params.objective,
-    scope: params.scope,
-    questions: params.questions,
-    expectedOutputs: params.expectedOutputs,
-    tools: params.tools,
-    generatedAt: Date.now(),
-  }, shouldLog);
+    },
+    shouldLog,
+  );
 
   let auth: { apiKey?: string; headers?: Record<string, string> };
   let scoutModelArg: string;
@@ -3688,55 +4153,68 @@ async function generateScouting(
     const scout = await resolveScoutSelection(ctx, state, params);
     const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(scout.model);
     if (!authResult.ok) {
-      throw new Error(`Unable to resolve auth for scout model: ${authResult.error}`);
+      throw new Error(
+        `Unable to resolve auth for scout model: ${authResult.error}`,
+      );
     }
     auth = { apiKey: authResult.apiKey, headers: authResult.headers };
 
     scoutModelArg = formatModel(scout.ref, scout.thinkingLevel);
-    const conversationContext = buildConversationContext(ctx.sessionManager.getBranch());
+    const conversationContext = buildConversationContext(
+      ctx.sessionManager.getBranch(),
+    );
     prompt = buildScoutPrompt(params, conversationContext);
   } catch (error) {
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "scout",
-      model: params.scoutModel,
-      cwd,
-      outcome: classifySubagentOutcome({
-        exitCode: 1,
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "scout",
+        model: params.scoutModel,
+        cwd,
+        outcome: classifySubagentOutcome(
+          {
+            exitCode: 1,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          },
+          signal,
+        ),
+        status: "blocked",
+        phase: "preflight",
         errorMessage: error instanceof Error ? error.message : String(error),
-      }, signal),
-      status: "blocked",
-      phase: "preflight",
-      errorMessage: error instanceof Error ? error.message : String(error),
-      generatedAt: Date.now(),
-    }, shouldLog);
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
     throw error;
   }
   let run: Awaited<ReturnType<typeof runScoutSubagent>> | undefined;
   try {
     const execution = await runSubagentWithNoTextRetry(
       "Scout",
-      () => runScoutSubagent(
-        cwd,
-        prompt,
-        scoutModelArg,
-        auth,
-        params.tools,
-        delegationId,
-        {
-          objective: params.objective,
-          scope: params.scope,
-          questions: params.questions,
-          expectedOutputs: params.expectedOutputs,
-          tools: params.tools,
-        },
-        pi,
-        shouldLog,
-        signal,
-        onUpdate,
-        onProgress,
-      ),
+      () =>
+        runScoutSubagent(
+          cwd,
+          prompt,
+          scoutModelArg,
+          auth,
+          params.tools,
+          delegationId,
+          {
+            objective: params.objective,
+            scope: params.scope,
+            questions: params.questions,
+            expectedOutputs: params.expectedOutputs,
+            tools: params.tools,
+          },
+          pi,
+          shouldLog,
+          signal,
+          onUpdate,
+          onProgress,
+        ),
       signal,
     );
     run = execution.run;
@@ -3769,56 +4247,80 @@ async function generateScouting(
     ];
 
     const scoutOutcome = classifySubagentOutcome(run, signal);
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "scout",
-      model: scoutModelArg,
-      cwd,
-      outcome: scoutOutcome,
-      status: scoutStatus,
-      exitCode: run.exitCode,
-      stopReason: run.stopReason,
-      errorMessage: final.errorMessage,
-      stderr: run.stderr.trim() || undefined,
-      metrics: buildSubagentMetrics(run),
-      generatedAt: Date.now(),
-    }, shouldLog);
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "scout",
+        model: scoutModelArg,
+        cwd,
+        outcome: scoutOutcome,
+        status: scoutStatus,
+        exitCode: run.exitCode,
+        stopReason: run.stopReason,
+        errorMessage: final.errorMessage,
+        stderr: run.stderr.trim() || undefined,
+        metrics: buildSubagentMetrics(run),
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
 
     return {
       report: buildCompactReport(final.text, [], [], {
         kind: "scout",
         status: scoutStatus,
-        artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
-        artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
+        artifactSources: [
+          ...new Set(
+            effectiveArtifactSources.map((item) => item.trim()).filter(Boolean),
+          ),
+        ].sort(),
+        artifactQueries: [
+          ...new Set(
+            effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean),
+          ),
+        ].sort(),
       }),
       fullReport: `## Status\n- ${scoutStatus}\n\n${final.text}`,
       status: scoutStatus,
       scoutModel: scoutModelArg,
-      artifactSources: [...new Set(effectiveArtifactSources.map((item) => item.trim()).filter(Boolean))].sort(),
-      artifactQueries: [...new Set(effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean))].sort(),
+      artifactSources: [
+        ...new Set(
+          effectiveArtifactSources.map((item) => item.trim()).filter(Boolean),
+        ),
+      ].sort(),
+      artifactQueries: [
+        ...new Set(
+          effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean),
+        ),
+      ].sort(),
       artifactSummary: params.artifactSummary,
       subagentMetrics: buildSubagentMetrics(run),
       stopReason: run.stopReason,
       errorMessage: final.errorMessage,
     };
   } catch (error) {
-    appendSubagentEvent(pi, {
-      type: "subagent_end",
-      delegationId,
-      role: "scout",
-      model: scoutModelArg,
-      cwd,
-      outcome: "failed",
-      status: "blocked",
-      phase: run ? "postprocess" : "subprocess",
-      exitCode: run?.exitCode,
-      stopReason: run?.stopReason,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      stderr: run?.stderr.trim() || undefined,
-      metrics: run ? buildSubagentMetrics(run) : undefined,
-      generatedAt: Date.now(),
-    }, shouldLog);
+    appendSubagentEvent(
+      pi,
+      {
+        type: "subagent_end",
+        delegationId,
+        role: "scout",
+        model: scoutModelArg,
+        cwd,
+        outcome: "failed",
+        status: "blocked",
+        phase: run ? "postprocess" : "subprocess",
+        exitCode: run?.exitCode,
+        stopReason: run?.stopReason,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stderr: run?.stderr.trim() || undefined,
+        metrics: run ? buildSubagentMetrics(run) : undefined,
+        generatedAt: Date.now(),
+      },
+      shouldLog,
+    );
     throw error;
   }
 }
@@ -3881,38 +4383,45 @@ const DelegateWorkerParams = Type.Object({
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
+      description:
+        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+      description:
+        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
     }),
   ),
   artifactSummary: Type.Optional(
     Type.String({
-      description: "Optional high-level summary of relevant prior research to prime the subagent.",
+      description:
+        "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
 
 const DelegateScoutParams = Type.Object({
   objective: Type.String({
-    description: "The concrete scouting objective for the read-only scout subagent.",
+    description:
+      "The concrete scouting objective for the read-only scout subagent.",
   }),
   scope: Type.Optional(
     Type.String({
-      description: "Explicit scouting boundaries, such as directories, modules, or behaviors to inspect.",
+      description:
+        "Explicit scouting boundaries, such as directories, modules, or behaviors to inspect.",
     }),
   ),
   questions: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Specific questions the scout should answer from the codebase.",
+      description:
+        "Specific questions the scout should answer from the codebase.",
     }),
   ),
   expectedOutputs: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Expected scouting outputs, such as relevant files, call paths, or implementation precedents.",
+      description:
+        "Expected scouting outputs, such as relevant files, call paths, or implementation precedents.",
     }),
   ),
   scoutModel: Type.Optional(
@@ -3926,25 +4435,31 @@ const DelegateScoutParams = Type.Object({
       description: "Thinking level for the scout subagent. Default: minimal.",
     }),
   ),
-  cwd: Type.Optional(Type.String({ description: "Working directory for the scout process." })),
+  cwd: Type.Optional(
+    Type.String({ description: "Working directory for the scout process." }),
+  ),
   tools: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
+      description:
+        "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
     }),
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
+      description:
+        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+      description:
+        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
     }),
   ),
   artifactSummary: Type.Optional(
     Type.String({
-      description: "Optional high-level summary of relevant prior research to prime the subagent.",
+      description:
+        "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -4012,17 +4527,20 @@ const ParallelDelegateWorkerTaskParams = Type.Object({
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
+      description:
+        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+      description:
+        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
     }),
   ),
   artifactSummary: Type.Optional(
     Type.String({
-      description: "Optional high-level summary of relevant prior research to prime the subagent.",
+      description:
+        "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -4048,21 +4566,25 @@ const ParallelDelegateScoutTaskParams = Type.Object({
     }),
   ),
   objective: Type.String({
-    description: "The concrete scouting objective for the read-only scout subagent.",
+    description:
+      "The concrete scouting objective for the read-only scout subagent.",
   }),
   scope: Type.Optional(
     Type.String({
-      description: "Explicit scouting boundaries, such as directories, modules, or behaviors to inspect.",
+      description:
+        "Explicit scouting boundaries, such as directories, modules, or behaviors to inspect.",
     }),
   ),
   questions: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Specific questions the scout should answer from the codebase.",
+      description:
+        "Specific questions the scout should answer from the codebase.",
     }),
   ),
   expectedOutputs: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Expected scouting outputs, such as relevant files, call paths, or implementation precedents.",
+      description:
+        "Expected scouting outputs, such as relevant files, call paths, or implementation precedents.",
     }),
   ),
   scoutModel: Type.Optional(
@@ -4076,25 +4598,31 @@ const ParallelDelegateScoutTaskParams = Type.Object({
       description: "Thinking level for the scout subagent. Default: minimal.",
     }),
   ),
-  cwd: Type.Optional(Type.String({ description: "Working directory for the scout process." })),
+  cwd: Type.Optional(
+    Type.String({ description: "Working directory for the scout process." }),
+  ),
   tools: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
+      description:
+        "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
     }),
   ),
   artifactSources: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
+      description:
+        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
     }),
   ),
   artifactQueries: Type.Optional(
     Type.Array(Type.String(), {
-      description: "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
+      description:
+        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
     }),
   ),
   artifactSummary: Type.Optional(
     Type.String({
-      description: "Optional high-level summary of relevant prior research to prime the subagent.",
+      description:
+        "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -4136,13 +4664,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         if (!isShell) {
           return {
             block: true,
-            reason: "Scout mode allows ctx_execute only with shell inspection commands.",
+            reason:
+              "Scout mode allows ctx_execute only with shell inspection commands.",
           };
         }
         if (input.code && isMutatingBashCommand(input.code)) {
           return {
             block: true,
-            reason: "Mutating shell command detected in ctx_execute. Scout mode is read-only.",
+            reason:
+              "Mutating shell command detected in ctx_execute. Scout mode is read-only.",
           };
         }
       }
@@ -4151,10 +4681,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         const input = event.input as {
           commands?: Array<{ command?: string }>;
         };
-        if (input.commands?.some((command) => isMutatingBashCommand(command?.command))) {
+        if (
+          input.commands?.some((command) =>
+            isMutatingBashCommand(command?.command),
+          )
+        ) {
           return {
             block: true,
-            reason: "Mutating shell command detected in ctx_batch_execute. Scout mode is read-only.",
+            reason:
+              "Mutating shell command detected in ctx_batch_execute. Scout mode is read-only.",
           };
         }
       }
@@ -4177,12 +4712,16 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return text ? `· ${text}` : "";
   }
 
-  function formatDelegationStatus(item: Pick<ActiveDelegation, "phase" | "turns" | "currentTool">): string {
+  function formatDelegationStatus(
+    item: Pick<ActiveDelegation, "phase" | "turns" | "currentTool">,
+  ): string {
     return [
       item.phase,
       item.turns !== undefined && item.turns > 0 ? `${item.turns} turns` : "",
       item.currentTool ?? "",
-    ].filter(Boolean).join(" · ");
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   function buildSingleDelegationProgressText(
@@ -4203,7 +4742,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     }
   }
 
-  function sanitizeDelegationDetail(detailText: string | undefined): string | undefined {
+  function sanitizeDelegationDetail(
+    detailText: string | undefined,
+  ): string | undefined {
     const trimmed = detailText?.trim();
     if (!trimmed) return undefined;
     return trimmed.length > MAX_SUBAGENT_DETAIL_CHARS
@@ -4241,7 +4782,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return active;
   }
 
-  function buildDetailPreviewLines(item: ActiveDelegation, width: number): string[] {
+  function buildDetailPreviewLines(
+    item: ActiveDelegation,
+    width: number,
+  ): string[] {
     const text = item.detailText?.trim();
     if (!text) return [];
     const sourceLines = text
@@ -4254,7 +4798,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       .slice(-MAX_SUBAGENT_DETAIL_LINES);
   }
 
-  function buildRecentActivityLines(item: ActiveDelegation, width: number): string[] {
+  function buildRecentActivityLines(
+    item: ActiveDelegation,
+    width: number,
+  ): string[] {
     return (item.recentActivity ?? [])
       .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
       .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)));
@@ -4264,7 +4811,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return text + " ".repeat(Math.max(0, width - visibleWidth(text)));
   }
 
-  function renderSubagentActivityPanel(width: number, theme: ExtensionContext["ui"]["theme"], items: ActiveDelegation[]): string[] {
+  function renderSubagentActivityPanel(
+    width: number,
+    theme: ExtensionContext["ui"]["theme"],
+    items: ActiveDelegation[],
+  ): string[] {
     const innerWidth = Math.max(24, width - 2);
     const row = (content = "") => {
       const fitted = truncateToWidth(content, innerWidth, "");
@@ -4273,18 +4824,31 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     const lines = [
       theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
       row(` ${theme.fg("accent", theme.bold("Subagent Activity"))}`),
-      row(` ${theme.fg("dim", `${items.length} active • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`),
+      row(
+        ` ${theme.fg("dim", `${items.length} active • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
+      ),
       row(),
     ];
 
     if (items.length === 0) {
       lines.push(row(` ${theme.fg("dim", "No active subagents.")}`));
-      lines.push(row(` ${theme.fg("dim", "The widget below the editor will light up when new delegations start.")}`));
+      lines.push(
+        row(
+          ` ${theme.fg("dim", "The widget below the editor will light up when new delegations start.")}`,
+        ),
+      );
     } else {
       items.forEach((item, index) => {
         const status = formatDelegationStatus(item) || item.phase;
-        lines.push(row(` ${theme.fg("accent", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`));
-        for (const wrapped of wrapTextWithAnsi(item.title, Math.max(12, innerWidth - 2))) {
+        lines.push(
+          row(
+            ` ${theme.fg("accent", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`,
+          ),
+        );
+        for (const wrapped of wrapTextWithAnsi(
+          item.title,
+          Math.max(12, innerWidth - 2),
+        )) {
           lines.push(row(` ${theme.fg("text", wrapped)}`));
         }
         lines.push(row(` ${theme.fg("muted", status)}`));
@@ -4309,14 +4873,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     }
 
     lines.push(row());
-    lines.push(row(` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`));
+    lines.push(
+      row(
+        ` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`,
+      ),
+    );
     lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
     return lines;
   }
 
   async function showSubagentActivityPanel(ctx: ExtensionContext) {
     if (!ctx.hasUI || ctx.mode !== "tui") {
-      ctx.ui.notify("Subagent activity panel is only available in TUI mode.", "warning");
+      ctx.ui.notify(
+        "Subagent activity panel is only available in TUI mode.",
+        "warning",
+      );
       return;
     }
     if (subagentPanelOpen) {
@@ -4331,9 +4902,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           const refresh = () => tui.requestRender();
           subagentPanelRefreshers.add(refresh);
           return {
-            render: (panelWidth: number) => renderSubagentActivityPanel(panelWidth, theme, [...activeDelegations.values()]),
+            render: (panelWidth: number) =>
+              renderSubagentActivityPanel(panelWidth, theme, [
+                ...activeDelegations.values(),
+              ]),
             handleInput: (data: string) => {
-              if (matchesKey(data, "escape") || matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)) {
+              if (
+                matchesKey(data, "escape") ||
+                matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)
+              ) {
                 done(undefined);
               }
             },
@@ -4373,7 +4950,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       ...items.map((item) => {
         const parts = [
           `• ${item.role} ${item.workerModel} [${item.phase}]`,
-          middleDot(item.turns !== undefined && item.turns > 0 ? `${item.turns} turns` : ""),
+          middleDot(
+            item.turns !== undefined && item.turns > 0
+              ? `${item.turns} turns`
+              : "",
+          ),
           middleDot(item.currentTool ?? ""),
         ].filter(Boolean);
         return `${parts.join(" ")} — ${item.title}`;
@@ -4385,7 +4966,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   function patchActiveDelegation(
     ctx: ExtensionContext,
     delegationKey: string,
-    patch: Partial<Pick<ActiveDelegation, "phase" | "workerModel" | "turns" | "currentTool">>,
+    patch: Partial<
+      Pick<ActiveDelegation, "phase" | "workerModel" | "turns" | "currentTool">
+    >,
   ): ActiveDelegation | undefined {
     const active = activeDelegations.get(delegationKey);
     if (!active) return undefined;
@@ -4412,7 +4995,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   ) {
     if (!onUpdate || !item) return;
     onUpdate({
-      content: [{ type: "text", text: buildSingleDelegationProgressText(item, detailText) }],
+      content: [
+        {
+          type: "text",
+          text: buildSingleDelegationProgressText(item, detailText),
+        },
+      ],
       details: {
         role: item.role,
         title: item.title,
@@ -4577,7 +5165,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           results?: Array<{ status?: string }>;
         };
         turnDelegationState.completedWorkerDelegations +=
-          details.results?.filter((result) => result.status === "completed").length ?? 0;
+          details.results?.filter((result) => result.status === "completed")
+            .length ?? 0;
       } else if (event.toolName === "delegate_scout") {
         turnDelegationState.completedScoutDelegations += 1;
       } else if (event.toolName === "delegate_scouts") {
@@ -4585,20 +5174,23 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           results?: Array<{ status?: string }>;
         };
         turnDelegationState.completedScoutDelegations +=
-          details.results?.filter((result) => result.status === "completed").length ?? 0;
+          details.results?.filter((result) => result.status === "completed")
+            .length ?? 0;
       } else if (event.toolName === "review_changes") {
         turnDelegationState.completedReviewDelegations += 1;
       }
     }
 
     if (event.isError) return;
-    if (![
-      "delegate_worker",
-      "delegate_workers",
-      "delegate_scout",
-      "delegate_scouts",
-      "review_changes",
-    ].includes(event.toolName)) {
+    if (
+      ![
+        "delegate_worker",
+        "delegate_workers",
+        "delegate_scout",
+        "delegate_scouts",
+        "review_changes",
+      ].includes(event.toolName)
+    ) {
       return;
     }
 
@@ -4616,20 +5208,28 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     if (!report) return;
 
     const generatedAt =
-      typeof details.generatedAt === "number" ? details.generatedAt : Date.now();
+      typeof details.generatedAt === "number"
+        ? details.generatedAt
+        : Date.now();
     const sessionKey =
       typeof details.sessionKey === "string"
         ? details.sessionKey
-        : ctx.sessionManager.getSessionFile() ?? "ephemeral";
+        : (ctx.sessionManager.getSessionFile() ?? "ephemeral");
     const title = inferHandoffTitle(event.toolName, input, details);
-    const actualReport = typeof details.fullReport === "string" ? details.fullReport : report;
+    const actualReport =
+      typeof details.fullReport === "string" ? details.fullReport : report;
     const status = inferHandoffStatus(event.toolName, actualReport, details);
     const filesChanged = collectHandoffFiles(details);
     const editLocations = collectHandoffEditLocations(details);
     const artifacts = collectHandoffArtifacts(details);
     const summary = summarizeHandoff(event.toolName, actualReport, details);
     const pointer: HandoffPointer = {
-      source: buildHandoffSource(event.toolName, sessionKey, generatedAt, title),
+      source: buildHandoffSource(
+        event.toolName,
+        sessionKey,
+        generatedAt,
+        title,
+      ),
       toolName: event.toolName,
       title,
       status,
@@ -4641,8 +5241,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       artifactQueries: artifacts.queries,
       artifactSummary: artifacts.summary,
     };
-    const modelLabel = [details.workerModel, details.scoutModel, details.reviewer]
-      .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+    const modelLabel = [
+      details.workerModel,
+      details.scoutModel,
+      details.reviewer,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+    );
     const markdown = buildHandoffMarkdown({
       source: pointer.source,
       toolName: event.toolName,
@@ -4684,7 +5290,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           : {};
       const signature = await resolveReviewSignature(ctx.cwd, ctx.signal);
       const explicitReviewRequest = Boolean(
-        turnDelegationState && userExplicitlyAskedForReview(turnDelegationState.prompt),
+        turnDelegationState &&
+        userExplicitlyAskedForReview(turnDelegationState.prompt),
       );
       const reviewKey = signature
         ? buildReviewDedupeKey(signature, reviewInput)
@@ -4697,12 +5304,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       );
       const allowExplicitBypass = Boolean(
         reviewKey &&
-          explicitReviewRequest &&
-          turnDelegationState &&
-          !turnDelegationState.usedExplicitReviewBypass &&
-          !duplicatePending,
+        explicitReviewRequest &&
+        turnDelegationState &&
+        !turnDelegationState.usedExplicitReviewBypass &&
+        !duplicatePending,
       );
-      if (reviewKey && (duplicatePending || (duplicateReviewed && !allowExplicitBypass))) {
+      if (
+        reviewKey &&
+        (duplicatePending || (duplicateReviewed && !allowExplicitBypass))
+      ) {
         return {
           block: true,
           reason:
@@ -4730,20 +5340,27 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       }
     }
 
-    if (turnDelegationState && turnDelegationState.completedWorkerDelegations > 0) {
+    if (
+      turnDelegationState &&
+      turnDelegationState.completedWorkerDelegations > 0
+    ) {
       if (event.toolName === "read") {
         turnDelegationState.postHandoffReads += 1;
       } else if (
         event.toolName === "edit" ||
         event.toolName === "write" ||
-        (event.toolName === "bash" && isMutatingBashCommand((event.input as { command?: unknown } | undefined)?.command))
+        (event.toolName === "bash" &&
+          isMutatingBashCommand(
+            (event.input as { command?: unknown } | undefined)?.command,
+          ))
       ) {
         turnDelegationState.postHandoffEdits += 1;
       }
 
       if (
         !turnDelegationState.nudgedExpensivePostHandoff &&
-        (turnDelegationState.postHandoffReads >= 3 || turnDelegationState.postHandoffEdits >= 2)
+        (turnDelegationState.postHandoffReads >= 3 ||
+          turnDelegationState.postHandoffEdits >= 2)
       ) {
         turnDelegationState.nudgedExpensivePostHandoff = true;
         if (ctx.hasUI) {
@@ -4758,12 +5375,19 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     if (!turnDelegationState?.enforcePlanSplit) return;
     if (turnDelegationState.completedWorkerDelegations > 0) return;
     if (turnDelegationState.nudgedDirectMutation) return;
-    if (event.toolName === "delegate_worker" || event.toolName === "delegate_workers") return;
+    if (
+      event.toolName === "delegate_worker" ||
+      event.toolName === "delegate_workers"
+    )
+      return;
 
     const isDirectMutation =
       event.toolName === "edit" ||
       event.toolName === "write" ||
-      (event.toolName === "bash" && isMutatingBashCommand((event.input as { command?: unknown } | undefined)?.command));
+      (event.toolName === "bash" &&
+        isMutatingBashCommand(
+          (event.input as { command?: unknown } | undefined)?.command,
+        ));
 
     if (!isDirectMutation) return;
 
@@ -4808,12 +5432,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         role: "scout",
       });
       updateDelegationWidget(ctx);
-      emitSingleDelegationUpdate(onUpdate, activeDelegations.get(delegationKey));
+      emitSingleDelegationUpdate(
+        onUpdate,
+        activeDelegations.get(delegationKey),
+      );
       try {
         const effectiveParams = withInferredArtifacts(
           ctx,
           params,
-          [params.objective, params.scope, ...(params.questions ?? [])].filter(Boolean).join("\n"),
+          [params.objective, params.scope, ...(params.questions ?? [])]
+            .filter(Boolean)
+            .join("\n"),
         );
         const result = await generateScouting(
           ctx,
@@ -4833,7 +5462,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 params.scoutModel
                   ? parseModelRef(ctx, params.scoutModel)
                   : getEffectiveScoutRef(ctx, state),
-                params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
+                params.scoutThinkingLevel ??
+                  getEffectiveScoutThinkingLevel(state),
               ),
             });
             recordDelegationDetail(delegationKey, text);
@@ -4849,7 +5479,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 params.scoutModel
                   ? parseModelRef(ctx, params.scoutModel)
                   : getEffectiveScoutRef(ctx, state),
-                params.scoutThinkingLevel ?? getEffectiveScoutThinkingLevel(state),
+                params.scoutThinkingLevel ??
+                  getEffectiveScoutThinkingLevel(state),
               ),
               turns: progress.turns,
               currentTool: progress.currentTool,
@@ -4926,11 +5557,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       }
       if (params.tasks.length > MAX_PARALLEL_SUBAGENT_TASKS) {
         return {
-          content: [{
-            type: "text",
-            text: `Too many parallel scout tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
-          }],
-          details: { completedCount: 0, totalCount: params.tasks.length, results: [] },
+          content: [
+            {
+              type: "text",
+              text: `Too many parallel scout tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
+            },
+          ],
+          details: {
+            completedCount: 0,
+            totalCount: params.tasks.length,
+            results: [],
+          },
         };
       }
 
@@ -4952,20 +5589,26 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         const done = partialResults.filter(Boolean).length;
         const running = params.tasks.length - done;
         const activeItems = [...activeDelegations.values()]
-          .filter((item) => item.id.startsWith(`${sessionEpoch}:${toolCallId}:`))
+          .filter((item) =>
+            item.id.startsWith(`${sessionEpoch}:${toolCallId}:`),
+          )
           .sort((left, right) => left.title.localeCompare(right.title));
         const lines = [
           `Parallel scouts: ${done}/${params.tasks.length} finished, ${running} running...`,
-          ...activeItems.map((item) => `- ${item.title} · ${formatDelegationStatus(item)}`),
+          ...activeItems.map(
+            (item) => `- ${item.title} · ${formatDelegationStatus(item)}`,
+          ),
         ];
         if (running > 0 && activeItems.length === 0) {
           lines.push("- awaiting first subagent update...");
         }
         onUpdate?.({
-          content: [{
-            type: "text",
-            text: lines.join("\n"),
-          }],
+          content: [
+            {
+              type: "text",
+              text: lines.join("\n"),
+            },
+          ],
           details: {
             completedCount: done,
             totalCount: params.tasks.length,
@@ -4989,99 +5632,100 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const results = await mapWithConcurrencyLimit<
         ParallelScoutTask,
         ParallelScoutTaskResult
-      >(
-        params.tasks,
-        concurrency,
-        async (task, index) => {
-          const label = formatParallelLabel(task.label, task.objective, index);
-          const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
-          activeDelegations.set(delegationKey, {
-            id: delegationKey,
-            title: label,
-            workerModel:
-              task.scoutModel?.trim() ||
-              getEffectiveScoutRef(ctx, state)?.id ||
-              "unresolved",
-            phase: "starting",
-            role: "scout",
-          });
-          updateDelegationWidget(ctx);
-          emitProgress();
+      >(params.tasks, concurrency, async (task, index) => {
+        const label = formatParallelLabel(task.label, task.objective, index);
+        const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+        activeDelegations.set(delegationKey, {
+          id: delegationKey,
+          title: label,
+          workerModel:
+            task.scoutModel?.trim() ||
+            getEffectiveScoutRef(ctx, state)?.id ||
+            "unresolved",
+          phase: "starting",
+          role: "scout",
+        });
+        updateDelegationWidget(ctx);
+        emitProgress();
 
-          try {
-            const effectiveTask = withInferredArtifacts(
-              ctx,
-              task,
-              [task.objective, task.scope, ...(task.questions ?? [])].filter(Boolean).join("\n"),
-            );
-            const result = await generateScouting(
-              ctx,
-              state,
-              effectiveTask,
-              delegationKey,
-              pi,
-              isCurrentSession,
-              signal,
-              (text) => {
-                if (!isCurrentSession()) return;
-                patchActiveDelegation(ctx, delegationKey, {
-                  phase: "running",
-                  workerModel: resultScoutLabelFallback(ctx, state, task),
-                });
-                recordDelegationDetail(delegationKey, text);
-                emitProgress();
-              },
-              (progress) => {
-                if (!isCurrentSession()) return;
-                patchActiveDelegation(ctx, delegationKey, {
-                  phase: "running",
-                  workerModel: resultScoutLabelFallback(ctx, state, task),
-                  turns: progress.turns,
-                  currentTool: progress.currentTool,
-                });
-                recordDelegationActivity(delegationKey, progress.lastActivityLine);
-                emitProgress();
-              },
-            );
-            const finalResult: ParallelScoutTaskResult = {
-              ...result,
-              label,
-              status: "completed",
-            };
-            partialResults[index] = finalResult;
-            if (isCurrentSession()) {
+        try {
+          const effectiveTask = withInferredArtifacts(
+            ctx,
+            task,
+            [task.objective, task.scope, ...(task.questions ?? [])]
+              .filter(Boolean)
+              .join("\n"),
+          );
+          const result = await generateScouting(
+            ctx,
+            state,
+            effectiveTask,
+            delegationKey,
+            pi,
+            isCurrentSession,
+            signal,
+            (text) => {
+              if (!isCurrentSession()) return;
               patchActiveDelegation(ctx, delegationKey, {
-                phase: finalResult.status,
-                workerModel: finalResult.scoutModel,
-                currentTool: undefined,
+                phase: "running",
+                workerModel: resultScoutLabelFallback(ctx, state, task),
               });
-            }
-            emitProgress();
-            return finalResult;
-          } catch (error) {
-            const finalResult = buildScoutFailureResult(
-              label,
-              resultScoutLabelFallback(ctx, state, task),
-              error,
-            );
-            partialResults[index] = finalResult;
-            if (isCurrentSession()) {
+              recordDelegationDetail(delegationKey, text);
+              emitProgress();
+            },
+            (progress) => {
+              if (!isCurrentSession()) return;
               patchActiveDelegation(ctx, delegationKey, {
-                phase: finalResult.status,
-                workerModel: finalResult.scoutModel,
-                currentTool: undefined,
+                phase: "running",
+                workerModel: resultScoutLabelFallback(ctx, state, task),
+                turns: progress.turns,
+                currentTool: progress.currentTool,
               });
-            }
-            emitProgress();
-            return finalResult;
-          } finally {
-            if (isCurrentSession()) {
-              activeDelegations.delete(delegationKey);
-              updateDelegationWidget(ctx);
-            }
+              recordDelegationActivity(
+                delegationKey,
+                progress.lastActivityLine,
+              );
+              emitProgress();
+            },
+          );
+          const finalResult: ParallelScoutTaskResult = {
+            ...result,
+            label,
+            status: "completed",
+          };
+          partialResults[index] = finalResult;
+          if (isCurrentSession()) {
+            patchActiveDelegation(ctx, delegationKey, {
+              phase: finalResult.status,
+              workerModel: finalResult.scoutModel,
+              currentTool: undefined,
+            });
           }
-        },
-      );
+          emitProgress();
+          return finalResult;
+        } catch (error) {
+          const finalResult = buildScoutFailureResult(
+            label,
+            resultScoutLabelFallback(ctx, state, task),
+            error,
+          );
+          partialResults[index] = finalResult;
+          if (isCurrentSession()) {
+            patchActiveDelegation(ctx, delegationKey, {
+              phase: finalResult.status,
+              workerModel: finalResult.scoutModel,
+              currentTool: undefined,
+            });
+          }
+          emitProgress();
+          return finalResult;
+        } finally {
+          if (isCurrentSession()) {
+            activeDelegations.delete(delegationKey);
+            updateDelegationWidget(ctx);
+          }
+        }
+      });
 
       const aggregateMetrics = aggregateSubagentMetrics(
         results.map((result) => result.subagentMetrics),
@@ -5108,7 +5752,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           generatedAt,
           sessionKey,
           subagentMetrics: aggregateMetrics,
-          completedCount: results.filter((result) => result.status === "completed").length,
+          completedCount: results.filter(
+            (result) => result.status === "completed",
+          ).length,
           totalCount: results.length,
           results,
         },
@@ -5139,27 +5785,49 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       if (params.tasks.length === 0) {
         return {
           content: [{ type: "text", text: "No worker tasks were provided." }],
-          details: { status: "unknown", completedCount: 0, totalCount: 0, results: [] },
+          details: {
+            status: "unknown",
+            completedCount: 0,
+            totalCount: 0,
+            results: [],
+          },
         };
       }
       if (params.tasks.length > MAX_PARALLEL_SUBAGENT_TASKS) {
         return {
-          content: [{
-            type: "text",
-            text: `Too many parallel worker tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
-          }],
-          details: { status: "blocked", completedCount: 0, totalCount: params.tasks.length, results: [] },
+          content: [
+            {
+              type: "text",
+              text: `Too many parallel worker tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
+            },
+          ],
+          details: {
+            status: "blocked",
+            completedCount: 0,
+            totalCount: params.tasks.length,
+            results: [],
+          },
         };
       }
 
-      const validationIssues = validateParallelWorkerTasks(ctx.cwd, params.tasks);
+      const validationIssues = validateParallelWorkerTasks(
+        ctx.cwd,
+        params.tasks,
+      );
       if (validationIssues.length > 0) {
         return {
-          content: [{
-            type: "text",
-            text: `Parallel worker delegation blocked:\n- ${validationIssues.join("\n- ")}`,
-          }],
-          details: { status: "blocked", completedCount: 0, totalCount: params.tasks.length, results: [] },
+          content: [
+            {
+              type: "text",
+              text: `Parallel worker delegation blocked:\n- ${validationIssues.join("\n- ")}`,
+            },
+          ],
+          details: {
+            status: "blocked",
+            completedCount: 0,
+            totalCount: params.tasks.length,
+            results: [],
+          },
         };
       }
 
@@ -5185,24 +5853,31 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           (result): result is ParallelDelegateTaskResult => Boolean(result),
         );
         const activeItems = [...activeDelegations.values()]
-          .filter((item) => item.id.startsWith(`${sessionEpoch}:${toolCallId}:`))
+          .filter((item) =>
+            item.id.startsWith(`${sessionEpoch}:${toolCallId}:`),
+          )
           .sort((left, right) => left.title.localeCompare(right.title));
         const lines = [
           `Parallel workers: ${done}/${params.tasks.length} finished, ${running} running...`,
-          ...activeItems.map((item) => `- ${item.title} · ${formatDelegationStatus(item)}`),
+          ...activeItems.map(
+            (item) => `- ${item.title} · ${formatDelegationStatus(item)}`,
+          ),
         ];
         if (running > 0 && activeItems.length === 0) {
           lines.push("- awaiting first subagent update...");
         }
         onUpdate?.({
-          content: [{
-            type: "text",
-            text: lines.join("\n"),
-          }],
+          content: [
+            {
+              type: "text",
+              text: lines.join("\n"),
+            },
+          ],
           details: {
-            status: finishedResults.length > 0
-              ? summarizeParallelWorkerStatus(finishedResults)
-              : "unknown",
+            status:
+              finishedResults.length > 0
+                ? summarizeParallelWorkerStatus(finishedResults)
+                : "unknown",
             completedCount: partialResults.filter(
               (result) => result?.status === "completed",
             ).length,
@@ -5225,98 +5900,99 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const results = await mapWithConcurrencyLimit<
         ParallelDelegateTask,
         ParallelDelegateTaskResult
-      >(
-        params.tasks,
-        concurrency,
-        async (task, index) => {
-          const label = formatParallelLabel(task.label, task.objective, index);
-          const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
-          activeDelegations.set(delegationKey, {
-            id: delegationKey,
-            title: label,
-            workerModel:
-              task.workerModel?.trim() ||
-              getEffectiveWorkerRef(ctx, state)?.id ||
-              "unresolved",
-            phase: "starting",
-            role: "worker",
-          });
-          updateDelegationWidget(ctx);
-          emitProgress();
+      >(params.tasks, concurrency, async (task, index) => {
+        const label = formatParallelLabel(task.label, task.objective, index);
+        const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+        activeDelegations.set(delegationKey, {
+          id: delegationKey,
+          title: label,
+          workerModel:
+            task.workerModel?.trim() ||
+            getEffectiveWorkerRef(ctx, state)?.id ||
+            "unresolved",
+          phase: "starting",
+          role: "worker",
+        });
+        updateDelegationWidget(ctx);
+        emitProgress();
 
-          try {
-            const effectiveTask = withInferredArtifacts(
-              ctx,
-              task,
-              [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])].filter(Boolean).join("\n"),
-            );
-            const result = await generateDelegation(
-              ctx,
-              state,
-              effectiveTask,
-              delegationKey,
-              pi,
-              isCurrentSession,
-              signal,
-              (text) => {
-                if (!isCurrentSession()) return;
-                patchActiveDelegation(ctx, delegationKey, {
-                  phase: "running",
-                  workerModel: resultWorkerLabelFallback(ctx, state, task),
-                });
-                recordDelegationDetail(delegationKey, text);
-                emitProgress();
-              },
-              (progress) => {
-                if (!isCurrentSession()) return;
-                patchActiveDelegation(ctx, delegationKey, {
-                  phase: "running",
-                  workerModel: resultWorkerLabelFallback(ctx, state, task),
-                  turns: progress.turns,
-                  currentTool: progress.currentTool,
-                });
-                recordDelegationActivity(delegationKey, progress.lastActivityLine);
-                emitProgress();
-              },
-            );
-            const finalResult: ParallelDelegateTaskResult = {
-              ...result,
-              label,
-            };
-            partialResults[index] = finalResult;
-            if (isCurrentSession()) {
+        try {
+          const effectiveTask = withInferredArtifacts(
+            ctx,
+            task,
+            [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])]
+              .filter(Boolean)
+              .join("\n"),
+          );
+          const result = await generateDelegation(
+            ctx,
+            state,
+            effectiveTask,
+            delegationKey,
+            pi,
+            isCurrentSession,
+            signal,
+            (text) => {
+              if (!isCurrentSession()) return;
               patchActiveDelegation(ctx, delegationKey, {
-                phase: finalResult.status,
-                workerModel: finalResult.workerModel,
-                currentTool: undefined,
+                phase: "running",
+                workerModel: resultWorkerLabelFallback(ctx, state, task),
               });
-            }
-            emitProgress();
-            return finalResult;
-          } catch (error) {
-            const finalResult = buildWorkerFailureResult(
-              label,
-              resultWorkerLabelFallback(ctx, state, task),
-              error,
-            );
-            partialResults[index] = finalResult;
-            if (isCurrentSession()) {
+              recordDelegationDetail(delegationKey, text);
+              emitProgress();
+            },
+            (progress) => {
+              if (!isCurrentSession()) return;
               patchActiveDelegation(ctx, delegationKey, {
-                phase: finalResult.status,
-                workerModel: finalResult.workerModel,
-                currentTool: undefined,
+                phase: "running",
+                workerModel: resultWorkerLabelFallback(ctx, state, task),
+                turns: progress.turns,
+                currentTool: progress.currentTool,
               });
-            }
-            emitProgress();
-            return finalResult;
-          } finally {
-            if (isCurrentSession()) {
-              activeDelegations.delete(delegationKey);
-              updateDelegationWidget(ctx);
-            }
+              recordDelegationActivity(
+                delegationKey,
+                progress.lastActivityLine,
+              );
+              emitProgress();
+            },
+          );
+          const finalResult: ParallelDelegateTaskResult = {
+            ...result,
+            label,
+          };
+          partialResults[index] = finalResult;
+          if (isCurrentSession()) {
+            patchActiveDelegation(ctx, delegationKey, {
+              phase: finalResult.status,
+              workerModel: finalResult.workerModel,
+              currentTool: undefined,
+            });
           }
-        },
-      );
+          emitProgress();
+          return finalResult;
+        } catch (error) {
+          const finalResult = buildWorkerFailureResult(
+            label,
+            resultWorkerLabelFallback(ctx, state, task),
+            error,
+          );
+          partialResults[index] = finalResult;
+          if (isCurrentSession()) {
+            patchActiveDelegation(ctx, delegationKey, {
+              phase: finalResult.status,
+              workerModel: finalResult.workerModel,
+              currentTool: undefined,
+            });
+          }
+          emitProgress();
+          return finalResult;
+        } finally {
+          if (isCurrentSession()) {
+            activeDelegations.delete(delegationKey);
+            updateDelegationWidget(ctx);
+          }
+        }
+      });
 
       const batchAfterSnapshot = await snapshotWorkingTree(
         batchBeforeSnapshot.root,
@@ -5349,13 +6025,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         source: "tool",
       });
       return {
-        content: [{ type: "text", text: buildParallelWorkerSummary(finalized.results) }],
+        content: [
+          { type: "text", text: buildParallelWorkerSummary(finalized.results) },
+        ],
         details: {
           generatedAt,
           sessionKey,
           subagentMetrics: aggregateMetrics,
           status: summarizeParallelWorkerStatus(finalized.results),
-          completedCount: finalized.results.filter((result) => result.status === "completed").length,
+          completedCount: finalized.results.filter(
+            (result) => result.status === "completed",
+          ).length,
           totalCount: finalized.results.length,
           unownedFiles: finalized.unownedFiles,
           results: finalized.results,
@@ -5392,12 +6072,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         role: "worker",
       });
       updateDelegationWidget(ctx);
-      emitSingleDelegationUpdate(onUpdate, activeDelegations.get(delegationKey));
+      emitSingleDelegationUpdate(
+        onUpdate,
+        activeDelegations.get(delegationKey),
+      );
       try {
         const effectiveParams = withInferredArtifacts(
           ctx,
           params,
-          [params.objective, params.scope, ...(params.acceptanceCriteria ?? [])].filter(Boolean).join("\n"),
+          [params.objective, params.scope, ...(params.acceptanceCriteria ?? [])]
+            .filter(Boolean)
+            .join("\n"),
         );
         const result = await generateDelegation(
           ctx,
@@ -5413,11 +6098,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             }
             const active = patchActiveDelegation(ctx, delegationKey, {
               phase: "running",
-              workerModel: resultWorkerLabelFallback(
-                ctx,
-                state,
-                params,
-              ),
+              workerModel: resultWorkerLabelFallback(ctx, state, params),
             });
             recordDelegationDetail(delegationKey, text);
             emitSingleDelegationUpdate(onUpdate, active, text);
@@ -5428,11 +6109,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             }
             const active = patchActiveDelegation(ctx, delegationKey, {
               phase: "running",
-              workerModel: resultWorkerLabelFallback(
-                ctx,
-                state,
-                params,
-              ),
+              workerModel: resultWorkerLabelFallback(ctx, state, params),
               turns: progress.turns,
               currentTool: progress.currentTool,
             });
@@ -5587,7 +6264,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       state = {
         ...state,
         scoutOverride: requested.ref,
-        scoutThinkingLevel: thinkingArg ?? getEffectiveScoutThinkingLevel(state),
+        scoutThinkingLevel:
+          thinkingArg ?? getEffectiveScoutThinkingLevel(state),
       };
       persistState();
       refreshStatus(ctx);
@@ -5644,7 +6322,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       state = {
         ...state,
         reviewerOverride: requested.ref,
-        reviewerThinkingLevel: thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
+        reviewerThinkingLevel:
+          thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
       };
       persistState();
       refreshStatus(ctx);
