@@ -36,31 +36,6 @@ type ToolResult = {
 	terminate?: boolean;
 };
 
-type RegisteredTool = {
-	name: string;
-	label?: string;
-	description: string;
-	parameters: unknown;
-	promptSnippet?: string;
-	promptGuidelines?: string[];
-	execute: (...args: any[]) => Promise<ToolResult>;
-};
-
-type TodoTask = {
-	id: number;
-	subject: string;
-	status: "pending" | "in_progress" | "completed" | "deleted";
-	activeForm?: string;
-};
-
-type TodoDetails = {
-	action?: string;
-	params?: Record<string, unknown>;
-	tasks?: TodoTask[];
-	nextId?: number;
-	error?: string;
-};
-
 type CapturedCtxTool = {
 	name: string;
 	label?: string;
@@ -71,8 +46,6 @@ type CapturedCtxTool = {
 
 const ORIGINAL_TEXT_KEY = "__toolBadgesOriginalText";
 const TOOL_CACHE = new Map<string, ReturnType<typeof createBuiltInTools>>();
-let capturedTodoTool: RegisteredTool | undefined;
-let todoToolCaptureAttempted = false;
 
 function createBuiltInTools(cwd: string) {
 	return {
@@ -149,90 +122,6 @@ function renderPreviewText(text: string, theme: any, maxLines = 20) {
 		.join("\n");
 }
 
-function summarizeTodoList(details: TodoDetails) {
-	const params = details.params ?? {};
-	let tasks = [...(details.tasks ?? [])];
-
-	if (!params.includeDeleted) {
-		tasks = tasks.filter((task) => task.status !== "deleted");
-	}
-
-	if (typeof params.status === "string") {
-		tasks = tasks.filter((task) => task.status === params.status);
-	}
-
-	const counts = tasks.reduce(
-		(acc, task) => {
-			acc[task.status] += 1;
-			return acc;
-		},
-		{ pending: 0, in_progress: 0, completed: 0, deleted: 0 },
-	);
-
-	const parts = [
-		`${counts.pending} pending`,
-		`${counts.in_progress} in progress`,
-		`${counts.completed} completed`,
-	];
-	if (params.includeDeleted) {
-		parts.push(`${counts.deleted} deleted`);
-	}
-
-	const filterBits: string[] = [];
-	if (typeof params.status === "string") filterBits.push(params.status);
-	if (params.includeDeleted) filterBits.push("deleted included");
-	const filter = filterBits.length ? ` (${filterBits.join(", ")})` : "";
-	return `list${filter}: ${tasks.length} tasks (${parts.join(", ")})`;
-}
-
-function summarizeTodoResult(result: ToolResult) {
-	const details = result.details as TodoDetails | undefined;
-	const originalText = getOriginalText(result) || getTextContent(result);
-	const action = details?.action;
-
-	if (!details) {
-		return originalText;
-	}
-
-	if (details.error || result.isError) {
-		return `todo failed`;
-	}
-
-	switch (action) {
-		case "list":
-			return `todo ${summarizeTodoList(details)}`;
-		case "get":
-			return `todo get: ${originalText.split("\n")[0] || "entry"}`;
-		case "create":
-		case "update":
-		case "delete":
-		case "clear":
-			return originalText.split("\n")[0] || `todo ${action}`;
-		default:
-			return originalText.split("\n")[0] || "todo";
-	}
-}
-
-function summarizeTodoCall(args: any, theme: any) {
-	let text = theme.fg("toolTitle", theme.bold("todo "));
-	text += theme.fg("accent", String(args.action ?? "todo"));
-
-	if (typeof args.id === "number") {
-		text += theme.fg("dim", ` #${args.id}`);
-	}
-
-	if (typeof args.status === "string") {
-		text += theme.fg("dim", ` → ${args.status}`);
-	}
-
-	if (typeof args.subject === "string" && args.subject.trim()) {
-		const subject = args.subject.length > 60 ? `${args.subject.slice(0, 57)}...` : args.subject;
-		text += theme.fg("dim", ` “${subject}”`);
-	}
-
-	return new Text(text, 0, 0);
-}
-
 function wrapErrorResult(result: ToolResult): ToolResult {
 	const originalText = getTextContent(result);
 	const errorText = originalText || (typeof result.details?.error === "string" ? `Error: ${result.details.error}` : "Error");
@@ -285,64 +174,6 @@ function renderGenericResult(result: ToolResult, options: { expanded: boolean; i
 	}
 
 	return new Text(`\n${renderPreviewText(text, theme)}`, 0, 0);
-}
-
-function renderTodoResult(result: ToolResult, options: { expanded: boolean; isPartial: boolean }, theme: any, context: any) {
-	if (options.isPartial) {
-		return new Text(theme.fg("warning", "Updating..."), 0, 0);
-	}
-
-	if (context.isError || result.isError) {
-		if (!options.expanded) {
-			return new Text(theme.fg("error", "⚠ todo failed"), 0, 0);
-		}
-		const text = getOriginalText(result) || getTextContent(result) || "";
-		if (!text) {
-			return new Text(theme.fg("error", "⚠ todo failed"), 0, 0);
-		}
-		return new Text(`\n${renderPreviewText(text, theme)}`, 0, 0);
-	}
-
-	const details = result.details as TodoDetails | undefined;
-	const originalText = getOriginalText(result) || getTextContent(result);
-	const summary = summarizeTodoResult(result);
-
-	if (!options.expanded) {
-		return new Text(theme.fg("success", summary), 0, 0);
-	}
-
-	if (details?.action === "list" || details?.action === "get") {
-		return new Text(`\n${renderPreviewText(originalText, theme)}`, 0, 0);
-	}
-
-	return new Text(`\n${renderPreviewText(originalText || summary, theme)}`, 0, 0);
-}
-
-async function captureTodoToolDefinition() {
-	if (capturedTodoTool || todoToolCaptureAttempted) return capturedTodoTool;
-	todoToolCaptureAttempted = true;
-
-	const todoModulePath = join(homedir(), ".pi", "agent", "npm", "node_modules", "@juicesharp", "rpiv-todo", "todo.ts");
-	if (!existsSync(todoModulePath)) {
-		return undefined;
-	}
-
-	const todoModule = (await import(pathToFileURL(todoModulePath).href)) as {
-		registerTodoTool?: (pi: ExtensionAPI) => void;
-	};
-	if (typeof todoModule.registerTodoTool !== "function") {
-		return undefined;
-	}
-
-	const captured: RegisteredTool[] = [];
-	todoModule.registerTodoTool({
-		registerTool(tool) {
-			captured.push(tool as RegisteredTool);
-		},
-	} as unknown as ExtensionAPI);
-
-	capturedTodoTool = captured.find((tool) => tool.name === "todo");
-	return capturedTodoTool;
 }
 
 function registerBuiltInMinimalTools(pi: ExtensionAPI) {
@@ -420,39 +251,6 @@ function registerContextModeMinimalTools(pi: ExtensionAPI, tools: CapturedCtxToo
 			},
 		});
 	}
-}
-
-async function registerTodoMinimalTool(pi: ExtensionAPI) {
-	const todo = await captureTodoToolDefinition();
-	if (!todo) return;
-
-	pi.registerTool({
-		...todo,
-		name: "todo",
-		label: todo.label ?? "todo",
-		renderShell: "self",
-		async execute(toolCallId, params, signal, onUpdate, ctx) {
-			const result = await todo.execute(toolCallId, params, signal, onUpdate, ctx);
-			const normalized = normalizeResult(result as ToolResult);
-			if (normalized.isError) return normalized;
-
-			const text = summarizeTodoResult(normalized);
-			return {
-				...normalized,
-				content: [{ type: "text", text }],
-				details: {
-					...(normalized.details ?? {}),
-					[ORIGINAL_TEXT_KEY]: getTextContent(result as ToolResult),
-				},
-			};
-		},
-		renderCall(args, theme, context) {
-			return summarizeTodoCall(args, theme);
-		},
-		renderResult(result, options, theme, context) {
-			return renderTodoResult(result as ToolResult, options, theme, context);
-		},
-	});
 }
 
 function renderBadgeLines(theme: any, badges: Badge[], width: number) {

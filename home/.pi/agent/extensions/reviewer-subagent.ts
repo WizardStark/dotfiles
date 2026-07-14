@@ -1,4 +1,4 @@
-import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { StringEnum, type Message } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
@@ -72,7 +72,6 @@ type ReviewProgress = {
 };
 
 import {
-  entryToMessage,
   getSessionMessages,
   textFromMessage,
   truncate,
@@ -463,7 +462,7 @@ export default function (pi: ExtensionAPI) {
       "Do not use review_changes for tiny, obvious, or single-line changes unless the user specifically asks for a review.",
       "When using review_changes, pass a short context summary describing what changed and why so the reviewer can judge correctness against intent.",
       "When bounded worker tasks are succeeding with clean validation, trust those sub-steps by default and avoid calling review_changes after each successful worker return.",
-      "Prefer one final review pass once you believe the full user request is implemented, unless the user asked for an interim review, a worker escalated or failed validation, or you need to inspect risky supervisor-owned integration.",
+      "Prefer one final review pass once you believe the full user request is implemented, unless the user asked for an interim review, a worker escalated or failed validation, or you need to inspect risky supervisor-owned integration. Avoid repeated reviews after successful bounded handoffs.",
       "Use stage: interim for automated or early-cycle checks to save costs. Use stage: final only for the definitive review before completion.",
     ],
     parameters: Type.Object({

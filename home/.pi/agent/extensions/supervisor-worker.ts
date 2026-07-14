@@ -47,7 +47,12 @@ import {
   runSubagentProcess,
   type SubagentMetrics,
 } from "./lib/subagent-runtime.ts";
-import { ManagedWidget } from "./lib/ui-widgets.ts";
+import {
+  DelegationTaskWidget,
+  type DelegationTaskItem,
+  type DelegationTaskRole,
+  type DelegationTaskStatus,
+} from "./lib/delegation-task-widget.ts";
 
 interface SupervisorWorkerState {
   override?: ModelRef;
@@ -57,6 +62,15 @@ interface SupervisorWorkerState {
   reviewerOverride?: ModelRef;
   reviewerThinkingLevel?: ThinkingLevel;
   autoMode?: "conservative" | "off";
+}
+
+interface DelegationToolEvent {
+  kind: "start" | "end";
+  toolName: string;
+  summary: string;
+  result?: string;
+  isError?: boolean;
+  toolCallId?: string;
 }
 
 interface ActiveDelegation {
@@ -69,6 +83,7 @@ interface ActiveDelegation {
   currentTool?: string;
   detailText?: string;
   recentActivity?: string[];
+  recentToolEvents?: DelegationToolEvent[];
 }
 
 type SubagentProgress = {
@@ -229,6 +244,14 @@ const MAX_CONTEXT_CHARS = 6_000;
 const MAX_MESSAGES = 6;
 const DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY = 2;
 const MAX_PARALLEL_SUBAGENT_CONCURRENCY = 4;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __PI_SUPERVISOR_WORKER_REGISTERED__:
+    | "registering"
+    | "registered"
+    | undefined;
+}
 const MAX_PARALLEL_SUBAGENT_TASKS = 4;
 const MAX_PARALLEL_REPORT_CHARS = 4_000;
 const THINKING_LEVELS = [
@@ -265,14 +288,12 @@ const HANDOFF_RELEVANCE_STOP_WORDS = new Set([
   "with",
   "would",
 ]);
-const SUBAGENTS_WIDGET = new ManagedWidget("subagents", {
-  placement: "belowEditor",
-});
 const SUBAGENT_ACTIVITY_COMMAND = "subagents";
 const SUBAGENT_ACTIVITY_SHORTCUT = "ctrl+alt+o";
 const MAX_SUBAGENT_DETAIL_LINES = 6;
 const MAX_SUBAGENT_DETAIL_CHARS = 1_200;
 const MAX_SUBAGENT_ACTIVITY_LINES = 8;
+const MAX_RECENT_DELEGATION_TASKS = 8;
 const IMPLEMENTATION_PROMPT_PATTERNS: RegExp[] = [
   /\b(implement|refactor|fix|change|update|edit|modify|rewrite|extract|rename|migrate|wire|hook up)\b/i,
   /\b(add|remove|create|write)\b.{0,24}\b(test|tests|code|function|component|extension|tool|handler|widget|command)\b/i,
@@ -1786,6 +1807,16 @@ function appendSubagentEvent(
   }
 }
 
+const SUBAGENT_STREAM_UPDATE_EVENT = "message_update";
+
+function shouldPersistSubagentRawEvent(event: unknown) {
+  return !(
+    event &&
+    typeof event === "object" &&
+    (event as Record<string, unknown>).type === SUBAGENT_STREAM_UPDATE_EVENT
+  );
+}
+
 function classifySubagentOutcome(
   run: { exitCode: number; stopReason?: string; errorMessage?: string },
   signal?: AbortSignal,
@@ -2023,21 +2054,24 @@ async function runWorkerSubagent(
       onUpdate,
       onEvent: (event) => {
         eventIndex += 1;
-        appendSubagentEvent(
-          pi,
-          {
-            type: "subagent_raw_event",
-            delegationId,
-            role: "worker",
-            model: modelArg,
-            cwd,
-            eventType: typeof event?.type === "string" ? event.type : undefined,
-            eventIndex,
-            event,
-            generatedAt: Date.now(),
-          },
-          shouldLog,
-        );
+        if (shouldPersistSubagentRawEvent(event)) {
+          appendSubagentEvent(
+            pi,
+            {
+              type: "subagent_raw_event",
+              delegationId,
+              role: "worker",
+              model: modelArg,
+              cwd,
+              eventType:
+                typeof event?.type === "string" ? event.type : undefined,
+              eventIndex,
+              event,
+              generatedAt: Date.now(),
+            },
+            shouldLog,
+          );
+        }
 
         const toolEvent =
           event && typeof event === "object"
@@ -2063,13 +2097,20 @@ async function runWorkerSubagent(
           toolCallId &&
           toolName
         ) {
+          const args =
+            toolEvent.args && typeof toolEvent.args === "object"
+              ? (toolEvent.args as Record<string, unknown>)
+              : undefined;
           activeToolCalls.set(toolCallId, {
             toolCallId,
             toolName,
-            args:
-              toolEvent.args && typeof toolEvent.args === "object"
-                ? (toolEvent.args as Record<string, unknown>)
-                : undefined,
+            args,
+          });
+          recordDelegationToolEvent(delegationKey, {
+            kind: "start",
+            toolCallId,
+            toolName,
+            summary: summarizeSubagentArgs(toolName, args),
           });
           onProgress?.({
             turns: completedTurns,
@@ -2077,7 +2118,7 @@ async function runWorkerSubagent(
             lastActivityLine: buildSubagentActivityLine(
               "start",
               toolName,
-              activeToolCalls.get(toolCallId)?.args,
+              args,
             ),
           });
         }
@@ -2095,6 +2136,14 @@ async function runWorkerSubagent(
           if (toolCallId) {
             activeToolCalls.delete(toolCallId);
           }
+          recordDelegationToolEvent(delegationKey, {
+            kind: "end",
+            toolCallId,
+            toolName,
+            summary: summarizeSubagentArgs(toolName, prior?.args),
+            result: extractSubagentResultText(toolEvent.result),
+            isError: toolEvent.isError === true,
+          });
           onProgress?.({
             turns: completedTurns,
             currentTool: getLatestActiveToolName(activeToolCalls),
@@ -2488,21 +2537,24 @@ async function runScoutSubagent(
       onUpdate,
       onEvent: (event) => {
         eventIndex += 1;
-        appendSubagentEvent(
-          pi,
-          {
-            type: "subagent_raw_event",
-            delegationId,
-            role: "scout",
-            model: modelArg,
-            cwd,
-            eventType: typeof event?.type === "string" ? event.type : undefined,
-            eventIndex,
-            event,
-            generatedAt: Date.now(),
-          },
-          shouldLog,
-        );
+        if (shouldPersistSubagentRawEvent(event)) {
+          appendSubagentEvent(
+            pi,
+            {
+              type: "subagent_raw_event",
+              delegationId,
+              role: "scout",
+              model: modelArg,
+              cwd,
+              eventType:
+                typeof event?.type === "string" ? event.type : undefined,
+              eventIndex,
+              event,
+              generatedAt: Date.now(),
+            },
+            shouldLog,
+          );
+        }
 
         const toolEvent =
           event && typeof event === "object"
@@ -2536,6 +2588,15 @@ async function runScoutSubagent(
                 ? (toolEvent.args as Record<string, unknown>)
                 : undefined,
           });
+          recordDelegationToolEvent(delegationKey, {
+            kind: "start",
+            toolCallId,
+            toolName,
+            summary: summarizeSubagentArgs(
+              toolName,
+              activeToolCalls.get(toolCallId)?.args,
+            ),
+          });
           onProgress?.({
             turns: completedTurns,
             currentTool: toolName,
@@ -2560,6 +2621,14 @@ async function runScoutSubagent(
           if (toolCallId) {
             activeToolCalls.delete(toolCallId);
           }
+          recordDelegationToolEvent(delegationKey, {
+            kind: "end",
+            toolCallId,
+            toolName,
+            summary: summarizeSubagentArgs(toolName, prior?.args),
+            result: extractSubagentResultText(toolEvent.result),
+            isError: toolEvent.isError === true,
+          });
           onProgress?.({
             turns: completedTurns,
             currentTool: getLatestActiveToolName(activeToolCalls),
@@ -4646,7 +4715,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return;
   }
 
-  if (role === "scout") {
+  const registrationState = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;
+  if (registrationState === "registering" || registrationState === "registered") {
+    return;
+  }
+  globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = "registering";
+
+  try {
+    if (role === "scout") {
     pi.on("tool_call", async (event) => {
       if (SCOUT_BLOCKED_TOOLS.has(event.toolName)) {
         return {
@@ -4701,15 +4777,71 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   let sessionEpoch = 0;
   let turnDelegationState: TurnDelegationState | undefined;
   let recentReviewKeys: string[] = [];
+  let recentDelegationTasks: DelegationTaskItem[] = [];
   const pendingReviewKeys = new Map<string, string>();
   const activeDelegations = new Map<string, ActiveDelegation>();
+  const delegationTaskWidget = new DelegationTaskWidget();
 
   function persistState() {
     pi.appendEntry(STATE_ENTRY, state);
   }
 
-  function middleDot(text: string): string {
-    return text ? `· ${text}` : "";
+  function delegationActiveForm(
+    role: DelegationTaskRole,
+    phase?: string,
+  ): string {
+    if (phase === "finalizing") return "finalizing";
+    return role === "scout" ? "scouting" : "implementing";
+  }
+
+  function buildDelegationTaskItems(): DelegationTaskItem[] {
+    const activeItems = [...activeDelegations.values()]
+      .sort((left, right) => left.title.localeCompare(right.title))
+      .map((item) => {
+        const status: DelegationTaskStatus =
+          item.phase === "finalizing"
+            ? "finalizing"
+            : ["completed", "blocked", "escalated"].includes(item.phase)
+              ? mapDelegationTaskStatus(item.phase)
+              : "in_progress";
+        return {
+          id: item.id,
+          title: item.title,
+          role: item.role,
+          status,
+          activeForm:
+            status === "in_progress" || status === "finalizing"
+              ? delegationActiveForm(item.role, item.phase)
+              : undefined,
+        };
+      });
+    const activeIds = new Set(activeItems.map((item) => item.id));
+    return [
+      ...activeItems,
+      ...recentDelegationTasks.filter((item) => !activeIds.has(item.id)),
+    ];
+  }
+
+  function rememberFinishedDelegationTask(task: DelegationTaskItem) {
+    recentDelegationTasks = [
+      { ...task, activeForm: undefined },
+      ...recentDelegationTasks.filter((item) => item.id !== task.id),
+    ].slice(0, MAX_RECENT_DELEGATION_TASKS);
+  }
+
+  function mapDelegationTaskStatus(
+    status: string | undefined,
+  ): DelegationTaskStatus {
+    switch (status) {
+      case "completed":
+        return "completed";
+      case "escalated":
+        return "escalated";
+      case "blocked":
+        return "blocked";
+      default:
+        return "blocked";
+    }
   }
 
   function formatDelegationStatus(
@@ -4727,10 +4859,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   function buildSingleDelegationProgressText(
     item: ActiveDelegation,
     detailText?: string,
-  ): string {
+  ): string | undefined {
     const header = formatDelegationStatus(item) || item.phase;
     const detail = detailText?.trim();
-    return detail ? `${header}\n${detail}` : header;
+    if (!detail) return header;
+    if (/^(working|running|in progress)(?:\s*(?:\.\.\.|…))?$/i.test(detail.replace(/\s+/g, " "))) {
+      return header;
+    }
+    return `${header}\n${detail}`;
   }
 
   const subagentPanelRefreshers = new Set<() => void>();
@@ -4782,6 +4918,19 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return active;
   }
 
+  function recordDelegationToolEvent(
+    delegationKey: string,
+    event: DelegationToolEvent,
+  ): ActiveDelegation | undefined {
+    const active = activeDelegations.get(delegationKey);
+    if (!active) return undefined;
+    const recent = [...(active.recentToolEvents ?? [])];
+    recent.push(event);
+    active.recentToolEvents = recent.slice(-MAX_SUBAGENT_ACTIVITY_LINES);
+    refreshSubagentPanels();
+    return active;
+  }
+
   function buildDetailPreviewLines(
     item: ActiveDelegation,
     width: number,
@@ -4807,6 +4956,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)));
   }
 
+  function buildRecentToolEventLines(
+    item: ActiveDelegation,
+    width: number,
+  ): string[] {
+    return (item.recentToolEvents ?? [])
+      .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
+      .flatMap((event) => {
+        const prefix = event.kind === "end" ? (event.isError ? "✗" : "✓") : "→";
+        const body = event.result
+          ? `${event.toolName} ${event.summary} ${event.result}`
+          : `${event.toolName} ${event.summary}`;
+        return wrapTextWithAnsi(`${prefix} ${body}`.trim(), Math.max(12, width));
+      });
+  }
+
   function padPanelLine(text: string, width: number): string {
     return text + " ".repeat(Math.max(0, width - visibleWidth(text)));
   }
@@ -4815,6 +4979,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     width: number,
     theme: ExtensionContext["ui"]["theme"],
     items: ActiveDelegation[],
+    selectedIndex: number,
+    expanded: boolean,
   ): string[] {
     const innerWidth = Math.max(24, width - 2);
     const row = (content = "") => {
@@ -4825,59 +4991,47 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
       row(` ${theme.fg("accent", theme.bold("Subagent Activity"))}`),
       row(
-        ` ${theme.fg("dim", `${items.length} active • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
+        ` ${theme.fg("dim", `${items.length} active • ↑/↓ select • Enter expand • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
       ),
       row(),
     ];
 
     if (items.length === 0) {
       lines.push(row(` ${theme.fg("dim", "No active subagents.")}`));
-      lines.push(
-        row(
-          ` ${theme.fg("dim", "The widget below the editor will light up when new delegations start.")}`,
-        ),
-      );
     } else {
+      const selected = items[Math.min(selectedIndex, items.length - 1)] ?? items[0];
       items.forEach((item, index) => {
+        const isSelected = item === selected;
         const status = formatDelegationStatus(item) || item.phase;
-        lines.push(
-          row(
-            ` ${theme.fg("accent", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`,
-          ),
-        );
-        for (const wrapped of wrapTextWithAnsi(
-          item.title,
-          Math.max(12, innerWidth - 2),
-        )) {
-          lines.push(row(` ${theme.fg("text", wrapped)}`));
+        const marker = isSelected ? theme.fg("accent", "▸") : theme.fg("dim", "•");
+        lines.push(row(` ${marker} ${theme.fg(isSelected ? "accent" : "text", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`));
+        for (const wrapped of wrapTextWithAnsi(item.title, Math.max(12, innerWidth - 4))) {
+          lines.push(row(`   ${theme.fg(isSelected ? "text" : "dim", wrapped)}`));
         }
-        lines.push(row(` ${theme.fg("muted", status)}`));
-        const activityLines = buildRecentActivityLines(item, innerWidth - 4);
-        if (activityLines.length > 0) {
-          lines.push(row(` ${theme.fg("dim", "Recent activity:")}`));
-          for (const activityLine of activityLines) {
-            lines.push(row(` ${theme.fg("dim", `  ${activityLine}`)}`));
+        lines.push(row(`   ${theme.fg("muted", status)}${isSelected ? theme.fg("accent", expanded ? "  [expanded]" : "  [focused]") : ""}`));
+        if (isSelected && expanded) {
+          const toolLines = buildRecentToolEventLines(item, innerWidth - 4);
+          const activityLines = buildRecentActivityLines(item, innerWidth - 4);
+          const detailLines = buildDetailPreviewLines(item, innerWidth - 4);
+          if (toolLines.length > 0) {
+            lines.push(row(`   ${theme.fg("dim", "Recent tool calls:")}`));
+            for (const toolLine of toolLines) lines.push(row(`   ${theme.fg("dim", toolLine)}`));
+          }
+          if (activityLines.length > 0) {
+            lines.push(row(`   ${theme.fg("dim", "Recent activity:")}`));
+            for (const activityLine of activityLines) lines.push(row(`   ${theme.fg("dim", activityLine)}`));
+          }
+          if (detailLines.length > 0) {
+            lines.push(row(`   ${theme.fg("dim", "Latest output:")}`));
+            for (const detailLine of detailLines) lines.push(row(`   ${theme.fg("dim", detailLine)}`));
           }
         }
-        const detailLines = buildDetailPreviewLines(item, innerWidth - 4);
-        if (detailLines.length > 0) {
-          lines.push(row(` ${theme.fg("dim", "Latest output:")}`));
-          for (const detailLine of detailLines) {
-            lines.push(row(` ${theme.fg("dim", `  ${detailLine}`)}`));
-          }
-        }
-        if (index < items.length - 1) {
-          lines.push(row());
-        }
+        if (index < items.length - 1) lines.push(row());
       });
     }
 
     lines.push(row());
-    lines.push(
-      row(
-        ` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`,
-      ),
-    );
+    lines.push(row(` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`));
     lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
     return lines;
   }
@@ -4901,17 +5055,36 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         (tui, theme, _keybindings, done) => {
           const refresh = () => tui.requestRender();
           subagentPanelRefreshers.add(refresh);
+          let selectedIndex = 0;
+          let expanded = true;
+          const clampSelection = () => {
+            const count = activeDelegations.size;
+            selectedIndex = count === 0 ? 0 : Math.max(0, Math.min(selectedIndex, count - 1));
+          };
           return {
-            render: (panelWidth: number) =>
-              renderSubagentActivityPanel(panelWidth, theme, [
-                ...activeDelegations.values(),
-              ]),
+            render: (panelWidth: number) => {
+              const items = [...activeDelegations.values()];
+              clampSelection();
+              return renderSubagentActivityPanel(panelWidth, theme, items, selectedIndex, expanded);
+            },
             handleInput: (data: string) => {
-              if (
-                matchesKey(data, "escape") ||
-                matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)
-              ) {
+              if (matchesKey(data, "escape") || matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)) {
                 done(undefined);
+                return;
+              }
+              if (matchesKey(data, "arrowup") || matchesKey(data, "k")) {
+                selectedIndex -= 1;
+                tui.requestRender();
+                return;
+              }
+              if (matchesKey(data, "arrowdown") || matchesKey(data, "j")) {
+                selectedIndex += 1;
+                tui.requestRender();
+                return;
+              }
+              if (matchesKey(data, "enter") || matchesKey(data, "space")) {
+                expanded = !expanded;
+                tui.requestRender();
               }
             },
             invalidate: () => {},
@@ -4924,9 +5097,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           overlay: true,
           overlayOptions: {
             anchor: "right-center",
-            width: "44%",
-            minWidth: 48,
-            maxHeight: "80%",
+            width: "48%",
+            minWidth: 56,
+            maxHeight: "84%",
             margin: 1,
             visible: (termWidth) => termWidth >= 80,
           },
@@ -4938,28 +5111,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   }
 
   function updateDelegationWidget(ctx: ExtensionContext) {
-    const items = [...activeDelegations.values()];
-    if (items.length === 0) {
-      SUBAGENTS_WIDGET.clear(ctx);
-      refreshSubagentPanels();
-      return;
-    }
+    delegationTaskWidget.setUICtx(ctx.ui);
+    const items = buildDelegationTaskItems();
+    delegationTaskWidget.update(items);
 
-    SUBAGENTS_WIDGET.set(ctx, [
-      `Subagents (${items.length}) — ${SUBAGENT_ACTIVITY_SHORTCUT} for activity`,
-      ...items.map((item) => {
-        const parts = [
-          `• ${item.role} ${item.workerModel} [${item.phase}]`,
-          middleDot(
-            item.turns !== undefined && item.turns > 0
-              ? `${item.turns} turns`
-              : "",
-          ),
-          middleDot(item.currentTool ?? ""),
-        ].filter(Boolean);
-        return `${parts.join(" ")} — ${item.title}`;
-      }),
-    ]);
     refreshSubagentPanels();
   }
 
@@ -4994,11 +5149,13 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     detailText?: string,
   ) {
     if (!onUpdate || !item) return;
+    const text = buildSingleDelegationProgressText(item, detailText);
+    if (!text) return;
     onUpdate({
       content: [
         {
           type: "text",
-          text: buildSingleDelegationProgressText(item, detailText),
+          text,
         },
       ],
       details: {
@@ -5021,10 +5178,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     sessionEpoch += 1;
     turnDelegationState = undefined;
     recentReviewKeys = readSavedReviewKeys(ctx);
+    recentDelegationTasks = [];
     pendingReviewKeys.clear();
     activeDelegations.clear();
     subagentPanelRefreshers.clear();
     subagentPanelOpen = false;
+    delegationTaskWidget.setUICtx(ctx.ui);
     state = readSavedState(ctx) ?? {};
     refreshStatus(ctx);
   });
@@ -5032,11 +5191,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   pi.on("session_shutdown", async (_event, ctx) => {
     sessionEpoch += 1;
     turnDelegationState = undefined;
+    recentDelegationTasks = [];
     pendingReviewKeys.clear();
     activeDelegations.clear();
     subagentPanelRefreshers.clear();
     subagentPanelOpen = false;
-    SUBAGENTS_WIDGET.clear(ctx);
+    delegationTaskWidget.clear();
     ctx.ui.setStatus("worker", undefined);
     ctx.ui.setStatus("worker-auto", undefined);
   });
@@ -5100,17 +5260,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
 - Conservative auto mode is enabled.
 - Use a scout-plan-implement split by default: cheap scout subagents explore and gather evidence, the current model plans/scopes/reviews/escalates, and worker subagents implement bounded steps.
-- Proactively use \`delegate_scout\` for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or scoping likely edit sites.
+- Use \`delegate_scout\` sparingly for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or scoping likely edit sites; once edit sites and constraints are known, move on instead of scouting again.
 - For coding requests, proactively use \`delegate_worker\` without asking first when the next step is a bounded implementation task that is local, well-specified, and objectively checkable.
 - For reusable research that another agent may need later, prefer artifact-producing tools such as \`ctx_batch_execute\`, \`ctx_index\`, \`ctx_fetch_and_index\`, or large \`ctx_execute\` calls with an \`intent\`.
 - When setting subagent tool allowlists, include the relevant \`ctx_*\` tools by default; subagents should prefer \`ctx_*\` over \`bash\`/\`read\` for inspection and analysis.
 - When a reusable artifact matters to a delegated task, pass its source labels via \`artifactSources\` and suggested lookups via \`artifactQueries\`.
 - Good scout candidates: file discovery, behavior tracing, implementation precedent searches, config inventory, and test surface mapping.
+- Use a soft scout budget of roughly one scout pass per turn; only do a second scout if the first leaves a concrete unanswered question.
+- Progress for bounded delegation work is surfaced automatically by the harness widget; do not add a separate manual task-list layer for a single bounded delegation task or bounded delegation chain.
 - Good auto-delegation candidates for workers: small code edits, focused tests, local refactors, narrow bug fixes, and file-scoped implementation work.
 - Later in a session, still consider \`delegate_worker\` for narrow follow-up fixes (e.g. fixing a lint error, wiring a missing handler), integration polish (e.g. updating a theme, refining a UI widget), validation-driven refactors, and file-scoped cleanup after earlier worker handoffs.
+- Split worker scope aggressively: do production code first, then tests, then cleanup; avoid bundling all three unless the change is tiny.
 - Delegate only bounded work with explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
+- Escalate instead of extending a worker task when file count grows unexpectedly, validation spills into unrelated files, or the change starts crossing allowed-file boundaries.
 - Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and broad cross-cutting refactors on the current model unless the user explicitly asks otherwise.
-- Delegate one independently checkable task at a time by default.
+- Delegate one independently checkable task at a time by default; prefer chaining smaller workers over one large worker when the work naturally splits.
 - When multiple read-only scouting tasks are independent, prefer \`delegate_scouts\`.
 - When multiple implementation tasks are independent and have disjoint \`allowedFiles\`, prefer \`delegate_workers\`.
 - If a delegated task comes back escalated or blocked, handle the decision on the current model instead of retrying blindly.
@@ -5421,9 +5585,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const delegationKey = `${sessionEpoch}:${toolCallId}`;
       const activeSessionEpoch = sessionEpoch;
       const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+      const title = formatTaskTitle(params.objective);
+      let finalTaskStatus: DelegationTaskStatus | undefined;
       activeDelegations.set(delegationKey, {
         id: delegationKey,
-        title: formatTaskTitle(params.objective),
+        title,
         workerModel:
           params.scoutModel?.trim() ||
           getEffectiveScoutRef(ctx, state)?.id ||
@@ -5491,11 +5657,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         );
         if (isCurrentSession()) {
           patchActiveDelegation(ctx, delegationKey, {
-            phase: "completed",
+            phase: result.status,
             workerModel: result.scoutModel,
             currentTool: undefined,
           });
         }
+        finalTaskStatus = mapDelegationTaskStatus(result.status);
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
         pi.events.emit("subagent:metrics", {
@@ -5520,8 +5687,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             fullReport: result.fullReport,
           },
         };
+      } catch (error) {
+        if (isCurrentSession()) {
+          finalTaskStatus = "blocked";
+        }
+        throw error;
       } finally {
         if (isCurrentSession()) {
+          if (finalTaskStatus) {
+            rememberFinishedDelegationTask({
+              id: delegationKey,
+              title,
+              role: "scout",
+              status: finalTaskStatus,
+            });
+          }
           activeDelegations.delete(delegationKey);
           updateDelegationWidget(ctx);
         }
@@ -5635,6 +5815,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       >(params.tasks, concurrency, async (task, index) => {
         const label = formatParallelLabel(task.label, task.objective, index);
         const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+        let finalTaskStatus: DelegationTaskStatus | undefined;
         activeDelegations.set(delegationKey, {
           id: delegationKey,
           title: label,
@@ -5691,7 +5872,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           const finalResult: ParallelScoutTaskResult = {
             ...result,
             label,
-            status: "completed",
+            status: result.status,
           };
           partialResults[index] = finalResult;
           if (isCurrentSession()) {
@@ -5701,6 +5882,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               currentTool: undefined,
             });
           }
+          finalTaskStatus = mapDelegationTaskStatus(finalResult.status);
           emitProgress();
           return finalResult;
         } catch (error) {
@@ -5717,10 +5899,19 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               currentTool: undefined,
             });
           }
+          finalTaskStatus = mapDelegationTaskStatus(finalResult.status);
           emitProgress();
           return finalResult;
         } finally {
           if (isCurrentSession()) {
+            if (finalTaskStatus) {
+              rememberFinishedDelegationTask({
+                id: delegationKey,
+                title: label,
+                role: "scout",
+                status: finalTaskStatus,
+              });
+            }
             activeDelegations.delete(delegationKey);
             updateDelegationWidget(ctx);
           }
@@ -5897,150 +6088,197 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
       emitProgress();
 
-      const results = await mapWithConcurrencyLimit<
-        ParallelDelegateTask,
-        ParallelDelegateTaskResult
-      >(params.tasks, concurrency, async (task, index) => {
-        const label = formatParallelLabel(task.label, task.objective, index);
-        const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
-        activeDelegations.set(delegationKey, {
-          id: delegationKey,
-          title: label,
-          workerModel:
-            task.workerModel?.trim() ||
-            getEffectiveWorkerRef(ctx, state)?.id ||
-            "unresolved",
-          phase: "starting",
-          role: "worker",
+      try {
+        const results = await mapWithConcurrencyLimit<
+          ParallelDelegateTask,
+          ParallelDelegateTaskResult
+        >(params.tasks, concurrency, async (task, index) => {
+          const label = formatParallelLabel(task.label, task.objective, index);
+          const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+          activeDelegations.set(delegationKey, {
+            id: delegationKey,
+            title: label,
+            workerModel:
+              task.workerModel?.trim() ||
+              getEffectiveWorkerRef(ctx, state)?.id ||
+              "unresolved",
+            phase: "starting",
+            role: "worker",
+          });
+          updateDelegationWidget(ctx);
+          emitProgress();
+
+          try {
+            const effectiveTask = withInferredArtifacts(
+              ctx,
+              task,
+              [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])]
+                .filter(Boolean)
+                .join("\n"),
+            );
+            const result = await generateDelegation(
+              ctx,
+              state,
+              effectiveTask,
+              delegationKey,
+              pi,
+              isCurrentSession,
+              signal,
+              (text) => {
+                if (!isCurrentSession()) return;
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultWorkerLabelFallback(ctx, state, task),
+                });
+                recordDelegationDetail(delegationKey, text);
+                emitProgress();
+              },
+              (progress) => {
+                if (!isCurrentSession()) return;
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultWorkerLabelFallback(ctx, state, task),
+                  turns: progress.turns,
+                  currentTool: progress.currentTool,
+                });
+                recordDelegationActivity(
+                  delegationKey,
+                  progress.lastActivityLine,
+                );
+                emitProgress();
+              },
+            );
+            const finalResult: ParallelDelegateTaskResult = {
+              ...result,
+              label,
+            };
+            partialResults[index] = finalResult;
+            if (isCurrentSession()) {
+              patchActiveDelegation(ctx, delegationKey, {
+                phase:
+                  finalResult.status === "completed"
+                    ? "finalizing"
+                    : finalResult.status,
+                workerModel: finalResult.workerModel,
+                currentTool: undefined,
+              });
+            }
+            emitProgress();
+            return finalResult;
+          } catch (error) {
+            const finalResult = buildWorkerFailureResult(
+              label,
+              resultWorkerLabelFallback(ctx, state, task),
+              error,
+            );
+            partialResults[index] = finalResult;
+            if (isCurrentSession()) {
+              patchActiveDelegation(ctx, delegationKey, {
+                phase:
+                  finalResult.status === "completed"
+                    ? "finalizing"
+                    : finalResult.status,
+                workerModel: finalResult.workerModel,
+                currentTool: undefined,
+              });
+            }
+            emitProgress();
+            return finalResult;
+          }
         });
-        updateDelegationWidget(ctx);
-        emitProgress();
 
-        try {
-          const effectiveTask = withInferredArtifacts(
-            ctx,
-            task,
-            [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])]
-              .filter(Boolean)
-              .join("\n"),
-          );
-          const result = await generateDelegation(
-            ctx,
-            state,
-            effectiveTask,
-            delegationKey,
-            pi,
-            isCurrentSession,
-            signal,
-            (text) => {
-              if (!isCurrentSession()) return;
-              patchActiveDelegation(ctx, delegationKey, {
-                phase: "running",
-                workerModel: resultWorkerLabelFallback(ctx, state, task),
-              });
-              recordDelegationDetail(delegationKey, text);
-              emitProgress();
-            },
-            (progress) => {
-              if (!isCurrentSession()) return;
-              patchActiveDelegation(ctx, delegationKey, {
-                phase: "running",
-                workerModel: resultWorkerLabelFallback(ctx, state, task),
-                turns: progress.turns,
-                currentTool: progress.currentTool,
-              });
-              recordDelegationActivity(
-                delegationKey,
-                progress.lastActivityLine,
-              );
-              emitProgress();
-            },
-          );
-          const finalResult: ParallelDelegateTaskResult = {
-            ...result,
-            label,
-          };
-          partialResults[index] = finalResult;
-          if (isCurrentSession()) {
-            patchActiveDelegation(ctx, delegationKey, {
-              phase: finalResult.status,
-              workerModel: finalResult.workerModel,
-              currentTool: undefined,
+        const batchAfterSnapshot = await snapshotWorkingTree(
+          batchBeforeSnapshot.root,
+          signal,
+        );
+        const finalized = finalizeParallelWorkerResults(
+          ctx.cwd,
+          batchBeforeSnapshot.root,
+          params.tasks,
+          results,
+          diffSnapshots(batchBeforeSnapshot, batchAfterSnapshot),
+        );
+        if (isCurrentSession()) {
+          finalized.results.forEach((result, index) => {
+            const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+            rememberFinishedDelegationTask({
+              id: delegationKey,
+              title: result.label,
+              role: "worker",
+              status: mapDelegationTaskStatus(result.status),
             });
-          }
-          emitProgress();
-          return finalResult;
-        } catch (error) {
-          const finalResult = buildWorkerFailureResult(
-            label,
-            resultWorkerLabelFallback(ctx, state, task),
-            error,
-          );
-          partialResults[index] = finalResult;
-          if (isCurrentSession()) {
-            patchActiveDelegation(ctx, delegationKey, {
-              phase: finalResult.status,
-              workerModel: finalResult.workerModel,
-              currentTool: undefined,
-            });
-          }
-          emitProgress();
-          return finalResult;
-        } finally {
-          if (isCurrentSession()) {
-            activeDelegations.delete(delegationKey);
-            updateDelegationWidget(ctx);
-          }
+          });
+          updateDelegationWidget(ctx);
         }
-      });
-
-      const batchAfterSnapshot = await snapshotWorkingTree(
-        batchBeforeSnapshot.root,
-        signal,
-      );
-      const finalized = finalizeParallelWorkerResults(
-        ctx.cwd,
-        batchBeforeSnapshot.root,
-        params.tasks,
-        results,
-        diffSnapshots(batchBeforeSnapshot, batchAfterSnapshot),
-      );
-      const aggregateMetrics = aggregateSubagentMetrics(
-        finalized.results.map((result) => result.subagentMetrics),
-      );
-      const generatedAt = Date.now();
-      const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-      for (const result of finalized.results) {
+        const aggregateMetrics = aggregateSubagentMetrics(
+          finalized.results.map((result) => result.subagentMetrics),
+        );
+        const generatedAt = Date.now();
+        const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+        for (const result of finalized.results) {
+          pi.events.emit("subagent:metrics", {
+            generatedAt,
+            sessionKey,
+            subagentMetrics: result.subagentMetrics,
+            source: "tool",
+          });
+        }
         pi.events.emit("subagent:metrics", {
           generatedAt,
           sessionKey,
-          subagentMetrics: result.subagentMetrics,
+          subagentMetrics: aggregateMetrics,
           source: "tool",
         });
+        return {
+          content: [
+            {
+              type: "text",
+              text: buildParallelWorkerSummary(finalized.results),
+            },
+          ],
+          details: {
+            generatedAt,
+            sessionKey,
+            subagentMetrics: aggregateMetrics,
+            status: summarizeParallelWorkerStatus(finalized.results),
+            completedCount: finalized.results.filter(
+              (result) => result.status === "completed",
+            ).length,
+            totalCount: finalized.results.length,
+            unownedFiles: finalized.unownedFiles,
+            results: finalized.results,
+          },
+        };
+      } catch (error) {
+        if (isCurrentSession()) {
+          params.tasks.forEach((task, index) => {
+            const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+            const partial = partialResults[index];
+            if (!activeDelegations.has(delegationKey) && !partial) {
+              return;
+            }
+            rememberFinishedDelegationTask({
+              id: delegationKey,
+              title:
+                partial?.label ??
+                formatParallelLabel(task.label, task.objective, index),
+              role: "worker",
+              status: partial
+                ? mapDelegationTaskStatus(partial.status)
+                : "blocked",
+            });
+          });
+          updateDelegationWidget(ctx);
+        }
+        throw error;
+      } finally {
+        if (isCurrentSession()) {
+          params.tasks.forEach((_task, index) => {
+            activeDelegations.delete(`${sessionEpoch}:${toolCallId}:${index}`);
+          });
+          updateDelegationWidget(ctx);
+        }
       }
-      pi.events.emit("subagent:metrics", {
-        generatedAt,
-        sessionKey,
-        subagentMetrics: aggregateMetrics,
-        source: "tool",
-      });
-      return {
-        content: [
-          { type: "text", text: buildParallelWorkerSummary(finalized.results) },
-        ],
-        details: {
-          generatedAt,
-          sessionKey,
-          subagentMetrics: aggregateMetrics,
-          status: summarizeParallelWorkerStatus(finalized.results),
-          completedCount: finalized.results.filter(
-            (result) => result.status === "completed",
-          ).length,
-          totalCount: finalized.results.length,
-          unownedFiles: finalized.unownedFiles,
-          results: finalized.results,
-        },
-      };
     },
   });
 
@@ -6061,9 +6299,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const delegationKey = `${sessionEpoch}:${toolCallId}`;
       const activeSessionEpoch = sessionEpoch;
       const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+      const title = formatTaskTitle(params.objective);
+      let finalTaskStatus: DelegationTaskStatus | undefined;
       activeDelegations.set(delegationKey, {
         id: delegationKey,
-        title: formatTaskTitle(params.objective),
+        title,
         workerModel:
           params.workerModel?.trim() ||
           getEffectiveWorkerRef(ctx, state)?.id ||
@@ -6124,6 +6364,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             currentTool: undefined,
           });
         }
+        finalTaskStatus = mapDelegationTaskStatus(result.status);
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
         pi.events.emit("subagent:metrics", {
@@ -6152,8 +6393,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             fullReport: result.fullReport,
           },
         };
+      } catch (error) {
+        if (isCurrentSession()) {
+          finalTaskStatus = "blocked";
+        }
+        throw error;
       } finally {
         if (isCurrentSession()) {
+          if (finalTaskStatus) {
+            rememberFinishedDelegationTask({
+              id: delegationKey,
+              title,
+              role: "worker",
+              status: finalTaskStatus,
+            });
+          }
           activeDelegations.delete(delegationKey);
           updateDelegationWidget(ctx);
         }
@@ -6358,4 +6612,51 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       ctx.ui.notify(`Auto delegation set to ${trimmed}`, "info");
     },
   });
+
+  pi.registerCommand("noop-subagent", {
+    description:
+      "Run a harmless no-op worker subagent to inspect subagent logging volume",
+    handler: async (_args, ctx) => {
+      const delegationId = `noop-${Date.now().toString(36)}`;
+      ctx.ui.notify("Starting no-op subagent…", "info");
+      try {
+        await runSubagentWithNoTextRetry(
+          "Worker",
+          () =>
+            runWorkerSubagent(
+              process.cwd(),
+              "Do no repository work. Do not inspect files, edit files, or call tools. Reply only with a brief confirmation that you did nothing.",
+              formatModel(getEffectiveWorkerRef(ctx, state), getEffectiveThinkingLevel(state)),
+              { apiKey: ctx.auth?.apiKey, headers: ctx.auth?.headers },
+              [],
+              delegationId,
+              {
+                objective: "Run a harmless no-op subagent for logging inspection",
+                scope: "No-op only",
+                allowedFiles: [],
+                blockedFiles: [],
+                acceptanceCriteria: ["No repository work is performed"],
+                validationCommands: [],
+                escalationTriggers: ["Any tool use", "Any file access", "Any edit"],
+                tools: [],
+              },
+              ctx,
+            ),
+          undefined,
+        );
+        ctx.ui.notify("No-op subagent completed successfully.", "info");
+      } catch (error) {
+        ctx.ui.notify(
+          `No-op subagent failed: ${error instanceof Error ? error.message : String(error)}`,
+          "error",
+        );
+      }
+    },
+  });
+
+    globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = "registered";
+  } catch (error) {
+    globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = undefined;
+    throw error;
+  }
 }
