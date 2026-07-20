@@ -1,8 +1,8 @@
 {
-  "lastChangelogVersion": "0.80.6",
+  "lastChangelogVersion": "0.80.10",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
-  "defaultModel": "gpt-5.4",
+  "defaultModel": "gpt-5.6-terra",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "compaction": {
@@ -19,7 +19,7 @@
     "showTerminalProgress": true
   },
   "enabledModels": [
-    "github-copilot/gpt-5.4",
-    "github-copilot/gemini-3-flash-preview"
+    "github-copilot/gpt-5.6-terra",
+    "github-copilot/gpt-5.6-luna"
   ]
 }

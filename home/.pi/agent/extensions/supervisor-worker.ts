@@ -546,7 +546,7 @@ function readSavedReviewKeys(ctx: ExtensionContext): string[] {
 
 function getPreferredFallbackRef(ctx: ExtensionContext): ModelRef | undefined {
   const preferred = resolveExactModelReference(
-    "github-copilot/gpt-5.4-mini",
+    "github-copilot/gpt-5.6-luna",
     ctx.modelRegistry.getAvailable(),
   );
   if (preferred.status === "matched") {
@@ -1809,12 +1809,40 @@ function appendSubagentEvent(
 
 const SUBAGENT_STREAM_UPDATE_EVENT = "message_update";
 
-function shouldPersistSubagentRawEvent(event: unknown) {
+type SubagentRole = "worker" | "scout";
+
+function shouldCaptureSubagentRawEvent(event: unknown) {
   return !(
     event &&
     typeof event === "object" &&
     (event as Record<string, unknown>).type === SUBAGENT_STREAM_UPDATE_EVENT
   );
+}
+
+function captureSubagentRawEvent(
+  delegationId: string,
+  role: SubagentRole,
+  model: string,
+  cwd: string,
+  event: unknown,
+  eventIndex: number,
+  shouldLog?: () => boolean,
+): Record<string, unknown> | undefined {
+  if (!shouldCaptureSubagentRawEvent(event) || (shouldLog && !shouldLog())) {
+    return undefined;
+  }
+
+  return {
+    type: "subagent_raw_event",
+    delegationId,
+    role,
+    model,
+    cwd,
+    eventType: typeof event?.type === "string" ? event.type : undefined,
+    eventIndex,
+    event,
+    generatedAt: Date.now(),
+  };
 }
 
 function classifySubagentOutcome(
@@ -2013,6 +2041,7 @@ async function runWorkerSubagent(
 > {
   let eventIndex = 0;
   let completedTurns = 0;
+  let lastRawEvent: Record<string, unknown> | undefined;
   const generatedAt = Date.now();
   const workerTools = mergePreferredContextTools(tools);
   const activeToolCalls = new Map<string, WorkerToolExecution>();
@@ -2054,23 +2083,17 @@ async function runWorkerSubagent(
       onUpdate,
       onEvent: (event) => {
         eventIndex += 1;
-        if (shouldPersistSubagentRawEvent(event)) {
-          appendSubagentEvent(
-            pi,
-            {
-              type: "subagent_raw_event",
-              delegationId,
-              role: "worker",
-              model: modelArg,
-              cwd,
-              eventType:
-                typeof event?.type === "string" ? event.type : undefined,
-              eventIndex,
-              event,
-              generatedAt: Date.now(),
-            },
-            shouldLog,
-          );
+        const rawEvent = captureSubagentRawEvent(
+          delegationId,
+          "worker",
+          modelArg,
+          cwd,
+          event,
+          eventIndex,
+          shouldLog,
+        );
+        if (rawEvent) {
+          lastRawEvent = rawEvent;
         }
 
         const toolEvent =
@@ -2160,6 +2183,9 @@ async function runWorkerSubagent(
     });
 
     const outcome = classifySubagentOutcome(run, signal);
+    if (lastRawEvent) {
+      appendSubagentEvent(pi, lastRawEvent);
+    }
     appendSubagentEvent(
       pi,
       {
@@ -2188,6 +2214,9 @@ async function runWorkerSubagent(
       error && typeof error === "object"
         ? (error as Record<string, unknown>)
         : undefined;
+    if (lastRawEvent) {
+      appendSubagentEvent(pi, lastRawEvent);
+    }
     appendSubagentEvent(
       pi,
       {
@@ -2501,6 +2530,7 @@ async function runScoutSubagent(
   const scoutTools = sanitizeScoutTools(tools);
   let eventIndex = 0;
   let completedTurns = 0;
+  let lastRawEvent: Record<string, unknown> | undefined;
   const generatedAt = Date.now();
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
@@ -2537,23 +2567,17 @@ async function runScoutSubagent(
       onUpdate,
       onEvent: (event) => {
         eventIndex += 1;
-        if (shouldPersistSubagentRawEvent(event)) {
-          appendSubagentEvent(
-            pi,
-            {
-              type: "subagent_raw_event",
-              delegationId,
-              role: "scout",
-              model: modelArg,
-              cwd,
-              eventType:
-                typeof event?.type === "string" ? event.type : undefined,
-              eventIndex,
-              event,
-              generatedAt: Date.now(),
-            },
-            shouldLog,
-          );
+        const rawEvent = captureSubagentRawEvent(
+          delegationId,
+          "scout",
+          modelArg,
+          cwd,
+          event,
+          eventIndex,
+          shouldLog,
+        );
+        if (rawEvent) {
+          lastRawEvent = rawEvent;
         }
 
         const toolEvent =
@@ -2645,6 +2669,9 @@ async function runScoutSubagent(
     });
 
     const outcome = classifySubagentOutcome(run, signal);
+    if (lastRawEvent) {
+      appendSubagentEvent(pi, lastRawEvent);
+    }
     appendSubagentEvent(
       pi,
       {
@@ -2673,6 +2700,9 @@ async function runScoutSubagent(
       error && typeof error === "object"
         ? (error as Record<string, unknown>)
         : undefined;
+    if (lastRawEvent) {
+      appendSubagentEvent(pi, lastRawEvent);
+    }
     appendSubagentEvent(
       pi,
       {
@@ -3942,7 +3972,12 @@ async function generateDelegation(
         `Unable to resolve auth for worker model: ${authResult.error}`,
       );
     }
-    auth = { apiKey: authResult.apiKey, headers: authResult.headers };
+    // OAuth credentials (notably GitHub Copilot) must be resolved by the child
+    // Pi process. Passing the derived token through --api-key replaces Pi's
+    // provider-native OAuth flow and produces a 421 Misdirected Request.
+    auth = ctx.modelRegistry.isUsingOAuth(worker.model)
+      ? {}
+      : { apiKey: authResult.apiKey, headers: authResult.headers };
 
     beforeSnapshot = await snapshotWorkingTree(cwd, signal);
     workerModelArg = formatModel(worker.ref, worker.thinkingLevel);
@@ -4226,7 +4261,11 @@ async function generateScouting(
         `Unable to resolve auth for scout model: ${authResult.error}`,
       );
     }
-    auth = { apiKey: authResult.apiKey, headers: authResult.headers };
+    // OAuth credentials must be resolved by the child Pi process; see the
+    // corresponding worker preflight path for why they cannot use --api-key.
+    auth = ctx.modelRegistry.isUsingOAuth(scout.model)
+      ? {}
+      : { apiKey: authResult.apiKey, headers: authResult.headers };
 
     scoutModelArg = formatModel(scout.ref, scout.thinkingLevel);
     const conversationContext = buildConversationContext(
