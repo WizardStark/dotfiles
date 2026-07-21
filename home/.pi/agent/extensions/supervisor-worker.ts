@@ -22,7 +22,7 @@ import {
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
@@ -1131,6 +1131,41 @@ async function getGitDirtyEntries(
   }
 
   return entries;
+}
+
+async function getUserEditReminder(ctx: ExtensionContext): Promise<string> {
+  try {
+    const messages = getSessionMessages(ctx.sessionManager.getBranch());
+    const timestamp = messages
+      .filter((message) => message.role === "assistant")
+      .map((message) => message.timestamp)
+      .filter((value): value is number => typeof value === "number")
+      .at(-1);
+    if (timestamp === undefined) return "";
+
+    const root = await getGitRepoRoot(ctx.cwd);
+    if (!root) return "";
+    const entries = await getGitDirtyEntries(root);
+    if (!entries) return "";
+    const qualifyingPaths: string[] = [];
+    for (const entry of entries) {
+      const path = normalizePath(entry.path);
+      if (!path || qualifyingPaths.includes(path)) continue;
+      try {
+        const file = await stat(resolve(root, path));
+        if (file.isFile() && file.mtimeMs > timestamp) qualifyingPaths.push(path);
+      } catch {}
+    }
+    if (qualifyingPaths.length === 0) return "";
+    const paths = qualifyingPaths.slice(0, 8);
+    const additionalCount = qualifyingPaths.length - paths.length;
+    const additional = additionalCount > 0
+      ? `; ${additionalCount} additional qualifying file${additionalCount === 1 ? "" : "s"} are included in this instruction`
+      : "";
+    return `\n\n## User Edits\n\n- These may be intentional user edits. Before editing any detected file, state the modification you intend to make and ask the user whether they want it applied; use ask_user_question where available. Do not edit a detected file until the user confirms${additional}: ${paths.join(", ")}`;
+  } catch {
+    return "";
+  }
 }
 
 async function snapshotWorkingTree(
@@ -5334,9 +5369,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - When delegations succeed with clean validation, trust them enough to continue chaining bounded tasks; avoid repeated intermediate \`review_changes\` calls and prefer one final review near completion.`;
 
     const recentHandoffs = await buildRecentHandoffPrompt(ctx, event.prompt);
+    const userEditReminder = await getUserEditReminder(ctx);
 
     return {
-      systemPrompt: `${event.systemPrompt}${policy}${recentHandoffs ? `\n\n${recentHandoffs}` : ""}`,
+      systemPrompt: `${event.systemPrompt}${policy}${recentHandoffs ? `\n\n${recentHandoffs}` : ""}${userEditReminder}`,
     };
   });
 

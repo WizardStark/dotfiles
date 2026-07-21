@@ -391,10 +391,19 @@ async function generateReview(
 
   const modelArg =
     thinkingLevelToUse === "off" ? `${modelToUse.provider}/${modelToUse.id}` : `${modelToUse.provider}/${modelToUse.id}:${thinkingLevelToUse}`;
-  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(modelToUse);
-  if (!auth.ok) {
-    throw new Error(`Unable to resolve auth for reviewer subagent: ${auth.error}`);
+  const resolvedAuth = await ctx.modelRegistry.getApiKeyAndHeaders(modelToUse);
+  if (!resolvedAuth.ok) {
+    throw new Error(
+      `Unable to resolve auth for reviewer subagent: ${resolvedAuth.error}`,
+    );
   }
+
+  // OAuth credentials (notably GitHub Copilot) must be resolved by the child
+  // Pi process. Passing the derived token through --api-key bypasses the
+  // provider-native OAuth flow and produces a 421 Misdirected Request.
+  const auth = ctx.modelRegistry.isUsingOAuth(modelToUse)
+    ? {}
+    : { apiKey: resolvedAuth.apiKey, headers: resolvedAuth.headers };
   onProgress?.({ phase: "starting" });
   const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth, signal, onProgress);
   const final = extractFinalAssistantText(
