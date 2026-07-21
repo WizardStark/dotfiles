@@ -212,6 +212,13 @@ gwtd() {
         return 1
     fi
 
+    local git_common_dir repo_name window_name
+    if git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+        repo_name="$(basename "$(dirname "$git_common_dir")")"
+        window_name="$(printf '%s' "$1" | tr '/:.' '-')"
+        command -v tmux >/dev/null 2>&1 && command tmux kill-window -t "${repo_name}:${window_name}" >/dev/null 2>&1 || true
+    fi
+
     wt remove "$1"
 }
 
