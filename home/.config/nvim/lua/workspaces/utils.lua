@@ -197,7 +197,8 @@ function M.get_git_common_dir(dir)
 		return cached.value
 	end
 
-	local output = vim.fn.system({ "git", "-C", normalized_dir, "rev-parse", "--path-format=absolute", "--git-common-dir" })
+	local output =
+		vim.fn.system({ "git", "-C", normalized_dir, "rev-parse", "--path-format=absolute", "--git-common-dir" })
 	if vim.v.shell_error ~= 0 then
 		git_common_dir_cache[normalized_dir] = { ts = vim.uv.now(), value = nil }
 		return nil

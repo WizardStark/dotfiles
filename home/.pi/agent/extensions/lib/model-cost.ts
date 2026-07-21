@@ -19,6 +19,8 @@ export const MODEL_RATES: Record<string, ModelRates> = {
 	"gpt-5.4-mini": { input: 0.75, cachedInput: 0.075, output: 4.5 },
 	"gpt-5.4-nano": { input: 0.2, cachedInput: 0.02, output: 1.25 },
 	"gpt-5.5": { input: 5.0, cachedInput: 0.5, output: 30.0 },
+	"gpt-5.6-luna": { input: 1.0, cachedInput: 0.1, output: 6.0 },
+	"gpt-5.6-terra": { input: 2.5, cachedInput: 0.25, output: 15.0 },
 	"claude-haiku-4.5": { input: 1.0, cachedInput: 0.1, cacheWrite: 1.25, output: 5.0 },
 	"claude-sonnet-4": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
 	"claude-sonnet-4.5": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
