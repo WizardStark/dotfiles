@@ -1153,15 +1153,17 @@ async function getUserEditReminder(ctx: ExtensionContext): Promise<string> {
       if (!path || qualifyingPaths.includes(path)) continue;
       try {
         const file = await stat(resolve(root, path));
-        if (file.isFile() && file.mtimeMs > timestamp) qualifyingPaths.push(path);
+        if (file.isFile() && file.mtimeMs > timestamp)
+          qualifyingPaths.push(path);
       } catch {}
     }
     if (qualifyingPaths.length === 0) return "";
     const paths = qualifyingPaths.slice(0, 8);
     const additionalCount = qualifyingPaths.length - paths.length;
-    const additional = additionalCount > 0
-      ? `; ${additionalCount} additional qualifying file${additionalCount === 1 ? "" : "s"} are included in this instruction`
-      : "";
+    const additional =
+      additionalCount > 0
+        ? `; ${additionalCount} additional qualifying file${additionalCount === 1 ? "" : "s"} are included in this instruction`
+        : "";
     return `\n\n## User Edits\n\n- These may be intentional user edits. Before editing any detected file, state the modification you intend to make and ask the user whether they want it applied; use ask_user_question where available. Do not edit a detected file until the user confirms${additional}: ${paths.join(", ")}`;
   } catch {
     return "";
@@ -4508,7 +4510,7 @@ const DelegateWorkerParams = Type.Object({
   workerModel: Type.Optional(
     Type.String({
       description:
-        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gemini-3-flash-preview.",
+        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gpt-5.6-luna.",
     }),
   ),
   workerThinkingLevel: Type.Optional(
@@ -4570,7 +4572,7 @@ const DelegateScoutParams = Type.Object({
   scoutModel: Type.Optional(
     Type.String({
       description:
-        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gemini-3-flash-preview.",
+        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gpt-5.6-luna.",
     }),
   ),
   scoutThinkingLevel: Type.Optional(
@@ -4652,7 +4654,7 @@ const ParallelDelegateWorkerTaskParams = Type.Object({
   workerModel: Type.Optional(
     Type.String({
       description:
-        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gemini-3-flash-preview.",
+        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gpt-5.6-luna.",
     }),
   ),
   workerThinkingLevel: Type.Optional(
@@ -4733,7 +4735,7 @@ const ParallelDelegateScoutTaskParams = Type.Object({
   scoutModel: Type.Optional(
     Type.String({
       description:
-        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gemini-3-flash-preview.",
+        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gpt-5.6-luna.",
     }),
   ),
   scoutThinkingLevel: Type.Optional(
@@ -4790,545 +4792,598 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
   }
 
   const registrationState = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;
-  if (registrationState === "registering" || registrationState === "registered") {
+  if (
+    registrationState === "registering" ||
+    registrationState === "registered"
+  ) {
     return;
   }
   globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = "registering";
 
   try {
     if (role === "scout") {
-    pi.on("tool_call", async (event) => {
-      if (SCOUT_BLOCKED_TOOLS.has(event.toolName)) {
-        return {
-          block: true,
-          reason: `Tool '${event.toolName}' is blocked in scout mode. Use read-only tools instead.`,
-        };
-      }
-
-      if (event.toolName === "ctx_execute") {
-        const input = event.input as { language?: string; code?: string };
-        const isShell =
-          input.language === "shell" ||
-          input.language === "bash" ||
-          input.language === "sh";
-        if (!isShell) {
+      pi.on("tool_call", async (event) => {
+        if (SCOUT_BLOCKED_TOOLS.has(event.toolName)) {
           return {
             block: true,
-            reason:
-              "Scout mode allows ctx_execute only with shell inspection commands.",
+            reason: `Tool '${event.toolName}' is blocked in scout mode. Use read-only tools instead.`,
           };
         }
-        if (input.code && isMutatingBashCommand(input.code)) {
-          return {
-            block: true,
-            reason:
-              "Mutating shell command detected in ctx_execute. Scout mode is read-only.",
-          };
+
+        if (event.toolName === "ctx_execute") {
+          const input = event.input as { language?: string; code?: string };
+          const isShell =
+            input.language === "shell" ||
+            input.language === "bash" ||
+            input.language === "sh";
+          if (!isShell) {
+            return {
+              block: true,
+              reason:
+                "Scout mode allows ctx_execute only with shell inspection commands.",
+            };
+          }
+          if (input.code && isMutatingBashCommand(input.code)) {
+            return {
+              block: true,
+              reason:
+                "Mutating shell command detected in ctx_execute. Scout mode is read-only.",
+            };
+          }
         }
-      }
 
-      if (event.toolName === "ctx_batch_execute") {
-        const input = event.input as {
-          commands?: Array<{ command?: string }>;
-        };
-        if (
-          input.commands?.some((command) =>
-            isMutatingBashCommand(command?.command),
-          )
-        ) {
-          return {
-            block: true,
-            reason:
-              "Mutating shell command detected in ctx_batch_execute. Scout mode is read-only.",
+        if (event.toolName === "ctx_batch_execute") {
+          const input = event.input as {
+            commands?: Array<{ command?: string }>;
           };
+          if (
+            input.commands?.some((command) =>
+              isMutatingBashCommand(command?.command),
+            )
+          ) {
+            return {
+              block: true,
+              reason:
+                "Mutating shell command detected in ctx_batch_execute. Scout mode is read-only.",
+            };
+          }
         }
-      }
-    });
-    return;
-  }
-
-  let state: SupervisorWorkerState = {};
-  let sessionEpoch = 0;
-  let turnDelegationState: TurnDelegationState | undefined;
-  let recentReviewKeys: string[] = [];
-  let recentDelegationTasks: DelegationTaskItem[] = [];
-  const pendingReviewKeys = new Map<string, string>();
-  const activeDelegations = new Map<string, ActiveDelegation>();
-  const delegationTaskWidget = new DelegationTaskWidget();
-
-  function persistState() {
-    pi.appendEntry(STATE_ENTRY, state);
-  }
-
-  function delegationActiveForm(
-    role: DelegationTaskRole,
-    phase?: string,
-  ): string {
-    if (phase === "finalizing") return "finalizing";
-    return role === "scout" ? "scouting" : "implementing";
-  }
-
-  function buildDelegationTaskItems(): DelegationTaskItem[] {
-    const activeItems = [...activeDelegations.values()]
-      .sort((left, right) => left.title.localeCompare(right.title))
-      .map((item) => {
-        const status: DelegationTaskStatus =
-          item.phase === "finalizing"
-            ? "finalizing"
-            : ["completed", "blocked", "escalated"].includes(item.phase)
-              ? mapDelegationTaskStatus(item.phase)
-              : "in_progress";
-        return {
-          id: item.id,
-          title: item.title,
-          role: item.role,
-          status,
-          activeForm:
-            status === "in_progress" || status === "finalizing"
-              ? delegationActiveForm(item.role, item.phase)
-              : undefined,
-        };
       });
-    const activeIds = new Set(activeItems.map((item) => item.id));
-    return [
-      ...activeItems,
-      ...recentDelegationTasks.filter((item) => !activeIds.has(item.id)),
-    ];
-  }
-
-  function rememberFinishedDelegationTask(task: DelegationTaskItem) {
-    recentDelegationTasks = [
-      { ...task, activeForm: undefined },
-      ...recentDelegationTasks.filter((item) => item.id !== task.id),
-    ].slice(0, MAX_RECENT_DELEGATION_TASKS);
-  }
-
-  function mapDelegationTaskStatus(
-    status: string | undefined,
-  ): DelegationTaskStatus {
-    switch (status) {
-      case "completed":
-        return "completed";
-      case "escalated":
-        return "escalated";
-      case "blocked":
-        return "blocked";
-      default:
-        return "blocked";
+      return;
     }
-  }
 
-  function formatDelegationStatus(
-    item: Pick<ActiveDelegation, "phase" | "turns" | "currentTool">,
-  ): string {
-    return [
-      item.phase,
-      item.turns !== undefined && item.turns > 0 ? `${item.turns} turns` : "",
-      item.currentTool ?? "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
-  }
+    let state: SupervisorWorkerState = {};
+    let sessionEpoch = 0;
+    let turnDelegationState: TurnDelegationState | undefined;
+    let recentReviewKeys: string[] = [];
+    let recentDelegationTasks: DelegationTaskItem[] = [];
+    const pendingReviewKeys = new Map<string, string>();
+    const activeDelegations = new Map<string, ActiveDelegation>();
+    const delegationTaskWidget = new DelegationTaskWidget();
 
-  function buildSingleDelegationProgressText(
-    item: ActiveDelegation,
-    detailText?: string,
-  ): string | undefined {
-    const header = formatDelegationStatus(item) || item.phase;
-    const detail = detailText?.trim();
-    if (!detail) return header;
-    if (/^(working|running|in progress)(?:\s*(?:\.\.\.|…))?$/i.test(detail.replace(/\s+/g, " "))) {
-      return header;
+    function persistState() {
+      pi.appendEntry(STATE_ENTRY, state);
     }
-    return `${header}\n${detail}`;
-  }
 
-  const subagentPanelRefreshers = new Set<() => void>();
-  let subagentPanelOpen = false;
-
-  function refreshSubagentPanels() {
-    for (const refresh of subagentPanelRefreshers) {
-      refresh();
+    function delegationActiveForm(
+      role: DelegationTaskRole,
+      phase?: string,
+    ): string {
+      if (phase === "finalizing") return "finalizing";
+      return role === "scout" ? "scouting" : "implementing";
     }
-  }
 
-  function sanitizeDelegationDetail(
-    detailText: string | undefined,
-  ): string | undefined {
-    const trimmed = detailText?.trim();
-    if (!trimmed) return undefined;
-    return trimmed.length > MAX_SUBAGENT_DETAIL_CHARS
-      ? trimmed.slice(trimmed.length - MAX_SUBAGENT_DETAIL_CHARS)
-      : trimmed;
-  }
+    function buildDelegationTaskItems(): DelegationTaskItem[] {
+      const activeItems = [...activeDelegations.values()]
+        .sort((left, right) => left.title.localeCompare(right.title))
+        .map((item) => {
+          const status: DelegationTaskStatus =
+            item.phase === "finalizing"
+              ? "finalizing"
+              : ["completed", "blocked", "escalated"].includes(item.phase)
+                ? mapDelegationTaskStatus(item.phase)
+                : "in_progress";
+          return {
+            id: item.id,
+            title: item.title,
+            role: item.role,
+            status,
+            activeForm:
+              status === "in_progress" || status === "finalizing"
+                ? delegationActiveForm(item.role, item.phase)
+                : undefined,
+          };
+        });
+      const activeIds = new Set(activeItems.map((item) => item.id));
+      return [
+        ...activeItems,
+        ...recentDelegationTasks.filter((item) => !activeIds.has(item.id)),
+      ];
+    }
 
-  function recordDelegationDetail(
-    delegationKey: string,
-    detailText: string | undefined,
-  ): ActiveDelegation | undefined {
-    const active = activeDelegations.get(delegationKey);
-    if (!active) return undefined;
-    const next = sanitizeDelegationDetail(detailText);
-    if (active.detailText === next) {
+    function rememberFinishedDelegationTask(task: DelegationTaskItem) {
+      recentDelegationTasks = [
+        { ...task, activeForm: undefined },
+        ...recentDelegationTasks.filter((item) => item.id !== task.id),
+      ].slice(0, MAX_RECENT_DELEGATION_TASKS);
+    }
+
+    function mapDelegationTaskStatus(
+      status: string | undefined,
+    ): DelegationTaskStatus {
+      switch (status) {
+        case "completed":
+          return "completed";
+        case "escalated":
+          return "escalated";
+        case "blocked":
+          return "blocked";
+        default:
+          return "blocked";
+      }
+    }
+
+    function formatDelegationStatus(
+      item: Pick<ActiveDelegation, "phase" | "turns" | "currentTool">,
+    ): string {
+      return [
+        item.phase,
+        item.turns !== undefined && item.turns > 0 ? `${item.turns} turns` : "",
+        item.currentTool ?? "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+
+    function buildSingleDelegationProgressText(
+      item: ActiveDelegation,
+      detailText?: string,
+    ): string | undefined {
+      const header = formatDelegationStatus(item) || item.phase;
+      const detail = detailText?.trim();
+      if (!detail) return header;
+      if (
+        /^(working|running|in progress)(?:\s*(?:\.\.\.|…))?$/i.test(
+          detail.replace(/\s+/g, " "),
+        )
+      ) {
+        return header;
+      }
+      return `${header}\n${detail}`;
+    }
+
+    const subagentPanelRefreshers = new Set<() => void>();
+    let subagentPanelOpen = false;
+
+    function refreshSubagentPanels() {
+      for (const refresh of subagentPanelRefreshers) {
+        refresh();
+      }
+    }
+
+    function sanitizeDelegationDetail(
+      detailText: string | undefined,
+    ): string | undefined {
+      const trimmed = detailText?.trim();
+      if (!trimmed) return undefined;
+      return trimmed.length > MAX_SUBAGENT_DETAIL_CHARS
+        ? trimmed.slice(trimmed.length - MAX_SUBAGENT_DETAIL_CHARS)
+        : trimmed;
+    }
+
+    function recordDelegationDetail(
+      delegationKey: string,
+      detailText: string | undefined,
+    ): ActiveDelegation | undefined {
+      const active = activeDelegations.get(delegationKey);
+      if (!active) return undefined;
+      const next = sanitizeDelegationDetail(detailText);
+      if (active.detailText === next) {
+        return active;
+      }
+      active.detailText = next;
+      refreshSubagentPanels();
       return active;
     }
-    active.detailText = next;
-    refreshSubagentPanels();
-    return active;
-  }
 
-  function recordDelegationActivity(
-    delegationKey: string,
-    activityLine: string | undefined,
-  ): ActiveDelegation | undefined {
-    const active = activeDelegations.get(delegationKey);
-    if (!active) return undefined;
-    const next = activityLine?.trim();
-    if (!next) return active;
-    const recent = [...(active.recentActivity ?? [])];
-    recent.push(next);
-    active.recentActivity = recent.slice(-MAX_SUBAGENT_ACTIVITY_LINES);
-    refreshSubagentPanels();
-    return active;
-  }
+    function recordDelegationActivity(
+      delegationKey: string,
+      activityLine: string | undefined,
+    ): ActiveDelegation | undefined {
+      const active = activeDelegations.get(delegationKey);
+      if (!active) return undefined;
+      const next = activityLine?.trim();
+      if (!next) return active;
+      const recent = [...(active.recentActivity ?? [])];
+      recent.push(next);
+      active.recentActivity = recent.slice(-MAX_SUBAGENT_ACTIVITY_LINES);
+      refreshSubagentPanels();
+      return active;
+    }
 
-  function recordDelegationToolEvent(
-    delegationKey: string,
-    event: DelegationToolEvent,
-  ): ActiveDelegation | undefined {
-    const active = activeDelegations.get(delegationKey);
-    if (!active) return undefined;
-    const recent = [...(active.recentToolEvents ?? [])];
-    recent.push(event);
-    active.recentToolEvents = recent.slice(-MAX_SUBAGENT_ACTIVITY_LINES);
-    refreshSubagentPanels();
-    return active;
-  }
+    function recordDelegationToolEvent(
+      delegationKey: string,
+      event: DelegationToolEvent,
+    ): ActiveDelegation | undefined {
+      const active = activeDelegations.get(delegationKey);
+      if (!active) return undefined;
+      const recent = [...(active.recentToolEvents ?? [])];
+      recent.push(event);
+      active.recentToolEvents = recent.slice(-MAX_SUBAGENT_ACTIVITY_LINES);
+      refreshSubagentPanels();
+      return active;
+    }
 
-  function buildDetailPreviewLines(
-    item: ActiveDelegation,
-    width: number,
-  ): string[] {
-    const text = item.detailText?.trim();
-    if (!text) return [];
-    const sourceLines = text
-      .split(/\r?\n/g)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(-MAX_SUBAGENT_DETAIL_LINES);
-    return sourceLines
-      .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)))
-      .slice(-MAX_SUBAGENT_DETAIL_LINES);
-  }
+    function buildDetailPreviewLines(
+      item: ActiveDelegation,
+      width: number,
+    ): string[] {
+      const text = item.detailText?.trim();
+      if (!text) return [];
+      const sourceLines = text
+        .split(/\r?\n/g)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(-MAX_SUBAGENT_DETAIL_LINES);
+      return sourceLines
+        .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)))
+        .slice(-MAX_SUBAGENT_DETAIL_LINES);
+    }
 
-  function buildRecentActivityLines(
-    item: ActiveDelegation,
-    width: number,
-  ): string[] {
-    return (item.recentActivity ?? [])
-      .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
-      .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)));
-  }
+    function buildRecentActivityLines(
+      item: ActiveDelegation,
+      width: number,
+    ): string[] {
+      return (item.recentActivity ?? [])
+        .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
+        .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)));
+    }
 
-  function buildRecentToolEventLines(
-    item: ActiveDelegation,
-    width: number,
-  ): string[] {
-    return (item.recentToolEvents ?? [])
-      .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
-      .flatMap((event) => {
-        const prefix = event.kind === "end" ? (event.isError ? "✗" : "✓") : "→";
-        const body = event.result
-          ? `${event.toolName} ${event.summary} ${event.result}`
-          : `${event.toolName} ${event.summary}`;
-        return wrapTextWithAnsi(`${prefix} ${body}`.trim(), Math.max(12, width));
-      });
-  }
+    function buildRecentToolEventLines(
+      item: ActiveDelegation,
+      width: number,
+    ): string[] {
+      return (item.recentToolEvents ?? [])
+        .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
+        .flatMap((event) => {
+          const prefix =
+            event.kind === "end" ? (event.isError ? "✗" : "✓") : "→";
+          const body = event.result
+            ? `${event.toolName} ${event.summary} ${event.result}`
+            : `${event.toolName} ${event.summary}`;
+          return wrapTextWithAnsi(
+            `${prefix} ${body}`.trim(),
+            Math.max(12, width),
+          );
+        });
+    }
 
-  function padPanelLine(text: string, width: number): string {
-    return text + " ".repeat(Math.max(0, width - visibleWidth(text)));
-  }
+    function padPanelLine(text: string, width: number): string {
+      return text + " ".repeat(Math.max(0, width - visibleWidth(text)));
+    }
 
-  function renderSubagentActivityPanel(
-    width: number,
-    theme: ExtensionContext["ui"]["theme"],
-    items: ActiveDelegation[],
-    selectedIndex: number,
-    expanded: boolean,
-  ): string[] {
-    const innerWidth = Math.max(24, width - 2);
-    const row = (content = "") => {
-      const fitted = truncateToWidth(content, innerWidth, "");
-      return `${theme.fg("border", "│")}${padPanelLine(fitted, innerWidth)}${theme.fg("border", "│")}`;
-    };
-    const lines = [
-      theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
-      row(` ${theme.fg("accent", theme.bold("Subagent Activity"))}`),
-      row(
-        ` ${theme.fg("dim", `${items.length} active • ↑/↓ select • Enter expand • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
-      ),
-      row(),
-    ];
+    function renderSubagentActivityPanel(
+      width: number,
+      theme: ExtensionContext["ui"]["theme"],
+      items: ActiveDelegation[],
+      selectedIndex: number,
+      expanded: boolean,
+    ): string[] {
+      const innerWidth = Math.max(24, width - 2);
+      const row = (content = "") => {
+        const fitted = truncateToWidth(content, innerWidth, "");
+        return `${theme.fg("border", "│")}${padPanelLine(fitted, innerWidth)}${theme.fg("border", "│")}`;
+      };
+      const lines = [
+        theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
+        row(` ${theme.fg("accent", theme.bold("Subagent Activity"))}`),
+        row(
+          ` ${theme.fg("dim", `${items.length} active • ↑/↓ select • Enter expand • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
+        ),
+        row(),
+      ];
 
-    if (items.length === 0) {
-      lines.push(row(` ${theme.fg("dim", "No active subagents.")}`));
-    } else {
-      const selected = items[Math.min(selectedIndex, items.length - 1)] ?? items[0];
-      items.forEach((item, index) => {
-        const isSelected = item === selected;
-        const status = formatDelegationStatus(item) || item.phase;
-        const marker = isSelected ? theme.fg("accent", "▸") : theme.fg("dim", "•");
-        lines.push(row(` ${marker} ${theme.fg(isSelected ? "accent" : "text", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`));
-        for (const wrapped of wrapTextWithAnsi(item.title, Math.max(12, innerWidth - 4))) {
-          lines.push(row(`   ${theme.fg(isSelected ? "text" : "dim", wrapped)}`));
-        }
-        lines.push(row(`   ${theme.fg("muted", status)}${isSelected ? theme.fg("accent", expanded ? "  [expanded]" : "  [focused]") : ""}`));
-        if (isSelected && expanded) {
-          const toolLines = buildRecentToolEventLines(item, innerWidth - 4);
-          const activityLines = buildRecentActivityLines(item, innerWidth - 4);
-          const detailLines = buildDetailPreviewLines(item, innerWidth - 4);
-          if (toolLines.length > 0) {
-            lines.push(row(`   ${theme.fg("dim", "Recent tool calls:")}`));
-            for (const toolLine of toolLines) lines.push(row(`   ${theme.fg("dim", toolLine)}`));
+      if (items.length === 0) {
+        lines.push(row(` ${theme.fg("dim", "No active subagents.")}`));
+      } else {
+        const selected =
+          items[Math.min(selectedIndex, items.length - 1)] ?? items[0];
+        items.forEach((item, index) => {
+          const isSelected = item === selected;
+          const status = formatDelegationStatus(item) || item.phase;
+          const marker = isSelected
+            ? theme.fg("accent", "▸")
+            : theme.fg("dim", "•");
+          lines.push(
+            row(
+              ` ${marker} ${theme.fg(isSelected ? "accent" : "text", theme.bold(`${item.role.toUpperCase()} · ${item.workerModel}`))}`,
+            ),
+          );
+          for (const wrapped of wrapTextWithAnsi(
+            item.title,
+            Math.max(12, innerWidth - 4),
+          )) {
+            lines.push(
+              row(`   ${theme.fg(isSelected ? "text" : "dim", wrapped)}`),
+            );
           }
-          if (activityLines.length > 0) {
-            lines.push(row(`   ${theme.fg("dim", "Recent activity:")}`));
-            for (const activityLine of activityLines) lines.push(row(`   ${theme.fg("dim", activityLine)}`));
+          lines.push(
+            row(
+              `   ${theme.fg("muted", status)}${isSelected ? theme.fg("accent", expanded ? "  [expanded]" : "  [focused]") : ""}`,
+            ),
+          );
+          if (isSelected && expanded) {
+            const toolLines = buildRecentToolEventLines(item, innerWidth - 4);
+            const activityLines = buildRecentActivityLines(
+              item,
+              innerWidth - 4,
+            );
+            const detailLines = buildDetailPreviewLines(item, innerWidth - 4);
+            if (toolLines.length > 0) {
+              lines.push(row(`   ${theme.fg("dim", "Recent tool calls:")}`));
+              for (const toolLine of toolLines)
+                lines.push(row(`   ${theme.fg("dim", toolLine)}`));
+            }
+            if (activityLines.length > 0) {
+              lines.push(row(`   ${theme.fg("dim", "Recent activity:")}`));
+              for (const activityLine of activityLines)
+                lines.push(row(`   ${theme.fg("dim", activityLine)}`));
+            }
+            if (detailLines.length > 0) {
+              lines.push(row(`   ${theme.fg("dim", "Latest output:")}`));
+              for (const detailLine of detailLines)
+                lines.push(row(`   ${theme.fg("dim", detailLine)}`));
+            }
           }
-          if (detailLines.length > 0) {
-            lines.push(row(`   ${theme.fg("dim", "Latest output:")}`));
-            for (const detailLine of detailLines) lines.push(row(`   ${theme.fg("dim", detailLine)}`));
-          }
-        }
-        if (index < items.length - 1) lines.push(row());
-      });
-    }
-
-    lines.push(row());
-    lines.push(row(` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`));
-    lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
-    return lines;
-  }
-
-  async function showSubagentActivityPanel(ctx: ExtensionContext) {
-    if (!ctx.hasUI || ctx.mode !== "tui") {
-      ctx.ui.notify(
-        "Subagent activity panel is only available in TUI mode.",
-        "warning",
-      );
-      return;
-    }
-    if (subagentPanelOpen) {
-      ctx.ui.notify("Subagent activity panel is already open.", "info");
-      return;
-    }
-
-    subagentPanelOpen = true;
-    try {
-      await ctx.ui.custom<void>(
-        (tui, theme, _keybindings, done) => {
-          const refresh = () => tui.requestRender();
-          subagentPanelRefreshers.add(refresh);
-          let selectedIndex = 0;
-          let expanded = true;
-          const clampSelection = () => {
-            const count = activeDelegations.size;
-            selectedIndex = count === 0 ? 0 : Math.max(0, Math.min(selectedIndex, count - 1));
-          };
-          return {
-            render: (panelWidth: number) => {
-              const items = [...activeDelegations.values()];
-              clampSelection();
-              return renderSubagentActivityPanel(panelWidth, theme, items, selectedIndex, expanded);
-            },
-            handleInput: (data: string) => {
-              if (matchesKey(data, "escape") || matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)) {
-                done(undefined);
-                return;
-              }
-              if (matchesKey(data, "arrowup") || matchesKey(data, "k")) {
-                selectedIndex -= 1;
-                tui.requestRender();
-                return;
-              }
-              if (matchesKey(data, "arrowdown") || matchesKey(data, "j")) {
-                selectedIndex += 1;
-                tui.requestRender();
-                return;
-              }
-              if (matchesKey(data, "enter") || matchesKey(data, "space")) {
-                expanded = !expanded;
-                tui.requestRender();
-              }
-            },
-            invalidate: () => {},
-            dispose: () => {
-              subagentPanelRefreshers.delete(refresh);
-            },
-          };
-        },
-        {
-          overlay: true,
-          overlayOptions: {
-            anchor: "right-center",
-            width: "48%",
-            minWidth: 56,
-            maxHeight: "84%",
-            margin: 1,
-            visible: (termWidth) => termWidth >= 80,
-          },
-        },
-      );
-    } finally {
-      subagentPanelOpen = false;
-    }
-  }
-
-  function updateDelegationWidget(ctx: ExtensionContext) {
-    delegationTaskWidget.setUICtx(ctx.ui);
-    const items = buildDelegationTaskItems();
-    delegationTaskWidget.update(items);
-
-    refreshSubagentPanels();
-  }
-
-  function patchActiveDelegation(
-    ctx: ExtensionContext,
-    delegationKey: string,
-    patch: Partial<
-      Pick<ActiveDelegation, "phase" | "workerModel" | "turns" | "currentTool">
-    >,
-  ): ActiveDelegation | undefined {
-    const active = activeDelegations.get(delegationKey);
-    if (!active) return undefined;
-
-    let changed = false;
-    for (const [key, value] of Object.entries(patch)) {
-      if (active[key as keyof typeof active] === value) {
-        continue;
+          if (index < items.length - 1) lines.push(row());
+        });
       }
-      (active as Record<string, unknown>)[key] = value;
-      changed = true;
+
+      lines.push(row());
+      lines.push(
+        row(
+          ` ${theme.fg("dim", `Tip: run /${SUBAGENT_ACTIVITY_COMMAND} or press ${SUBAGENT_ACTIVITY_SHORTCUT}`)}`,
+        ),
+      );
+      lines.push(theme.fg("border", `╰${"─".repeat(innerWidth)}╯`));
+      return lines;
     }
 
-    if (changed) {
+    async function showSubagentActivityPanel(ctx: ExtensionContext) {
+      if (!ctx.hasUI || ctx.mode !== "tui") {
+        ctx.ui.notify(
+          "Subagent activity panel is only available in TUI mode.",
+          "warning",
+        );
+        return;
+      }
+      if (subagentPanelOpen) {
+        ctx.ui.notify("Subagent activity panel is already open.", "info");
+        return;
+      }
+
+      subagentPanelOpen = true;
+      try {
+        await ctx.ui.custom<void>(
+          (tui, theme, _keybindings, done) => {
+            const refresh = () => tui.requestRender();
+            subagentPanelRefreshers.add(refresh);
+            let selectedIndex = 0;
+            let expanded = true;
+            const clampSelection = () => {
+              const count = activeDelegations.size;
+              selectedIndex =
+                count === 0
+                  ? 0
+                  : Math.max(0, Math.min(selectedIndex, count - 1));
+            };
+            return {
+              render: (panelWidth: number) => {
+                const items = [...activeDelegations.values()];
+                clampSelection();
+                return renderSubagentActivityPanel(
+                  panelWidth,
+                  theme,
+                  items,
+                  selectedIndex,
+                  expanded,
+                );
+              },
+              handleInput: (data: string) => {
+                if (
+                  matchesKey(data, "escape") ||
+                  matchesKey(data, SUBAGENT_ACTIVITY_SHORTCUT)
+                ) {
+                  done(undefined);
+                  return;
+                }
+                if (matchesKey(data, "arrowup") || matchesKey(data, "k")) {
+                  selectedIndex -= 1;
+                  tui.requestRender();
+                  return;
+                }
+                if (matchesKey(data, "arrowdown") || matchesKey(data, "j")) {
+                  selectedIndex += 1;
+                  tui.requestRender();
+                  return;
+                }
+                if (matchesKey(data, "enter") || matchesKey(data, "space")) {
+                  expanded = !expanded;
+                  tui.requestRender();
+                }
+              },
+              invalidate: () => {},
+              dispose: () => {
+                subagentPanelRefreshers.delete(refresh);
+              },
+            };
+          },
+          {
+            overlay: true,
+            overlayOptions: {
+              anchor: "right-center",
+              width: "48%",
+              minWidth: 56,
+              maxHeight: "84%",
+              margin: 1,
+              visible: (termWidth) => termWidth >= 80,
+            },
+          },
+        );
+      } finally {
+        subagentPanelOpen = false;
+      }
+    }
+
+    function updateDelegationWidget(ctx: ExtensionContext) {
+      delegationTaskWidget.setUICtx(ctx.ui);
+      const items = buildDelegationTaskItems();
+      delegationTaskWidget.update(items);
+
+      refreshSubagentPanels();
+    }
+
+    function patchActiveDelegation(
+      ctx: ExtensionContext,
+      delegationKey: string,
+      patch: Partial<
+        Pick<
+          ActiveDelegation,
+          "phase" | "workerModel" | "turns" | "currentTool"
+        >
+      >,
+    ): ActiveDelegation | undefined {
+      const active = activeDelegations.get(delegationKey);
+      if (!active) return undefined;
+
+      let changed = false;
+      for (const [key, value] of Object.entries(patch)) {
+        if (active[key as keyof typeof active] === value) {
+          continue;
+        }
+        (active as Record<string, unknown>)[key] = value;
+        changed = true;
+      }
+
+      if (changed) {
+        updateDelegationWidget(ctx);
+      }
+      return active;
+    }
+
+    function emitSingleDelegationUpdate(
+      onUpdate: ((update: any) => void) | undefined,
+      item: ActiveDelegation | undefined,
+      detailText?: string,
+    ) {
+      if (!onUpdate || !item) return;
+      const text = buildSingleDelegationProgressText(item, detailText);
+      if (!text) return;
+      onUpdate({
+        content: [
+          {
+            type: "text",
+            text,
+          },
+        ],
+        details: {
+          role: item.role,
+          title: item.title,
+          phase: item.phase,
+          model: item.workerModel,
+          turns: item.turns,
+          currentTool: item.currentTool,
+        },
+      });
+    }
+
+    function refreshStatus(ctx: ExtensionContext) {
+      updateStatus(ctx, state);
       updateDelegationWidget(ctx);
     }
-    return active;
-  }
 
-  function emitSingleDelegationUpdate(
-    onUpdate: ((update: any) => void) | undefined,
-    item: ActiveDelegation | undefined,
-    detailText?: string,
-  ) {
-    if (!onUpdate || !item) return;
-    const text = buildSingleDelegationProgressText(item, detailText);
-    if (!text) return;
-    onUpdate({
-      content: [
-        {
-          type: "text",
-          text,
-        },
-      ],
-      details: {
-        role: item.role,
-        title: item.title,
-        phase: item.phase,
-        model: item.workerModel,
-        turns: item.turns,
-        currentTool: item.currentTool,
+    pi.on("session_start", async (_event, ctx) => {
+      sessionEpoch += 1;
+      turnDelegationState = undefined;
+      recentReviewKeys = readSavedReviewKeys(ctx);
+      recentDelegationTasks = [];
+      pendingReviewKeys.clear();
+      activeDelegations.clear();
+      subagentPanelRefreshers.clear();
+      subagentPanelOpen = false;
+      delegationTaskWidget.setUICtx(ctx.ui);
+      state = readSavedState(ctx) ?? {};
+      refreshStatus(ctx);
+    });
+
+    pi.on("session_shutdown", async (_event, ctx) => {
+      sessionEpoch += 1;
+      turnDelegationState = undefined;
+      recentDelegationTasks = [];
+      pendingReviewKeys.clear();
+      activeDelegations.clear();
+      subagentPanelRefreshers.clear();
+      subagentPanelOpen = false;
+      delegationTaskWidget.clear();
+      ctx.ui.setStatus("worker", undefined);
+      ctx.ui.setStatus("worker-auto", undefined);
+    });
+
+    pi.on("model_select", async (_event, ctx) => {
+      refreshStatus(ctx);
+    });
+
+    pi.registerCommand(SUBAGENT_ACTIVITY_COMMAND, {
+      description: "Show live subagent activity in a floating panel",
+      handler: async (_args, ctx) => {
+        await showSubagentActivityPanel(ctx);
       },
     });
-  }
 
-  function refreshStatus(ctx: ExtensionContext) {
-    updateStatus(ctx, state);
-    updateDelegationWidget(ctx);
-  }
+    pi.registerShortcut(SUBAGENT_ACTIVITY_SHORTCUT, {
+      description: "Show live subagent activity",
+      handler: async (ctx) => {
+        await showSubagentActivityPanel(ctx);
+      },
+    });
 
-  pi.on("session_start", async (_event, ctx) => {
-    sessionEpoch += 1;
-    turnDelegationState = undefined;
-    recentReviewKeys = readSavedReviewKeys(ctx);
-    recentDelegationTasks = [];
-    pendingReviewKeys.clear();
-    activeDelegations.clear();
-    subagentPanelRefreshers.clear();
-    subagentPanelOpen = false;
-    delegationTaskWidget.setUICtx(ctx.ui);
-    state = readSavedState(ctx) ?? {};
-    refreshStatus(ctx);
-  });
+    pi.on("before_agent_start", async (event, ctx) => {
+      const workerRef = getEffectiveWorkerRef(ctx, state);
+      if (!ctx.model || sameModel(toRef(ctx.model), workerRef)) {
+        turnDelegationState = undefined;
+        return;
+      }
 
-  pi.on("session_shutdown", async (_event, ctx) => {
-    sessionEpoch += 1;
-    turnDelegationState = undefined;
-    recentDelegationTasks = [];
-    pendingReviewKeys.clear();
-    activeDelegations.clear();
-    subagentPanelRefreshers.clear();
-    subagentPanelOpen = false;
-    delegationTaskWidget.clear();
-    ctx.ui.setStatus("worker", undefined);
-    ctx.ui.setStatus("worker-auto", undefined);
-  });
+      const autoMode = getAutoMode(state);
+      const shouldEnforcePlanSplit =
+        autoMode === "conservative" &&
+        isLikelyImplementationPrompt(event.prompt);
+      turnDelegationState = {
+        prompt: event.prompt,
+        enforcePlanSplit: shouldEnforcePlanSplit,
+        completedWorkerDelegations: 0,
+        completedScoutDelegations: 0,
+        completedReviewDelegations: 0,
+        nudgedDirectMutation: false,
+        nudgedReviewDeferral: false,
+        usedExplicitReviewBypass: false,
+        postHandoffReads: 0,
+        postHandoffEdits: 0,
+        nudgedExpensivePostHandoff: false,
+      };
 
-  pi.on("model_select", async (_event, ctx) => {
-    refreshStatus(ctx);
-  });
-
-  pi.registerCommand(SUBAGENT_ACTIVITY_COMMAND, {
-    description: "Show live subagent activity in a floating panel",
-    handler: async (_args, ctx) => {
-      await showSubagentActivityPanel(ctx);
-    },
-  });
-
-  pi.registerShortcut(SUBAGENT_ACTIVITY_SHORTCUT, {
-    description: "Show live subagent activity",
-    handler: async (ctx) => {
-      await showSubagentActivityPanel(ctx);
-    },
-  });
-
-  pi.on("before_agent_start", async (event, ctx) => {
-    const workerRef = getEffectiveWorkerRef(ctx, state);
-    if (!ctx.model || sameModel(toRef(ctx.model), workerRef)) {
-      turnDelegationState = undefined;
-      return;
-    }
-
-    const autoMode = getAutoMode(state);
-    const shouldEnforcePlanSplit =
-      autoMode === "conservative" && isLikelyImplementationPrompt(event.prompt);
-    turnDelegationState = {
-      prompt: event.prompt,
-      enforcePlanSplit: shouldEnforcePlanSplit,
-      completedWorkerDelegations: 0,
-      completedScoutDelegations: 0,
-      completedReviewDelegations: 0,
-      nudgedDirectMutation: false,
-      nudgedReviewDeferral: false,
-      usedExplicitReviewBypass: false,
-      postHandoffReads: 0,
-      postHandoffEdits: 0,
-      nudgedExpensivePostHandoff: false,
-    };
-
-    const strictSection = shouldEnforcePlanSplit
-      ? `
+      const strictSection = shouldEnforcePlanSplit
+        ? `
 - Strict plan-implement split is active for this turn.
 - Before making any direct file mutation with \`edit\`, \`write\`, or mutating \`bash\`, first break the work into a bounded implementation step and run \`delegate_worker\`.
 - After at least one worker task completes, you may do small supervisor-side integration edits if still needed.
 - After a successful worker handoff, prefer one \`ctx_batch_execute\` follow-up across the returned edit locations instead of serial \`read\` calls when you need to inspect multiple changed spots.
 - The runtime will warn when you bypass worker-first implementation in this turn.`
-      : "";
+        : "";
 
-    const policy =
-      autoMode === "conservative"
-        ? `
+      const policy =
+        autoMode === "conservative"
+          ? `
 
 ## Delegation Policy
 
@@ -5356,7 +5411,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - After a successful worker handoff with multiple edit locations, prefer one \`ctx_batch_execute\` inspection pass over serial \`read\` calls; use \`read\` only for one exact excerpt or a direct edit target.
 - Chain additional bounded worker tasks when needed; do not reflexively run \`review_changes\` after each successful sub-step.
 - Prefer a single review pass once you believe the overall user request is implemented, unless the user explicitly asked for an interim review, a worker escalated/blocked, validation failed, or you are checking risky supervisor-owned integration.${strictSection}`
-        : `
+          : `
 
 ## Delegation Policy
 
@@ -5368,572 +5423,361 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - If you delegate, provide explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
 - When delegations succeed with clean validation, trust them enough to continue chaining bounded tasks; avoid repeated intermediate \`review_changes\` calls and prefer one final review near completion.`;
 
-    const recentHandoffs = await buildRecentHandoffPrompt(ctx, event.prompt);
-    const userEditReminder = await getUserEditReminder(ctx);
+      const recentHandoffs = await buildRecentHandoffPrompt(ctx, event.prompt);
+      const userEditReminder = await getUserEditReminder(ctx);
 
-    return {
-      systemPrompt: `${event.systemPrompt}${policy}${recentHandoffs ? `\n\n${recentHandoffs}` : ""}${userEditReminder}`,
-    };
-  });
-
-  pi.on("tool_result", async (event, ctx) => {
-    if (event.toolName === "review_changes") {
-      if (!event.isError && event.toolCallId) {
-        const reviewKey = pendingReviewKeys.get(event.toolCallId);
-        if (reviewKey) {
-          recentReviewKeys = [
-            reviewKey,
-            ...recentReviewKeys.filter((item) => item !== reviewKey),
-          ].slice(0, MAX_PERSISTED_REVIEW_KEYS);
-          pi.appendEntry(REVIEW_STATE_ENTRY, { recentReviewKeys });
-        }
-      }
-      if (event.toolCallId) {
-        pendingReviewKeys.delete(event.toolCallId);
-      }
-    }
-
-    if (!event.isError && turnDelegationState) {
-      if (event.toolName === "delegate_worker") {
-        const details = (event.details ?? {}) as { status?: string };
-        if (details.status === "completed") {
-          turnDelegationState.completedWorkerDelegations += 1;
-        }
-      } else if (event.toolName === "delegate_workers") {
-        const details = (event.details ?? {}) as {
-          results?: Array<{ status?: string }>;
-        };
-        turnDelegationState.completedWorkerDelegations +=
-          details.results?.filter((result) => result.status === "completed")
-            .length ?? 0;
-      } else if (event.toolName === "delegate_scout") {
-        turnDelegationState.completedScoutDelegations += 1;
-      } else if (event.toolName === "delegate_scouts") {
-        const details = (event.details ?? {}) as {
-          results?: Array<{ status?: string }>;
-        };
-        turnDelegationState.completedScoutDelegations +=
-          details.results?.filter((result) => result.status === "completed")
-            .length ?? 0;
-      } else if (event.toolName === "review_changes") {
-        turnDelegationState.completedReviewDelegations += 1;
-      }
-    }
-
-    if (event.isError) return;
-    if (
-      ![
-        "delegate_worker",
-        "delegate_workers",
-        "delegate_scout",
-        "delegate_scouts",
-        "review_changes",
-      ].includes(event.toolName)
-    ) {
-      return;
-    }
-
-    const details =
-      event.details && typeof event.details === "object"
-        ? (event.details as Record<string, unknown>)
-        : {};
-    const input =
-      event.input && typeof event.input === "object"
-        ? (event.input as Record<string, unknown>)
-        : {};
-    const report = extractTextContent(
-      event.content as Array<{ type?: string; text?: string }> | undefined,
-    );
-    if (!report) return;
-
-    const generatedAt =
-      typeof details.generatedAt === "number"
-        ? details.generatedAt
-        : Date.now();
-    const sessionKey =
-      typeof details.sessionKey === "string"
-        ? details.sessionKey
-        : (ctx.sessionManager.getSessionFile() ?? "ephemeral");
-    const title = inferHandoffTitle(event.toolName, input, details);
-    const actualReport =
-      typeof details.fullReport === "string" ? details.fullReport : report;
-    const status = inferHandoffStatus(event.toolName, actualReport, details);
-    const filesChanged = collectHandoffFiles(details);
-    const editLocations = collectHandoffEditLocations(details);
-    const artifacts = collectHandoffArtifacts(details);
-    const summary = summarizeHandoff(event.toolName, actualReport, details);
-    const pointer: HandoffPointer = {
-      source: buildHandoffSource(
-        event.toolName,
-        sessionKey,
-        generatedAt,
-        title,
-      ),
-      toolName: event.toolName,
-      title,
-      status,
-      generatedAt,
-      summary,
-      filesChanged,
-      editLocations,
-      artifactSources: artifacts.sources,
-      artifactQueries: artifacts.queries,
-      artifactSummary: artifacts.summary,
-    };
-    const modelLabel = [
-      details.workerModel,
-      details.scoutModel,
-      details.reviewer,
-    ].find(
-      (value): value is string =>
-        typeof value === "string" && value.trim().length > 0,
-    );
-    const markdown = buildHandoffMarkdown({
-      source: pointer.source,
-      toolName: event.toolName,
-      title,
-      status,
-      sessionKey,
-      generatedAt,
-      summary,
-      filesChanged,
-      editLocations,
-      artifactSources: pointer.artifactSources,
-      artifactQueries: pointer.artifactQueries,
-      artifactSummary: pointer.artifactSummary,
-      modelLabel,
-      promptInput: input,
-      details,
-      report: actualReport,
+      return {
+        systemPrompt: `${event.systemPrompt}${policy}${recentHandoffs ? `\n\n${recentHandoffs}` : ""}${userEditReminder}`,
+      };
     });
-    const handoffIndexed = await indexHandoff(ctx, pointer, markdown);
-    pointer.indexed = handoffIndexed;
-    pi.appendEntry(HANDOFF_ENTRY, pointer);
 
-    return {
-      details: {
-        ...details,
-        handoffSource: pointer.source,
-        handoffIndexed,
-        handoffSummary: pointer.summary,
-        handoffEditLocations: pointer.editLocations,
-      },
-    };
-  });
+    pi.on("tool_result", async (event, ctx) => {
+      if (event.toolName === "review_changes") {
+        if (!event.isError && event.toolCallId) {
+          const reviewKey = pendingReviewKeys.get(event.toolCallId);
+          if (reviewKey) {
+            recentReviewKeys = [
+              reviewKey,
+              ...recentReviewKeys.filter((item) => item !== reviewKey),
+            ].slice(0, MAX_PERSISTED_REVIEW_KEYS);
+            pi.appendEntry(REVIEW_STATE_ENTRY, { recentReviewKeys });
+          }
+        }
+        if (event.toolCallId) {
+          pendingReviewKeys.delete(event.toolCallId);
+        }
+      }
 
-  pi.on("tool_call", async (event, ctx) => {
-    if (event.toolName === "review_changes") {
-      const reviewInput =
+      if (!event.isError && turnDelegationState) {
+        if (event.toolName === "delegate_worker") {
+          const details = (event.details ?? {}) as { status?: string };
+          if (details.status === "completed") {
+            turnDelegationState.completedWorkerDelegations += 1;
+          }
+        } else if (event.toolName === "delegate_workers") {
+          const details = (event.details ?? {}) as {
+            results?: Array<{ status?: string }>;
+          };
+          turnDelegationState.completedWorkerDelegations +=
+            details.results?.filter((result) => result.status === "completed")
+              .length ?? 0;
+        } else if (event.toolName === "delegate_scout") {
+          turnDelegationState.completedScoutDelegations += 1;
+        } else if (event.toolName === "delegate_scouts") {
+          const details = (event.details ?? {}) as {
+            results?: Array<{ status?: string }>;
+          };
+          turnDelegationState.completedScoutDelegations +=
+            details.results?.filter((result) => result.status === "completed")
+              .length ?? 0;
+        } else if (event.toolName === "review_changes") {
+          turnDelegationState.completedReviewDelegations += 1;
+        }
+      }
+
+      if (event.isError) return;
+      if (
+        ![
+          "delegate_worker",
+          "delegate_workers",
+          "delegate_scout",
+          "delegate_scouts",
+          "review_changes",
+        ].includes(event.toolName)
+      ) {
+        return;
+      }
+
+      const details =
+        event.details && typeof event.details === "object"
+          ? (event.details as Record<string, unknown>)
+          : {};
+      const input =
         event.input && typeof event.input === "object"
           ? (event.input as Record<string, unknown>)
           : {};
-      const signature = await resolveReviewSignature(ctx.cwd, ctx.signal);
-      const explicitReviewRequest = Boolean(
-        turnDelegationState &&
-        userExplicitlyAskedForReview(turnDelegationState.prompt),
+      const report = extractTextContent(
+        event.content as Array<{ type?: string; text?: string }> | undefined,
       );
-      const reviewKey = signature
-        ? buildReviewDedupeKey(signature, reviewInput)
-        : undefined;
-      const duplicatePending = Boolean(
-        reviewKey && [...pendingReviewKeys.values()].includes(reviewKey),
+      if (!report) return;
+
+      const generatedAt =
+        typeof details.generatedAt === "number"
+          ? details.generatedAt
+          : Date.now();
+      const sessionKey =
+        typeof details.sessionKey === "string"
+          ? details.sessionKey
+          : (ctx.sessionManager.getSessionFile() ?? "ephemeral");
+      const title = inferHandoffTitle(event.toolName, input, details);
+      const actualReport =
+        typeof details.fullReport === "string" ? details.fullReport : report;
+      const status = inferHandoffStatus(event.toolName, actualReport, details);
+      const filesChanged = collectHandoffFiles(details);
+      const editLocations = collectHandoffEditLocations(details);
+      const artifacts = collectHandoffArtifacts(details);
+      const summary = summarizeHandoff(event.toolName, actualReport, details);
+      const pointer: HandoffPointer = {
+        source: buildHandoffSource(
+          event.toolName,
+          sessionKey,
+          generatedAt,
+          title,
+        ),
+        toolName: event.toolName,
+        title,
+        status,
+        generatedAt,
+        summary,
+        filesChanged,
+        editLocations,
+        artifactSources: artifacts.sources,
+        artifactQueries: artifacts.queries,
+        artifactSummary: artifacts.summary,
+      };
+      const modelLabel = [
+        details.workerModel,
+        details.scoutModel,
+        details.reviewer,
+      ].find(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0,
       );
-      const duplicateReviewed = Boolean(
-        reviewKey && recentReviewKeys.includes(reviewKey),
-      );
-      const allowExplicitBypass = Boolean(
-        reviewKey &&
-        explicitReviewRequest &&
-        turnDelegationState &&
-        !turnDelegationState.usedExplicitReviewBypass &&
-        !duplicatePending,
-      );
-      if (
-        reviewKey &&
-        (duplicatePending || (duplicateReviewed && !allowExplicitBypass))
-      ) {
-        return {
-          block: true,
-          reason:
-            "review_changes is already pending or already ran for this exact working tree and review focus. Make additional changes, change the requested review focus, or answer the user instead of repeating the same review.",
-        };
-      }
-      if (allowExplicitBypass && turnDelegationState) {
-        turnDelegationState.usedExplicitReviewBypass = true;
-      }
-      if (reviewKey && event.toolCallId) {
-        pendingReviewKeys.set(event.toolCallId, reviewKey);
-      }
-      if (
-        turnDelegationState?.completedWorkerDelegations &&
-        !turnDelegationState.nudgedReviewDeferral &&
-        !explicitReviewRequest
-      ) {
-        turnDelegationState.nudgedReviewDeferral = true;
-        if (ctx.hasUI) {
-          ctx.ui.notify(
-            "Recent worker handoffs are trusted by default; prefer one final review near completion instead of reviewing every successful sub-step.",
-            "warning",
-          );
+      const markdown = buildHandoffMarkdown({
+        source: pointer.source,
+        toolName: event.toolName,
+        title,
+        status,
+        sessionKey,
+        generatedAt,
+        summary,
+        filesChanged,
+        editLocations,
+        artifactSources: pointer.artifactSources,
+        artifactQueries: pointer.artifactQueries,
+        artifactSummary: pointer.artifactSummary,
+        modelLabel,
+        promptInput: input,
+        details,
+        report: actualReport,
+      });
+      const handoffIndexed = await indexHandoff(ctx, pointer, markdown);
+      pointer.indexed = handoffIndexed;
+      pi.appendEntry(HANDOFF_ENTRY, pointer);
+
+      return {
+        details: {
+          ...details,
+          handoffSource: pointer.source,
+          handoffIndexed,
+          handoffSummary: pointer.summary,
+          handoffEditLocations: pointer.editLocations,
+        },
+      };
+    });
+
+    pi.on("tool_call", async (event, ctx) => {
+      if (event.toolName === "review_changes") {
+        const reviewInput =
+          event.input && typeof event.input === "object"
+            ? (event.input as Record<string, unknown>)
+            : {};
+        const signature = await resolveReviewSignature(ctx.cwd, ctx.signal);
+        const explicitReviewRequest = Boolean(
+          turnDelegationState &&
+          userExplicitlyAskedForReview(turnDelegationState.prompt),
+        );
+        const reviewKey = signature
+          ? buildReviewDedupeKey(signature, reviewInput)
+          : undefined;
+        const duplicatePending = Boolean(
+          reviewKey && [...pendingReviewKeys.values()].includes(reviewKey),
+        );
+        const duplicateReviewed = Boolean(
+          reviewKey && recentReviewKeys.includes(reviewKey),
+        );
+        const allowExplicitBypass = Boolean(
+          reviewKey &&
+          explicitReviewRequest &&
+          turnDelegationState &&
+          !turnDelegationState.usedExplicitReviewBypass &&
+          !duplicatePending,
+        );
+        if (
+          reviewKey &&
+          (duplicatePending || (duplicateReviewed && !allowExplicitBypass))
+        ) {
+          return {
+            block: true,
+            reason:
+              "review_changes is already pending or already ran for this exact working tree and review focus. Make additional changes, change the requested review focus, or answer the user instead of repeating the same review.",
+          };
+        }
+        if (allowExplicitBypass && turnDelegationState) {
+          turnDelegationState.usedExplicitReviewBypass = true;
+        }
+        if (reviewKey && event.toolCallId) {
+          pendingReviewKeys.set(event.toolCallId, reviewKey);
+        }
+        if (
+          turnDelegationState?.completedWorkerDelegations &&
+          !turnDelegationState.nudgedReviewDeferral &&
+          !explicitReviewRequest
+        ) {
+          turnDelegationState.nudgedReviewDeferral = true;
+          if (ctx.hasUI) {
+            ctx.ui.notify(
+              "Recent worker handoffs are trusted by default; prefer one final review near completion instead of reviewing every successful sub-step.",
+              "warning",
+            );
+          }
         }
       }
-    }
 
-    if (
-      turnDelegationState &&
-      turnDelegationState.completedWorkerDelegations > 0
-    ) {
-      if (event.toolName === "read") {
-        turnDelegationState.postHandoffReads += 1;
-      } else if (
+      if (
+        turnDelegationState &&
+        turnDelegationState.completedWorkerDelegations > 0
+      ) {
+        if (event.toolName === "read") {
+          turnDelegationState.postHandoffReads += 1;
+        } else if (
+          event.toolName === "edit" ||
+          event.toolName === "write" ||
+          (event.toolName === "bash" &&
+            isMutatingBashCommand(
+              (event.input as { command?: unknown } | undefined)?.command,
+            ))
+        ) {
+          turnDelegationState.postHandoffEdits += 1;
+        }
+
+        if (
+          !turnDelegationState.nudgedExpensivePostHandoff &&
+          (turnDelegationState.postHandoffReads >= 3 ||
+            turnDelegationState.postHandoffEdits >= 2)
+        ) {
+          turnDelegationState.nudgedExpensivePostHandoff = true;
+          if (ctx.hasUI) {
+            ctx.ui.notify(
+              "This follow-up work still looks bounded; consider another delegate_worker to maintain scout-plan-implement separation.",
+              "warning",
+            );
+          }
+        }
+      }
+
+      if (!turnDelegationState?.enforcePlanSplit) return;
+      if (turnDelegationState.completedWorkerDelegations > 0) return;
+      if (turnDelegationState.nudgedDirectMutation) return;
+      if (
+        event.toolName === "delegate_worker" ||
+        event.toolName === "delegate_workers"
+      )
+        return;
+
+      const isDirectMutation =
         event.toolName === "edit" ||
         event.toolName === "write" ||
         (event.toolName === "bash" &&
           isMutatingBashCommand(
             (event.input as { command?: unknown } | undefined)?.command,
-          ))
-      ) {
-        turnDelegationState.postHandoffEdits += 1;
-      }
+          ));
 
-      if (
-        !turnDelegationState.nudgedExpensivePostHandoff &&
-        (turnDelegationState.postHandoffReads >= 3 ||
-          turnDelegationState.postHandoffEdits >= 2)
-      ) {
-        turnDelegationState.nudgedExpensivePostHandoff = true;
-        if (ctx.hasUI) {
-          ctx.ui.notify(
-            "This follow-up work still looks bounded; consider another delegate_worker to maintain scout-plan-implement separation.",
-            "warning",
-          );
-        }
-      }
-    }
+      if (!isDirectMutation) return;
 
-    if (!turnDelegationState?.enforcePlanSplit) return;
-    if (turnDelegationState.completedWorkerDelegations > 0) return;
-    if (turnDelegationState.nudgedDirectMutation) return;
-    if (
-      event.toolName === "delegate_worker" ||
-      event.toolName === "delegate_workers"
-    )
-      return;
-
-    const isDirectMutation =
-      event.toolName === "edit" ||
-      event.toolName === "write" ||
-      (event.toolName === "bash" &&
-        isMutatingBashCommand(
-          (event.input as { command?: unknown } | undefined)?.command,
-        ));
-
-    if (!isDirectMutation) return;
-
-    turnDelegationState.nudgedDirectMutation = true;
-    if (ctx.hasUI) {
-      ctx.ui.notify(
-        "Worker-first plan split is active for this turn; consider delegate_worker before direct supervisor edits, especially for narrow follow-up fixes or file-scoped integration polish.",
-        "warning",
-      );
-    }
-  });
-
-  pi.on("agent_end", async () => {
-    turnDelegationState = undefined;
-  });
-
-  pi.registerTool({
-    name: "delegate_scout",
-    label: "Delegate Scout",
-    description:
-      "Spawn a read-only scout subagent on a cheaper model to explore the codebase, trace behavior, and report relevant files and findings back to the supervisor.",
-    promptSnippet:
-      "Delegate read-only reconnaissance to a cheaper scout subagent with explicit questions and expected outputs.",
-    promptGuidelines: [
-      "Use delegate_scout for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or narrowing the edit surface.",
-      "Use delegate_scout before implementation when a cheap scout can gather evidence that improves planning or task scoping.",
-      "Do not use delegate_scout for file mutations or tasks that should directly become implementation work.",
-    ],
-    parameters: DelegateScoutParams,
-    async execute(toolCallId, params, signal, onUpdate, ctx) {
-      const delegationKey = `${sessionEpoch}:${toolCallId}`;
-      const activeSessionEpoch = sessionEpoch;
-      const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
-      const title = formatTaskTitle(params.objective);
-      let finalTaskStatus: DelegationTaskStatus | undefined;
-      activeDelegations.set(delegationKey, {
-        id: delegationKey,
-        title,
-        workerModel:
-          params.scoutModel?.trim() ||
-          getEffectiveScoutRef(ctx, state)?.id ||
-          "unresolved",
-        phase: "starting",
-        role: "scout",
-      });
-      updateDelegationWidget(ctx);
-      emitSingleDelegationUpdate(
-        onUpdate,
-        activeDelegations.get(delegationKey),
-      );
-      try {
-        const effectiveParams = withInferredArtifacts(
-          ctx,
-          params,
-          [params.objective, params.scope, ...(params.questions ?? [])]
-            .filter(Boolean)
-            .join("\n"),
+      turnDelegationState.nudgedDirectMutation = true;
+      if (ctx.hasUI) {
+        ctx.ui.notify(
+          "Worker-first plan split is active for this turn; consider delegate_worker before direct supervisor edits, especially for narrow follow-up fixes or file-scoped integration polish.",
+          "warning",
         );
-        const result = await generateScouting(
-          ctx,
-          state,
-          effectiveParams,
-          delegationKey,
-          pi,
-          isCurrentSession,
-          signal,
-          (text) => {
-            if (!isCurrentSession()) {
-              return;
-            }
-            const active = patchActiveDelegation(ctx, delegationKey, {
-              phase: "running",
-              workerModel: formatModel(
-                params.scoutModel
-                  ? parseModelRef(ctx, params.scoutModel)
-                  : getEffectiveScoutRef(ctx, state),
-                params.scoutThinkingLevel ??
-                  getEffectiveScoutThinkingLevel(state),
-              ),
-            });
-            recordDelegationDetail(delegationKey, text);
-            emitSingleDelegationUpdate(onUpdate, active, text);
-          },
-          (progress) => {
-            if (!isCurrentSession()) {
-              return;
-            }
-            const active = patchActiveDelegation(ctx, delegationKey, {
-              phase: "running",
-              workerModel: formatModel(
-                params.scoutModel
-                  ? parseModelRef(ctx, params.scoutModel)
-                  : getEffectiveScoutRef(ctx, state),
-                params.scoutThinkingLevel ??
-                  getEffectiveScoutThinkingLevel(state),
-              ),
-              turns: progress.turns,
-              currentTool: progress.currentTool,
-            });
-            recordDelegationActivity(delegationKey, progress.lastActivityLine);
-            emitSingleDelegationUpdate(onUpdate, active);
-          },
-        );
-        if (isCurrentSession()) {
-          patchActiveDelegation(ctx, delegationKey, {
-            phase: result.status,
-            workerModel: result.scoutModel,
-            currentTool: undefined,
-          });
-        }
-        finalTaskStatus = mapDelegationTaskStatus(result.status);
-        const generatedAt = Date.now();
-        const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-        pi.events.emit("subagent:metrics", {
-          generatedAt,
-          sessionKey,
-          subagentMetrics: result.subagentMetrics,
-          source: "tool",
-        });
-        return {
-          content: [{ type: "text", text: result.report }],
-          details: {
-            generatedAt,
-            sessionKey,
-            scoutModel: result.scoutModel,
-            status: result.status,
-            artifactSources: result.artifactSources,
-            artifactQueries: result.artifactQueries,
-            artifactSummary: result.artifactSummary,
-            subagentMetrics: result.subagentMetrics,
-            stopReason: result.stopReason,
-            errorMessage: result.errorMessage,
-            fullReport: result.fullReport,
-          },
-        };
-      } catch (error) {
-        if (isCurrentSession()) {
-          finalTaskStatus = "blocked";
-        }
-        throw error;
-      } finally {
-        if (isCurrentSession()) {
-          if (finalTaskStatus) {
-            rememberFinishedDelegationTask({
-              id: delegationKey,
-              title,
-              role: "scout",
-              status: finalTaskStatus,
-            });
-          }
-          activeDelegations.delete(delegationKey);
-          updateDelegationWidget(ctx);
-        }
       }
-    },
-  });
+    });
 
-  pi.registerTool({
-    name: "delegate_scouts",
-    label: "Delegate Scouts",
-    description:
-      "Spawn several read-only scout subagents in parallel to explore different questions and report findings back to the supervisor.",
-    promptSnippet:
-      "Delegate multiple read-only reconnaissance tasks to parallel scout subagents with explicit questions and expected outputs.",
-    promptGuidelines: [
-      "Use delegate_scouts when several reconnaissance tasks are independent and can be explored in parallel.",
-      "Use delegate_scouts for read-only work only; prefer delegate_scout for a single scouting task.",
-      "Keep each scout task focused and concrete so the supervisor can merge the findings cleanly.",
-    ],
-    parameters: ParallelDelegateScoutsParams,
-    async execute(
-      toolCallId: string,
-      params: { tasks: ParallelScoutTask[]; maxConcurrency?: number },
-      signal: AbortSignal | undefined,
-      onUpdate: ((update: any) => void) | undefined,
-      ctx: ExtensionContext,
-    ) {
-      if (params.tasks.length === 0) {
-        return {
-          content: [{ type: "text", text: "No scout tasks were provided." }],
-          details: { completedCount: 0, totalCount: 0, results: [] },
-        };
-      }
-      if (params.tasks.length > MAX_PARALLEL_SUBAGENT_TASKS) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Too many parallel scout tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
-            },
-          ],
-          details: {
-            completedCount: 0,
-            totalCount: params.tasks.length,
-            results: [],
-          },
-        };
-      }
+    pi.on("agent_end", async () => {
+      turnDelegationState = undefined;
+    });
 
-      const concurrency = Math.max(
-        1,
-        Math.min(
-          params.maxConcurrency ?? DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY,
-          MAX_PARALLEL_SUBAGENT_CONCURRENCY,
-          params.tasks.length,
-        ),
-      );
-      const activeSessionEpoch = sessionEpoch;
-      const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
-      const partialResults = new Array<ParallelScoutTaskResult | undefined>(
-        params.tasks.length,
-      );
-
-      const emitProgress = () => {
-        const done = partialResults.filter(Boolean).length;
-        const running = params.tasks.length - done;
-        const activeItems = [...activeDelegations.values()]
-          .filter((item) =>
-            item.id.startsWith(`${sessionEpoch}:${toolCallId}:`),
-          )
-          .sort((left, right) => left.title.localeCompare(right.title));
-        const lines = [
-          `Parallel scouts: ${done}/${params.tasks.length} finished, ${running} running...`,
-          ...activeItems.map(
-            (item) => `- ${item.title} · ${formatDelegationStatus(item)}`,
-          ),
-        ];
-        if (running > 0 && activeItems.length === 0) {
-          lines.push("- awaiting first subagent update...");
-        }
-        onUpdate?.({
-          content: [
-            {
-              type: "text",
-              text: lines.join("\n"),
-            },
-          ],
-          details: {
-            completedCount: done,
-            totalCount: params.tasks.length,
-            activeDelegations: activeItems.map((item) => ({
-              title: item.title,
-              role: item.role,
-              phase: item.phase,
-              model: item.workerModel,
-              turns: item.turns,
-              currentTool: item.currentTool,
-            })),
-            results: partialResults.filter(
-              (result): result is ParallelScoutTaskResult => Boolean(result),
-            ),
-          },
-        });
-      };
-
-      emitProgress();
-
-      const results = await mapWithConcurrencyLimit<
-        ParallelScoutTask,
-        ParallelScoutTaskResult
-      >(params.tasks, concurrency, async (task, index) => {
-        const label = formatParallelLabel(task.label, task.objective, index);
-        const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+    pi.registerTool({
+      name: "delegate_scout",
+      label: "Delegate Scout",
+      description:
+        "Spawn a read-only scout subagent on a cheaper model to explore the codebase, trace behavior, and report relevant files and findings back to the supervisor.",
+      promptSnippet:
+        "Delegate read-only reconnaissance to a cheaper scout subagent with explicit questions and expected outputs.",
+      promptGuidelines: [
+        "Use delegate_scout for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or narrowing the edit surface.",
+        "Use delegate_scout before implementation when a cheap scout can gather evidence that improves planning or task scoping.",
+        "Do not use delegate_scout for file mutations or tasks that should directly become implementation work.",
+      ],
+      parameters: DelegateScoutParams,
+      async execute(toolCallId, params, signal, onUpdate, ctx) {
+        const delegationKey = `${sessionEpoch}:${toolCallId}`;
+        const activeSessionEpoch = sessionEpoch;
+        const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+        const title = formatTaskTitle(params.objective);
         let finalTaskStatus: DelegationTaskStatus | undefined;
         activeDelegations.set(delegationKey, {
           id: delegationKey,
-          title: label,
+          title,
           workerModel:
-            task.scoutModel?.trim() ||
+            params.scoutModel?.trim() ||
             getEffectiveScoutRef(ctx, state)?.id ||
             "unresolved",
           phase: "starting",
           role: "scout",
         });
         updateDelegationWidget(ctx);
-        emitProgress();
-
+        emitSingleDelegationUpdate(
+          onUpdate,
+          activeDelegations.get(delegationKey),
+        );
         try {
-          const effectiveTask = withInferredArtifacts(
+          const effectiveParams = withInferredArtifacts(
             ctx,
-            task,
-            [task.objective, task.scope, ...(task.questions ?? [])]
+            params,
+            [params.objective, params.scope, ...(params.questions ?? [])]
               .filter(Boolean)
               .join("\n"),
           );
           const result = await generateScouting(
             ctx,
             state,
-            effectiveTask,
+            effectiveParams,
             delegationKey,
             pi,
             isCurrentSession,
             signal,
             (text) => {
-              if (!isCurrentSession()) return;
-              patchActiveDelegation(ctx, delegationKey, {
+              if (!isCurrentSession()) {
+                return;
+              }
+              const active = patchActiveDelegation(ctx, delegationKey, {
                 phase: "running",
-                workerModel: resultScoutLabelFallback(ctx, state, task),
+                workerModel: formatModel(
+                  params.scoutModel
+                    ? parseModelRef(ctx, params.scoutModel)
+                    : getEffectiveScoutRef(ctx, state),
+                  params.scoutThinkingLevel ??
+                    getEffectiveScoutThinkingLevel(state),
+                ),
               });
               recordDelegationDetail(delegationKey, text);
-              emitProgress();
+              emitSingleDelegationUpdate(onUpdate, active, text);
             },
             (progress) => {
-              if (!isCurrentSession()) return;
-              patchActiveDelegation(ctx, delegationKey, {
+              if (!isCurrentSession()) {
+                return;
+              }
+              const active = patchActiveDelegation(ctx, delegationKey, {
                 phase: "running",
-                workerModel: resultScoutLabelFallback(ctx, state, task),
+                workerModel: formatModel(
+                  params.scoutModel
+                    ? parseModelRef(ctx, params.scoutModel)
+                    : getEffectiveScoutRef(ctx, state),
+                  params.scoutThinkingLevel ??
+                    getEffectiveScoutThinkingLevel(state),
+                ),
                 turns: progress.turns,
                 currentTool: progress.currentTool,
               });
@@ -5941,48 +5785,52 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 delegationKey,
                 progress.lastActivityLine,
               );
-              emitProgress();
+              emitSingleDelegationUpdate(onUpdate, active);
             },
           );
-          const finalResult: ParallelScoutTaskResult = {
-            ...result,
-            label,
-            status: result.status,
+          if (isCurrentSession()) {
+            patchActiveDelegation(ctx, delegationKey, {
+              phase: result.status,
+              workerModel: result.scoutModel,
+              currentTool: undefined,
+            });
+          }
+          finalTaskStatus = mapDelegationTaskStatus(result.status);
+          const generatedAt = Date.now();
+          const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+          pi.events.emit("subagent:metrics", {
+            generatedAt,
+            sessionKey,
+            subagentMetrics: result.subagentMetrics,
+            source: "tool",
+          });
+          return {
+            content: [{ type: "text", text: result.report }],
+            details: {
+              generatedAt,
+              sessionKey,
+              scoutModel: result.scoutModel,
+              status: result.status,
+              artifactSources: result.artifactSources,
+              artifactQueries: result.artifactQueries,
+              artifactSummary: result.artifactSummary,
+              subagentMetrics: result.subagentMetrics,
+              stopReason: result.stopReason,
+              errorMessage: result.errorMessage,
+              fullReport: result.fullReport,
+            },
           };
-          partialResults[index] = finalResult;
-          if (isCurrentSession()) {
-            patchActiveDelegation(ctx, delegationKey, {
-              phase: finalResult.status,
-              workerModel: finalResult.scoutModel,
-              currentTool: undefined,
-            });
-          }
-          finalTaskStatus = mapDelegationTaskStatus(finalResult.status);
-          emitProgress();
-          return finalResult;
         } catch (error) {
-          const finalResult = buildScoutFailureResult(
-            label,
-            resultScoutLabelFallback(ctx, state, task),
-            error,
-          );
-          partialResults[index] = finalResult;
           if (isCurrentSession()) {
-            patchActiveDelegation(ctx, delegationKey, {
-              phase: finalResult.status,
-              workerModel: finalResult.scoutModel,
-              currentTool: undefined,
-            });
+            finalTaskStatus = "blocked";
           }
-          finalTaskStatus = mapDelegationTaskStatus(finalResult.status);
-          emitProgress();
-          return finalResult;
+          throw error;
         } finally {
           if (isCurrentSession()) {
             if (finalTaskStatus) {
               rememberFinishedDelegationTask({
                 id: delegationKey,
-                title: label,
+                title,
                 role: "scout",
                 status: finalTaskStatus,
               });
@@ -5991,194 +5839,125 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             updateDelegationWidget(ctx);
           }
         }
-      });
+      },
+    });
 
-      const aggregateMetrics = aggregateSubagentMetrics(
-        results.map((result) => result.subagentMetrics),
-      );
-      const generatedAt = Date.now();
-      const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-      for (const result of results) {
-        pi.events.emit("subagent:metrics", {
-          generatedAt,
-          sessionKey,
-          subagentMetrics: result.subagentMetrics,
-          source: "tool",
-        });
-      }
-      pi.events.emit("subagent:metrics", {
-        generatedAt,
-        sessionKey,
-        subagentMetrics: aggregateMetrics,
-        source: "tool",
-      });
-      return {
-        content: [{ type: "text", text: buildParallelScoutSummary(results) }],
-        details: {
-          generatedAt,
-          sessionKey,
-          subagentMetrics: aggregateMetrics,
-          completedCount: results.filter(
-            (result) => result.status === "completed",
-          ).length,
-          totalCount: results.length,
-          results,
-        },
-      };
-    },
-  });
-
-  pi.registerTool({
-    name: "delegate_workers",
-    label: "Delegate Workers",
-    description:
-      "Spawn several bounded worker subagents in parallel to implement independent local tasks while the current model keeps planning and review decisions.",
-    promptSnippet:
-      "Delegate multiple bounded implementation tasks to parallel worker subagents when their file scopes are disjoint.",
-    promptGuidelines: [
-      "Use delegate_workers when several implementation tasks are independent and each task has explicit, disjoint allowedFiles.",
-      "Require allowedFiles on every parallel worker task and avoid overlapping file or directory scopes.",
-      "Prefer delegate_worker for a single implementation task or when task boundaries are ambiguous.",
-    ],
-    parameters: ParallelDelegateWorkersParams,
-    async execute(
-      toolCallId: string,
-      params: { tasks: ParallelDelegateTask[]; maxConcurrency?: number },
-      signal: AbortSignal | undefined,
-      onUpdate: ((update: any) => void) | undefined,
-      ctx: ExtensionContext,
-    ) {
-      if (params.tasks.length === 0) {
-        return {
-          content: [{ type: "text", text: "No worker tasks were provided." }],
-          details: {
-            status: "unknown",
-            completedCount: 0,
-            totalCount: 0,
-            results: [],
-          },
-        };
-      }
-      if (params.tasks.length > MAX_PARALLEL_SUBAGENT_TASKS) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Too many parallel worker tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
-            },
-          ],
-          details: {
-            status: "blocked",
-            completedCount: 0,
-            totalCount: params.tasks.length,
-            results: [],
-          },
-        };
-      }
-
-      const validationIssues = validateParallelWorkerTasks(
-        ctx.cwd,
-        params.tasks,
-      );
-      if (validationIssues.length > 0) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Parallel worker delegation blocked:\n- ${validationIssues.join("\n- ")}`,
-            },
-          ],
-          details: {
-            status: "blocked",
-            completedCount: 0,
-            totalCount: params.tasks.length,
-            results: [],
-          },
-        };
-      }
-
-      const concurrency = Math.max(
-        1,
-        Math.min(
-          params.maxConcurrency ?? DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY,
-          MAX_PARALLEL_SUBAGENT_CONCURRENCY,
-          params.tasks.length,
-        ),
-      );
-      const batchBeforeSnapshot = await snapshotWorkingTree(ctx.cwd, signal);
-      const activeSessionEpoch = sessionEpoch;
-      const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
-      const partialResults = new Array<ParallelDelegateTaskResult | undefined>(
-        params.tasks.length,
-      );
-
-      const emitProgress = () => {
-        const done = partialResults.filter(Boolean).length;
-        const running = params.tasks.length - done;
-        const finishedResults = partialResults.filter(
-          (result): result is ParallelDelegateTaskResult => Boolean(result),
-        );
-        const activeItems = [...activeDelegations.values()]
-          .filter((item) =>
-            item.id.startsWith(`${sessionEpoch}:${toolCallId}:`),
-          )
-          .sort((left, right) => left.title.localeCompare(right.title));
-        const lines = [
-          `Parallel workers: ${done}/${params.tasks.length} finished, ${running} running...`,
-          ...activeItems.map(
-            (item) => `- ${item.title} · ${formatDelegationStatus(item)}`,
-          ),
-        ];
-        if (running > 0 && activeItems.length === 0) {
-          lines.push("- awaiting first subagent update...");
+    pi.registerTool({
+      name: "delegate_scouts",
+      label: "Delegate Scouts",
+      description:
+        "Spawn several read-only scout subagents in parallel to explore different questions and report findings back to the supervisor.",
+      promptSnippet:
+        "Delegate multiple read-only reconnaissance tasks to parallel scout subagents with explicit questions and expected outputs.",
+      promptGuidelines: [
+        "Use delegate_scouts when several reconnaissance tasks are independent and can be explored in parallel.",
+        "Use delegate_scouts for read-only work only; prefer delegate_scout for a single scouting task.",
+        "Keep each scout task focused and concrete so the supervisor can merge the findings cleanly.",
+      ],
+      parameters: ParallelDelegateScoutsParams,
+      async execute(
+        toolCallId: string,
+        params: { tasks: ParallelScoutTask[]; maxConcurrency?: number },
+        signal: AbortSignal | undefined,
+        onUpdate: ((update: any) => void) | undefined,
+        ctx: ExtensionContext,
+      ) {
+        if (params.tasks.length === 0) {
+          return {
+            content: [{ type: "text", text: "No scout tasks were provided." }],
+            details: { completedCount: 0, totalCount: 0, results: [] },
+          };
         }
-        onUpdate?.({
-          content: [
-            {
-              type: "text",
-              text: lines.join("\n"),
+        if (params.tasks.length > MAX_PARALLEL_SUBAGENT_TASKS) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Too many parallel scout tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
+              },
+            ],
+            details: {
+              completedCount: 0,
+              totalCount: params.tasks.length,
+              results: [],
             },
-          ],
-          details: {
-            status:
-              finishedResults.length > 0
-                ? summarizeParallelWorkerStatus(finishedResults)
-                : "unknown",
-            completedCount: partialResults.filter(
-              (result) => result?.status === "completed",
-            ).length,
-            totalCount: params.tasks.length,
-            activeDelegations: activeItems.map((item) => ({
-              title: item.title,
-              role: item.role,
-              phase: item.phase,
-              model: item.workerModel,
-              turns: item.turns,
-              currentTool: item.currentTool,
-            })),
-            results: finishedResults,
-          },
-        });
-      };
+          };
+        }
 
-      emitProgress();
+        const concurrency = Math.max(
+          1,
+          Math.min(
+            params.maxConcurrency ?? DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY,
+            MAX_PARALLEL_SUBAGENT_CONCURRENCY,
+            params.tasks.length,
+          ),
+        );
+        const activeSessionEpoch = sessionEpoch;
+        const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+        const partialResults = new Array<ParallelScoutTaskResult | undefined>(
+          params.tasks.length,
+        );
 
-      try {
+        const emitProgress = () => {
+          const done = partialResults.filter(Boolean).length;
+          const running = params.tasks.length - done;
+          const activeItems = [...activeDelegations.values()]
+            .filter((item) =>
+              item.id.startsWith(`${sessionEpoch}:${toolCallId}:`),
+            )
+            .sort((left, right) => left.title.localeCompare(right.title));
+          const lines = [
+            `Parallel scouts: ${done}/${params.tasks.length} finished, ${running} running...`,
+            ...activeItems.map(
+              (item) => `- ${item.title} · ${formatDelegationStatus(item)}`,
+            ),
+          ];
+          if (running > 0 && activeItems.length === 0) {
+            lines.push("- awaiting first subagent update...");
+          }
+          onUpdate?.({
+            content: [
+              {
+                type: "text",
+                text: lines.join("\n"),
+              },
+            ],
+            details: {
+              completedCount: done,
+              totalCount: params.tasks.length,
+              activeDelegations: activeItems.map((item) => ({
+                title: item.title,
+                role: item.role,
+                phase: item.phase,
+                model: item.workerModel,
+                turns: item.turns,
+                currentTool: item.currentTool,
+              })),
+              results: partialResults.filter(
+                (result): result is ParallelScoutTaskResult => Boolean(result),
+              ),
+            },
+          });
+        };
+
+        emitProgress();
+
         const results = await mapWithConcurrencyLimit<
-          ParallelDelegateTask,
-          ParallelDelegateTaskResult
+          ParallelScoutTask,
+          ParallelScoutTaskResult
         >(params.tasks, concurrency, async (task, index) => {
           const label = formatParallelLabel(task.label, task.objective, index);
           const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+          let finalTaskStatus: DelegationTaskStatus | undefined;
           activeDelegations.set(delegationKey, {
             id: delegationKey,
             title: label,
             workerModel:
-              task.workerModel?.trim() ||
-              getEffectiveWorkerRef(ctx, state)?.id ||
+              task.scoutModel?.trim() ||
+              getEffectiveScoutRef(ctx, state)?.id ||
               "unresolved",
             phase: "starting",
-            role: "worker",
+            role: "scout",
           });
           updateDelegationWidget(ctx);
           emitProgress();
@@ -6187,11 +5966,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             const effectiveTask = withInferredArtifacts(
               ctx,
               task,
-              [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])]
+              [task.objective, task.scope, ...(task.questions ?? [])]
                 .filter(Boolean)
                 .join("\n"),
             );
-            const result = await generateDelegation(
+            const result = await generateScouting(
               ctx,
               state,
               effectiveTask,
@@ -6203,7 +5982,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 if (!isCurrentSession()) return;
                 patchActiveDelegation(ctx, delegationKey, {
                   phase: "running",
-                  workerModel: resultWorkerLabelFallback(ctx, state, task),
+                  workerModel: resultScoutLabelFallback(ctx, state, task),
                 });
                 recordDelegationDetail(delegationKey, text);
                 emitProgress();
@@ -6212,7 +5991,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 if (!isCurrentSession()) return;
                 patchActiveDelegation(ctx, delegationKey, {
                   phase: "running",
-                  workerModel: resultWorkerLabelFallback(ctx, state, task),
+                  workerModel: resultScoutLabelFallback(ctx, state, task),
                   turns: progress.turns,
                   currentTool: progress.currentTool,
                 });
@@ -6223,74 +6002,61 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 emitProgress();
               },
             );
-            const finalResult: ParallelDelegateTaskResult = {
+            const finalResult: ParallelScoutTaskResult = {
               ...result,
               label,
+              status: result.status,
             };
             partialResults[index] = finalResult;
             if (isCurrentSession()) {
               patchActiveDelegation(ctx, delegationKey, {
-                phase:
-                  finalResult.status === "completed"
-                    ? "finalizing"
-                    : finalResult.status,
-                workerModel: finalResult.workerModel,
+                phase: finalResult.status,
+                workerModel: finalResult.scoutModel,
                 currentTool: undefined,
               });
             }
+            finalTaskStatus = mapDelegationTaskStatus(finalResult.status);
             emitProgress();
             return finalResult;
           } catch (error) {
-            const finalResult = buildWorkerFailureResult(
+            const finalResult = buildScoutFailureResult(
               label,
-              resultWorkerLabelFallback(ctx, state, task),
+              resultScoutLabelFallback(ctx, state, task),
               error,
             );
             partialResults[index] = finalResult;
             if (isCurrentSession()) {
               patchActiveDelegation(ctx, delegationKey, {
-                phase:
-                  finalResult.status === "completed"
-                    ? "finalizing"
-                    : finalResult.status,
-                workerModel: finalResult.workerModel,
+                phase: finalResult.status,
+                workerModel: finalResult.scoutModel,
                 currentTool: undefined,
               });
             }
+            finalTaskStatus = mapDelegationTaskStatus(finalResult.status);
             emitProgress();
             return finalResult;
+          } finally {
+            if (isCurrentSession()) {
+              if (finalTaskStatus) {
+                rememberFinishedDelegationTask({
+                  id: delegationKey,
+                  title: label,
+                  role: "scout",
+                  status: finalTaskStatus,
+                });
+              }
+              activeDelegations.delete(delegationKey);
+              updateDelegationWidget(ctx);
+            }
           }
         });
 
-        const batchAfterSnapshot = await snapshotWorkingTree(
-          batchBeforeSnapshot.root,
-          signal,
-        );
-        const finalized = finalizeParallelWorkerResults(
-          ctx.cwd,
-          batchBeforeSnapshot.root,
-          params.tasks,
-          results,
-          diffSnapshots(batchBeforeSnapshot, batchAfterSnapshot),
-        );
-        if (isCurrentSession()) {
-          finalized.results.forEach((result, index) => {
-            const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
-            rememberFinishedDelegationTask({
-              id: delegationKey,
-              title: result.label,
-              role: "worker",
-              status: mapDelegationTaskStatus(result.status),
-            });
-          });
-          updateDelegationWidget(ctx);
-        }
         const aggregateMetrics = aggregateSubagentMetrics(
-          finalized.results.map((result) => result.subagentMetrics),
+          results.map((result) => result.subagentMetrics),
         );
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-        for (const result of finalized.results) {
+        for (const result of results) {
           pi.events.emit("subagent:metrics", {
             generatedAt,
             sessionKey,
@@ -6305,429 +6071,743 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           source: "tool",
         });
         return {
-          content: [
-            {
-              type: "text",
-              text: buildParallelWorkerSummary(finalized.results),
-            },
-          ],
+          content: [{ type: "text", text: buildParallelScoutSummary(results) }],
           details: {
             generatedAt,
             sessionKey,
             subagentMetrics: aggregateMetrics,
-            status: summarizeParallelWorkerStatus(finalized.results),
-            completedCount: finalized.results.filter(
+            completedCount: results.filter(
               (result) => result.status === "completed",
             ).length,
-            totalCount: finalized.results.length,
-            unownedFiles: finalized.unownedFiles,
-            results: finalized.results,
+            totalCount: results.length,
+            results,
           },
         };
-      } catch (error) {
-        if (isCurrentSession()) {
-          params.tasks.forEach((task, index) => {
-            const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
-            const partial = partialResults[index];
-            if (!activeDelegations.has(delegationKey) && !partial) {
-              return;
-            }
-            rememberFinishedDelegationTask({
-              id: delegationKey,
-              title:
-                partial?.label ??
-                formatParallelLabel(task.label, task.objective, index),
-              role: "worker",
-              status: partial
-                ? mapDelegationTaskStatus(partial.status)
-                : "blocked",
-            });
-          });
-          updateDelegationWidget(ctx);
-        }
-        throw error;
-      } finally {
-        if (isCurrentSession()) {
-          params.tasks.forEach((_task, index) => {
-            activeDelegations.delete(`${sessionEpoch}:${toolCallId}:${index}`);
-          });
-          updateDelegationWidget(ctx);
-        }
-      }
-    },
-  });
+      },
+    });
 
-  pi.registerTool({
-    name: "delegate_worker",
-    label: "Delegate Worker",
-    description:
-      "Spawn a bounded worker subagent on a cheaper model to implement a local task while the current model keeps planning, review, and escalation decisions.",
-    promptSnippet:
-      "Delegate a local, well-scoped implementation task to a cheaper worker subagent with explicit scope, acceptance criteria, validation, and escalation rules.",
-    promptGuidelines: [
-      "Use delegate_worker when the current model should stay responsible for planning, review, and escalation while a cheaper model handles a narrow implementation task.",
-      "Use delegate_worker with explicit scope, allowed files, acceptance criteria, validation commands, and escalation triggers; keep the task small and independently checkable.",
-      "Do not use delegate_worker for ambiguous architecture, security-sensitive decisions, or broad cross-cutting refactors unless the user explicitly wants that trade-off.",
-    ],
-    parameters: DelegateWorkerParams,
-    async execute(toolCallId, params, signal, onUpdate, ctx) {
-      const delegationKey = `${sessionEpoch}:${toolCallId}`;
-      const activeSessionEpoch = sessionEpoch;
-      const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
-      const title = formatTaskTitle(params.objective);
-      let finalTaskStatus: DelegationTaskStatus | undefined;
-      activeDelegations.set(delegationKey, {
-        id: delegationKey,
-        title,
-        workerModel:
-          params.workerModel?.trim() ||
-          getEffectiveWorkerRef(ctx, state)?.id ||
-          "unresolved",
-        phase: "starting",
-        role: "worker",
-      });
-      updateDelegationWidget(ctx);
-      emitSingleDelegationUpdate(
-        onUpdate,
-        activeDelegations.get(delegationKey),
-      );
-      try {
-        const effectiveParams = withInferredArtifacts(
-          ctx,
-          params,
-          [params.objective, params.scope, ...(params.acceptanceCriteria ?? [])]
-            .filter(Boolean)
-            .join("\n"),
+    pi.registerTool({
+      name: "delegate_workers",
+      label: "Delegate Workers",
+      description:
+        "Spawn several bounded worker subagents in parallel to implement independent local tasks while the current model keeps planning and review decisions.",
+      promptSnippet:
+        "Delegate multiple bounded implementation tasks to parallel worker subagents when their file scopes are disjoint.",
+      promptGuidelines: [
+        "Use delegate_workers when several implementation tasks are independent and each task has explicit, disjoint allowedFiles.",
+        "Require allowedFiles on every parallel worker task and avoid overlapping file or directory scopes.",
+        "Prefer delegate_worker for a single implementation task or when task boundaries are ambiguous.",
+      ],
+      parameters: ParallelDelegateWorkersParams,
+      async execute(
+        toolCallId: string,
+        params: { tasks: ParallelDelegateTask[]; maxConcurrency?: number },
+        signal: AbortSignal | undefined,
+        onUpdate: ((update: any) => void) | undefined,
+        ctx: ExtensionContext,
+      ) {
+        if (params.tasks.length === 0) {
+          return {
+            content: [{ type: "text", text: "No worker tasks were provided." }],
+            details: {
+              status: "unknown",
+              completedCount: 0,
+              totalCount: 0,
+              results: [],
+            },
+          };
+        }
+        if (params.tasks.length > MAX_PARALLEL_SUBAGENT_TASKS) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Too many parallel worker tasks (${params.tasks.length}). Max is ${MAX_PARALLEL_SUBAGENT_TASKS}.`,
+              },
+            ],
+            details: {
+              status: "blocked",
+              completedCount: 0,
+              totalCount: params.tasks.length,
+              results: [],
+            },
+          };
+        }
+
+        const validationIssues = validateParallelWorkerTasks(
+          ctx.cwd,
+          params.tasks,
         );
-        const result = await generateDelegation(
-          ctx,
-          state,
-          effectiveParams,
-          delegationKey,
-          pi,
-          isCurrentSession,
-          signal,
-          (text) => {
-            if (!isCurrentSession()) {
-              return;
-            }
-            const active = patchActiveDelegation(ctx, delegationKey, {
-              phase: "running",
-              workerModel: resultWorkerLabelFallback(ctx, state, params),
-            });
-            recordDelegationDetail(delegationKey, text);
-            emitSingleDelegationUpdate(onUpdate, active, text);
-          },
-          (progress) => {
-            if (!isCurrentSession()) {
-              return;
-            }
-            const active = patchActiveDelegation(ctx, delegationKey, {
-              phase: "running",
-              workerModel: resultWorkerLabelFallback(ctx, state, params),
-              turns: progress.turns,
-              currentTool: progress.currentTool,
-            });
-            recordDelegationActivity(delegationKey, progress.lastActivityLine);
-            emitSingleDelegationUpdate(onUpdate, active);
-          },
+        if (validationIssues.length > 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Parallel worker delegation blocked:\n- ${validationIssues.join("\n- ")}`,
+              },
+            ],
+            details: {
+              status: "blocked",
+              completedCount: 0,
+              totalCount: params.tasks.length,
+              results: [],
+            },
+          };
+        }
+
+        const concurrency = Math.max(
+          1,
+          Math.min(
+            params.maxConcurrency ?? DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY,
+            MAX_PARALLEL_SUBAGENT_CONCURRENCY,
+            params.tasks.length,
+          ),
         );
-        if (isCurrentSession()) {
-          patchActiveDelegation(ctx, delegationKey, {
-            phase: result.status,
-            workerModel: result.workerModel,
-            currentTool: undefined,
+        const batchBeforeSnapshot = await snapshotWorkingTree(ctx.cwd, signal);
+        const activeSessionEpoch = sessionEpoch;
+        const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+        const partialResults = new Array<
+          ParallelDelegateTaskResult | undefined
+        >(params.tasks.length);
+
+        const emitProgress = () => {
+          const done = partialResults.filter(Boolean).length;
+          const running = params.tasks.length - done;
+          const finishedResults = partialResults.filter(
+            (result): result is ParallelDelegateTaskResult => Boolean(result),
+          );
+          const activeItems = [...activeDelegations.values()]
+            .filter((item) =>
+              item.id.startsWith(`${sessionEpoch}:${toolCallId}:`),
+            )
+            .sort((left, right) => left.title.localeCompare(right.title));
+          const lines = [
+            `Parallel workers: ${done}/${params.tasks.length} finished, ${running} running...`,
+            ...activeItems.map(
+              (item) => `- ${item.title} · ${formatDelegationStatus(item)}`,
+            ),
+          ];
+          if (running > 0 && activeItems.length === 0) {
+            lines.push("- awaiting first subagent update...");
+          }
+          onUpdate?.({
+            content: [
+              {
+                type: "text",
+                text: lines.join("\n"),
+              },
+            ],
+            details: {
+              status:
+                finishedResults.length > 0
+                  ? summarizeParallelWorkerStatus(finishedResults)
+                  : "unknown",
+              completedCount: partialResults.filter(
+                (result) => result?.status === "completed",
+              ).length,
+              totalCount: params.tasks.length,
+              activeDelegations: activeItems.map((item) => ({
+                title: item.title,
+                role: item.role,
+                phase: item.phase,
+                model: item.workerModel,
+                turns: item.turns,
+                currentTool: item.currentTool,
+              })),
+              results: finishedResults,
+            },
           });
-        }
-        finalTaskStatus = mapDelegationTaskStatus(result.status);
-        const generatedAt = Date.now();
-        const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-        pi.events.emit("subagent:metrics", {
-          generatedAt,
-          sessionKey,
-          subagentMetrics: result.subagentMetrics,
-          source: "tool",
-        });
-        return {
-          content: [{ type: "text", text: result.report }],
-          details: {
-            generatedAt,
-            sessionKey,
-            workerModel: result.workerModel,
-            status: result.status,
-            filesChanged: result.filesChanged,
-            editLocations: result.editLocations,
-            artifactSources: result.artifactSources,
-            artifactQueries: result.artifactQueries,
-            artifactSummary: result.artifactSummary,
-            boundaryViolations: result.boundaryViolations,
-            validation: result.validation,
-            subagentMetrics: result.subagentMetrics,
-            stopReason: result.stopReason,
-            errorMessage: result.errorMessage,
-            fullReport: result.fullReport,
-          },
         };
-      } catch (error) {
-        if (isCurrentSession()) {
-          finalTaskStatus = "blocked";
-        }
-        throw error;
-      } finally {
-        if (isCurrentSession()) {
-          if (finalTaskStatus) {
-            rememberFinishedDelegationTask({
+
+        emitProgress();
+
+        try {
+          const results = await mapWithConcurrencyLimit<
+            ParallelDelegateTask,
+            ParallelDelegateTaskResult
+          >(params.tasks, concurrency, async (task, index) => {
+            const label = formatParallelLabel(
+              task.label,
+              task.objective,
+              index,
+            );
+            const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+            activeDelegations.set(delegationKey, {
               id: delegationKey,
-              title,
+              title: label,
+              workerModel:
+                task.workerModel?.trim() ||
+                getEffectiveWorkerRef(ctx, state)?.id ||
+                "unresolved",
+              phase: "starting",
               role: "worker",
-              status: finalTaskStatus,
+            });
+            updateDelegationWidget(ctx);
+            emitProgress();
+
+            try {
+              const effectiveTask = withInferredArtifacts(
+                ctx,
+                task,
+                [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])]
+                  .filter(Boolean)
+                  .join("\n"),
+              );
+              const result = await generateDelegation(
+                ctx,
+                state,
+                effectiveTask,
+                delegationKey,
+                pi,
+                isCurrentSession,
+                signal,
+                (text) => {
+                  if (!isCurrentSession()) return;
+                  patchActiveDelegation(ctx, delegationKey, {
+                    phase: "running",
+                    workerModel: resultWorkerLabelFallback(ctx, state, task),
+                  });
+                  recordDelegationDetail(delegationKey, text);
+                  emitProgress();
+                },
+                (progress) => {
+                  if (!isCurrentSession()) return;
+                  patchActiveDelegation(ctx, delegationKey, {
+                    phase: "running",
+                    workerModel: resultWorkerLabelFallback(ctx, state, task),
+                    turns: progress.turns,
+                    currentTool: progress.currentTool,
+                  });
+                  recordDelegationActivity(
+                    delegationKey,
+                    progress.lastActivityLine,
+                  );
+                  emitProgress();
+                },
+              );
+              const finalResult: ParallelDelegateTaskResult = {
+                ...result,
+                label,
+              };
+              partialResults[index] = finalResult;
+              if (isCurrentSession()) {
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase:
+                    finalResult.status === "completed"
+                      ? "finalizing"
+                      : finalResult.status,
+                  workerModel: finalResult.workerModel,
+                  currentTool: undefined,
+                });
+              }
+              emitProgress();
+              return finalResult;
+            } catch (error) {
+              const finalResult = buildWorkerFailureResult(
+                label,
+                resultWorkerLabelFallback(ctx, state, task),
+                error,
+              );
+              partialResults[index] = finalResult;
+              if (isCurrentSession()) {
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase:
+                    finalResult.status === "completed"
+                      ? "finalizing"
+                      : finalResult.status,
+                  workerModel: finalResult.workerModel,
+                  currentTool: undefined,
+                });
+              }
+              emitProgress();
+              return finalResult;
+            }
+          });
+
+          const batchAfterSnapshot = await snapshotWorkingTree(
+            batchBeforeSnapshot.root,
+            signal,
+          );
+          const finalized = finalizeParallelWorkerResults(
+            ctx.cwd,
+            batchBeforeSnapshot.root,
+            params.tasks,
+            results,
+            diffSnapshots(batchBeforeSnapshot, batchAfterSnapshot),
+          );
+          if (isCurrentSession()) {
+            finalized.results.forEach((result, index) => {
+              const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+              rememberFinishedDelegationTask({
+                id: delegationKey,
+                title: result.label,
+                role: "worker",
+                status: mapDelegationTaskStatus(result.status),
+              });
+            });
+            updateDelegationWidget(ctx);
+          }
+          const aggregateMetrics = aggregateSubagentMetrics(
+            finalized.results.map((result) => result.subagentMetrics),
+          );
+          const generatedAt = Date.now();
+          const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+          for (const result of finalized.results) {
+            pi.events.emit("subagent:metrics", {
+              generatedAt,
+              sessionKey,
+              subagentMetrics: result.subagentMetrics,
+              source: "tool",
             });
           }
-          activeDelegations.delete(delegationKey);
-          updateDelegationWidget(ctx);
-        }
-      }
-    },
-  });
-
-  pi.registerCommand("worker-model", {
-    description:
-      "Show or set the default worker model for delegate_worker. Usage: /worker-model [default|model|provider/model] [thinking-level]",
-    handler: async (args, ctx) => {
-      const trimmed = args.trim();
-      if (!trimmed) {
-        const workerRef = getEffectiveWorkerRef(ctx, state);
-        ctx.ui.notify(
-          `Worker: ${formatModel(workerRef, getEffectiveThinkingLevel(state))}${state.override ? " (override)" : " (default)"}`,
-          "info",
-        );
-        return;
-      }
-
-      const parts = trimmed.split(/\s+/).filter(Boolean);
-      const modelArg = parts[0];
-      const thinkingArg = parts[1] as ThinkingLevel | undefined;
-      if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
-        ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
-        return;
-      }
-
-      if (modelArg === "default") {
-        const { override, thinkingLevel, ...rest } = state;
-        state = {
-          ...rest,
-          thinkingLevel: thinkingArg ?? DEFAULT_WORKER_THINKING_LEVEL,
-        };
-        persistState();
-        refreshStatus(ctx);
-        ctx.ui.notify(
-          `Worker reset to ${formatModel(getEffectiveWorkerRef(ctx, state), getEffectiveThinkingLevel(state))}`,
-          "info",
-        );
-        return;
-      }
-
-      const requested = resolveRequestedModel(ctx, modelArg, "worker");
-      if ("error" in requested) {
-        ctx.ui.notify(requested.error, "error");
-        return;
-      }
-
-      state = {
-        ...state,
-        override: requested.ref,
-        thinkingLevel: thinkingArg ?? getEffectiveThinkingLevel(state),
-      };
-      persistState();
-      refreshStatus(ctx);
-      ctx.ui.notify(
-        `Worker set to ${formatModel(requested.ref, getEffectiveThinkingLevel(state))}`,
-        "info",
-      );
-    },
-  });
-
-  pi.registerCommand("scout-model", {
-    description:
-      "Show or set the default scout model for delegate_scout. Usage: /scout-model [default|model|provider/model] [thinking-level]",
-    handler: async (args, ctx) => {
-      const trimmed = args.trim();
-      if (!trimmed) {
-        const scoutRef = getEffectiveScoutRef(ctx, state);
-        ctx.ui.notify(
-          `Scout: ${formatModel(scoutRef, getEffectiveScoutThinkingLevel(state))}${state.scoutOverride ? " (override)" : " (default)"}`,
-          "info",
-        );
-        return;
-      }
-
-      const parts = trimmed.split(/\s+/).filter(Boolean);
-      const modelArg = parts[0];
-      const thinkingArg = parts[1] as ThinkingLevel | undefined;
-      if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
-        ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
-        return;
-      }
-
-      if (modelArg === "default") {
-        const { scoutOverride, scoutThinkingLevel, ...rest } = state;
-        state = {
-          ...rest,
-          scoutThinkingLevel: thinkingArg ?? DEFAULT_SCOUT_THINKING_LEVEL,
-        };
-        persistState();
-        refreshStatus(ctx);
-        ctx.ui.notify(
-          `Scout reset to ${formatModel(getEffectiveScoutRef(ctx, state), getEffectiveScoutThinkingLevel(state))}`,
-          "info",
-        );
-        return;
-      }
-
-      const requested = resolveRequestedModel(ctx, modelArg, "scout");
-      if ("error" in requested) {
-        ctx.ui.notify(requested.error, "error");
-        return;
-      }
-
-      state = {
-        ...state,
-        scoutOverride: requested.ref,
-        scoutThinkingLevel:
-          thinkingArg ?? getEffectiveScoutThinkingLevel(state),
-      };
-      persistState();
-      refreshStatus(ctx);
-      ctx.ui.notify(
-        `Scout set to ${formatModel(requested.ref, getEffectiveScoutThinkingLevel(state))}`,
-        "info",
-      );
-    },
-  });
-
-  pi.registerCommand("reviewer-model", {
-    description:
-      "Show or set the default interim reviewer model for review_changes. Usage: /reviewer-model [default|model|provider/model] [thinking-level]",
-    handler: async (args, ctx) => {
-      const trimmed = args.trim();
-      if (!trimmed) {
-        const reviewerRef = getEffectiveReviewerRef(ctx, state);
-        ctx.ui.notify(
-          `Reviewer: ${formatModel(reviewerRef, getEffectiveReviewerThinkingLevel(state))}${state.reviewerOverride ? " (override)" : " (default)"}`,
-          "info",
-        );
-        return;
-      }
-
-      const parts = trimmed.split(/\s+/).filter(Boolean);
-      const modelArg = parts[0];
-      const thinkingArg = parts[1] as ThinkingLevel | undefined;
-      if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
-        ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
-        return;
-      }
-
-      if (modelArg === "default") {
-        const { reviewerOverride, reviewerThinkingLevel, ...rest } = state;
-        state = {
-          ...rest,
-          reviewerThinkingLevel: thinkingArg ?? DEFAULT_REVIEWER_THINKING_LEVEL,
-        };
-        persistState();
-        refreshStatus(ctx);
-        ctx.ui.notify(
-          `Reviewer reset to ${formatModel(getEffectiveReviewerRef(ctx, state), getEffectiveReviewerThinkingLevel(state))}`,
-          "info",
-        );
-        return;
-      }
-
-      const requested = resolveRequestedModel(ctx, modelArg, "reviewer");
-      if ("error" in requested) {
-        ctx.ui.notify(requested.error, "error");
-        return;
-      }
-
-      state = {
-        ...state,
-        reviewerOverride: requested.ref,
-        reviewerThinkingLevel:
-          thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
-      };
-      persistState();
-      refreshStatus(ctx);
-      ctx.ui.notify(
-        `Reviewer set to ${formatModel(requested.ref, getEffectiveReviewerThinkingLevel(state))}`,
-        "info",
-      );
-    },
-  });
-
-  pi.registerCommand("worker-auto", {
-    description:
-      "Show or set automatic delegation mode. Usage: /worker-auto [conservative|off]",
-    handler: async (args, ctx) => {
-      const trimmed = args.trim();
-      if (!trimmed) {
-        ctx.ui.notify(`Auto delegation: ${getAutoMode(state)}`, "info");
-        return;
-      }
-
-      if (trimmed !== "conservative" && trimmed !== "off") {
-        ctx.ui.notify("Usage: /worker-auto [conservative|off]", "error");
-        return;
-      }
-
-      state = {
-        ...state,
-        autoMode: trimmed,
-      };
-      persistState();
-      refreshStatus(ctx);
-      ctx.ui.notify(`Auto delegation set to ${trimmed}`, "info");
-    },
-  });
-
-  pi.registerCommand("noop-subagent", {
-    description:
-      "Run a harmless no-op worker subagent to inspect subagent logging volume",
-    handler: async (_args, ctx) => {
-      const delegationId = `noop-${Date.now().toString(36)}`;
-      ctx.ui.notify("Starting no-op subagent…", "info");
-      try {
-        await runSubagentWithNoTextRetry(
-          "Worker",
-          () =>
-            runWorkerSubagent(
-              process.cwd(),
-              "Do no repository work. Do not inspect files, edit files, or call tools. Reply only with a brief confirmation that you did nothing.",
-              formatModel(getEffectiveWorkerRef(ctx, state), getEffectiveThinkingLevel(state)),
-              { apiKey: ctx.auth?.apiKey, headers: ctx.auth?.headers },
-              [],
-              delegationId,
+          pi.events.emit("subagent:metrics", {
+            generatedAt,
+            sessionKey,
+            subagentMetrics: aggregateMetrics,
+            source: "tool",
+          });
+          return {
+            content: [
               {
-                objective: "Run a harmless no-op subagent for logging inspection",
-                scope: "No-op only",
-                allowedFiles: [],
-                blockedFiles: [],
-                acceptanceCriteria: ["No repository work is performed"],
-                validationCommands: [],
-                escalationTriggers: ["Any tool use", "Any file access", "Any edit"],
-                tools: [],
+                type: "text",
+                text: buildParallelWorkerSummary(finalized.results),
               },
-              ctx,
-            ),
-          undefined,
+            ],
+            details: {
+              generatedAt,
+              sessionKey,
+              subagentMetrics: aggregateMetrics,
+              status: summarizeParallelWorkerStatus(finalized.results),
+              completedCount: finalized.results.filter(
+                (result) => result.status === "completed",
+              ).length,
+              totalCount: finalized.results.length,
+              unownedFiles: finalized.unownedFiles,
+              results: finalized.results,
+            },
+          };
+        } catch (error) {
+          if (isCurrentSession()) {
+            params.tasks.forEach((task, index) => {
+              const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
+              const partial = partialResults[index];
+              if (!activeDelegations.has(delegationKey) && !partial) {
+                return;
+              }
+              rememberFinishedDelegationTask({
+                id: delegationKey,
+                title:
+                  partial?.label ??
+                  formatParallelLabel(task.label, task.objective, index),
+                role: "worker",
+                status: partial
+                  ? mapDelegationTaskStatus(partial.status)
+                  : "blocked",
+              });
+            });
+            updateDelegationWidget(ctx);
+          }
+          throw error;
+        } finally {
+          if (isCurrentSession()) {
+            params.tasks.forEach((_task, index) => {
+              activeDelegations.delete(
+                `${sessionEpoch}:${toolCallId}:${index}`,
+              );
+            });
+            updateDelegationWidget(ctx);
+          }
+        }
+      },
+    });
+
+    pi.registerTool({
+      name: "delegate_worker",
+      label: "Delegate Worker",
+      description:
+        "Spawn a bounded worker subagent on a cheaper model to implement a local task while the current model keeps planning, review, and escalation decisions.",
+      promptSnippet:
+        "Delegate a local, well-scoped implementation task to a cheaper worker subagent with explicit scope, acceptance criteria, validation, and escalation rules.",
+      promptGuidelines: [
+        "Use delegate_worker when the current model should stay responsible for planning, review, and escalation while a cheaper model handles a narrow implementation task.",
+        "Use delegate_worker with explicit scope, allowed files, acceptance criteria, validation commands, and escalation triggers; keep the task small and independently checkable.",
+        "Do not use delegate_worker for ambiguous architecture, security-sensitive decisions, or broad cross-cutting refactors unless the user explicitly wants that trade-off.",
+      ],
+      parameters: DelegateWorkerParams,
+      async execute(toolCallId, params, signal, onUpdate, ctx) {
+        const delegationKey = `${sessionEpoch}:${toolCallId}`;
+        const activeSessionEpoch = sessionEpoch;
+        const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+        const title = formatTaskTitle(params.objective);
+        let finalTaskStatus: DelegationTaskStatus | undefined;
+        activeDelegations.set(delegationKey, {
+          id: delegationKey,
+          title,
+          workerModel:
+            params.workerModel?.trim() ||
+            getEffectiveWorkerRef(ctx, state)?.id ||
+            "unresolved",
+          phase: "starting",
+          role: "worker",
+        });
+        updateDelegationWidget(ctx);
+        emitSingleDelegationUpdate(
+          onUpdate,
+          activeDelegations.get(delegationKey),
         );
-        ctx.ui.notify("No-op subagent completed successfully.", "info");
-      } catch (error) {
+        try {
+          const effectiveParams = withInferredArtifacts(
+            ctx,
+            params,
+            [
+              params.objective,
+              params.scope,
+              ...(params.acceptanceCriteria ?? []),
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          );
+          const result = await generateDelegation(
+            ctx,
+            state,
+            effectiveParams,
+            delegationKey,
+            pi,
+            isCurrentSession,
+            signal,
+            (text) => {
+              if (!isCurrentSession()) {
+                return;
+              }
+              const active = patchActiveDelegation(ctx, delegationKey, {
+                phase: "running",
+                workerModel: resultWorkerLabelFallback(ctx, state, params),
+              });
+              recordDelegationDetail(delegationKey, text);
+              emitSingleDelegationUpdate(onUpdate, active, text);
+            },
+            (progress) => {
+              if (!isCurrentSession()) {
+                return;
+              }
+              const active = patchActiveDelegation(ctx, delegationKey, {
+                phase: "running",
+                workerModel: resultWorkerLabelFallback(ctx, state, params),
+                turns: progress.turns,
+                currentTool: progress.currentTool,
+              });
+              recordDelegationActivity(
+                delegationKey,
+                progress.lastActivityLine,
+              );
+              emitSingleDelegationUpdate(onUpdate, active);
+            },
+          );
+          if (isCurrentSession()) {
+            patchActiveDelegation(ctx, delegationKey, {
+              phase: result.status,
+              workerModel: result.workerModel,
+              currentTool: undefined,
+            });
+          }
+          finalTaskStatus = mapDelegationTaskStatus(result.status);
+          const generatedAt = Date.now();
+          const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+          pi.events.emit("subagent:metrics", {
+            generatedAt,
+            sessionKey,
+            subagentMetrics: result.subagentMetrics,
+            source: "tool",
+          });
+          return {
+            content: [{ type: "text", text: result.report }],
+            details: {
+              generatedAt,
+              sessionKey,
+              workerModel: result.workerModel,
+              status: result.status,
+              filesChanged: result.filesChanged,
+              editLocations: result.editLocations,
+              artifactSources: result.artifactSources,
+              artifactQueries: result.artifactQueries,
+              artifactSummary: result.artifactSummary,
+              boundaryViolations: result.boundaryViolations,
+              validation: result.validation,
+              subagentMetrics: result.subagentMetrics,
+              stopReason: result.stopReason,
+              errorMessage: result.errorMessage,
+              fullReport: result.fullReport,
+            },
+          };
+        } catch (error) {
+          if (isCurrentSession()) {
+            finalTaskStatus = "blocked";
+          }
+          throw error;
+        } finally {
+          if (isCurrentSession()) {
+            if (finalTaskStatus) {
+              rememberFinishedDelegationTask({
+                id: delegationKey,
+                title,
+                role: "worker",
+                status: finalTaskStatus,
+              });
+            }
+            activeDelegations.delete(delegationKey);
+            updateDelegationWidget(ctx);
+          }
+        }
+      },
+    });
+
+    pi.registerCommand("worker-model", {
+      description:
+        "Show or set the default worker model for delegate_worker. Usage: /worker-model [default|model|provider/model] [thinking-level]",
+      handler: async (args, ctx) => {
+        const trimmed = args.trim();
+        if (!trimmed) {
+          const workerRef = getEffectiveWorkerRef(ctx, state);
+          ctx.ui.notify(
+            `Worker: ${formatModel(workerRef, getEffectiveThinkingLevel(state))}${state.override ? " (override)" : " (default)"}`,
+            "info",
+          );
+          return;
+        }
+
+        const parts = trimmed.split(/\s+/).filter(Boolean);
+        const modelArg = parts[0];
+        const thinkingArg = parts[1] as ThinkingLevel | undefined;
+        if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
+          ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
+          return;
+        }
+
+        if (modelArg === "default") {
+          const { override, thinkingLevel, ...rest } = state;
+          state = {
+            ...rest,
+            thinkingLevel: thinkingArg ?? DEFAULT_WORKER_THINKING_LEVEL,
+          };
+          persistState();
+          refreshStatus(ctx);
+          ctx.ui.notify(
+            `Worker reset to ${formatModel(getEffectiveWorkerRef(ctx, state), getEffectiveThinkingLevel(state))}`,
+            "info",
+          );
+          return;
+        }
+
+        const requested = resolveRequestedModel(ctx, modelArg, "worker");
+        if ("error" in requested) {
+          ctx.ui.notify(requested.error, "error");
+          return;
+        }
+
+        state = {
+          ...state,
+          override: requested.ref,
+          thinkingLevel: thinkingArg ?? getEffectiveThinkingLevel(state),
+        };
+        persistState();
+        refreshStatus(ctx);
         ctx.ui.notify(
-          `No-op subagent failed: ${error instanceof Error ? error.message : String(error)}`,
-          "error",
+          `Worker set to ${formatModel(requested.ref, getEffectiveThinkingLevel(state))}`,
+          "info",
         );
-      }
-    },
-  });
+      },
+    });
+
+    pi.registerCommand("scout-model", {
+      description:
+        "Show or set the default scout model for delegate_scout. Usage: /scout-model [default|model|provider/model] [thinking-level]",
+      handler: async (args, ctx) => {
+        const trimmed = args.trim();
+        if (!trimmed) {
+          const scoutRef = getEffectiveScoutRef(ctx, state);
+          ctx.ui.notify(
+            `Scout: ${formatModel(scoutRef, getEffectiveScoutThinkingLevel(state))}${state.scoutOverride ? " (override)" : " (default)"}`,
+            "info",
+          );
+          return;
+        }
+
+        const parts = trimmed.split(/\s+/).filter(Boolean);
+        const modelArg = parts[0];
+        const thinkingArg = parts[1] as ThinkingLevel | undefined;
+        if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
+          ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
+          return;
+        }
+
+        if (modelArg === "default") {
+          const { scoutOverride, scoutThinkingLevel, ...rest } = state;
+          state = {
+            ...rest,
+            scoutThinkingLevel: thinkingArg ?? DEFAULT_SCOUT_THINKING_LEVEL,
+          };
+          persistState();
+          refreshStatus(ctx);
+          ctx.ui.notify(
+            `Scout reset to ${formatModel(getEffectiveScoutRef(ctx, state), getEffectiveScoutThinkingLevel(state))}`,
+            "info",
+          );
+          return;
+        }
+
+        const requested = resolveRequestedModel(ctx, modelArg, "scout");
+        if ("error" in requested) {
+          ctx.ui.notify(requested.error, "error");
+          return;
+        }
+
+        state = {
+          ...state,
+          scoutOverride: requested.ref,
+          scoutThinkingLevel:
+            thinkingArg ?? getEffectiveScoutThinkingLevel(state),
+        };
+        persistState();
+        refreshStatus(ctx);
+        ctx.ui.notify(
+          `Scout set to ${formatModel(requested.ref, getEffectiveScoutThinkingLevel(state))}`,
+          "info",
+        );
+      },
+    });
+
+    pi.registerCommand("reviewer-model", {
+      description:
+        "Show or set the default interim reviewer model for review_changes. Usage: /reviewer-model [default|model|provider/model] [thinking-level]",
+      handler: async (args, ctx) => {
+        const trimmed = args.trim();
+        if (!trimmed) {
+          const reviewerRef = getEffectiveReviewerRef(ctx, state);
+          ctx.ui.notify(
+            `Reviewer: ${formatModel(reviewerRef, getEffectiveReviewerThinkingLevel(state))}${state.reviewerOverride ? " (override)" : " (default)"}`,
+            "info",
+          );
+          return;
+        }
+
+        const parts = trimmed.split(/\s+/).filter(Boolean);
+        const modelArg = parts[0];
+        const thinkingArg = parts[1] as ThinkingLevel | undefined;
+        if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
+          ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
+          return;
+        }
+
+        if (modelArg === "default") {
+          const { reviewerOverride, reviewerThinkingLevel, ...rest } = state;
+          state = {
+            ...rest,
+            reviewerThinkingLevel:
+              thinkingArg ?? DEFAULT_REVIEWER_THINKING_LEVEL,
+          };
+          persistState();
+          refreshStatus(ctx);
+          ctx.ui.notify(
+            `Reviewer reset to ${formatModel(getEffectiveReviewerRef(ctx, state), getEffectiveReviewerThinkingLevel(state))}`,
+            "info",
+          );
+          return;
+        }
+
+        const requested = resolveRequestedModel(ctx, modelArg, "reviewer");
+        if ("error" in requested) {
+          ctx.ui.notify(requested.error, "error");
+          return;
+        }
+
+        state = {
+          ...state,
+          reviewerOverride: requested.ref,
+          reviewerThinkingLevel:
+            thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
+        };
+        persistState();
+        refreshStatus(ctx);
+        ctx.ui.notify(
+          `Reviewer set to ${formatModel(requested.ref, getEffectiveReviewerThinkingLevel(state))}`,
+          "info",
+        );
+      },
+    });
+
+    pi.registerCommand("worker-auto", {
+      description:
+        "Show or set automatic delegation mode. Usage: /worker-auto [conservative|off]",
+      handler: async (args, ctx) => {
+        const trimmed = args.trim();
+        if (!trimmed) {
+          ctx.ui.notify(`Auto delegation: ${getAutoMode(state)}`, "info");
+          return;
+        }
+
+        if (trimmed !== "conservative" && trimmed !== "off") {
+          ctx.ui.notify("Usage: /worker-auto [conservative|off]", "error");
+          return;
+        }
+
+        state = {
+          ...state,
+          autoMode: trimmed,
+        };
+        persistState();
+        refreshStatus(ctx);
+        ctx.ui.notify(`Auto delegation set to ${trimmed}`, "info");
+      },
+    });
+
+    pi.registerCommand("noop-subagent", {
+      description:
+        "Run a harmless no-op worker subagent to inspect subagent logging volume",
+      handler: async (_args, ctx) => {
+        const delegationId = `noop-${Date.now().toString(36)}`;
+        ctx.ui.notify("Starting no-op subagent…", "info");
+        try {
+          await runSubagentWithNoTextRetry(
+            "Worker",
+            () =>
+              runWorkerSubagent(
+                process.cwd(),
+                "Do no repository work. Do not inspect files, edit files, or call tools. Reply only with a brief confirmation that you did nothing.",
+                formatModel(
+                  getEffectiveWorkerRef(ctx, state),
+                  getEffectiveThinkingLevel(state),
+                ),
+                { apiKey: ctx.auth?.apiKey, headers: ctx.auth?.headers },
+                [],
+                delegationId,
+                {
+                  objective:
+                    "Run a harmless no-op subagent for logging inspection",
+                  scope: "No-op only",
+                  allowedFiles: [],
+                  blockedFiles: [],
+                  acceptanceCriteria: ["No repository work is performed"],
+                  validationCommands: [],
+                  escalationTriggers: [
+                    "Any tool use",
+                    "Any file access",
+                    "Any edit",
+                  ],
+                  tools: [],
+                },
+                ctx,
+              ),
+            undefined,
+          );
+          ctx.ui.notify("No-op subagent completed successfully.", "info");
+        } catch (error) {
+          ctx.ui.notify(
+            `No-op subagent failed: ${error instanceof Error ? error.message : String(error)}`,
+            "error",
+          );
+        }
+      },
+    });
 
     globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = "registered";
   } catch (error) {

@@ -376,7 +376,7 @@ async function generateReview(
     }
 
     if (!modelToUse) {
-      modelToUse = ctx.modelRegistry.find("github-copilot", "gemini-3-flash-preview");
+      modelToUse = ctx.modelRegistry.find("github-copilot", "gpt-5.6-luna");
     }
   } else {
     if (!ctx.model) {
