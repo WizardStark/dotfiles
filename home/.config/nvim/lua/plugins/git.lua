@@ -83,4 +83,11 @@ return {
 			})
 		end,
 	},
+	-- Switch to guh when 0.13 releases
+	-- {
+	-- 	src = "https://github.com/justinmk/guh.nvim",
+	-- 	enabled = function()
+	-- 		return vim.fn.executable("gh") == 1
+	-- 	end,
+	-- },
 }
