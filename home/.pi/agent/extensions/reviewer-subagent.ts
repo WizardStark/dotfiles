@@ -196,11 +196,11 @@ async function collectGitContext(cwd: string, signal?: AbortSignal) {
   }
 
   const status = await maybeRunGit(cwd, ["status", "--short"], signal);
-  const stagedFiles = (await maybeRunGit(cwd, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"], signal))
+  const stagedFiles = (await maybeRunGit(cwd, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"], signal))
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
-  const unstagedFiles = (await maybeRunGit(cwd, ["diff", "--name-only", "--diff-filter=ACMR"], signal))
+  const unstagedFiles = (await maybeRunGit(cwd, ["diff", "--name-only", "--diff-filter=ACMRD"], signal))
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
@@ -212,8 +212,8 @@ async function collectGitContext(cwd: string, signal?: AbortSignal) {
   const changedFiles = unique([...stagedFiles, ...unstagedFiles, ...untrackedFiles]);
   if (changedFiles.length === 0) {
     return {
-      ok: false as const,
-      reason: "No uncommitted git changes found to review.",
+      ok: true as const,
+      noChanges: true as const,
       changedFiles,
       repoRoot,
       gitContext: "",
@@ -256,6 +256,7 @@ async function collectGitContext(cwd: string, signal?: AbortSignal) {
 
   return {
     ok: true as const,
+    noChanges: false as const,
     changedFiles,
     repoRoot,
     gitContext,
@@ -349,6 +350,14 @@ async function generateReview(
   if (!git.ok) {
     throw new Error(git.reason);
   }
+  if (git.noChanges) {
+    return {
+      report: "No uncommitted git changes found to review.",
+      repoRoot: git.repoRoot,
+      changedFiles: git.changedFiles,
+      reviewerModel: "(not run; no changes)",
+    };
+  }
 
   const conversationContext = buildConversationContext(ctx.sessionManager.getBranch());
   const prompt = buildReviewPrompt({
@@ -372,11 +381,11 @@ async function generateReview(
 
     if (stateEntry?.data?.reviewerOverride) {
       const ref = stateEntry.data.reviewerOverride;
-      modelToUse = ctx.modelRegistry.find(ref.provider, ref.id);
+      modelToUse = ctx.modelRegistry.find(ref.provider, ref.id) ?? ctx.model;
     }
 
     if (!modelToUse) {
-      modelToUse = ctx.modelRegistry.find("github-copilot", "gpt-5.6-luna");
+      modelToUse = ctx.modelRegistry.find("github-copilot", "gpt-5.6-luna") ?? ctx.model;
     }
   } else {
     if (!ctx.model) {

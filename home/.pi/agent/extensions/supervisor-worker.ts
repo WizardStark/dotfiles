@@ -1077,6 +1077,21 @@ async function hashFile(filePath: string): Promise<string> {
   return createHash("sha1").update(content).digest("hex");
 }
 
+function getSecretIndexState(indexEntry: string | undefined): string {
+  if (!indexEntry) return "index:absent";
+  const [mode, , stage] = indexEntry.split(" ");
+  return `index:present:mode:${mode || "unknown"}:stage:${stage || "unknown"}`;
+}
+
+async function getSecretFileState(absolutePath: string): Promise<string> {
+  try {
+    const file = await stat(absolutePath);
+    return `secret:present:size:${file.size}:mtime:${file.mtimeMs}:ctime:${file.ctimeMs}`;
+  } catch {
+    return "secret:absent";
+  }
+}
+
 type GitDirtyEntry = {
   path: string;
   status: string;
@@ -1133,6 +1148,30 @@ async function getGitDirtyEntries(
   return entries;
 }
 
+async function getGitIndexEntries(
+  root: string,
+  signal?: AbortSignal,
+): Promise<Map<string, string> | undefined> {
+  const result = await execCapture(
+    "git",
+    ["ls-files", "-s", "-z"],
+    root,
+    10_000,
+    signal,
+  );
+  if (result.code !== 0) return undefined;
+
+  const entries = new Map<string, string>();
+  for (const token of result.stdout.split("\0")) {
+    const tab = token.indexOf("\t");
+    if (tab < 0) continue;
+    const path = normalizePath(token.slice(tab + 1));
+    if (!path) continue;
+    entries.set(path, token.slice(0, tab));
+  }
+  return entries;
+}
+
 async function getUserEditReminder(ctx: ExtensionContext): Promise<string> {
   try {
     const messages = getSessionMessages(ctx.sessionManager.getBranch());
@@ -1179,6 +1218,9 @@ async function snapshotWorkingTree(
   const dirtyEntries = repoRoot
     ? await getGitDirtyEntries(root, signal)
     : undefined;
+  const indexEntries = repoRoot
+    ? await getGitIndexEntries(root, signal)
+    : undefined;
   const files = new Map<string, string>();
 
   if (dirtyEntries) {
@@ -1186,42 +1228,52 @@ async function snapshotWorkingTree(
       if (!entry.path) continue;
       const relativePath = entry.path;
       if (isBlockedDotenvPath(relativePath)) {
-        files.set(relativePath, `secret-file:${basename(relativePath)}`);
+        const indexState = indexEntries
+          ? getSecretIndexState(indexEntries.get(relativePath))
+          : "index:unknown";
+        files.set(
+          relativePath,
+          `${entry.marker ?? entry.status}:${indexState}:${await getSecretFileState(resolve(root, relativePath))}`,
+        );
         continue;
       }
 
+      const indexState = indexEntries
+        ? (indexEntries.get(relativePath) ?? "index:absent")
+        : "index:unknown";
       const absolutePath = resolve(root, relativePath);
       try {
-        const deleted = entry.status.includes("D");
-        if (deleted) {
-          files.set(relativePath, entry.marker ?? `deleted:${entry.status}`);
-          continue;
-        }
         files.set(
           relativePath,
-          `${entry.marker ?? entry.status}:${await hashFile(absolutePath)}`,
+          `${entry.marker ?? entry.status}:${indexState}:${await hashFile(absolutePath)}`,
         );
       } catch {
-        files.set(relativePath, entry.marker ?? `missing:${entry.status}`);
+        files.set(
+          relativePath,
+          `${entry.marker ?? (entry.status.includes("D") ? `deleted:${entry.status}` : `missing:${entry.status}`)}:${indexState}`,
+        );
       }
     }
     return { root, files };
   }
 
   const relativeFiles = repoRoot
-    ? await listGitFiles(repoRoot, signal)
+    ? (await listGitFiles(repoRoot, signal)) ?? (await listFilesRecursive(root))
     : await listFilesRecursive(root);
 
-  for (const relativePath of relativeFiles ?? []) {
+  for (const relativePath of relativeFiles) {
     const absolutePath = resolve(root, relativePath);
     try {
       if (isBlockedDotenvPath(relativePath)) {
-        files.set(relativePath, `secret-file:${basename(relativePath)}`);
+        files.set(
+          relativePath,
+          `secret:clean:${await getSecretFileState(absolutePath)}`,
+        );
         continue;
       }
       files.set(relativePath, await hashFile(absolutePath));
     } catch {
-      // ignore unreadable or concurrently deleted files
+      files.set(relativePath, "missing");
     }
   }
 
@@ -1760,18 +1812,19 @@ function buildWorkerPrompt(
   conversationContext: string,
 ): string {
   const hasAllowedFiles = (params.allowedFiles?.length ?? 0) > 0;
+  const artifactSources = normalizeArtifactSources(params.artifactSources);
   const sections = [
     `## Objective\n${params.objective.trim()}`,
     `## Scope\n${params.scope?.trim() || "Stay within the stated task only."}`,
   ];
 
-  if (params.artifactSources && params.artifactSources.length > 0) {
+  if (artifactSources.length > 0) {
     sections.push(
-      `## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
+      `## Reusable project artifacts\n${formatBullets(artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
     );
   }
 
-  if (params.artifactQueries && params.artifactQueries.length > 0) {
+  if (artifactSources.length > 0 && (params.artifactQueries?.length ?? 0) > 0) {
     sections.push(
       `## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`,
     );
@@ -1788,7 +1841,7 @@ function buildWorkerPrompt(
     `## Validation commands\n${formatBullets(params.validationCommands)}`,
     `## Escalation triggers\n${formatBullets(params.escalationTriggers)}`,
     `## Recent conversation context\n${conversationContext}`,
-    `## Execution rules\n- Read nearby code when needed for context.\n- Only edit files that fit the scope.\n${hasAllowedFiles ? "- If you need to change files outside the allowed set, stop and escalate.\n" : ""}- Run the provided validation commands when possible after editing.\n- Prefer a minimal patch over a broad refactor.`,
+    `## Execution rules\n- Read nearby code when needed for context.\n- Only edit files that fit the scope.\n${hasAllowedFiles ? "- If you need to change files outside the allowed set, stop and escalate.\n" : ""}- After an edit match failure, do not blindly retry it: read the smallest relevant range, then make one corrected consolidated edit. For a failed validation, test, lint, or build command, inspect its failure output and revise the diagnosis or scope before retrying.\n- Run the provided validation commands when possible after editing.\n- Prefer a minimal patch over a broad refactor.`,
   );
 
   return sections.join("\n\n");
@@ -1798,18 +1851,19 @@ function buildScoutPrompt(
   params: ScoutParams,
   conversationContext: string,
 ): string {
+  const artifactSources = normalizeArtifactSources(params.artifactSources);
   const sections = [
     `## Objective\n${params.objective.trim()}`,
     `## Scope\n${params.scope?.trim() || "Read-only reconnaissance only. Stay focused on the stated question."}`,
   ];
 
-  if (params.artifactSources && params.artifactSources.length > 0) {
+  if (artifactSources.length > 0) {
     sections.push(
-      `## Reusable project artifacts\n${formatBullets(params.artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
+      `## Reusable project artifacts\n${formatBullets(artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
     );
   }
 
-  if (params.artifactQueries && params.artifactQueries.length > 0) {
+  if (artifactSources.length > 0 && (params.artifactQueries?.length ?? 0) > 0) {
     sections.push(
       `## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`,
     );
@@ -2071,6 +2125,7 @@ async function runWorkerSubagent(
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
   onProgress?: (progress: SubagentProgress) => void,
+  onProcessStart?: () => void,
 ): Promise<
   Awaited<ReturnType<typeof runSubagentProcess>> & {
     toolExecutions: WorkerToolExecution[];
@@ -2098,6 +2153,7 @@ async function runWorkerSubagent(
     },
     shouldLog,
   );
+  onProcessStart?.();
 
   try {
     const run = await runSubagentProcess({
@@ -2333,7 +2389,28 @@ function extractDiffRanges(
 }
 
 function normalizeArtifactLabel(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  if (typeof value !== "string") return undefined;
+  const label = value.trim();
+  if (!label) return undefined;
+  const separator = label.indexOf(":");
+  if (
+    separator <= 0 ||
+    !label.slice(0, separator).trim() ||
+    !label.slice(separator + 1).trim()
+  ) {
+    return undefined;
+  }
+  return label;
+}
+
+function normalizeArtifactSources(values: string[] | undefined): string[] {
+  return [
+    ...new Set(
+      (values ?? [])
+        .map((value) => normalizeArtifactLabel(value))
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
 }
 
 function extractArtifactSourcesFromText(text: string): string[] {
@@ -2559,6 +2636,7 @@ async function runScoutSubagent(
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
   onProgress?: (progress: SubagentProgress) => void,
+  onProcessStart?: () => void,
 ): Promise<
   Awaited<ReturnType<typeof runSubagentProcess>> & {
     toolExecutions: WorkerToolExecution[];
@@ -2586,6 +2664,7 @@ async function runScoutSubagent(
     },
     shouldLog,
   );
+  onProcessStart?.();
 
   try {
     const run = await runSubagentProcess({
@@ -3933,6 +4012,8 @@ async function generateDelegation(
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
   onProgress?: (progress: SubagentProgress) => void,
+  onProcessStart?: () => void,
+  captureWorkingTree = true,
 ): Promise<DelegateResult> {
   const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
@@ -3996,7 +4077,7 @@ async function generateDelegation(
   );
 
   let auth: { apiKey?: string; headers?: Record<string, string> };
-  let beforeSnapshot: WorkingTreeSnapshot;
+  let beforeSnapshot: WorkingTreeSnapshot | undefined;
   let workerModelArg: string;
   let prompt: string;
   try {
@@ -4016,7 +4097,9 @@ async function generateDelegation(
       ? {}
       : { apiKey: authResult.apiKey, headers: authResult.headers };
 
-    beforeSnapshot = await snapshotWorkingTree(cwd, signal);
+    if (captureWorkingTree) {
+      beforeSnapshot = await snapshotWorkingTree(cwd, signal);
+    }
     workerModelArg = formatModel(worker.ref, worker.thinkingLevel);
     const conversationContext = buildConversationContext(
       ctx.sessionManager.getBranch(),
@@ -4074,17 +4157,23 @@ async function generateDelegation(
           signal,
           onUpdate,
           onProgress,
+          onProcessStart,
         ),
       signal,
     );
     run = execution.run;
     const final = execution.final;
 
-    const afterSnapshot = await snapshotWorkingTree(cwd, signal);
-    const actualFilesChanged = diffSnapshots(beforeSnapshot, afterSnapshot);
+    const afterSnapshot = captureWorkingTree
+      ? await snapshotWorkingTree(cwd, signal)
+      : undefined;
+    const actualFilesChanged =
+      beforeSnapshot && afterSnapshot
+        ? diffSnapshots(beforeSnapshot, afterSnapshot)
+        : [];
     const { editLocations, artifactSources, artifactQueries } =
       await deriveEditLocations(
-        afterSnapshot.root,
+        afterSnapshot?.root ?? cwd,
         run.toolExecutions,
         actualFilesChanged,
       );
@@ -4230,6 +4319,7 @@ async function generateScouting(
   signal?: AbortSignal,
   onUpdate?: (text: string) => void,
   onProgress?: (progress: SubagentProgress) => void,
+  onProcessStart?: () => void,
 ): Promise<ScoutResult> {
   const cwd = params.cwd?.trim() || ctx.cwd;
   if (!ctx.model) {
@@ -4359,6 +4449,7 @@ async function generateScouting(
           signal,
           onUpdate,
           onProgress,
+          onProcessStart,
         ),
       signal,
     );
@@ -4935,6 +5026,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         .join(" · ");
     }
 
+    function isTerminalDelegationPhase(phase: string): boolean {
+      return ["completed", "blocked", "escalated"].includes(phase);
+    }
+
+    function normalizeDelegationPanelLine(line: string): string {
+      return line.replace(/\s+/g, " ").trim().toLocaleLowerCase();
+    }
+
     function buildSingleDelegationProgressText(
       item: ActiveDelegation,
       detailText?: string,
@@ -5017,13 +5116,19 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     function buildDetailPreviewLines(
       item: ActiveDelegation,
       width: number,
+      seenLines: Set<string>,
     ): string[] {
       const text = item.detailText?.trim();
       if (!text) return [];
       const sourceLines = text
         .split(/\r?\n/g)
         .map((line) => line.trim())
-        .filter(Boolean)
+        .filter((line) => {
+          const normalized = normalizeDelegationPanelLine(line);
+          if (!normalized || seenLines.has(normalized)) return false;
+          seenLines.add(normalized);
+          return true;
+        })
         .slice(-MAX_SUBAGENT_DETAIL_LINES);
       return sourceLines
         .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)))
@@ -5033,15 +5138,23 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     function buildRecentActivityLines(
       item: ActiveDelegation,
       width: number,
+      seenLines: Set<string>,
     ): string[] {
       return (item.recentActivity ?? [])
         .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
+        .filter((line) => {
+          const normalized = normalizeDelegationPanelLine(line);
+          if (!normalized || seenLines.has(normalized)) return false;
+          seenLines.add(normalized);
+          return true;
+        })
         .flatMap((line) => wrapTextWithAnsi(line, Math.max(12, width)));
     }
 
     function buildRecentToolEventLines(
       item: ActiveDelegation,
       width: number,
+      seenLines: Set<string>,
     ): string[] {
       return (item.recentToolEvents ?? [])
         .slice(-MAX_SUBAGENT_ACTIVITY_LINES)
@@ -5051,10 +5164,28 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           const body = event.result
             ? `${event.toolName} ${event.summary} ${event.result}`
             : `${event.toolName} ${event.summary}`;
-          return wrapTextWithAnsi(
-            `${prefix} ${body}`.trim(),
-            Math.max(12, width),
-          );
+          const line = `${prefix} ${body}`.trim();
+          const activityLine =
+            event.kind === "end"
+              ? buildSubagentActivityLine(
+                  "end",
+                  event.toolName,
+                  undefined,
+                  event.result,
+                  event.isError,
+                )
+              : line;
+          const normalizedLines = [line, activityLine]
+            .map(normalizeDelegationPanelLine)
+            .filter(Boolean);
+          if (
+            normalizedLines.length === 0 ||
+            normalizedLines.some((normalized) => seenLines.has(normalized))
+          ) {
+            return [];
+          }
+          normalizedLines.forEach((normalized) => seenLines.add(normalized));
+          return wrapTextWithAnsi(line, Math.max(12, width));
         });
     }
 
@@ -5113,12 +5244,26 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             ),
           );
           if (isSelected && expanded) {
-            const toolLines = buildRecentToolEventLines(item, innerWidth - 4);
+            const seenOutputLines = new Set<string>([
+              normalizeDelegationPanelLine(status),
+              normalizeDelegationPanelLine(item.phase),
+              normalizeDelegationPanelLine(item.currentTool ?? ""),
+            ]);
+            const toolLines = buildRecentToolEventLines(
+              item,
+              innerWidth - 4,
+              seenOutputLines,
+            );
             const activityLines = buildRecentActivityLines(
               item,
               innerWidth - 4,
+              seenOutputLines,
             );
-            const detailLines = buildDetailPreviewLines(item, innerWidth - 4);
+            const detailLines = buildDetailPreviewLines(
+              item,
+              innerWidth - 4,
+              seenOutputLines,
+            );
             if (toolLines.length > 0) {
               lines.push(row(`   ${theme.fg("dim", "Recent tool calls:")}`));
               for (const toolLine of toolLines)
@@ -5133,6 +5278,9 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               lines.push(row(`   ${theme.fg("dim", "Latest output:")}`));
               for (const detailLine of detailLines)
                 lines.push(row(`   ${theme.fg("dim", detailLine)}`));
+            }
+            if (!isTerminalDelegationPhase(item.phase)) {
+              lines.push(row(`   ${theme.fg("accent", "Working…")}`));
             }
           }
           if (index < items.length - 1) lines.push(row());
@@ -5787,6 +5935,20 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               );
               emitSingleDelegationUpdate(onUpdate, active);
             },
+            () => {
+              if (!isCurrentSession()) return;
+              const active = patchActiveDelegation(ctx, delegationKey, {
+                phase: "running",
+                workerModel: formatModel(
+                  params.scoutModel
+                    ? parseModelRef(ctx, params.scoutModel)
+                    : getEffectiveScoutRef(ctx, state),
+                  params.scoutThinkingLevel ??
+                    getEffectiveScoutThinkingLevel(state),
+                ),
+              });
+              emitSingleDelegationUpdate(onUpdate, active);
+            },
           );
           if (isCurrentSession()) {
             patchActiveDelegation(ctx, delegationKey, {
@@ -5999,6 +6161,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   delegationKey,
                   progress.lastActivityLine,
                 );
+                emitProgress();
+              },
+              () => {
+                if (!isCurrentSession()) return;
+                patchActiveDelegation(ctx, delegationKey, {
+                  phase: "running",
+                  workerModel: resultScoutLabelFallback(ctx, state, task),
+                });
                 emitProgress();
               },
             );
@@ -6284,6 +6454,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   );
                   emitProgress();
                 },
+                () => {
+                  if (!isCurrentSession()) return;
+                  patchActiveDelegation(ctx, delegationKey, {
+                    phase: "running",
+                    workerModel: resultWorkerLabelFallback(ctx, state, task),
+                  });
+                  emitProgress();
+                },
+                false,
               );
               const finalResult: ParallelDelegateTaskResult = {
                 ...result,
@@ -6500,6 +6679,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 delegationKey,
                 progress.lastActivityLine,
               );
+              emitSingleDelegationUpdate(onUpdate, active);
+            },
+            () => {
+              if (!isCurrentSession()) return;
+              const active = patchActiveDelegation(ctx, delegationKey, {
+                phase: "running",
+                workerModel: resultWorkerLabelFallback(ctx, state, params),
+              });
               emitSingleDelegationUpdate(onUpdate, active);
             },
           );

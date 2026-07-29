@@ -2,6 +2,41 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 
 const DEFAULT_CTX_EXECUTE_TIMEOUT_MS = 30_000;
+const INSPECTION_CTX_EXECUTE_TIMEOUT_MS = 15_000;
+const VALIDATION_CTX_EXECUTE_TIMEOUT_MS = 60_000;
+const BUILD_DEPLOY_CTX_EXECUTE_TIMEOUT_MS = 120_000;
+
+const BUILD_DEPLOY_PATTERNS: RegExp[] = [
+  /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:build|deploy)\b/i,
+  /\b(?:cargo|go|docker)\s+build\b/i,
+  /\b(?:terraform\s+(?:apply|plan)|pulumi\s+up|firebase\s+deploy)\b/i,
+];
+
+const VALIDATION_PATTERNS: RegExp[] = [
+  /\b(?:test|tests|lint|typecheck|type-check|check|verify|validate)\b/i,
+  /\b(?:pytest|vitest|jest|mocha|ava|cargo\s+test|go\s+test)\b/i,
+];
+
+const INSPECTION_QUERY_LIST_PATTERNS: RegExp[] = [
+  /\b(?:ls|find|rg|grep|git\s+(?:status|log|diff|show|grep|blame)|pwd|which)\b/i,
+  /\b(?:npm|pnpm|yarn|bun)\s+(?:list|outdated|view)\b/i,
+  /\b(?:docker\s+(?:ps|images|logs|inspect|stats)|kubectl\s+(?:get|describe|logs)|gh\s+\w+\s+list)\b/i,
+];
+
+function defaultCtxExecuteTimeout(input: { code?: unknown }): number {
+  if (typeof input.code !== "string") return DEFAULT_CTX_EXECUTE_TIMEOUT_MS;
+
+  if (BUILD_DEPLOY_PATTERNS.some((pattern) => pattern.test(input.code))) {
+    return BUILD_DEPLOY_CTX_EXECUTE_TIMEOUT_MS;
+  }
+  if (VALIDATION_PATTERNS.some((pattern) => pattern.test(input.code))) {
+    return VALIDATION_CTX_EXECUTE_TIMEOUT_MS;
+  }
+  if (INSPECTION_QUERY_LIST_PATTERNS.some((pattern) => pattern.test(input.code))) {
+    return INSPECTION_CTX_EXECUTE_TIMEOUT_MS;
+  }
+  return DEFAULT_CTX_EXECUTE_TIMEOUT_MS;
+}
 
 const BASH_ALLOWLIST: RegExp[] = [
   /^\s*(mkdir|mv|cp|rm|touch|chmod)\b/i,
@@ -37,7 +72,7 @@ export default function contextModeDefaults(pi: ExtensionAPI) {
 
 ## Local Tooling Policy
 
-- Default \`ctx_execute\` calls to a 30000ms timeout unless a longer or shorter timeout is clearly justified.
+- When \`ctx_execute\` omits \`timeout\`, defaults are 15s for clear inspection/query/list work, 60s for validation/tests, 120s for builds/deploys, and 30s otherwise; an explicit timeout always wins.
 - Use \`ctx_execute\`, \`ctx_batch_execute\`, or \`ctx_execute_file\` for inspection, searches, git history/diffs, logs, tests, deploy output, and other analysis work.
 - Use \`ctx_batch_execute\` when 3 or more related inspection commands are likely.
 - Use \`ctx_execute_file\` for logs, JSON, CSV, test output, generated files, and other file-analysis tasks.
@@ -47,7 +82,8 @@ export default function contextModeDefaults(pi: ExtensionAPI) {
 - If a bash command is mainly reading, listing, searching, diffing, or inspecting, do not use \`bash\`; use the context-mode tools instead.
 - When using \`ctx_search\`, batch all likely follow-up questions into a single \`queries\` array and pass \`source\` unless cross-source search is explicitly desired.
 - Prefer \`ctx_index(path: ...)\` over \`ctx_index(content: ...)\` for non-trivial content.
-- Prefer derived summaries over raw dumps; return the conclusion, key evidence, and file paths instead of large quoted output.
+- Return derived summaries—not raw output dumps—with the conclusion, key evidence, and file paths.
+- After a failed \`bash\` command, revise it or switch to \`ctx_*\`; do not blindly repeat it.
 `;
 
     return {
@@ -61,9 +97,9 @@ export default function contextModeDefaults(pi: ExtensionAPI) {
       event.input &&
       typeof event.input === "object"
     ) {
-      const input = event.input as { timeout?: unknown };
+      const input = event.input as { timeout?: unknown; code?: unknown };
       if (input.timeout === undefined || input.timeout === null) {
-        input.timeout = DEFAULT_CTX_EXECUTE_TIMEOUT_MS;
+        input.timeout = defaultCtxExecuteTimeout(input);
       }
       return;
     }
