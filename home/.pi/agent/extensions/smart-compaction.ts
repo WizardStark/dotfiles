@@ -8,6 +8,7 @@ import type {
 import {
   convertToLlm,
   estimateTokens,
+  findCutPoint,
   serializeConversation,
 } from "@earendil-works/pi-coding-agent";
 import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
@@ -41,6 +42,14 @@ type ReplayInput = {
   content: string | unknown[];
   fallbackText?: string;
 };
+
+type ManualCompactionTarget = {
+  limitTokens: number;
+  keepRecentTokens: number;
+};
+
+type ConversationMessage = Parameters<typeof convertToLlm>[0][number];
+type BranchEntry = Parameters<typeof findCutPoint>[0][number];
 
 type Thresholds = {
   contextWindow: number;
@@ -282,6 +291,45 @@ async function showThresholdOverlay(ctx: ExtensionCommandContext) {
       },
     },
   );
+}
+
+function prepareManualCompaction(
+  branchEntries: BranchEntry[],
+  keepRecentTokens: number,
+) {
+  let boundaryStart = 0;
+  for (let index = branchEntries.length - 1; index >= 0; index -= 1) {
+    const entry = branchEntries[index];
+    if (entry?.type !== "compaction") continue;
+    const firstKeptEntryIndex = branchEntries.findIndex(
+      (candidate) => candidate.id === entry.firstKeptEntryId,
+    );
+    boundaryStart = firstKeptEntryIndex >= 0 ? firstKeptEntryIndex : index + 1;
+    break;
+  }
+
+  const cutPoint = findCutPoint(
+    branchEntries,
+    boundaryStart,
+    branchEntries.length,
+    keepRecentTokens,
+  );
+  const firstKeptEntry = branchEntries[cutPoint.firstKeptEntryIndex];
+  if (!firstKeptEntry?.id) return undefined;
+
+  const messages: ConversationMessage[] = [];
+  for (let index = boundaryStart; index < cutPoint.firstKeptEntryIndex; index += 1) {
+    const entry = branchEntries[index];
+    if (entry?.type === "message") {
+      messages.push(entry.message as ConversationMessage);
+    }
+  }
+
+  if (messages.length === 0) return undefined;
+  return {
+    firstKeptEntryId: firstKeptEntry.id,
+    messages,
+  };
 }
 
 function restoreReplayInputs(ctx: ExtensionContext, queued: ReplayInput[]) {
@@ -554,6 +602,7 @@ export default function smartCompaction(pi: ExtensionAPI) {
   let queuedInputs: ReplayInput[] = [];
   let compactionInFlight = false;
   let overflowRecoveryAttempted = false;
+  let manualCompactionTarget: ManualCompactionTarget | undefined;
 
   const flushQueuedInputs = () => {
     const queue = queuedInputs;
@@ -571,6 +620,59 @@ export default function smartCompaction(pi: ExtensionAPI) {
     description: "Show smart compaction thresholds for the active model",
     handler: async (_args, ctx) => {
       await showThresholdOverlay(ctx);
+    },
+  });
+
+  pi.registerCommand("smart-compact", {
+    description: "Smart-compact at a token limit and retain its newest half",
+    handler: async (args, ctx) => {
+      const limitTokens = Number(args.trim());
+      if (!Number.isSafeInteger(limitTokens) || limitTokens < 2) {
+        ctx.ui.notify("Usage: /smart-compact <token limit>", "warning");
+        return;
+      }
+
+      const currentTokens = ctx.getContextUsage()?.tokens;
+      if (!Number.isFinite(currentTokens) || currentTokens === undefined) {
+        ctx.ui.notify("Current context usage is unavailable; smart compaction was not started.", "warning");
+        return;
+      }
+      if (currentTokens < limitTokens) {
+        ctx.ui.notify(
+          `Current context is ${currentTokens.toLocaleString()} tokens, below ${limitTokens.toLocaleString()}; no compaction was performed. Run the command again once it reaches the limit.`,
+          "info",
+        );
+        return;
+      }
+      if (compactionInFlight) {
+        ctx.ui.notify("Smart compaction is already in progress.", "warning");
+        return;
+      }
+
+      manualCompactionTarget = {
+        limitTokens,
+        keepRecentTokens: Math.floor(limitTokens / 2),
+      };
+      compactionInFlight = true;
+      ctx.ui.notify(
+        `Smart compacting ${currentTokens.toLocaleString()} tokens to retain roughly ${manualCompactionTarget.keepRecentTokens.toLocaleString()} recent tokens.`,
+        "info",
+      );
+      ctx.compact({
+        customInstructions:
+          "Focus on preserving exact technical details, user intent, unresolved issues, and the next concrete action.",
+        onComplete: () => {
+          compactionInFlight = false;
+          manualCompactionTarget = undefined;
+          updateStatus(ctx);
+        },
+        onError: (error) => {
+          compactionInFlight = false;
+          manualCompactionTarget = undefined;
+          updateStatus(ctx);
+          ctx.ui.notify(`Smart compaction failed: ${error.message}`, "error");
+        },
+      });
     },
   });
 
@@ -709,17 +811,67 @@ export default function smartCompaction(pi: ExtensionAPI) {
 
   pi.on("session_before_compact", async (event, ctx) => {
     const { preparation, customInstructions, signal } = event;
-    const allMessages = [
-      ...preparation.messagesToSummarize,
-      ...preparation.turnPrefixMessages,
-    ];
-    const conversationText = serializeConversation(convertToLlm(allMessages));
+    const requestedManualTarget = manualCompactionTarget;
+    const cancelManualCompaction = (message: string) => {
+      manualCompactionTarget = undefined;
+      compactionInFlight = false;
+      ctx.ui.notify(message, "warning");
+      return { cancel: true };
+    };
+    let manualPreparation: ReturnType<typeof prepareManualCompaction>;
+    try {
+      manualPreparation = requestedManualTarget
+        ? prepareManualCompaction(event.branchEntries, requestedManualTarget.keepRecentTokens)
+        : undefined;
+    } catch (error) {
+      if (requestedManualTarget) {
+        const message = error instanceof Error ? error.message : String(error);
+        return cancelManualCompaction(`Manual smart compaction setup failed: ${message}`);
+      }
+      throw error;
+    }
+    if (requestedManualTarget && !manualPreparation) {
+      return cancelManualCompaction(
+        "Smart compaction could not find enough conversation history to retain the requested half.",
+      );
+    }
+
+    const allMessages = manualPreparation
+      ? manualPreparation.messages
+      : [...preparation.messagesToSummarize, ...preparation.turnPrefixMessages];
+    let conversationText: string;
+    try {
+      conversationText = serializeConversation(convertToLlm(allMessages));
+    } catch (error) {
+      if (requestedManualTarget) {
+        const message = error instanceof Error ? error.message : String(error);
+        return cancelManualCompaction(`Manual smart compaction setup failed: ${message}`);
+      }
+      throw error;
+    }
     if (!conversationText.trim()) {
+      if (requestedManualTarget) {
+        return cancelManualCompaction("Smart compaction found no conversation history to summarize.");
+      }
       return;
     }
 
-    const resolved = await resolveSummarizer(ctx);
+    let resolved: ResolvedSummarizer | undefined;
+    try {
+      resolved = await resolveSummarizer(ctx);
+    } catch (error) {
+      if (requestedManualTarget) {
+        const message = error instanceof Error ? error.message : String(error);
+        return cancelManualCompaction(`Manual smart compaction setup failed: ${message}`);
+      }
+      throw error;
+    }
     if (!resolved) {
+      if (requestedManualTarget) {
+        return cancelManualCompaction(
+          "No summarizer model is available; manual smart compaction was cancelled.",
+        );
+      }
       ctx.ui.notify(
         "No summarizer model available for smart compaction; using default compaction.",
         "warning",
@@ -748,7 +900,8 @@ export default function smartCompaction(pi: ExtensionAPI) {
       return {
         compaction: {
           summary,
-          firstKeptEntryId: preparation.firstKeptEntryId,
+          firstKeptEntryId:
+            manualPreparation?.firstKeptEntryId ?? preparation.firstKeptEntryId,
           tokensBefore: preparation.tokensBefore,
           details,
         },
@@ -756,7 +909,13 @@ export default function smartCompaction(pi: ExtensionAPI) {
     } catch (error) {
       if (!signal.aborted) {
         const message = error instanceof Error ? error.message : String(error);
+        if (requestedManualTarget) {
+          return cancelManualCompaction(`Manual smart compaction failed: ${message}`);
+        }
         ctx.ui.notify(`Smart compaction failed: ${message}`, "warning");
+      }
+      if (requestedManualTarget) {
+        return cancelManualCompaction("Manual smart compaction was cancelled.");
       }
       return;
     }

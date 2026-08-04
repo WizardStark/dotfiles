@@ -146,6 +146,33 @@ function buildUsageSummary(
   return parts.join(separator);
 }
 
+function buildContextSummary(ctx: ExtensionContext) {
+  const tokens = ctx.getContextUsage()?.tokens;
+  const contextWindow = ctx.model?.contextWindow;
+  if (!Number.isFinite(tokens) || tokens === undefined || tokens < 0) {
+    return {
+      full: ctx.ui.theme.fg("dim", "Ctx —"),
+      compact: ctx.ui.theme.fg("dim", "Ctx —"),
+    };
+  }
+
+  if (!Number.isFinite(contextWindow) || contextWindow === undefined || contextWindow <= 0) {
+    return {
+      full: ctx.ui.theme.fg("dim", `Ctx ${formatTokenCount(tokens)}`),
+      compact: ctx.ui.theme.fg("dim", `Ctx ${formatTokenCount(tokens)}`),
+    };
+  }
+
+  const percent = Math.round((tokens / contextWindow) * 100);
+  return {
+    full: ctx.ui.theme.fg(
+      "dim",
+      `Ctx ${formatTokenCount(tokens)}/${formatTokenCount(contextWindow)} (${percent}%)`,
+    ),
+    compact: ctx.ui.theme.fg("dim", `Ctx ${percent}%`),
+  };
+}
+
 function setStatus(ctx: ExtensionContext, content: string | undefined, compactContent = content) {
   if (!ctx.hasUI) {
     return;
@@ -156,7 +183,15 @@ function setStatus(ctx: ExtensionContext, content: string | undefined, compactCo
     return;
   }
 
-  statuslineItem.set({ content, compactContent }, getStatuslineSessionKey(ctx));
+  const context = buildContextSummary(ctx);
+  const separator = ctx.ui.theme.fg("dim", " · ");
+  statuslineItem.set(
+    {
+      content: `${content}${separator}${context.full}`,
+      compactContent: `${compactContent ?? content}${separator}${context.compact}`,
+    },
+    getStatuslineSessionKey(ctx),
+  );
 }
 
 
