@@ -542,7 +542,6 @@ ensure_pi_runtime_directories() {
   mkdir -p \
     "$HOME/.pi" \
     "$HOME/.pi/agent" \
-    "$HOME/.pi/context-mode" \
     "$HOME/.pi/agent/bin" \
     "$HOME/.pi/agent/extensions" \
     "$HOME/.pi/agent/npm" \

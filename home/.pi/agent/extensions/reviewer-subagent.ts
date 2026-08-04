@@ -372,21 +372,8 @@ async function generateReview(
   let thinkingLevelToUse = defaultThinkingLevel;
 
   if (stage === "interim") {
-    // Attempt to load supervisor-worker state to find the cheap reviewer model
-    const stateEntry = [...ctx.sessionManager.getEntries()]
-      .reverse()
-      .find((e) => e.type === "custom" && e.customType === "supervisor-worker-state") as { data?: any } | undefined;
-
-    thinkingLevelToUse = stateEntry?.data?.reviewerThinkingLevel ?? "minimal";
-
-    if (stateEntry?.data?.reviewerOverride) {
-      const ref = stateEntry.data.reviewerOverride;
-      modelToUse = ctx.modelRegistry.find(ref.provider, ref.id) ?? ctx.model;
-    }
-
-    if (!modelToUse) {
-      modelToUse = ctx.modelRegistry.find("github-copilot", "gpt-5.6-luna") ?? ctx.model;
-    }
+    thinkingLevelToUse = "minimal";
+    modelToUse = ctx.modelRegistry.find("github-copilot", "gpt-5.6-luna") ?? ctx.model;
   } else {
     if (!ctx.model) {
       throw new Error("No active model selected for final reviewer subagent.");

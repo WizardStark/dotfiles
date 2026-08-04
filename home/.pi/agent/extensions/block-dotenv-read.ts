@@ -4,9 +4,10 @@ import { basename, resolve } from "node:path";
 
 const DOTENV_NAME = /^\.env(?:\..+)?$/;
 const ALLOWED_DOTENV_NAMES = new Set([".env.example"]);
-const DOTENV_REFERENCE = /(^|[\s'"`=:/\\])(\.env(?:\.[A-Za-z0-9._-]+)?)(?=$|[\s'"`:/\\])/g;
+const DOTENV_REFERENCE =
+  /(^|[\s'"`=:/\\;|&(),])(\.env(?:\.[A-Za-z0-9._-]+)?)(?=$|[\s'"`:/\\;|&(),])/g;
 const BLOCK_REASON =
-  'Reading .env files is blocked by the block-dotenv-read extension. Ask the user for the needed value instead of opening the file.';
+  "Reading .env files is blocked by the block-dotenv-read extension. Ask the user for the needed value instead of opening the file.";
 
 function stripPathPrefix(value: string): string {
   return value.replace(/^@+/, "").trim();
@@ -51,7 +52,7 @@ export default function blockDotenvRead(pi: ExtensionAPI) {
 
 - Never read \`.env\` or secret-bearing \`.env.*\` files. \`.env.example\` is allowed as a template.
 - If a task appears to require a secret from a dotenv file, ask the user for the specific value or a redacted substitute.
-- Do not use shell, read, or context-mode tools to inspect blocked dotenv files.
+- Do not use shell or read tools to inspect blocked dotenv files.
 `;
 
     return {
@@ -60,35 +61,18 @@ export default function blockDotenvRead(pi: ExtensionAPI) {
   });
 
   pi.on("tool_call", async (event, ctx) => {
-    if (isToolCallEventType("read", event) && isBlockedDotenvPath(event.input.path, ctx.cwd)) {
+    if (
+      isToolCallEventType("read", event) &&
+      isBlockedDotenvPath(event.input.path, ctx.cwd)
+    ) {
       return blockResult(BLOCK_REASON);
     }
 
-    if (event.toolName === "ctx_execute_file") {
-      const input = event.input as { path?: unknown };
-      if (isBlockedDotenvPath(input.path, ctx.cwd)) {
-        return blockResult(BLOCK_REASON);
-      }
-      return;
-    }
-
-    if (isToolCallEventType("bash", event) && mentionsBlockedDotenv(event.input.command)) {
+    if (
+      isToolCallEventType("bash", event) &&
+      mentionsBlockedDotenv(event.input.command)
+    ) {
       return blockResult(BLOCK_REASON);
-    }
-
-    if (event.toolName === "ctx_execute") {
-      const input = event.input as { code?: unknown };
-      if (mentionsBlockedDotenv(input.code)) {
-        return blockResult(BLOCK_REASON);
-      }
-      return;
-    }
-
-    if (event.toolName === "ctx_batch_execute") {
-      const input = event.input as { commands?: Array<{ command?: unknown }> };
-      if (Array.isArray(input.commands) && input.commands.some((command) => mentionsBlockedDotenv(command.command))) {
-        return blockResult(BLOCK_REASON);
-      }
     }
   });
 

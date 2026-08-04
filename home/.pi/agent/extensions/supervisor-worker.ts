@@ -22,12 +22,9 @@ import {
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, stat } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { homedir } from "node:os";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { pathToFileURL } from "node:url";
 import {
   entryToMessage,
   getSessionMessages,
@@ -59,8 +56,6 @@ interface SupervisorWorkerState {
   thinkingLevel?: ThinkingLevel;
   scoutOverride?: ModelRef;
   scoutThinkingLevel?: ThinkingLevel;
-  reviewerOverride?: ModelRef;
-  reviewerThinkingLevel?: ThinkingLevel;
   autoMode?: "conservative" | "off";
 }
 
@@ -124,10 +119,6 @@ interface HandoffPointer {
   summary: string;
   filesChanged: string[];
   editLocations: HandoffEditLocation[];
-  artifactSources: string[];
-  artifactQueries: string[];
-  artifactSummary?: string;
-  indexed?: boolean;
 }
 
 type DelegateParams = {
@@ -142,9 +133,6 @@ type DelegateParams = {
   workerThinkingLevel?: ThinkingLevel;
   cwd?: string;
   tools?: string[];
-  artifactSources?: string[];
-  artifactQueries?: string[];
-  artifactSummary?: string;
 };
 
 type ScoutParams = {
@@ -156,9 +144,6 @@ type ScoutParams = {
   scoutThinkingLevel?: ThinkingLevel;
   cwd?: string;
   tools?: string[];
-  artifactSources?: string[];
-  artifactQueries?: string[];
-  artifactSummary?: string;
 };
 
 type DelegateStatus = "completed" | "escalated" | "blocked" | "unknown";
@@ -191,9 +176,6 @@ type DelegateResult = {
   status: DelegateStatus;
   filesChanged: string[];
   editLocations: HandoffEditLocation[];
-  artifactSources: string[];
-  artifactQueries: string[];
-  artifactSummary?: string;
   boundaryViolations: string[];
   validation: ValidationResult[];
   subagentMetrics?: SubagentMetrics;
@@ -214,9 +196,6 @@ type ScoutResult = {
   fullReport: string;
   status: DelegateStatus;
   scoutModel: string;
-  artifactSources: string[];
-  artifactQueries: string[];
-  artifactSummary?: string;
   subagentMetrics?: SubagentMetrics;
   stopReason?: string;
   errorMessage?: string;
@@ -237,8 +216,6 @@ const DEFAULT_WORKER_THINKING_LEVEL: ThinkingLevel = "minimal";
 
 const DEFAULT_SCOUT_THINKING_LEVEL: ThinkingLevel = "minimal";
 
-const DEFAULT_REVIEWER_THINKING_LEVEL: ThinkingLevel = "minimal";
-
 const DEFAULT_AUTO_MODE = "conservative" as const;
 const MAX_CONTEXT_CHARS = 6_000;
 const MAX_MESSAGES = 6;
@@ -248,9 +225,7 @@ const MAX_PARALLEL_SUBAGENT_CONCURRENCY = 4;
 declare global {
   // eslint-disable-next-line no-var
   var __PI_SUPERVISOR_WORKER_REGISTERED__:
-    | "registering"
-    | "registered"
-    | undefined;
+    "registering" | "registered" | undefined;
 }
 const MAX_PARALLEL_SUBAGENT_TASKS = 4;
 const MAX_PARALLEL_REPORT_CHARS = 4_000;
@@ -316,23 +291,9 @@ const MUTATING_BASH_PATTERNS: RegExp[] = [
   /^\s*tee\b/i,
   /[>|]\s*[^>|]+\.[^>|]+/, // redirect or pipe to file (coarse)
 ];
-const PREFERRED_CONTEXT_MODE_TOOLS = [
-  "ctx_search",
-  "ctx_execute",
-  "ctx_execute_file",
-  "ctx_batch_execute",
-  "ctx_index",
-  "ctx_fetch_and_index",
-] as const;
-const DEFAULT_SCOUT_TOOLS = [
-  ...PREFERRED_CONTEXT_MODE_TOOLS,
-  "read",
-  "grep",
-  "find",
-  "ls",
-];
+const DEFAULT_SCOUT_TOOLS = ["read", "grep", "find", "ls", "bash"];
 const SCOUT_SAFE_TOOLS = new Set(DEFAULT_SCOUT_TOOLS);
-const SCOUT_BLOCKED_TOOLS = new Set(["edit", "write", "bash"]);
+const SCOUT_BLOCKED_TOOLS = new Set(["edit", "write"]);
 
 const WORKER_SYSTEM_PROMPT = `You are a delegated worker subagent inside pi.
 
@@ -347,12 +308,9 @@ Your job:
 - Do not ask the user questions directly.
 - If the task becomes ambiguous, risky, cross-cutting, or requires touching forbidden files, stop and escalate instead of guessing.
 - Use tools, tests, lint, and typechecks as the source of truth when available.
-- Prefer ctx_* tools over bash/read for inspection, repository searches, docs lookup, tests, git/history, and large-output analysis.
-- Use bash mainly for safe mutations/navigation/process control, and use read mainly when you need exact file text for an edit or a tiny targeted excerpt.
-- If a tool policy blocks an inspection command, do not repeat the same bash/read attempt; switch to an allowed ctx_* workflow or escalate.
+- Use read, grep, find, and safe shell commands for inspection; use bash mainly for safe mutations, navigation, and process control.
+- If a tool policy blocks an inspection command, do not repeat the same attempt; use another allowed tool or escalate.
 - For late-session work, prioritize narrow follow-up fixes, integration polish, and validation-driven refactors.
-- Prefer reusable artifact-producing tools (ctx_batch_execute, ctx_index, ctx_fetch_and_index, large ctx_execute with intent) for shared research.
-- When reusing an existing artifact, reference its source label in your Summary/Edits and mention why it was useful.
 
 Return exactly this Markdown structure:
 
@@ -391,14 +349,10 @@ Your job:
 - Perform read-only reconnaissance for the supervisor.
 - Explore the codebase, search for relevant files, trace behavior, and summarize evidence.
 - Do not edit files, write files, or run mutating shell commands.
-- Prefer ctx_* tools over read-oriented primitives for searches, summaries, logs, diffs, test output, and other analysis work.
-- Use read only for exact small excerpts the supervisor is likely to need verbatim.
-- If a tool policy blocks an inspection approach, switch to an allowed ctx_* workflow instead of retrying the same call.
+- Use read, grep, find, and safe shell commands for inspection.
 - Prefer concrete findings with file paths over speculation.
 - Call out uncertainty clearly when evidence is incomplete.
 - Recommend a practical next step for the supervisor.
-- Prefer scout-safe reusable artifact workflows such as ctx_search, ctx_execute with intent, and any allowed indexing tools for shared research.
-- When reusing an existing artifact, reference its source label in your Summary/Findings and mention why it was useful.
 
 Return exactly this Markdown structure:
 
@@ -444,7 +398,7 @@ function parseModelRef(
 function resolveRequestedModel(
   ctx: ExtensionContext,
   raw: string,
-  role: "worker" | "scout" | "reviewer",
+  role: "worker" | "scout",
 ): { ref: ModelRef; model: Model<Api> } | { error: string } {
   const resolved = resolveExactModelReference(
     raw,
@@ -487,8 +441,6 @@ function readSavedState(
   const thinkingLevel = entry?.data?.thinkingLevel;
   const scoutOverride = entry?.data?.scoutOverride;
   const scoutThinkingLevel = entry?.data?.scoutThinkingLevel;
-  const reviewerOverride = entry?.data?.reviewerOverride;
-  const reviewerThinkingLevel = entry?.data?.reviewerThinkingLevel;
   const autoMode = entry?.data?.autoMode;
   const nextState: SupervisorWorkerState = {};
 
@@ -504,15 +456,6 @@ function readSavedState(
   if (scoutThinkingLevel && THINKING_LEVELS.includes(scoutThinkingLevel)) {
     nextState.scoutThinkingLevel = scoutThinkingLevel;
   }
-  if (reviewerOverride?.provider && reviewerOverride?.id) {
-    nextState.reviewerOverride = reviewerOverride;
-  }
-  if (
-    reviewerThinkingLevel &&
-    THINKING_LEVELS.includes(reviewerThinkingLevel)
-  ) {
-    nextState.reviewerThinkingLevel = reviewerThinkingLevel;
-  }
   if (autoMode === "conservative" || autoMode === "off") {
     nextState.autoMode = autoMode;
   }
@@ -521,8 +464,6 @@ function readSavedState(
     nextState.thinkingLevel ||
     nextState.scoutOverride ||
     nextState.scoutThinkingLevel ||
-    nextState.reviewerOverride ||
-    nextState.reviewerThinkingLevel ||
     nextState.autoMode
     ? nextState
     : undefined;
@@ -577,19 +518,6 @@ function getEffectiveScoutThinkingLevel(
   state: SupervisorWorkerState,
 ): ThinkingLevel {
   return state.scoutThinkingLevel ?? DEFAULT_SCOUT_THINKING_LEVEL;
-}
-
-function getEffectiveReviewerRef(
-  ctx: ExtensionContext,
-  state: SupervisorWorkerState,
-): ModelRef | undefined {
-  return state.reviewerOverride ?? getPreferredFallbackRef(ctx);
-}
-
-function getEffectiveReviewerThinkingLevel(
-  state: SupervisorWorkerState,
-): ThinkingLevel {
-  return state.reviewerThinkingLevel ?? DEFAULT_REVIEWER_THINKING_LEVEL;
 }
 
 function getEffectiveThinkingLevel(
@@ -797,15 +725,7 @@ function formatEditLocationsInline(
 }
 
 function summarizeStructuredHandoff(handoff: HandoffPointer): string {
-  const artifactText =
-    handoff.artifactSources.length > 0
-      ? `artifacts=${handoff.artifactSources.join(", ")}`
-      : "";
-  const queryText =
-    handoff.artifactQueries.length > 0
-      ? `queries=${handoff.artifactQueries.join(", ")}`
-      : "";
-  return [handoff.summary, artifactText, queryText].filter(Boolean).join(" | ");
+  return handoff.summary;
 }
 
 function buildInspectionTargets(
@@ -834,24 +754,10 @@ function buildInspectionBullets(
   const targets = buildInspectionTargets(editLocations, filesChanged);
   if (targets.length === 0) return ["(none)"];
   const bullets = [
-    "Prefer one ctx_batch_execute pass to inspect these changed locations before falling back to serial read calls.",
+    "Inspect the relevant changed locations before continuing.",
     ...targets.slice(0, limit).map((location) => formatEditLocation(location)),
   ];
-  if (targets.length > 1) {
-    const previewCommands = targets.slice(0, 4).map((target, index) => {
-      const label = target.path.split("/").pop() || `target-${index + 1}`;
-      const command =
-        target.startLine && target.endLine
-          ? `sed -n '${target.startLine},${target.endLine}p' ${target.path}`
-          : `sed -n '1,160p' ${target.path}`;
-      return `{label: ${JSON.stringify(label)}, command: ${JSON.stringify(command)}}`;
-    });
-    const batchCmd = `ctx_batch_execute(commands: [${previewCommands.join(", ")}${targets.length > 4 ? ", ..." : ""}], queries: ["changed block", "follow-up context"])`;
-    bullets.push(`Ready-to-run pattern: ${batchCmd}`);
-    bullets.push(
-      "Always batch multiple inspections when they fit in one turn.",
-    );
-  }
+
   const remaining = targets.length - Math.min(targets.length, limit);
   if (remaining > 0) {
     bullets.splice(
@@ -901,15 +807,8 @@ function isMutatingBashCommand(command: unknown): boolean {
   );
 }
 
-function mergePreferredContextTools(
-  tools: string[] | undefined,
-): string[] | undefined {
-  if (!tools || tools.length === 0) return tools;
-  return [...new Set([...PREFERRED_CONTEXT_MODE_TOOLS, ...tools])];
-}
-
 function sanitizeScoutTools(tools: string[] | undefined): string[] {
-  const requested = mergePreferredContextTools(tools) ?? DEFAULT_SCOUT_TOOLS;
+  const requested = tools ?? DEFAULT_SCOUT_TOOLS;
   const sanitized = requested.filter((tool) => SCOUT_SAFE_TOOLS.has(tool));
   return sanitized.length > 0 ? [...new Set(sanitized)] : DEFAULT_SCOUT_TOOLS;
 }
@@ -1258,7 +1157,8 @@ async function snapshotWorkingTree(
   }
 
   const relativeFiles = repoRoot
-    ? (await listGitFiles(repoRoot, signal)) ?? (await listFilesRecursive(root))
+    ? ((await listGitFiles(repoRoot, signal)) ??
+      (await listFilesRecursive(root)))
     : await listFilesRecursive(root);
 
   for (const relativePath of relativeFiles) {
@@ -1683,8 +1583,6 @@ function buildWorkerFailureResult(
     boundaryViolations: [],
     validation: [],
     errorMessage: message,
-    artifactSources: [],
-    artifactQueries: [],
   };
 }
 
@@ -1707,8 +1605,6 @@ function buildScoutFailureResult(
     fullReport: report,
     scoutModel,
     errorMessage: message,
-    artifactSources: [],
-    artifactQueries: [],
   };
 }
 
@@ -1812,27 +1708,10 @@ function buildWorkerPrompt(
   conversationContext: string,
 ): string {
   const hasAllowedFiles = (params.allowedFiles?.length ?? 0) > 0;
-  const artifactSources = normalizeArtifactSources(params.artifactSources);
   const sections = [
     `## Objective\n${params.objective.trim()}`,
     `## Scope\n${params.scope?.trim() || "Stay within the stated task only."}`,
   ];
-
-  if (artifactSources.length > 0) {
-    sections.push(
-      `## Reusable project artifacts\n${formatBullets(artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
-    );
-  }
-
-  if (artifactSources.length > 0 && (params.artifactQueries?.length ?? 0) > 0) {
-    sections.push(
-      `## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`,
-    );
-  }
-
-  if (params.artifactSummary) {
-    sections.push(`## Artifact summary\n${params.artifactSummary.trim()}`);
-  }
 
   sections.push(
     `## Allowed files\n${formatBullets(params.allowedFiles, "Any file needed within scope.")}`,
@@ -1851,27 +1730,10 @@ function buildScoutPrompt(
   params: ScoutParams,
   conversationContext: string,
 ): string {
-  const artifactSources = normalizeArtifactSources(params.artifactSources);
   const sections = [
     `## Objective\n${params.objective.trim()}`,
     `## Scope\n${params.scope?.trim() || "Read-only reconnaissance only. Stay focused on the stated question."}`,
   ];
-
-  if (artifactSources.length > 0) {
-    sections.push(
-      `## Reusable project artifacts\n${formatBullets(artifactSources)}\n\n- These artifacts were generated in prior sessions or steps.\n- Use ctx_search with artifactQueries or other allowed context-mode tools to reuse them without re-discovering the same data.`,
-    );
-  }
-
-  if (artifactSources.length > 0 && (params.artifactQueries?.length ?? 0) > 0) {
-    sections.push(
-      `## Recommended artifact queries\n${formatBullets(params.artifactQueries)}`,
-    );
-  }
-
-  if (params.artifactSummary) {
-    sections.push(`## Artifact summary\n${params.artifactSummary.trim()}`);
-  }
 
   sections.push(
     `## Questions to answer\n${formatBullets(params.questions)}`,
@@ -2388,132 +2250,6 @@ function extractDiffRanges(
   return ranges;
 }
 
-function normalizeArtifactLabel(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const label = value.trim();
-  if (!label) return undefined;
-  const separator = label.indexOf(":");
-  if (
-    separator <= 0 ||
-    !label.slice(0, separator).trim() ||
-    !label.slice(separator + 1).trim()
-  ) {
-    return undefined;
-  }
-  return label;
-}
-
-function normalizeArtifactSources(values: string[] | undefined): string[] {
-  return [
-    ...new Set(
-      (values ?? [])
-        .map((value) => normalizeArtifactLabel(value))
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ];
-}
-
-function extractArtifactSourcesFromText(text: string): string[] {
-  const sources: string[] = [];
-  const patterns = [
-    /Use source:\s*"([^"]+)"/g,
-    /Indexed\s+\d+\s+sections(?:\s*\([^\n]+\))?\s+from:\s*([^\n]+)/g,
-    /^- \[(?:new|cache)\]\s+(.+?)\s+—/gm,
-  ];
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern)) {
-      const label = normalizeArtifactLabel(match[1]);
-      if (label) sources.push(label);
-    }
-  }
-  return [...new Set(sources)];
-}
-
-function buildBatchArtifactSource(commands: unknown): string | undefined {
-  if (!Array.isArray(commands) || commands.length === 0) return undefined;
-  const labels = commands.flatMap((command) => {
-    if (!command || typeof command !== "object") return [] as string[];
-    const label = normalizeArtifactLabel(
-      (command as { label?: unknown }).label,
-    );
-    return label ? [label] : [];
-  });
-  if (labels.length === 0) return undefined;
-  return `batch:${labels.join(",").slice(0, 80)}`;
-}
-
-function extractArtifactPointers(execution: WorkerToolExecution): {
-  sources: string[];
-  queries: string[];
-} {
-  const sources: string[] = [];
-  const queries: string[] = [];
-  const toolName = execution.toolName;
-  const args = execution.args;
-  const result =
-    execution.result && typeof execution.result === "object"
-      ? (execution.result as Record<string, unknown>)
-      : undefined;
-  const resultText = extractTextContent(result);
-
-  if (Array.isArray(args?.queries)) {
-    queries.push(
-      ...args.queries.filter(
-        (q): q is string => typeof q === "string" && q.trim().length > 0,
-      ),
-    );
-  }
-
-  if (toolName === "ctx_search") {
-    const source = normalizeArtifactLabel(args?.source);
-    if (source) sources.push(source);
-  }
-
-  if (toolName === "ctx_batch_execute") {
-    const source = buildBatchArtifactSource(args?.commands);
-    if (source) sources.push(source);
-  }
-
-  if (toolName === "ctx_index") {
-    const source =
-      normalizeArtifactLabel(args?.source) ??
-      normalizeArtifactLabel(args?.path);
-    if (source) sources.push(source);
-  }
-
-  if (toolName === "ctx_fetch_and_index") {
-    const directSource = normalizeArtifactLabel(args?.source);
-    if (directSource) {
-      sources.push(directSource);
-    }
-    if (Array.isArray(args?.requests)) {
-      for (const request of args.requests) {
-        if (!request || typeof request !== "object") continue;
-        const label = normalizeArtifactLabel(
-          (request as { source?: unknown }).source,
-        );
-        if (label) sources.push(label);
-      }
-    }
-  }
-
-  if (
-    (toolName === "ctx_execute" || toolName === "ctx_execute_file") &&
-    args?.intent
-  ) {
-    sources.push(...extractArtifactSourcesFromText(resultText));
-  }
-
-  if (toolName === "ctx_index" || toolName === "ctx_fetch_and_index") {
-    sources.push(...extractArtifactSourcesFromText(resultText));
-  }
-
-  return {
-    sources: [...new Set(sources)],
-    queries: [...new Set(queries.map((query) => query.trim()).filter(Boolean))],
-  };
-}
-
 async function readFileLineCount(
   root: string,
   filePath: string,
@@ -2530,21 +2266,11 @@ async function deriveEditLocations(
   root: string,
   toolExecutions: WorkerToolExecution[],
   filesChanged: string[],
-): Promise<{
-  editLocations: HandoffEditLocation[];
-  artifactSources: string[];
-  artifactQueries: string[];
-}> {
+): Promise<HandoffEditLocation[]> {
   const locations: HandoffEditLocation[] = [];
-  const artifactSources: string[] = [];
-  const artifactQueries: string[] = [];
-
   for (const execution of toolExecutions) {
     if (execution.isError) continue;
     const toolName = execution.toolName;
-    const artifactPointers = extractArtifactPointers(execution);
-    artifactSources.push(...artifactPointers.sources);
-    artifactQueries.push(...artifactPointers.queries);
 
     const path =
       typeof execution.args?.path === "string"
@@ -2616,11 +2342,7 @@ async function deriveEditLocations(
     });
   }
 
-  return {
-    editLocations: dedupeEditLocations(locations),
-    artifactSources: [...new Set(artifactSources)].sort(),
-    artifactQueries: [...new Set(artifactQueries)].sort(),
-  };
+  return dedupeEditLocations(locations);
 }
 
 async function runScoutSubagent(
@@ -3093,356 +2815,6 @@ function buildHandoffSource(
   return `${HANDOFF_SOURCE_PREFIX}:${toolName}:${hash}`;
 }
 
-function collectHandoffArtifacts(details: Record<string, unknown>): {
-  sources: string[];
-  queries: string[];
-  summary?: string;
-} {
-  const directSources = Array.isArray(details.artifactSources)
-    ? details.artifactSources.filter(
-        (item): item is string => typeof item === "string",
-      )
-    : [];
-  const directQueries = Array.isArray(details.artifactQueries)
-    ? details.artifactQueries.filter(
-        (item): item is string => typeof item === "string",
-      )
-    : [];
-  const directSummary =
-    typeof details.artifactSummary === "string" &&
-    details.artifactSummary.trim()
-      ? details.artifactSummary.trim()
-      : undefined;
-
-  const nestedSources = Array.isArray(details.results)
-    ? details.results.flatMap((result) => {
-        if (!result || typeof result !== "object") return [] as string[];
-        const sources = (result as { artifactSources?: unknown })
-          .artifactSources;
-        return Array.isArray(sources)
-          ? sources.filter((item): item is string => typeof item === "string")
-          : [];
-      })
-    : [];
-
-  const nestedQueries = Array.isArray(details.results)
-    ? details.results.flatMap((result) => {
-        if (!result || typeof result !== "object") return [] as string[];
-        const queries = (result as { artifactQueries?: unknown })
-          .artifactQueries;
-        return Array.isArray(queries)
-          ? queries.filter((item): item is string => typeof item === "string")
-          : [];
-      })
-    : [];
-
-  const nestedSummaries = Array.isArray(details.results)
-    ? details.results.flatMap((result) => {
-        if (!result || typeof result !== "object") return [] as string[];
-        const summary = (result as { artifactSummary?: unknown })
-          .artifactSummary;
-        return typeof summary === "string" && summary.trim()
-          ? [summary.trim()]
-          : [];
-      })
-    : [];
-
-  return {
-    sources: [
-      ...new Set(
-        [...directSources, ...nestedSources]
-          .map((item) => item.trim())
-          .filter(Boolean),
-      ),
-    ].sort(),
-    queries: [
-      ...new Set(
-        [...directQueries, ...nestedQueries]
-          .map((item) => item.trim())
-          .filter(Boolean),
-      ),
-    ].sort(),
-    summary:
-      directSummary ??
-      (nestedSummaries.length > 0 ? nestedSummaries.join(" | ") : undefined),
-  };
-}
-
-function buildHandoffMarkdown(input: {
-  source: string;
-  toolName: string;
-  title: string;
-  status: string;
-  sessionKey: string;
-  generatedAt: number;
-  summary: string;
-  filesChanged: string[];
-  editLocations: HandoffEditLocation[];
-  artifactSources: string[];
-  artifactQueries: string[];
-  artifactSummary?: string;
-  modelLabel?: string;
-  promptInput: Record<string, unknown>;
-  details: Record<string, unknown>;
-  report: string;
-}): string {
-  const lines = [
-    `# Subagent handoff`,
-    "",
-    `- Source: ${input.source}`,
-    `- Tool: ${input.toolName}`,
-    `- Title: ${input.title}`,
-    `- Status: ${input.status}`,
-    `- Generated at: ${new Date(input.generatedAt).toISOString()}`,
-    `- Session: ${input.sessionKey}`,
-    ...(input.modelLabel ? [`- Model: ${input.modelLabel}`] : []),
-    ...(input.artifactSources.length > 0
-      ? [`- Artifact sources: ${input.artifactSources.join(", ")}`]
-      : []),
-    ...(input.artifactQueries.length > 0
-      ? [`- Artifact queries: ${input.artifactQueries.join(", ")}`]
-      : []),
-    "",
-    `## Summary`,
-    input.summary || "(none)",
-  ];
-
-  if (input.artifactSummary) {
-    lines.push("", "## Artifact Summary", input.artifactSummary);
-  }
-
-  if (
-    typeof input.promptInput.objective === "string" &&
-    input.promptInput.objective.trim()
-  ) {
-    lines.push("", "## Objective", input.promptInput.objective.trim());
-  }
-  if (
-    typeof input.promptInput.scope === "string" &&
-    input.promptInput.scope.trim()
-  ) {
-    lines.push("", "## Scope", input.promptInput.scope.trim());
-  }
-  if (Array.isArray(input.promptInput.acceptanceCriteria)) {
-    const acceptanceCriteria = input.promptInput.acceptanceCriteria
-      .filter(
-        (item): item is string =>
-          typeof item === "string" && item.trim().length > 0,
-      )
-      .map((item) => `- ${item.trim()}`);
-    if (acceptanceCriteria.length > 0) {
-      lines.push("", "## Acceptance Criteria", ...acceptanceCriteria);
-    }
-  }
-  if (
-    typeof input.promptInput.context === "string" &&
-    input.promptInput.context.trim()
-  ) {
-    lines.push("", "## Review Context", input.promptInput.context.trim());
-  }
-  if (
-    typeof input.promptInput.focus === "string" &&
-    input.promptInput.focus.trim()
-  ) {
-    lines.push("", "## Review Focus", input.promptInput.focus.trim());
-  }
-  if (input.editLocations.length > 0 && !input.report.trim()) {
-    lines.push(
-      "",
-      "## Edit Locations",
-      ...input.editLocations.map(
-        (location) => `- ${formatEditLocation(location)}`,
-      ),
-    );
-    lines.push(
-      "",
-      "## Suggested Inspection",
-      ...buildInspectionBullets(input.editLocations, input.filesChanged).map(
-        (item) => `- ${item}`,
-      ),
-    );
-  }
-  if (Array.isArray(input.details.validation)) {
-    const validationLines = input.details.validation
-      .filter(
-        (item): item is ValidationResult =>
-          Boolean(item) && typeof item === "object",
-      )
-      .map((item) => {
-        const exitText =
-          item.exitCode === null ? "signal" : String(item.exitCode);
-        return `- ${item.command} - ${item.outcome} (exit ${exitText}) - ${item.note}`;
-      });
-    if (validationLines.length > 0) {
-      lines.push("", "## Validation", ...validationLines);
-    }
-  }
-  if (input.report.trim()) {
-    lines.push("", "## Full Report", input.report.trim());
-  }
-
-  return lines.join("\n");
-}
-
-type SharedContentStore = {
-  index(options: {
-    content?: string;
-    path?: string;
-    source?: string;
-    attribution?: { sessionId?: string; eventId?: string };
-  }): { label: string; totalChunks: number; codeChunks: number };
-  searchWithFallback(
-    query: string,
-    limit?: number,
-    source?: string,
-    contentType?: "code" | "prose",
-    sourceMatchMode?: "like" | "exact",
-  ): Array<{
-    title: string;
-    content: string;
-    highlighted?: string;
-    source?: string;
-  }>;
-  close(): void;
-};
-
-const extensionRequire = createRequire(import.meta.url);
-
-function resolveContextModeBuildRoot(): string {
-  const configDir = process.env.PI_CONFIG_DIR?.trim() || join(homedir(), ".pi");
-  const candidates = [
-    (() => {
-      try {
-        return extensionRequire.resolve("context-mode/cli");
-      } catch {
-        return undefined;
-      }
-    })(),
-    join(configDir, "agent", "npm", "node_modules", "context-mode"),
-  ].filter((value): value is string => Boolean(value));
-
-  for (const candidate of candidates) {
-    const probeRoots = [candidate, resolve(candidate, "..")];
-    for (const probeRoot of probeRoots) {
-      if (existsSync(join(probeRoot, "store.js"))) {
-        return probeRoot;
-      }
-      const buildRoot = join(probeRoot, "build");
-      if (existsSync(join(buildRoot, "store.js"))) {
-        return buildRoot;
-      }
-    }
-  }
-
-  throw new Error("Unable to resolve the installed context-mode build path.");
-}
-
-let contextModeModulesPromise:
-  | Promise<{
-      ContentStore: new (dbPath?: string) => SharedContentStore;
-      resolveContentStorageDir: (getDefaultDir: () => string) => {
-        path: string;
-      };
-      ensureWritableStorageDir: (dir: { path: string }) => string;
-      resolveDefaultSessionDir: (opts: {
-        configDir: string;
-        configDirEnv?: string;
-        legacySessionDirEnv?: string;
-        env?: NodeJS.ProcessEnv;
-      }) => string;
-      resolveContentStorePath: (opts: {
-        projectDir: string;
-        contentDir: string;
-      }) => string;
-      resolvePiWorkspaceDir: (opts: {
-        env: Record<string, string | undefined>;
-        pwd: string | undefined;
-        cwd: string;
-        home?: string;
-      }) => string;
-    }>
-  | undefined;
-let cachedHandoffStore:
-  | {
-      dbPath: string;
-      store: SharedContentStore;
-    }
-  | undefined;
-
-async function loadContextModeModules() {
-  if (!contextModeModulesPromise) {
-    contextModeModulesPromise = (async () => {
-      try {
-        const root = resolveContextModeBuildRoot();
-        const [{ ContentStore }, sessionDbModule, piAdapterModule] =
-          await Promise.all([
-            import(pathToFileURL(join(root, "store.js")).href),
-            import(pathToFileURL(join(root, "session", "db.js")).href),
-            import(
-              pathToFileURL(join(root, "adapters", "pi", "extension.js")).href
-            ),
-          ]);
-
-        return {
-          ContentStore,
-          resolveContentStorageDir: sessionDbModule.resolveContentStorageDir,
-          ensureWritableStorageDir: sessionDbModule.ensureWritableStorageDir,
-          resolveDefaultSessionDir: sessionDbModule.resolveDefaultSessionDir,
-          resolveContentStorePath: sessionDbModule.resolveContentStorePath,
-          resolvePiWorkspaceDir: piAdapterModule.resolvePiWorkspaceDir,
-        };
-      } catch (error) {
-        contextModeModulesPromise = undefined;
-        throw error;
-      }
-    })();
-  }
-
-  return await contextModeModulesPromise;
-}
-
-async function getOrCreateHandoffStore(ctx: ExtensionContext) {
-  const modules = await loadContextModeModules();
-  const projectDir = modules.resolvePiWorkspaceDir({
-    env: process.env,
-    pwd: ctx.cwd,
-    cwd: ctx.cwd,
-    home: homedir(),
-  });
-  const defaultSessionDir = modules.resolveDefaultSessionDir({
-    configDir: process.env.PI_CONFIG_DIR?.trim() || join(homedir(), ".pi"),
-    configDirEnv: "PI_CONFIG_DIR",
-    env: process.env,
-  });
-  const contentDir = modules.ensureWritableStorageDir(
-    modules.resolveContentStorageDir(() => defaultSessionDir),
-  );
-  await mkdir(contentDir, { recursive: true });
-  const dbPath = modules.resolveContentStorePath({ projectDir, contentDir });
-  if (!cachedHandoffStore || cachedHandoffStore.dbPath !== dbPath) {
-    cachedHandoffStore?.store.close();
-    cachedHandoffStore = {
-      dbPath,
-      store: new modules.ContentStore(dbPath),
-    };
-  }
-  return cachedHandoffStore.store;
-}
-
-async function indexHandoff(
-  ctx: ExtensionContext,
-  pointer: HandoffPointer,
-  markdown: string,
-): Promise<boolean> {
-  try {
-    const store = await getOrCreateHandoffStore(ctx);
-    store.index({ content: markdown, source: pointer.source });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
   const pointers: HandoffPointer[] = [];
   for (const entry of ctx.sessionManager.getEntries()) {
@@ -3464,18 +2836,6 @@ function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
       editLocations: Array.isArray(data.editLocations)
         ? parseDetailEditLocations(data.editLocations)
         : [],
-      artifactSources: Array.isArray(data.artifactSources)
-        ? data.artifactSources.filter(
-            (item): item is string => typeof item === "string",
-          )
-        : [],
-      artifactQueries: Array.isArray(data.artifactQueries)
-        ? data.artifactQueries.filter(
-            (item): item is string => typeof item === "string",
-          )
-        : [],
-      artifactSummary: data.artifactSummary,
-      indexed: data.indexed,
     });
   }
   return pointers
@@ -3487,228 +2847,38 @@ function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
     );
 }
 
-function inferDelegationArtifacts(
-  ctx: ExtensionContext,
-  prompt: string,
-): {
-  artifactSources?: string[];
-  artifactQueries?: string[];
-  artifactSummary?: string;
-} {
-  const normalizedPrompt = singleLine(prompt);
-  if (!normalizedPrompt) return {};
-
-  const candidates = readRecentHandoffPointers(ctx)
-    .filter((handoff) => handoff.toolName !== "review_changes")
-    .filter(
-      (handoff) =>
-        handoff.artifactSources.length > 0 ||
-        handoff.artifactQueries.length > 0,
-    )
-    .map((handoff) => ({
-      handoff,
-      score: scoreHandoffRelevance(normalizedPrompt, handoff),
-    }))
-    .filter((item) => item.score > 0)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 3)
-    .map((item) => item.handoff);
-
-  if (candidates.length === 0) return {};
-
-  const artifactSources = [
-    ...new Set(candidates.flatMap((handoff) => handoff.artifactSources)),
-  ].slice(0, 6);
-  const artifactQueries = [
-    ...new Set(candidates.flatMap((handoff) => handoff.artifactQueries)),
-  ].slice(0, 6);
-  const artifactSummary = truncate(
-    candidates
-      .slice(0, 2)
-      .map(
-        (handoff) => `${handoff.title}: ${summarizeStructuredHandoff(handoff)}`,
-      )
-      .join(" | "),
-    320,
-  );
-
-  return {
-    artifactSources: artifactSources.length > 0 ? artifactSources : undefined,
-    artifactQueries: artifactQueries.length > 0 ? artifactQueries : undefined,
-    artifactSummary: artifactSummary || undefined,
-  };
-}
-
-function withInferredArtifacts<T extends DelegateParams | ScoutParams>(
-  ctx: ExtensionContext,
-  params: T,
-  promptText: string,
-): T {
-  if (
-    (params.artifactSources?.length ?? 0) > 0 ||
-    (params.artifactQueries?.length ?? 0) > 0 ||
-    (params.artifactSummary?.trim().length ?? 0) > 0
-  ) {
-    return params;
-  }
-
-  const inferred = inferDelegationArtifacts(ctx, promptText);
-  if (
-    !inferred.artifactSources &&
-    !inferred.artifactQueries &&
-    !inferred.artifactSummary
-  ) {
-    return params;
-  }
-
-  return {
-    ...params,
-    artifactSources: inferred.artifactSources,
-    artifactQueries: inferred.artifactQueries,
-    artifactSummary: inferred.artifactSummary,
-  };
-}
-
 async function buildRecentHandoffPrompt(
   ctx: ExtensionContext,
   prompt: string,
 ): Promise<string> {
-  const rawSessionHandoffs = readRecentHandoffPointers(ctx).filter(
-    (handoff) => handoff.toolName !== "review_changes",
-  );
-  const scoredSessionHandoffs = prompt.trim()
-    ? rawSessionHandoffs
-        .map((handoff) => ({
-          handoff,
-          score: scoreHandoffRelevance(prompt, handoff),
-        }))
-        .filter((item) => item.score > 0)
-        .sort((left, right) => right.score - left.score)
-        .map((item) => item.handoff)
-    : rawSessionHandoffs;
-  const sessionHandoffs = [
-    ...rawSessionHandoffs.slice(0, 1),
-    ...scoredSessionHandoffs,
-  ]
-    .filter(
-      (handoff, index, all) =>
-        index ===
-        all.findIndex((candidate) => candidate.source === handoff.source),
-    )
-    .slice(0, MAX_RECENT_HANDOFFS);
-  const store = await getOrCreateHandoffStore(ctx).catch(() => undefined);
-  const handoffs = [...sessionHandoffs];
+  const candidates = readRecentHandoffPointers(ctx)
+    .filter((handoff) => handoff.toolName !== "review_changes")
+    .map((handoff) => ({
+      handoff,
+      score: prompt.trim() ? scoreHandoffRelevance(prompt, handoff) : 1,
+    }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, MAX_RECENT_HANDOFFS)
+    .map((item) => item.handoff);
 
-  if (store && handoffs.length < MAX_RECENT_HANDOFFS && prompt.trim()) {
-    try {
-      const knownSources = new Set(handoffs.map((handoff) => handoff.source));
-      const extraMatches = store.searchWithFallback(
-        truncate(singleLine(prompt), 240),
-        MAX_RECENT_HANDOFFS * 3,
-        `${HANDOFF_SOURCE_PREFIX}:`,
-        undefined,
-        "like",
-      );
+  if (candidates.length === 0) return "";
 
-      for (const match of extraMatches) {
-        const source = typeof match.source === "string" ? match.source : "";
-        if (!source || knownSources.has(source)) continue;
-        const [, toolName = "indexed handoff"] = source.split(":");
-        if (toolName === "review_changes") continue;
-        knownSources.add(source);
-        handoffs.push({
-          source,
-          toolName,
-          title: match.title || "Relevant prior handoff",
-          status: "indexed",
-          generatedAt: 0,
-          summary:
-            singleLine(match.highlighted || match.content || "") ||
-            "Relevant indexed handoff from another session in this project.",
-          filesChanged: [],
-          editLocations: [],
-          artifactSources: [],
-          artifactQueries: [],
-          indexed: true,
-        });
-        if (handoffs.length >= MAX_RECENT_HANDOFFS) break;
-      }
-    } catch {
-      // Fall back to current-session handoffs only.
-    }
-  }
-
-  if (handoffs.length === 0) return "";
-
-  const freshSessionSources = new Set(
-    sessionHandoffs.slice(0, 2).map((handoff) => handoff.source),
-  );
-  const sections: string[] = [];
-  for (const handoff of handoffs) {
-    const isFreshCurrentHandoff =
-      handoff.generatedAt > 0 && freshSessionSources.has(handoff.source);
-    let detail = handoff.summary;
-    if (store && !isFreshCurrentHandoff) {
-      try {
-        const matches = store.searchWithFallback(
-          "summary findings validation artifact sources artifact queries artifact summary reusable project artifacts",
-          3,
-          handoff.source,
-          undefined,
-          "exact",
-        );
-        if (matches.length > 0) {
-          detail = truncate(
-            matches
-              .map((match) => {
-                const snippet = singleLine(
-                  match.highlighted || match.content || "",
-                );
-                return snippet ? `${match.title}: ${snippet}` : match.title;
-              })
-              .join(" | "),
-            320,
-          );
-        }
-      } catch {
-        // Fall back to the session-persisted summary.
-      }
-    }
-
-    const lines = [
+  const sections = candidates.map((handoff) =>
+    [
       `### ${handoff.toolName} — ${handoff.title}`,
       `- status: ${handoff.status}`,
-      `- source: ${handoff.source}`,
-    ];
-    if (handoff.artifactSources.length > 0) {
-      lines.push(`- artifacts: ${handoff.artifactSources.join(", ")}`);
-    }
-    if (handoff.artifactQueries.length > 0) {
-      lines.push(`- artifact queries: ${handoff.artifactQueries.join(", ")}`);
-    }
-    if (isFreshCurrentHandoff) {
-      lines.push(
-        "- summary: already visible in recent tool history; reuse the structured handoff source if needed.",
-      );
-    } else {
-      lines.push(`- summary: ${detail || "(none)"}`);
-    }
-    sections.push(lines.join("\n"));
-  }
-
-  const anyIndexed = handoffs.some((handoff) => handoff.indexed);
+      `- files: ${handoff.filesChanged.join(", ") || "(none)"}`,
+      `- summary: ${handoff.summary || "(none)"}`,
+    ].join("\n"),
+  );
 
   return truncate(
     [
       "## Recent Delegated Handoffs",
       "",
-      anyIndexed
-        ? "- Relevant delegate/review results for this prompt have been indexed into the shared context-mode store for this project."
-        : "- Relevant delegate/review results for this prompt are available below as session-local summaries.",
+      "- Relevant delegate and review results from this session are summarized below.",
       "- Treat successful bounded worker handoffs with passing validation and no boundary violations as trusted by default.",
-      anyIndexed
-        ? "- Reuse these handoffs before re-discovering the same context; when you need more detail, query the indexed source labels listed below."
-        : "- Reuse these handoffs before re-discovering the same context; rely on the summaries below when store-backed retrieval is unavailable.",
       "",
       ...sections,
     ].join("\n"),
@@ -3778,9 +2948,6 @@ function scoreHandoffRelevance(
     handoff.editLocations
       .map((location) => formatEditLocation(location))
       .join(" "),
-    handoff.artifactSources.join(" "),
-    handoff.artifactQueries.join(" "),
-    handoff.artifactSummary ?? "",
   ].join(" ");
   return tokenizeHandoffText(handoffText).filter((token) =>
     promptTokens.has(token),
@@ -3871,8 +3038,6 @@ function buildCompactReport(
     status?: DelegateStatus | "completed" | "blocked";
     validation?: ValidationResult[];
     boundaryViolations?: string[];
-    artifactSources?: string[];
-    artifactQueries?: string[];
   },
 ): string {
   const statusLine =
@@ -3906,14 +3071,6 @@ function buildCompactReport(
   if (normalizedEdits.length > 3) {
     editLines.push(`- +${normalizedEdits.length - 3} more`);
   }
-  const artifactLines = [
-    ...(options?.artifactSources?.length
-      ? [`- sources: ${options.artifactSources.join(", ")}`]
-      : []),
-    ...(options?.artifactQueries?.length
-      ? [`- queries: ${options.artifactQueries.join(", ")}`]
-      : []),
-  ];
   const kind =
     options?.kind ??
     (relevantFiles.length > 0 ||
@@ -3945,9 +3102,6 @@ function buildCompactReport(
         ? findingsItems.map((item) => `- ${singleLine(item)}`)
         : [`- ${fallbackSummary}`]),
     );
-    if (artifactLines.length > 0) {
-      lines.push("", "## Artifacts", ...artifactLines);
-    }
     lines.push(
       "",
       "## Recommended Next Step",
@@ -3982,10 +3136,6 @@ function buildCompactReport(
       ? failedValidationLines
       : [validationSummary ? `- ${validationSummary}` : "- (none)"]),
   );
-
-  if (artifactLines.length > 0) {
-    lines.push("", "## Artifacts", ...artifactLines);
-  }
 
   const combinedEscalation = [
     ...boundaryLines.map((item) => `boundary: ${item}`),
@@ -4171,20 +3321,11 @@ async function generateDelegation(
       beforeSnapshot && afterSnapshot
         ? diffSnapshots(beforeSnapshot, afterSnapshot)
         : [];
-    const { editLocations, artifactSources, artifactQueries } =
-      await deriveEditLocations(
-        afterSnapshot?.root ?? cwd,
-        run.toolExecutions,
-        actualFilesChanged,
-      );
-    const effectiveArtifactSources = [
-      ...(params.artifactSources ?? []),
-      ...artifactSources,
-    ];
-    const effectiveArtifactQueries = [
-      ...(params.artifactQueries ?? []),
-      ...artifactQueries,
-    ];
+    const editLocations = await deriveEditLocations(
+      afterSnapshot?.root ?? cwd,
+      run.toolExecutions,
+      actualFilesChanged,
+    );
     const boundaryViolations = findBoundaryViolations(
       actualFilesChanged,
       params.allowedFiles,
@@ -4239,20 +3380,6 @@ async function generateDelegation(
           status,
           validation,
           boundaryViolations,
-          artifactSources: [
-            ...new Set(
-              effectiveArtifactSources
-                .map((item) => item.trim())
-                .filter(Boolean),
-            ),
-          ].sort(),
-          artifactQueries: [
-            ...new Set(
-              effectiveArtifactQueries
-                .map((item) => item.trim())
-                .filter(Boolean),
-            ),
-          ].sort(),
         },
       ),
       fullReport: `${final.text}${buildSupervisorAppendix(boundaryViolations, validation)}${buildInspectionAppendix(editLocations, actualFilesChanged)}`,
@@ -4260,17 +3387,6 @@ async function generateDelegation(
       status,
       filesChanged: actualFilesChanged,
       editLocations,
-      artifactSources: [
-        ...new Set(
-          effectiveArtifactSources.map((item) => item.trim()).filter(Boolean),
-        ),
-      ].sort(),
-      artifactQueries: [
-        ...new Set(
-          effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean),
-        ),
-      ].sort(),
-      artifactSummary: params.artifactSummary,
       boundaryViolations,
       validation,
       subagentMetrics: buildSubagentMetrics(run),
@@ -4456,11 +3572,7 @@ async function generateScouting(
     run = execution.run;
     const final = execution.final;
 
-    const { artifactSources, artifactQueries } = await deriveEditLocations(
-      cwd,
-      run.toolExecutions,
-      [],
-    );
+
     const stopReason = run.stopReason?.toLowerCase() ?? "";
     const scoutStatus: DelegateStatus =
       !signal?.aborted &&
@@ -4473,15 +3585,6 @@ async function generateScouting(
       !stopReason.includes("interrupt")
         ? "completed"
         : "blocked";
-    const effectiveArtifactSources = [
-      ...(params.artifactSources ?? []),
-      ...artifactSources,
-    ];
-    const effectiveArtifactQueries = [
-      ...(params.artifactQueries ?? []),
-      ...artifactQueries,
-    ];
-
     const scoutOutcome = classifySubagentOutcome(run, signal);
     appendSubagentEvent(
       pi,
@@ -4507,31 +3610,10 @@ async function generateScouting(
       report: buildCompactReport(final.text, [], [], {
         kind: "scout",
         status: scoutStatus,
-        artifactSources: [
-          ...new Set(
-            effectiveArtifactSources.map((item) => item.trim()).filter(Boolean),
-          ),
-        ].sort(),
-        artifactQueries: [
-          ...new Set(
-            effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean),
-          ),
-        ].sort(),
       }),
       fullReport: `## Status\n- ${scoutStatus}\n\n${final.text}`,
       status: scoutStatus,
       scoutModel: scoutModelArg,
-      artifactSources: [
-        ...new Set(
-          effectiveArtifactSources.map((item) => item.trim()).filter(Boolean),
-        ),
-      ].sort(),
-      artifactQueries: [
-        ...new Set(
-          effectiveArtifactQueries.map((item) => item.trim()).filter(Boolean),
-        ),
-      ].sort(),
-      artifactSummary: params.artifactSummary,
       subagentMetrics: buildSubagentMetrics(run),
       stopReason: run.stopReason,
       errorMessage: final.errorMessage,
@@ -4617,24 +3699,6 @@ const DelegateWorkerParams = Type.Object({
       description: "Optional explicit tool allowlist for the worker process.",
     }),
   ),
-  artifactSources: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
-    }),
-  ),
-  artifactQueries: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
-    }),
-  ),
-  artifactSummary: Type.Optional(
-    Type.String({
-      description:
-        "Optional high-level summary of relevant prior research to prime the subagent.",
-    }),
-  ),
 });
 
 const DelegateScoutParams = Type.Object({
@@ -4678,24 +3742,6 @@ const DelegateScoutParams = Type.Object({
     Type.Array(Type.String(), {
       description:
         "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
-    }),
-  ),
-  artifactSources: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
-    }),
-  ),
-  artifactQueries: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
-    }),
-  ),
-  artifactSummary: Type.Optional(
-    Type.String({
-      description:
-        "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -4759,24 +3805,6 @@ const ParallelDelegateWorkerTaskParams = Type.Object({
   tools: Type.Optional(
     Type.Array(Type.String(), {
       description: "Optional explicit tool allowlist for the worker process.",
-    }),
-  ),
-  artifactSources: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
-    }),
-  ),
-  artifactQueries: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
-    }),
-  ),
-  artifactSummary: Type.Optional(
-    Type.String({
-      description:
-        "Optional high-level summary of relevant prior research to prime the subagent.",
     }),
   ),
 });
@@ -4843,24 +3871,6 @@ const ParallelDelegateScoutTaskParams = Type.Object({
         "Optional scout-safe tool allowlist for the scout process. Unsafe tools are ignored.",
     }),
   ),
-  artifactSources: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional labels of reusable artifacts from context-mode (for example, 'batch:git diff,tests' or 'react-docs') to include in the subagent's working context.",
-    }),
-  ),
-  artifactQueries: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        "Optional queries to help the subagent retrieve relevant data from the shared context-mode store.",
-    }),
-  ),
-  artifactSummary: Type.Optional(
-    Type.String({
-      description:
-        "Optional high-level summary of relevant prior research to prime the subagent.",
-    }),
-  ),
 });
 
 const ParallelDelegateScoutsParams = Type.Object({
@@ -4901,41 +3911,13 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           };
         }
 
-        if (event.toolName === "ctx_execute") {
-          const input = event.input as { language?: string; code?: string };
-          const isShell =
-            input.language === "shell" ||
-            input.language === "bash" ||
-            input.language === "sh";
-          if (!isShell) {
+        if (event.toolName === "bash") {
+          const input = event.input as { command?: string };
+          if (input.command && isMutatingBashCommand(input.command)) {
             return {
               block: true,
               reason:
-                "Scout mode allows ctx_execute only with shell inspection commands.",
-            };
-          }
-          if (input.code && isMutatingBashCommand(input.code)) {
-            return {
-              block: true,
-              reason:
-                "Mutating shell command detected in ctx_execute. Scout mode is read-only.",
-            };
-          }
-        }
-
-        if (event.toolName === "ctx_batch_execute") {
-          const input = event.input as {
-            commands?: Array<{ command?: string }>;
-          };
-          if (
-            input.commands?.some((command) =>
-              isMutatingBashCommand(command?.command),
-            )
-          ) {
-            return {
-              block: true,
-              reason:
-                "Mutating shell command detected in ctx_batch_execute. Scout mode is read-only.",
+                "Mutating shell command detected. Scout mode is read-only.",
             };
           }
         }
@@ -5525,7 +4507,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - Strict plan-implement split is active for this turn.
 - Before making any direct file mutation with \`edit\`, \`write\`, or mutating \`bash\`, first break the work into a bounded implementation step and run \`delegate_worker\`.
 - After at least one worker task completes, you may do small supervisor-side integration edits if still needed.
-- After a successful worker handoff, prefer one \`ctx_batch_execute\` follow-up across the returned edit locations instead of serial \`read\` calls when you need to inspect multiple changed spots.
+- After a successful worker handoff, inspect the returned edit locations before continuing when follow-up verification is needed.
 - The runtime will warn when you bypass worker-first implementation in this turn.`
         : "";
 
@@ -5539,9 +4521,6 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - Use a scout-plan-implement split by default: cheap scout subagents explore and gather evidence, the current model plans/scopes/reviews/escalates, and worker subagents implement bounded steps.
 - Use \`delegate_scout\` sparingly for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or scoping likely edit sites; once edit sites and constraints are known, move on instead of scouting again.
 - For coding requests, proactively use \`delegate_worker\` without asking first when the next step is a bounded implementation task that is local, well-specified, and objectively checkable.
-- For reusable research that another agent may need later, prefer artifact-producing tools such as \`ctx_batch_execute\`, \`ctx_index\`, \`ctx_fetch_and_index\`, or large \`ctx_execute\` calls with an \`intent\`.
-- When setting subagent tool allowlists, include the relevant \`ctx_*\` tools by default; subagents should prefer \`ctx_*\` over \`bash\`/\`read\` for inspection and analysis.
-- When a reusable artifact matters to a delegated task, pass its source labels via \`artifactSources\` and suggested lookups via \`artifactQueries\`.
 - Good scout candidates: file discovery, behavior tracing, implementation precedent searches, config inventory, and test surface mapping.
 - Use a soft scout budget of roughly one scout pass per turn; only do a second scout if the first leaves a concrete unanswered question.
 - Progress for bounded delegation work is surfaced automatically by the harness widget; do not add a separate manual task-list layer for a single bounded delegation task or bounded delegation chain.
@@ -5556,7 +4535,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - When multiple implementation tasks are independent and have disjoint \`allowedFiles\`, prefer \`delegate_workers\`.
 - If a delegated task comes back escalated or blocked, handle the decision on the current model instead of retrying blindly.
 - Treat successful bounded worker handoffs with passing validation and no boundary violations as trusted building blocks by default.
-- After a successful worker handoff with multiple edit locations, prefer one \`ctx_batch_execute\` inspection pass over serial \`read\` calls; use \`read\` only for one exact excerpt or a direct edit target.
+- After a successful worker handoff with multiple edit locations, inspect the relevant edit locations before continuing.
 - Chain additional bounded worker tasks when needed; do not reflexively run \`review_changes\` after each successful sub-step.
 - Prefer a single review pass once you believe the overall user request is implemented, unless the user explicitly asked for an interim review, a worker escalated/blocked, validation failed, or you are checking risky supervisor-owned integration.${strictSection}`
           : `
@@ -5663,7 +4642,6 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const status = inferHandoffStatus(event.toolName, actualReport, details);
       const filesChanged = collectHandoffFiles(details);
       const editLocations = collectHandoffEditLocations(details);
-      const artifacts = collectHandoffArtifacts(details);
       const summary = summarizeHandoff(event.toolName, actualReport, details);
       const pointer: HandoffPointer = {
         source: buildHandoffSource(
@@ -5679,45 +4657,13 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         summary,
         filesChanged,
         editLocations,
-        artifactSources: artifacts.sources,
-        artifactQueries: artifacts.queries,
-        artifactSummary: artifacts.summary,
       };
-      const modelLabel = [
-        details.workerModel,
-        details.scoutModel,
-        details.reviewer,
-      ].find(
-        (value): value is string =>
-          typeof value === "string" && value.trim().length > 0,
-      );
-      const markdown = buildHandoffMarkdown({
-        source: pointer.source,
-        toolName: event.toolName,
-        title,
-        status,
-        sessionKey,
-        generatedAt,
-        summary,
-        filesChanged,
-        editLocations,
-        artifactSources: pointer.artifactSources,
-        artifactQueries: pointer.artifactQueries,
-        artifactSummary: pointer.artifactSummary,
-        modelLabel,
-        promptInput: input,
-        details,
-        report: actualReport,
-      });
-      const handoffIndexed = await indexHandoff(ctx, pointer, markdown);
-      pointer.indexed = handoffIndexed;
       pi.appendEntry(HANDOFF_ENTRY, pointer);
 
       return {
         details: {
           ...details,
           handoffSource: pointer.source,
-          handoffIndexed,
           handoffSummary: pointer.summary,
           handoffEditLocations: pointer.editLocations,
         },
@@ -5881,17 +4827,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           activeDelegations.get(delegationKey),
         );
         try {
-          const effectiveParams = withInferredArtifacts(
-            ctx,
-            params,
-            [params.objective, params.scope, ...(params.questions ?? [])]
-              .filter(Boolean)
-              .join("\n"),
-          );
           const result = await generateScouting(
             ctx,
             state,
-            effectiveParams,
+            params,
             delegationKey,
             pi,
             isCurrentSession,
@@ -5973,9 +4912,6 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               sessionKey,
               scoutModel: result.scoutModel,
               status: result.status,
-              artifactSources: result.artifactSources,
-              artifactQueries: result.artifactQueries,
-              artifactSummary: result.artifactSummary,
               subagentMetrics: result.subagentMetrics,
               stopReason: result.stopReason,
               errorMessage: result.errorMessage,
@@ -6125,17 +5061,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           emitProgress();
 
           try {
-            const effectiveTask = withInferredArtifacts(
-              ctx,
-              task,
-              [task.objective, task.scope, ...(task.questions ?? [])]
-                .filter(Boolean)
-                .join("\n"),
-            );
             const result = await generateScouting(
               ctx,
               state,
-              effectiveTask,
+              task,
               delegationKey,
               pi,
               isCurrentSession,
@@ -6416,17 +5345,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             emitProgress();
 
             try {
-              const effectiveTask = withInferredArtifacts(
-                ctx,
-                task,
-                [task.objective, task.scope, ...(task.acceptanceCriteria ?? [])]
-                  .filter(Boolean)
-                  .join("\n"),
-              );
               const result = await generateDelegation(
                 ctx,
                 state,
-                effectiveTask,
+                task,
                 delegationKey,
                 pi,
                 isCurrentSession,
@@ -6635,21 +5557,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           activeDelegations.get(delegationKey),
         );
         try {
-          const effectiveParams = withInferredArtifacts(
-            ctx,
-            params,
-            [
-              params.objective,
-              params.scope,
-              ...(params.acceptanceCriteria ?? []),
-            ]
-              .filter(Boolean)
-              .join("\n"),
-          );
           const result = await generateDelegation(
             ctx,
             state,
-            effectiveParams,
+            params,
             delegationKey,
             pi,
             isCurrentSession,
@@ -6715,9 +5626,6 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               status: result.status,
               filesChanged: result.filesChanged,
               editLocations: result.editLocations,
-              artifactSources: result.artifactSources,
-              artifactQueries: result.artifactQueries,
-              artifactSummary: result.artifactSummary,
               boundaryViolations: result.boundaryViolations,
               validation: result.validation,
               subagentMetrics: result.subagentMetrics,
@@ -6858,65 +5766,6 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         refreshStatus(ctx);
         ctx.ui.notify(
           `Scout set to ${formatModel(requested.ref, getEffectiveScoutThinkingLevel(state))}`,
-          "info",
-        );
-      },
-    });
-
-    pi.registerCommand("reviewer-model", {
-      description:
-        "Show or set the default interim reviewer model for review_changes. Usage: /reviewer-model [default|model|provider/model] [thinking-level]",
-      handler: async (args, ctx) => {
-        const trimmed = args.trim();
-        if (!trimmed) {
-          const reviewerRef = getEffectiveReviewerRef(ctx, state);
-          ctx.ui.notify(
-            `Reviewer: ${formatModel(reviewerRef, getEffectiveReviewerThinkingLevel(state))}${state.reviewerOverride ? " (override)" : " (default)"}`,
-            "info",
-          );
-          return;
-        }
-
-        const parts = trimmed.split(/\s+/).filter(Boolean);
-        const modelArg = parts[0];
-        const thinkingArg = parts[1] as ThinkingLevel | undefined;
-        if (thinkingArg && !THINKING_LEVELS.includes(thinkingArg)) {
-          ctx.ui.notify(`Unknown thinking level: ${thinkingArg}`, "error");
-          return;
-        }
-
-        if (modelArg === "default") {
-          const { reviewerOverride, reviewerThinkingLevel, ...rest } = state;
-          state = {
-            ...rest,
-            reviewerThinkingLevel:
-              thinkingArg ?? DEFAULT_REVIEWER_THINKING_LEVEL,
-          };
-          persistState();
-          refreshStatus(ctx);
-          ctx.ui.notify(
-            `Reviewer reset to ${formatModel(getEffectiveReviewerRef(ctx, state), getEffectiveReviewerThinkingLevel(state))}`,
-            "info",
-          );
-          return;
-        }
-
-        const requested = resolveRequestedModel(ctx, modelArg, "reviewer");
-        if ("error" in requested) {
-          ctx.ui.notify(requested.error, "error");
-          return;
-        }
-
-        state = {
-          ...state,
-          reviewerOverride: requested.ref,
-          reviewerThinkingLevel:
-            thinkingArg ?? getEffectiveReviewerThinkingLevel(state),
-        };
-        persistState();
-        refreshStatus(ctx);
-        ctx.ui.notify(
-          `Reviewer set to ${formatModel(requested.ref, getEffectiveReviewerThinkingLevel(state))}`,
           "info",
         );
       },
