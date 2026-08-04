@@ -78,4 +78,6 @@ fi
 pathmunge $HOME/local/bin
 pathmunge $HOME/.local/bin
 pathmunge $HOME/local/lib
+# Let providers that support it retain Pi prompt caches for longer sessions.
+export PI_CACHE_RETENTION=long
 CASE_SENSITIVE="true"

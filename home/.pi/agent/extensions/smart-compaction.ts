@@ -170,7 +170,7 @@ function buildStatus(ctx: ExtensionContext): string | undefined {
   const thresholds = getThresholds(model);
   const tokens = usage.tokens;
   if (tokens >= thresholds.compactThreshold) {
-    return `ctx ${formatPercent(tokens, thresholds.contextWindow)} · compact on next prompt`;
+    return `ctx ${formatPercent(tokens, thresholds.contextWindow)} · compact only if next prompt risks limit`;
   }
   if (tokens >= thresholds.warningThreshold) {
     return `ctx ${formatPercent(tokens, thresholds.contextWindow)} · nearing compaction`;
@@ -208,10 +208,10 @@ async function buildThresholdLines(ctx: ExtensionContext): Promise<string[]> {
     `response reserve: ${formatTokens(thresholds.responseReserve)}`,
     `prompt reserve: ${formatTokens(thresholds.promptReserve)}`,
     `warning threshold: ${formatTokens(thresholds.warningThreshold)}`,
-    `compact threshold: ${formatTokens(thresholds.compactThreshold)}`,
+    `early-warning threshold: ${formatTokens(thresholds.compactThreshold)}`,
     `current usage: ${formatTokens(usageTokens)}`,
-    `remaining to compact: ${usageTokens === undefined ? "unknown" : formatTokens(Math.max(0, thresholds.compactThreshold - usageTokens))}`,
-    `overflow hard edge: ${formatTokens(thresholds.contextWindow - thresholds.responseReserve)}`,
+    `remaining to projected compact edge: ${usageTokens === undefined ? "unknown" : formatTokens(Math.max(0, thresholds.contextWindow - thresholds.responseReserve - usageTokens))}`,
+    `projected compact edge: ${formatTokens(thresholds.contextWindow - thresholds.responseReserve)}`,
     `summarizer: ${summarizer ? `${summarizer.model.provider}/${summarizer.model.id}` : "unavailable (falls back to built-in compaction if manual compaction runs)"}`,
   ];
   return lines;
@@ -354,10 +354,7 @@ function shouldCompactBeforePrompt(
   const hardPromptThreshold =
     thresholds.contextWindow - thresholds.responseReserve;
 
-  return (
-    currentTokens >= thresholds.compactThreshold ||
-    projectedTokens >= hardPromptThreshold
-  );
+  return projectedTokens >= hardPromptThreshold;
 }
 
 function isOverflowMessage(message: unknown): boolean {

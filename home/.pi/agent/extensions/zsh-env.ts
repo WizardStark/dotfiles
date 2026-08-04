@@ -1,5 +1,4 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createLocalBashOperations, isToolCallEventType } from "@earendil-works/pi-coding-agent";
+import { createBashTool, createLocalBashOperations, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
@@ -20,16 +19,22 @@ function runViaZsh(command: string): string {
 }
 
 export default function (pi: ExtensionAPI) {
-  pi.on("tool_call", (event) => {
-    if (!isToolCallEventType("bash", event)) return;
+  pi.on("session_start", async (_event, ctx) => {
+    const base = createBashTool(ctx.cwd, {
+      spawnHook: ({ command, cwd, env }) => ({
+        command: runViaZsh(command),
+        cwd,
+        env,
+      }),
+    });
 
-    const command = event.input.command;
-    if (typeof command !== "string" || command.trim() === "") return;
-
-    // Avoid double-wrapping if a command has already been routed through zsh.
-    if (/^\s*zsh\s+(-[^\s]*\b)?i?l?c\s+/.test(command)) return;
-
-    event.input.command = runViaZsh(command);
+    pi.registerTool({
+      ...base,
+      name: "bash",
+      async execute(toolCallId, params, signal, onUpdate) {
+        return base.execute(toolCallId, params, signal, onUpdate);
+      },
+    });
   });
 
   pi.on("user_bash", () => {

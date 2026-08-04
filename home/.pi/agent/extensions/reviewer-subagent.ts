@@ -459,17 +459,7 @@ export default function (pi: ExtensionAPI) {
     name: "review_changes",
     label: "Review changes",
     description:
-      "Spawn a reviewer subagent in a fresh no-session pi process to inspect current git changes and report issues, improvements, and style drift. Interim reviews use a cheaper reviewer model; final reviews use the active model.",
-    promptSnippet:
-      "Spawn a reviewer subagent to inspect code changes; use a cheaper model for interim reviews and the active model only for final reviews.",
-    promptGuidelines: [
-      "Use review_changes when the user explicitly asks for review, or after large/risky changes such as multi-file edits, refactors, migrations, non-trivial behavior changes, or broad code generation.",
-      "Do not use review_changes for tiny, obvious, or single-line changes unless the user specifically asks for a review.",
-      "When using review_changes, pass a short context summary describing what changed and why so the reviewer can judge correctness against intent.",
-      "When bounded worker tasks are succeeding with clean validation, trust those sub-steps by default and avoid calling review_changes after each successful worker return.",
-      "Prefer one final review pass once you believe the full user request is implemented, unless the user asked for an interim review, a worker escalated or failed validation, or you need to inspect risky supervisor-owned integration. Avoid repeated reviews after successful bounded handoffs.",
-      "Use stage: interim for automated or early-cycle checks to save costs. Use stage: final only for the definitive review before completion.",
-    ],
+      "Inspect current git changes in a fresh reviewer subagent; interim uses a cheaper model and final uses the active model.",
     parameters: Type.Object({
       context: Type.Optional(
         Type.String({

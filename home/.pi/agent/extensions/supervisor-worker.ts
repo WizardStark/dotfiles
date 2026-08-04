@@ -294,6 +294,25 @@ const MUTATING_BASH_PATTERNS: RegExp[] = [
 const DEFAULT_SCOUT_TOOLS = ["read", "grep", "find", "ls", "bash"];
 const SCOUT_SAFE_TOOLS = new Set(DEFAULT_SCOUT_TOOLS);
 const SCOUT_BLOCKED_TOOLS = new Set(["edit", "write"]);
+const LAZY_DELEGATION_TOOL_NAMES = [
+  "delegate_scout",
+  "delegate_scouts",
+  "delegate_worker",
+  "delegate_workers",
+  "review_changes",
+] as const;
+const DelegationLoaderParams = Type.Object({
+  capability: StringEnum(
+    ["scout", "worker", "parallel-scouts", "parallel-workers", "review"],
+    {
+      description:
+        "Delegation capability to load for the current task.",
+    },
+  ),
+  reason: Type.String({
+    description: "Brief reason this delegated capability is needed.",
+  }),
+});
 
 const WORKER_SYSTEM_PROMPT = `You are a delegated worker subagent inside pi.
 
@@ -1997,7 +2016,7 @@ async function runWorkerSubagent(
   let completedTurns = 0;
   let lastRawEvent: Record<string, unknown> | undefined;
   const generatedAt = Date.now();
-  const workerTools = mergePreferredContextTools(tools);
+  const workerTools = tools;
   const activeToolCalls = new Map<string, WorkerToolExecution>();
   const toolExecutions: WorkerToolExecution[] = [];
   appendSubagentEvent(
@@ -3938,6 +3957,24 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       pi.appendEntry(STATE_ENTRY, state);
     }
 
+    function addDelegationTools(names: readonly string[]) {
+      const available = new Set(pi.getAllTools().map((tool) => tool.name));
+      const active = pi.getActiveTools();
+      const added = names.filter(
+        (name) => available.has(name) && !active.includes(name),
+      );
+      if (added.length > 0) {
+        pi.setActiveTools([...new Set([...active, ...added])]);
+      }
+      return added;
+    }
+
+    function resetLazyDelegationTools() {
+      const lazyTools = new Set(LAZY_DELEGATION_TOOL_NAMES);
+      const active = pi.getActiveTools().filter((name) => !lazyTools.has(name));
+      pi.setActiveTools([...new Set([...active, "load_delegation_tools"])]);
+    }
+
     function delegationActiveForm(
       role: DelegationTaskRole,
       phase?: string,
@@ -4432,8 +4469,41 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       updateDelegationWidget(ctx);
     }
 
+    pi.registerTool({
+      name: "load_delegation_tools",
+      label: "Load Delegation Tools",
+      description:
+        "Load the delegation tool needed for scouting, bounded implementation, parallel work, or review.",
+      promptSnippet:
+        "Load delegation tools for multi-step scouting, implementation, parallel work, or review.",
+      parameters: DelegationLoaderParams,
+      async execute(_toolCallId, params) {
+        const toolsByCapability: Record<string, readonly string[]> = {
+          scout: ["delegate_scout"],
+          worker: ["delegate_worker"],
+          "parallel-scouts": ["delegate_scouts"],
+          "parallel-workers": ["delegate_workers"],
+          review: ["review_changes"],
+        };
+        const added = addDelegationTools(
+          toolsByCapability[params.capability] ?? [],
+        );
+        const loaded = added.length > 0 ? added.join(", ") : "already active";
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Delegation capability loaded for ${params.capability}: ${loaded}. ${params.reason}`,
+            },
+          ],
+          details: { capability: params.capability, added },
+        };
+      },
+    });
+
     pi.on("session_start", async (_event, ctx) => {
       sessionEpoch += 1;
+      resetLazyDelegationTools();
       turnDelegationState = undefined;
       recentReviewKeys = readSavedReviewKeys(ctx);
       recentDelegationTasks = [];
@@ -4477,6 +4547,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
+    pi.on("input", async (event) => {
+      if (
+        getAutoMode(state) === "conservative" &&
+        isLikelyImplementationPrompt(event.text)
+      ) {
+        // Avoid a loader round-trip for the common multi-step implementation path.
+        addDelegationTools(["delegate_worker"]);
+      }
+      return { action: "continue" };
+    });
+
     pi.on("before_agent_start", async (event, ctx) => {
       const workerRef = getEffectiveWorkerRef(ctx, state);
       if (!ctx.model || sameModel(toRef(ctx.model), workerRef)) {
@@ -4504,11 +4585,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
       const strictSection = shouldEnforcePlanSplit
         ? `
-- Strict plan-implement split is active for this turn.
-- Before making any direct file mutation with \`edit\`, \`write\`, or mutating \`bash\`, first break the work into a bounded implementation step and run \`delegate_worker\`.
-- After at least one worker task completes, you may do small supervisor-side integration edits if still needed.
-- After a successful worker handoff, inspect the returned edit locations before continuing when follow-up verification is needed.
-- The runtime will warn when you bypass worker-first implementation in this turn.`
+- Worker-first implementation is active: call \`load_delegation_tools\` for a worker if needed, then use \`delegate_worker\` before direct mutations.
+- After a successful worker handoff, make only small integration edits and inspect returned edit locations when verification needs it.`
         : "";
 
       const policy =
@@ -4517,38 +4595,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
 ## Delegation Policy
 
-- Conservative auto mode is enabled.
-- Use a scout-plan-implement split by default: cheap scout subagents explore and gather evidence, the current model plans/scopes/reviews/escalates, and worker subagents implement bounded steps.
-- Use \`delegate_scout\` sparingly for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or scoping likely edit sites; once edit sites and constraints are known, move on instead of scouting again.
-- For coding requests, proactively use \`delegate_worker\` without asking first when the next step is a bounded implementation task that is local, well-specified, and objectively checkable.
-- Good scout candidates: file discovery, behavior tracing, implementation precedent searches, config inventory, and test surface mapping.
-- Use a soft scout budget of roughly one scout pass per turn; only do a second scout if the first leaves a concrete unanswered question.
-- Progress for bounded delegation work is surfaced automatically by the harness widget; do not add a separate manual task-list layer for a single bounded delegation task or bounded delegation chain.
-- Good auto-delegation candidates for workers: small code edits, focused tests, local refactors, narrow bug fixes, and file-scoped implementation work.
-- Later in a session, still consider \`delegate_worker\` for narrow follow-up fixes (e.g. fixing a lint error, wiring a missing handler), integration polish (e.g. updating a theme, refining a UI widget), validation-driven refactors, and file-scoped cleanup after earlier worker handoffs.
-- Split worker scope aggressively: do production code first, then tests, then cleanup; avoid bundling all three unless the change is tiny.
-- Delegate only bounded work with explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
-- Escalate instead of extending a worker task when file count grows unexpectedly, validation spills into unrelated files, or the change starts crossing allowed-file boundaries.
-- Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and broad cross-cutting refactors on the current model unless the user explicitly asks otherwise.
-- Delegate one independently checkable task at a time by default; prefer chaining smaller workers over one large worker when the work naturally splits.
-- When multiple read-only scouting tasks are independent, prefer \`delegate_scouts\`.
-- When multiple implementation tasks are independent and have disjoint \`allowedFiles\`, prefer \`delegate_workers\`.
-- If a delegated task comes back escalated or blocked, handle the decision on the current model instead of retrying blindly.
-- Treat successful bounded worker handoffs with passing validation and no boundary violations as trusted building blocks by default.
-- After a successful worker handoff with multiple edit locations, inspect the relevant edit locations before continuing.
-- Chain additional bounded worker tasks when needed; do not reflexively run \`review_changes\` after each successful sub-step.
-- Prefer a single review pass once you believe the overall user request is implemented, unless the user explicitly asked for an interim review, a worker escalated/blocked, validation failed, or you are checking risky supervisor-owned integration.${strictSection}`
+- For multi-step edit/validate work, use bounded delegation to reduce expensive supervisor loops.
+- If the needed delegation tool is inactive, call \`load_delegation_tools\`; use scouts for focused read-only evidence, workers for local checkable changes, and parallel workers only for disjoint file scopes.
+- Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and cross-cutting integration on the supervisor.
+- Give workers narrow scope, file boundaries, acceptance criteria, validation, and escalation triggers; trust clean bounded handoffs and prefer one final review.${strictSection}`
           : `
 
 ## Delegation Policy
 
-- Automatic delegation is disabled.
-- Do not proactively use \`delegate_scout\` or \`delegate_worker\`.
-- Use \`delegate_scout\` only when you explicitly decide a read-only reconnaissance task should be delegated.
-- Use \`delegate_worker\` only when the user explicitly asks for delegation or when you explicitly decide a bounded local implementation task should be delegated.
-- Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and broad cross-cutting refactors on the current model.
-- If you delegate, provide explicit scope, file boundaries, acceptance criteria, validation commands, and escalation triggers.
-- When delegations succeed with clean validation, trust them enough to continue chaining bounded tasks; avoid repeated intermediate \`review_changes\` calls and prefer one final review near completion.`;
+- Load \`load_delegation_tools\` only when you explicitly choose delegation or the user asks for it.
+- Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and cross-cutting integration on the supervisor.
+- Give delegated work narrow scope, file boundaries, validation, and escalation triggers; prefer one final review after clean handoffs.`;
 
       const recentHandoffs = await buildRecentHandoffPrompt(ctx, event.prompt);
       const userEditReminder = await getUserEditReminder(ctx);
@@ -4796,14 +4853,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       name: "delegate_scout",
       label: "Delegate Scout",
       description:
-        "Spawn a read-only scout subagent on a cheaper model to explore the codebase, trace behavior, and report relevant files and findings back to the supervisor.",
-      promptSnippet:
-        "Delegate read-only reconnaissance to a cheaper scout subagent with explicit questions and expected outputs.",
-      promptGuidelines: [
-        "Use delegate_scout for read-only reconnaissance such as locating relevant files, tracing behavior, finding precedents, or narrowing the edit surface.",
-        "Use delegate_scout before implementation when a cheap scout can gather evidence that improves planning or task scoping.",
-        "Do not use delegate_scout for file mutations or tasks that should directly become implementation work.",
-      ],
+        "Spawn a read-only scout subagent on a cheaper model to explore the codebase and report evidence to the supervisor.",
       parameters: DelegateScoutParams,
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         const delegationKey = `${sessionEpoch}:${toolCallId}`;
@@ -4944,14 +4994,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       name: "delegate_scouts",
       label: "Delegate Scouts",
       description:
-        "Spawn several read-only scout subagents in parallel to explore different questions and report findings back to the supervisor.",
-      promptSnippet:
-        "Delegate multiple read-only reconnaissance tasks to parallel scout subagents with explicit questions and expected outputs.",
-      promptGuidelines: [
-        "Use delegate_scouts when several reconnaissance tasks are independent and can be explored in parallel.",
-        "Use delegate_scouts for read-only work only; prefer delegate_scout for a single scouting task.",
-        "Keep each scout task focused and concrete so the supervisor can merge the findings cleanly.",
-      ],
+        "Spawn parallel read-only scout subagents for independent reconnaissance tasks.",
       parameters: ParallelDelegateScoutsParams,
       async execute(
         toolCallId: string,
@@ -5189,14 +5232,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       name: "delegate_workers",
       label: "Delegate Workers",
       description:
-        "Spawn several bounded worker subagents in parallel to implement independent local tasks while the current model keeps planning and review decisions.",
-      promptSnippet:
-        "Delegate multiple bounded implementation tasks to parallel worker subagents when their file scopes are disjoint.",
-      promptGuidelines: [
-        "Use delegate_workers when several implementation tasks are independent and each task has explicit, disjoint allowedFiles.",
-        "Require allowedFiles on every parallel worker task and avoid overlapping file or directory scopes.",
-        "Prefer delegate_worker for a single implementation task or when task boundaries are ambiguous.",
-      ],
+        "Spawn parallel bounded workers for independent implementation tasks with disjoint file scopes.",
       parameters: ParallelDelegateWorkersParams,
       async execute(
         toolCallId: string,
@@ -5526,14 +5562,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       name: "delegate_worker",
       label: "Delegate Worker",
       description:
-        "Spawn a bounded worker subagent on a cheaper model to implement a local task while the current model keeps planning, review, and escalation decisions.",
-      promptSnippet:
-        "Delegate a local, well-scoped implementation task to a cheaper worker subagent with explicit scope, acceptance criteria, validation, and escalation rules.",
-      promptGuidelines: [
-        "Use delegate_worker when the current model should stay responsible for planning, review, and escalation while a cheaper model handles a narrow implementation task.",
-        "Use delegate_worker with explicit scope, allowed files, acceptance criteria, validation commands, and escalation triggers; keep the task small and independently checkable.",
-        "Do not use delegate_worker for ambiguous architecture, security-sensitive decisions, or broad cross-cutting refactors unless the user explicitly wants that trade-off.",
-      ],
+        "Spawn a bounded worker subagent for a local implementation task while the supervisor keeps planning and escalation.",
       parameters: DelegateWorkerParams,
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         const delegationKey = `${sessionEpoch}:${toolCallId}`;

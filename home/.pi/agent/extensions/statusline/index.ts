@@ -3,7 +3,7 @@ import { basename } from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, KeybindingsManager } from "@earendil-works/pi-coding-agent";
 import { CustomEditor } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth, type Component, type EditorTheme, type TUI } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth, type Component, type EditorComponent, type EditorTheme, type TUI } from "@earendil-works/pi-tui";
 import { ManagedWidget } from "../lib/ui-widgets.ts";
 import {
   createStatuslineItem,
@@ -133,7 +133,7 @@ function getGitBranch(cwd: string): string | null {
   return branch || null;
 }
 
-function renderBuiltinSegments(pi: ExtensionAPI, ctx: ExtensionContext) {
+function renderBuiltinSegments(ctx: ExtensionContext) {
   const sessionKey = getStatuslineSessionKey(ctx);
   const model = formatModel(ctx);
 
@@ -145,7 +145,7 @@ function renderBuiltinSegments(pi: ExtensionAPI, ctx: ExtensionContext) {
     sessionKey,
   );
 
-  const level = pi.getThinkingLevel();
+  const level = ctx.thinkingLevel;
   const tone = thinkingTone(level);
   const label = level === "off" ? "off" : level;
 
@@ -418,13 +418,54 @@ function measureSiblingHeights(tui: TUI, width: number, target: Component) {
   return { above, below };
 }
 
-class AnchoredEditor extends CustomEditor {
-  constructor(tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) {
-    super(tui, theme, keybindings);
+class AnchoredEditor implements EditorComponent {
+  constructor(
+    private readonly tui: TUI,
+    private readonly base: EditorComponent,
+  ) {}
+
+  get onSubmit() {
+    return this.base.onSubmit;
+  }
+
+  set onSubmit(handler: EditorComponent["onSubmit"]) {
+    this.base.onSubmit = handler;
+  }
+
+  get onChange() {
+    return this.base.onChange;
+  }
+
+  set onChange(handler: EditorComponent["onChange"]) {
+    this.base.onChange = handler;
+  }
+
+  get focused() {
+    return (this.base as EditorComponent & { focused?: boolean }).focused;
+  }
+
+  set focused(value: boolean | undefined) {
+    (this.base as EditorComponent & { focused?: boolean }).focused = value;
+  }
+
+  getText() {
+    return this.base.getText();
+  }
+
+  setText(text: string) {
+    this.base.setText(text);
+  }
+
+  handleInput(data: string) {
+    this.base.handleInput(data);
+  }
+
+  invalidate() {
+    this.base.invalidate();
   }
 
   render(width: number): string[] {
-    const lines = super.render(width);
+    const lines = this.base.render(width);
     const terminalRows = this.tui.terminal.rows;
     if (terminalRows <= 0) {
       return lines;
@@ -442,6 +483,8 @@ class AnchoredEditor extends CustomEditor {
 
 export default function statusline(pi: ExtensionAPI) {
   let currentSessionKey = "ephemeral";
+  let previousEditorFactory: ReturnType<ExtensionContext["ui"]["getEditorComponent"]>;
+  let installedEditor = false;
   let unsubscribeRpcStatusline: (() => void) | undefined;
   let rpcStatuslineRefreshTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -454,10 +497,16 @@ export default function statusline(pi: ExtensionAPI) {
     }
 
     currentSessionKey = getStatuslineSessionKey(ctx);
-    renderBuiltinSegments(pi, ctx);
+    renderBuiltinSegments(ctx);
 
     if (ctx.mode === "tui") {
-      ctx.ui.setEditorComponent((tui, theme, kb) => new AnchoredEditor(tui, theme, kb));
+      if (!installedEditor) {
+        previousEditorFactory = ctx.ui.getEditorComponent();
+        ctx.ui.setEditorComponent((tui, theme, kb) =>
+          new AnchoredEditor(tui, previousEditorFactory?.(tui, theme, kb) ?? new CustomEditor(tui, theme, kb)),
+        );
+        installedEditor = true;
+      }
 
       ctx.ui.setFooter((tui, theme, footerData) => {
         const unsubscribeStatusline = subscribeStatusline(() => tui.requestRender());
@@ -469,7 +518,7 @@ export default function statusline(pi: ExtensionAPI) {
             unsubscribeBranch();
           },
           invalidate() {
-            renderBuiltinSegments(pi, ctx);
+            renderBuiltinSegments(ctx);
           },
           render(width: number) {
             const builtins = buildBuiltinItems(ctx, theme, footerData.getGitBranch());
@@ -494,14 +543,14 @@ export default function statusline(pi: ExtensionAPI) {
   });
 
   pi.on("model_select", async (_event, ctx) => {
-    renderBuiltinSegments(pi, ctx);
+    renderBuiltinSegments(ctx);
     if (ctx.hasUI && ctx.mode !== "tui") {
       renderRpcStatusline(ctx, currentSessionKey);
     }
   });
 
   pi.on("thinking_level_select", async (_event, ctx) => {
-    renderBuiltinSegments(pi, ctx);
+    renderBuiltinSegments(ctx);
     if (ctx.hasUI && ctx.mode !== "tui") {
       renderRpcStatusline(ctx, currentSessionKey);
     }
@@ -521,7 +570,11 @@ export default function statusline(pi: ExtensionAPI) {
       STATUSLINE_WIDGET.clear(ctx);
       return;
     }
-    ctx.ui.setEditorComponent(undefined);
+    if (installedEditor) {
+      ctx.ui.setEditorComponent(previousEditorFactory);
+      previousEditorFactory = undefined;
+      installedEditor = false;
+    }
     ctx.ui.setFooter(undefined);
   });
 }

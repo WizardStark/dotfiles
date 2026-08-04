@@ -1,5 +1,10 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  Theme,
+} from "@earendil-works/pi-coding-agent";
+import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import { formatDuration } from "./lib/format.ts";
 import {
   getSubagentDetails,
@@ -12,7 +17,8 @@ import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/regi
 const STATUS_KEY = "token-throughput";
 const STATUS_INTERVAL_MS = 100;
 
-const USAGE_EMPTY = "In/Out —";
+const USAGE_EMPTY = "μ In/Out —";
+let latestContextTokens: number | undefined;
 
 const statuslineItem = createStatuslineItem({
   id: STATUS_KEY,
@@ -34,6 +40,9 @@ type CompletedSnapshot = {
   ttftMs?: number;
   generationDurationMs?: number;
   inputTokens?: number;
+  uncachedInputTokens?: number;
+  cacheReadInputTokens?: number;
+  cacheWriteInputTokens?: number;
   outputTokens?: number;
   generationTokensPerSecond?: number;
 };
@@ -106,7 +115,6 @@ function buildUsageSummary(
   inputSamples: number[],
   outputSamples: number[],
 ): string {
-  const separator = theme.fg("dim", " · ");
   const inputStats = buildUsageStats(inputSamples);
   const outputStats = buildUsageStats(outputSamples);
 
@@ -114,41 +122,55 @@ function buildUsageSummary(
     return theme.fg("dim", USAGE_EMPTY);
   }
 
-  const countLabel =
-    inputStats.count === outputStats.count
-      ? `${inputStats.count}`
-      : `${inputStats.count}/${outputStats.count}`;
-
-  const parts: string[] = [theme.fg("dim", countLabel)];
-
-  if (inputStats.count > 0) {
-    parts.push(
-      theme.fg(
-        "dim",
-        `↑μ${formatTokenCount(inputStats.mean)} M${formatTokenCount(inputStats.median)}`,
-      ),
-    );
-  } else {
-    parts.push(theme.fg("dim", "↑—"));
-  }
-
-  if (outputStats.count > 0) {
-    parts.push(
-      theme.fg(
-        "dim",
-        `↓μ${formatTokenCount(outputStats.mean)} M${formatTokenCount(outputStats.median)}`,
-      ),
-    );
-  } else {
-    parts.push(theme.fg("dim", "↓—"));
-  }
-
-  return parts.join(separator);
+  const input = inputStats.count > 0 ? formatTokenCount(inputStats.mean) : "—";
+  const output = outputStats.count > 0 ? formatTokenCount(outputStats.mean) : "—";
+  return theme.fg("dim", `μ In ${input} · Out ${output}`);
 }
 
-function buildContextSummary(ctx: ExtensionContext) {
-  const tokens = ctx.getContextUsage()?.tokens;
-  const contextWindow = ctx.model?.contextWindow;
+class MetricsOverlay {
+  private readonly width: number;
+
+  constructor(
+    private readonly theme: Theme,
+    private readonly lines: string[],
+    private readonly done: () => void,
+  ) {
+    const contentWidth = Math.max(...lines.map((line) => visibleWidth(line)), 40);
+    this.width = Math.min(110, Math.max(56, contentWidth + 4));
+  }
+
+  handleInput(data: string) {
+    if (matchesKey(data, "escape") || matchesKey(data, "return") || matchesKey(data, "q")) {
+      this.done();
+    }
+  }
+
+  render(_width: number): string[] {
+    const innerWidth = this.width - 2;
+    const pad = (text = "") => text + " ".repeat(Math.max(0, innerWidth - visibleWidth(text)));
+    const row = (content = "") =>
+      this.theme.fg("border", "│") + pad(content) + this.theme.fg("border", "│");
+    return [
+      this.theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
+      row(` ${this.theme.bold(this.theme.fg("accent", "Session metrics"))}`),
+      row(),
+      ...this.lines.map((line) => row(` ${line}`)),
+      row(),
+      row(` ${this.theme.fg("dim", "Enter / Esc / q to close")}`),
+      this.theme.fg("border", `╰${"─".repeat(innerWidth)}╯`),
+    ];
+  }
+
+  invalidate() {}
+}
+
+function buildContextSummary(ctx: ExtensionContext, retainedTokens?: number) {
+  const contextUsage = ctx.getContextUsage();
+  const usageTokens = contextUsage?.tokens;
+  const hasNumericUsage = typeof usageTokens === "number" && Number.isFinite(usageTokens) && usageTokens >= 0;
+  if (hasNumericUsage) latestContextTokens = usageTokens;
+  const tokens = hasNumericUsage ? usageTokens : retainedTokens;
+  const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow;
   if (!Number.isFinite(tokens) || tokens === undefined || tokens < 0) {
     return {
       full: ctx.ui.theme.fg("dim", "Ctx —"),
@@ -173,7 +195,7 @@ function buildContextSummary(ctx: ExtensionContext) {
   };
 }
 
-function setStatus(ctx: ExtensionContext, content: string | undefined, compactContent = content) {
+function setStatus(ctx: ExtensionContext, content: string | undefined, compactContent = content, retainedTokens = latestContextTokens) {
   if (!ctx.hasUI) {
     return;
   }
@@ -183,7 +205,7 @@ function setStatus(ctx: ExtensionContext, content: string | undefined, compactCo
     return;
   }
 
-  const context = buildContextSummary(ctx);
+  const context = buildContextSummary(ctx, retainedTokens);
   const separator = ctx.ui.theme.fg("dim", " · ");
   statuslineItem.set(
     {
@@ -214,27 +236,42 @@ function isSubagentMessage(message: unknown): boolean {
   );
 }
 
+export function getCacheReadInputTokens(
+  usage: AssistantMessage["usage"] | undefined,
+): number | undefined {
+  const tokens = usage?.cacheRead;
+  return Number.isFinite(tokens) && tokens >= 0 ? tokens : undefined;
+}
+
+export function getCacheWriteInputTokens(
+  usage: AssistantMessage["usage"] | undefined,
+): number | undefined {
+  const tokens = usage?.cacheWrite;
+  return Number.isFinite(tokens) && tokens >= 0 ? tokens : undefined;
+}
+
+export function getUncachedInputTokens(
+  usage: AssistantMessage["usage"] | undefined,
+  fallback: number | undefined,
+): number | undefined {
+  const input = usage?.input;
+  if (Number.isFinite(input) && input >= 0) return input;
+  return Number.isFinite(fallback) && fallback >= 0 ? fallback : undefined;
+}
+
 export function getInputTokens(
   usage: AssistantMessage["usage"] | undefined,
   fallback: number | undefined,
 ): number | undefined {
-  const inputValue = usage?.input;
-  const input = Number.isFinite(inputValue) && inputValue >= 0 ? inputValue : undefined;
-  const cacheTokens = [usage?.cacheRead, usage?.cacheWrite].filter(
-    (tokens): tokens is number => Number.isFinite(tokens) && tokens >= 0,
-  );
-  const cacheTotal = cacheTokens.reduce((total, tokens) => total + tokens, 0);
-  const estimatedInput = Number.isFinite(fallback) && fallback >= 0 ? fallback : undefined;
-
-  if (input !== undefined) {
-    return input + cacheTotal;
+  const uncached = getUncachedInputTokens(usage, fallback);
+  const cacheRead = getCacheReadInputTokens(usage);
+  const cacheWrite = getCacheWriteInputTokens(usage);
+  if (uncached === undefined) {
+    return cacheRead === undefined && cacheWrite === undefined
+      ? undefined
+      : (cacheRead ?? 0) + (cacheWrite ?? 0);
   }
-
-  if (cacheTokens.length > 0) {
-    return cacheTotal + (estimatedInput ?? 0);
-  }
-
-  return estimatedInput;
+  return uncached + (cacheRead ?? 0) + (cacheWrite ?? 0);
 }
 
 function withEstimatedInputUsage(
@@ -308,7 +345,10 @@ export default function tokenThroughput(pi: ExtensionAPI) {
   let lastCompleted: CompletedSnapshot | undefined;
   let lastFailure: FailedSnapshot | undefined;
   let statusTimer: ReturnType<typeof setInterval> | undefined;
-  let promptTokenSamples: number[] = [];
+  let inputTokenSamples: number[] = [];
+  let uncachedInputTokenSamples: number[] = [];
+  let cacheReadInputTokenSamples: number[] = [];
+  let cacheWriteInputTokenSamples: number[] = [];
   let outputTokenSamples: number[] = [];
 
   function isCurrentRequestActive() {
@@ -337,24 +377,31 @@ export default function tokenThroughput(pi: ExtensionAPI) {
   function buildStatusWithUsage(ctx: ExtensionContext, status: string): string {
     return `${status}${ctx.ui.theme.fg("dim", " · ")}${buildUsageSummary(
       ctx.ui.theme,
-      promptTokenSamples,
+      inputTokenSamples,
       outputTokenSamples,
     )}`;
   }
 
   function resetUsageSamples() {
-    promptTokenSamples = [];
+    inputTokenSamples = [];
+    uncachedInputTokenSamples = [];
+    cacheReadInputTokenSamples = [];
+    cacheWriteInputTokenSamples = [];
     outputTokenSamples = [];
   }
 
-  function recordUsageSample(inputTokens: number | undefined, outputTokens: number | undefined) {
-    if (inputTokens !== undefined && Number.isFinite(inputTokens) && inputTokens >= 0) {
-      promptTokenSamples.push(inputTokens);
-    }
-
-    if (outputTokens !== undefined && Number.isFinite(outputTokens) && outputTokens >= 0) {
-      outputTokenSamples.push(outputTokens);
-    }
+  function recordUsageSample(
+    inputTokens: number | undefined,
+    uncachedInputTokens: number | undefined,
+    cacheReadInputTokens: number | undefined,
+    cacheWriteInputTokens: number | undefined,
+    outputTokens: number | undefined,
+  ) {
+    if (inputTokens !== undefined && Number.isFinite(inputTokens) && inputTokens >= 0) inputTokenSamples.push(inputTokens);
+    if (uncachedInputTokens !== undefined && Number.isFinite(uncachedInputTokens) && uncachedInputTokens >= 0) uncachedInputTokenSamples.push(uncachedInputTokens);
+    if (cacheReadInputTokens !== undefined && Number.isFinite(cacheReadInputTokens) && cacheReadInputTokens >= 0) cacheReadInputTokenSamples.push(cacheReadInputTokens);
+    if (cacheWriteInputTokens !== undefined && Number.isFinite(cacheWriteInputTokens) && cacheWriteInputTokens >= 0) cacheWriteInputTokenSamples.push(cacheWriteInputTokens);
+    if (outputTokens !== undefined && Number.isFinite(outputTokens) && outputTokens >= 0) outputTokenSamples.push(outputTokens);
   }
 
   function rebuildUsageSamples(ctx: ExtensionContext) {
@@ -366,7 +413,13 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       }
 
       const message = entry.message as AssistantMessage;
-      recordUsageSample(getInputTokens(message.usage, undefined), message.usage?.output);
+      recordUsageSample(
+        getInputTokens(message.usage, undefined),
+        getUncachedInputTokens(message.usage, undefined),
+        getCacheReadInputTokens(message.usage),
+        getCacheWriteInputTokens(message.usage),
+        message.usage?.output,
+      );
     }
   }
 
@@ -377,6 +430,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     lastCompleted = undefined;
     lastFailure = undefined;
     pendingReviewerMetrics = undefined;
+    latestContextTokens = undefined;
     rebuildUsageSamples(ctx);
   }
 
@@ -415,16 +469,12 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
     const ttft =
       lastCompleted.ttftMs === undefined ? "TTFT —" : `TTFT ${formatDuration(lastCompleted.ttftMs)}`;
-    const prompt =
-      lastCompleted.inputTokens === undefined ? "P —" : `P ${formatTokenCount(lastCompleted.inputTokens)}`;
-    const output =
-      lastCompleted.outputTokens === undefined ? "O —" : `O ${formatTokenCount(lastCompleted.outputTokens)}`;
     const rate = formatTokensPerSecond(lastCompleted.generationTokensPerSecond);
     setStatus(
       ctx,
       buildStatusWithUsage(
         ctx,
-        `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` Main ${ttft} · ${prompt} · ${output} · ${rate} · ${subagentSummary}`)}`,
+        `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` ${ttft} · ${rate} · ${subagentSummary}`)}`,
       ),
       `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` ${ttft} · ${rate}`)}`,
     );
@@ -494,14 +544,13 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     }
 
     const finishedAt = Date.now();
-    const ttftMs =
-      activeRequest.firstTokenAt === undefined
-        ? undefined
-        : Math.max(0, activeRequest.firstTokenAt - activeRequest.startedAt);
-    const generationDurationMs =
-      activeRequest.firstTokenAt === undefined
-        ? undefined
-        : Math.max(1, finishedAt - activeRequest.firstTokenAt);
+    // A completed response is meaningful even if no intermediate update was emitted.
+    const firstTokenAt = activeRequest.firstTokenAt ?? finishedAt;
+    const ttftMs = Math.max(0, firstTokenAt - activeRequest.startedAt);
+    const generationDurationMs = Math.max(1, finishedAt - firstTokenAt);
+    const uncachedInputTokens = getUncachedInputTokens(message.usage, activeRequest.estimatedInputTokens);
+    const cacheReadInputTokens = getCacheReadInputTokens(message.usage);
+    const cacheWriteInputTokens = getCacheWriteInputTokens(message.usage);
     const inputTokens = getInputTokens(message.usage, activeRequest.estimatedInputTokens);
     const outputTokens =
       message.usage?.output !== undefined && Number.isFinite(message.usage.output)
@@ -516,16 +565,83 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       ttftMs,
       generationDurationMs,
       inputTokens,
+      uncachedInputTokens,
+      cacheReadInputTokens,
+      cacheWriteInputTokens,
       outputTokens,
       generationTokensPerSecond,
     };
-    recordUsageSample(inputTokens, outputTokens);
+    recordUsageSample(
+      inputTokens,
+      uncachedInputTokens,
+      cacheReadInputTokens,
+      cacheWriteInputTokens,
+      outputTokens,
+    );
     lastFailure = undefined;
     activeRequest = undefined;
 
     clearLiveStatus();
     renderIdleStatus(ctx);
   }
+
+  function formatStats(label: string, samples: number[]) {
+    const stats = buildUsageStats(samples);
+    return `${label}: μ ${formatTokenCount(stats.mean)} · M ${formatTokenCount(stats.median)} (${stats.count})`;
+  }
+
+  function buildMetricsLines(ctx: ExtensionContext) {
+    const usage = ctx.getContextUsage();
+    const tokens = typeof usage?.tokens === "number" ? usage.tokens : latestContextTokens;
+    const contextWindow = usage?.contextWindow ?? ctx.model?.contextWindow;
+    const context =
+      Number.isFinite(tokens) && tokens !== undefined && tokens >= 0
+        ? Number.isFinite(contextWindow) && contextWindow !== undefined && contextWindow > 0
+          ? `${formatTokenCount(tokens)}/${formatTokenCount(contextWindow)} (${Math.round((tokens / contextWindow) * 100)}%)`
+          : formatTokenCount(tokens)
+        : "—";
+    const last = lastCompleted;
+    return [
+      "Last response",
+      `  TTFT: ${last?.ttftMs === undefined ? "—" : formatDuration(last.ttftMs)}`,
+      `  Generation: ${last?.generationDurationMs === undefined ? "—" : formatDuration(last.generationDurationMs)} · ${formatTokensPerSecond(last?.generationTokensPerSecond)}`,
+      `  Input: ${formatTokenCount(last?.inputTokens)} (uncached ${formatTokenCount(last?.uncachedInputTokens)}, read ${formatTokenCount(last?.cacheReadInputTokens)}, write ${formatTokenCount(last?.cacheWriteInputTokens)})`,
+      `  Output: ${formatTokenCount(last?.outputTokens)}`,
+      "",
+      "Session token samples (mean · median · count)",
+      `  ${formatStats("Input", inputTokenSamples)}`,
+      `  ${formatStats("Uncached", uncachedInputTokenSamples)}`,
+      `  ${formatStats("Cache read", cacheReadInputTokenSamples)}`,
+      `  ${formatStats("Cache write", cacheWriteInputTokenSamples)}`,
+      `  ${formatStats("Output", outputTokenSamples)}`,
+      "",
+      `Context: ${context}`,
+    ];
+  }
+
+  pi.registerCommand("metrics", {
+    description: "Show detailed response, token, cache, and context metrics for this session",
+    handler: async (_args, ctx) => {
+      if (!ctx.hasUI) return;
+      const lines = buildMetricsLines(ctx);
+      if (ctx.mode !== "tui") {
+        ctx.ui.notify(lines.filter(Boolean).join(" · "), "info");
+        return;
+      }
+      const width = Math.min(110, Math.max(56, Math.max(...lines.map((line) => visibleWidth(line)), 40) + 4));
+      await ctx.ui.custom<void>(
+        (_tui, theme, _keybindings, done) => new MetricsOverlay(theme, lines, () => done()),
+        {
+          overlay: true,
+          overlayOptions: {
+            anchor: "center",
+            width,
+            margin: 1,
+          },
+        },
+      );
+    },
+  });
 
   pi.on("session_start", async (_event, ctx) => {
     currentCtx = ctx;
@@ -569,10 +685,14 @@ export default function tokenThroughput(pi: ExtensionAPI) {
   });
 
   pi.on("before_provider_request", async (_event, ctx) => {
+    const contextTokens = ctx.getContextUsage()?.tokens;
+    if (Number.isFinite(contextTokens) && contextTokens !== undefined && contextTokens >= 0) {
+      latestContextTokens = contextTokens;
+    }
     activeRequest = {
       turnIndex: currentTurnIndex,
       startedAt: Date.now(),
-      estimatedInputTokens: ctx.getContextUsage()?.tokens,
+      estimatedInputTokens: contextTokens ?? latestContextTokens,
     };
     startLiveStatus(ctx);
   });
@@ -594,6 +714,16 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     ) {
       return;
     }
+
+    const content = (event.message as AssistantMessage).content;
+    const meaningful = Array.isArray(content) && content.some((block) => {
+      if (!block || typeof block !== "object") return false;
+      const value = block as { type?: string; text?: string; thinking?: string; name?: string };
+      return (typeof value.text === "string" && value.text.length > 0) ||
+        (typeof value.thinking === "string" && value.thinking.length > 0) ||
+        value.type === "toolCall" || typeof value.name === "string";
+    });
+    if (!meaningful) return;
 
     activeRequest.firstTokenAt = Date.now();
     renderRunningStatus(ctx);
