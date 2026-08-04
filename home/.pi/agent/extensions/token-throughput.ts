@@ -179,14 +179,38 @@ function isSubagentMessage(message: unknown): boolean {
   );
 }
 
+export function getInputTokens(
+  usage: AssistantMessage["usage"] | undefined,
+  fallback: number | undefined,
+): number | undefined {
+  const inputValue = usage?.input;
+  const input = Number.isFinite(inputValue) && inputValue >= 0 ? inputValue : undefined;
+  const cacheTokens = [usage?.cacheRead, usage?.cacheWrite].filter(
+    (tokens): tokens is number => Number.isFinite(tokens) && tokens >= 0,
+  );
+  const cacheTotal = cacheTokens.reduce((total, tokens) => total + tokens, 0);
+  const estimatedInput = Number.isFinite(fallback) && fallback >= 0 ? fallback : undefined;
+
+  if (input !== undefined) {
+    return input + cacheTotal;
+  }
+
+  if (cacheTokens.length > 0) {
+    return cacheTotal + (estimatedInput ?? 0);
+  }
+
+  return estimatedInput;
+}
+
 function withEstimatedInputUsage(
   message: AssistantMessage,
   estimatedInputTokens: number | undefined,
 ): AssistantMessage {
+  const input = message.usage?.input;
   if (
-    estimatedInputTokens === undefined ||
+    (Number.isFinite(input) && input >= 0) ||
     !Number.isFinite(estimatedInputTokens) ||
-    message.usage?.input !== undefined
+    estimatedInputTokens < 0
   ) {
     return message;
   }
@@ -307,7 +331,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       }
 
       const message = entry.message as AssistantMessage;
-      recordUsageSample(message.usage?.input, message.usage?.output);
+      recordUsageSample(getInputTokens(message.usage, undefined), message.usage?.output);
     }
   }
 
@@ -443,10 +467,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       activeRequest.firstTokenAt === undefined
         ? undefined
         : Math.max(1, finishedAt - activeRequest.firstTokenAt);
-    const inputTokens =
-      message.usage?.input !== undefined && Number.isFinite(message.usage.input)
-        ? message.usage.input
-        : activeRequest.estimatedInputTokens;
+    const inputTokens = getInputTokens(message.usage, activeRequest.estimatedInputTokens);
     const outputTokens =
       message.usage?.output !== undefined && Number.isFinite(message.usage.output)
         ? Math.max(0, message.usage.output)
