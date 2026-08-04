@@ -422,7 +422,32 @@ class AnchoredEditor implements EditorComponent {
   constructor(
     private readonly tui: TUI,
     private readonly base: EditorComponent,
-  ) {}
+  ) {
+    // Keep this wrapper transparent to CustomEditor-specific members. Pi uses
+    // runtime duck typing for its app-level handlers, and extensions may add
+    // more editor capabilities over time.
+    return new Proxy(this, {
+      get: (target, property, receiver) => {
+        if (Reflect.has(target, property)) {
+          return Reflect.get(target, property, receiver);
+        }
+        const value = Reflect.get(target.base, property);
+        for (let prototype = Object.getPrototypeOf(target.base); prototype; prototype = Object.getPrototypeOf(prototype)) {
+          if (Object.getOwnPropertyDescriptor(prototype, property)?.value === value && typeof value === "function") {
+            return value.bind(target.base);
+          }
+        }
+        return value;
+      },
+      set: (target, property, value, receiver) => {
+        if (Reflect.has(target, property)) {
+          return Reflect.set(target, property, value, receiver);
+        }
+        return Reflect.set(target.base, property, value);
+      },
+      has: (target, property) => Reflect.has(target, property) || Reflect.has(target.base, property),
+    });
+  }
 
   get onSubmit() {
     return this.base.onSubmit;
