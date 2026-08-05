@@ -64,6 +64,7 @@ const THRESHOLD_WIDGET = new TransientWidget("smart-compaction-thresholds", {
   placement: "belowEditor",
 });
 const DEFAULT_CONTEXT_WINDOW = 128_000;
+const GPT_5_6_EFFECTIVE_CONTEXT_WINDOW = 270_000;
 const DEFAULT_MAX_TOKENS = 8_192;
 const PARTIAL_SUMMARY_MAX_TOKENS = 12_000;
 const FINAL_SUMMARY_MAX_TOKENS = 16_000;
@@ -110,6 +111,18 @@ function summarizeFileOps(fileOps: FileOps | undefined): string {
   ].join("\n\n");
 }
 
+function isGpt5Point6OrLater(modelId: string): boolean {
+  const match = /^gpt[-_.]?5[-_.](\d+)(?:$|[-_.])/i.exec(modelId);
+  return match !== null && Number(match[1]) >= 6;
+}
+
+function getEffectiveContextWindow(model: ModelLike): number {
+  if (isGpt5Point6OrLater(model.id)) {
+    return GPT_5_6_EFFECTIVE_CONTEXT_WINDOW;
+  }
+  return Math.max(model.contextWindow ?? DEFAULT_CONTEXT_WINDOW, 8_000);
+}
+
 function responseText(response: {
   content: Array<{ type: string; text?: string }>;
 }): string {
@@ -124,10 +137,7 @@ function responseText(response: {
 }
 
 function getThresholds(model: ModelLike): Thresholds {
-  const contextWindow = Math.max(
-    model.contextWindow ?? DEFAULT_CONTEXT_WINDOW,
-    8_000,
-  );
+  const contextWindow = getEffectiveContextWindow(model);
   const maxTokens = Math.max(model.maxTokens ?? DEFAULT_MAX_TOKENS, 1_024);
   const responseReserve = clamp(
     Math.floor(maxTokens * 0.5),
@@ -165,7 +175,7 @@ function formatPercent(tokens: number, total: number): string {
 function buildStatus(ctx: ExtensionContext): string | undefined {
   const model = ctx.model as ModelLike | undefined;
   const usage = ctx.getContextUsage();
-  if (!model?.contextWindow || !usage?.tokens) return undefined;
+  if (!model || !usage?.tokens) return undefined;
 
   const thresholds = getThresholds(model);
   const tokens = usage.tokens;
@@ -190,10 +200,8 @@ function formatTokens(tokens: number | undefined): string {
 
 async function buildThresholdLines(ctx: ExtensionContext): Promise<string[]> {
   const model = ctx.model as ModelLike | undefined;
-  if (!model?.contextWindow) {
-    return [
-      "Smart compaction thresholds unavailable: active model has no context window metadata.",
-    ];
+  if (!model) {
+    return ["Smart compaction thresholds unavailable: no active model."];
   }
 
   const thresholds = getThresholds(model);
@@ -345,7 +353,7 @@ function shouldCompactBeforePrompt(
 ): boolean {
   const model = ctx.model as ModelLike | undefined;
   const usage = ctx.getContextUsage();
-  if (!model?.contextWindow || !usage?.tokens) return false;
+  if (!model || !usage?.tokens) return false;
 
   const thresholds = getThresholds(model);
   const currentTokens = usage.tokens;
@@ -412,10 +420,7 @@ async function resolveSummarizer(
 }
 
 function summarizerBudgets(model: ModelLike) {
-  const contextWindow = Math.max(
-    model.contextWindow ?? DEFAULT_CONTEXT_WINDOW,
-    8_000,
-  );
+  const contextWindow = getEffectiveContextWindow(model);
   const modelMaxTokens = Math.max(model.maxTokens ?? DEFAULT_MAX_TOKENS, 1_024);
   const partialMaxTokens = Math.min(
     PARTIAL_SUMMARY_MAX_TOKENS,
@@ -759,7 +764,7 @@ export default function smartCompaction(pi: ExtensionAPI) {
   pi.on("input", async (event, ctx) => {
     updateStatus(ctx);
     if (!ctx.isIdle()) return { action: "continue" };
-    if (!ctx.model?.contextWindow) return { action: "continue" };
+    if (!ctx.model) return { action: "continue" };
     if (!shouldCompactBeforePrompt(ctx, event.text))
       return { action: "continue" };
 

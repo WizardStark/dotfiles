@@ -2,7 +2,7 @@
   "lastChangelogVersion": "0.83.0",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
-  "defaultModel": "gpt-5.6-terra",
+  "defaultModel": "gpt-5.6-sol",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
