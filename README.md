@@ -37,6 +37,7 @@ Pi is part of that reproducible setup:
 - public Pi packages/extensions are declared in `home/.pi/agent/settings.json`
   and `./sync.sh` installs any missing entries via `pi install`
 - the repo-local Pi extensions include an `edit` tool override so edit diffs keep the customized full-width, syntax-highlighted TUI rendering without patching Pi’s installed files
+- `<C-a> <C-o>` opens the session-grouped Pi notification inbox in a tmux popup. Use `j`/`k` to move, `Enter` to expand a session or open a historical notification, `o` to open, `r` to mark through the selection read, `R` to mark the session read, `Tab` to change views, `a` to toggle the default seven-day window/all-time history, and `/` to search. Notifications show the session/directory and submitted Pi task; the durable log is `~/.pi/agent/notifications.jsonl`.
 
 ```bash
 ./sync.sh

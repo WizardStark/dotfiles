@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pi_cli="$(command -v pi 2>/dev/null || true)"
+if [[ -z "$pi_cli" ]]; then
+  printf 'pi is required to open Pi notifications.\n' >&2
+  exit 1
+fi
+
+pi_tui="$(node -e '
+  const { realpathSync } = require("node:fs");
+  const { createRequire } = require("node:module");
+  const cli = realpathSync(process.argv[1]);
+  process.stdout.write(createRequire(cli).resolve("@earendil-works/pi-tui"));
+' "$pi_cli")"
+app="$(node -e '
+  const { realpathSync } = require("node:fs");
+  const { dirname, resolve } = require("node:path");
+  process.stdout.write(resolve(dirname(realpathSync(process.argv[1])), "../lib/pi-notifications.ts"));
+' "${BASH_SOURCE[0]}")"
+
+if [[ ! -f "$pi_tui" ]]; then
+  printf 'Could not locate the Pi TUI library at %s.\n' "$pi_tui" >&2
+  exit 1
+fi
+if [[ ! -f "$app" ]]; then
+  printf 'Could not locate the Pi notifications UI at %s.\n' "$app" >&2
+  exit 1
+fi
+
+exec node --experimental-strip-types "$app" --pi-tui "$pi_tui" "$@"
