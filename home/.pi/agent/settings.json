@@ -6,6 +6,11 @@
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 27200,
+    "keepRecentTokens": 20000
+  },
   "enabledModels": [
     "github-copilot/gpt-5.6-sol",
     "github-copilot/gpt-5.6-terra",
