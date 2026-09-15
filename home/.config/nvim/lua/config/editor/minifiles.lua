@@ -367,6 +367,38 @@ end
 vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesExplorerOpen", callback = create_backdrop_window })
 vim.api.nvim_create_autocmd("User", { pattern = "MiniFilesExplorerClose", callback = close_backdrop_window })
 
+vim.api.nvim_set_hl(0, "MiniFilesGoTest", {
+	fg = "#00ADD8", -- Go cyan
+})
+
+local custom_prefix = function(fs_entry)
+	if fs_entry.fs_type == "file" and fs_entry.name:match("_test%.go$") then
+		return "󰙨 ", "MiniFilesGoTest"
+	end
+
+	-- Fallback to the default mini.files icon/prefix logic for everything else
+	return MiniFiles.default_prefix(fs_entry)
+end
+
+local custom_sort = function(fs_entries)
+	local sorted = MiniFiles.default_sort(fs_entries)
+
+	local regular, tests = {}, {}
+	for _, entry in ipairs(sorted) do
+		if entry.fs_type == "file" and entry.name:match("_test%.go$") then
+			table.insert(tests, entry)
+		else
+			table.insert(regular, entry)
+		end
+	end
+
+	for _, entry in ipairs(tests) do
+		table.insert(regular, entry)
+	end
+
+	return regular
+end
+
 MiniFiles.setup({
 	mappings = {
 		go_out = "h",
@@ -375,5 +407,9 @@ MiniFiles.setup({
 	},
 	windows = {
 		preview = true,
+	},
+	content = {
+		prefix = custom_prefix,
+		sort = custom_sort,
 	},
 })
