@@ -371,7 +371,7 @@ vim.api.nvim_set_hl(0, "MiniFilesGoTest", {
 	fg = "#00ADD8", -- Go cyan
 })
 
-local custom_prefix = function(fs_entry)
+local function custom_prefix(fs_entry)
 	if fs_entry.fs_type == "file" and fs_entry.name:match("_test%.go$") then
 		return "󰙨 ", "MiniFilesGoTest"
 	end
@@ -380,7 +380,7 @@ local custom_prefix = function(fs_entry)
 	return MiniFiles.default_prefix(fs_entry)
 end
 
-local custom_sort = function(fs_entries)
+local function custom_sort(fs_entries)
 	local sorted = MiniFiles.default_sort(fs_entries)
 
 	local regular, tests = {}, {}
