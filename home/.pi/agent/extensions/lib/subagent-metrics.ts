@@ -31,7 +31,11 @@ export function getSubagentDetails(message: unknown): SubagentMetricsEvent | und
   }
 
   const generatedAt = (details as { generatedAt?: unknown }).generatedAt;
-  const metrics = (details as { subagentMetrics?: unknown }).subagentMetrics;
+  const directMetrics = (details as { subagentMetrics?: unknown }).subagentMetrics;
+  // Advisor packets written before cost tracking stored metrics beneath `usage`.
+  // Keep reading that shape so resumed sessions include their advisor spend.
+  const legacyMetrics = (details as { usage?: { subagentMetrics?: unknown } }).usage?.subagentMetrics;
+  const metrics = directMetrics ?? legacyMetrics;
   if (typeof generatedAt !== "number" && (!metrics || typeof metrics !== "object")) {
     return undefined;
   }

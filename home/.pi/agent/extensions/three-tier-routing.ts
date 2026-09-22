@@ -116,7 +116,7 @@ function packetDetails(result: Awaited<ReturnType<typeof runAdvisor>>, source: "
     source,
     advisor: result.model,
     generatedAt: Date.now(),
-    usage: { subagentMetrics: result.metrics },
+    subagentMetrics: result.metrics,
   };
 }
 
