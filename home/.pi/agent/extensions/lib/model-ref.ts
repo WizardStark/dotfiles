@@ -18,8 +18,27 @@ export function sameModel(a?: ModelRef, b?: ModelRef): boolean {
   return !!a && !!b && a.provider === b.provider && a.id === b.id;
 }
 
+/** Models selectable in this session, honoring --models / enabledModels when set. */
+export function getSelectableModels(ctx: ExtensionContext): Model<Api>[] {
+  return ctx.scopedModels.length > 0
+    ? ctx.scopedModels.map(({ model }) => model)
+    : ctx.modelRegistry.getAvailable();
+}
+
 export function findModel(ctx: ExtensionContext, ref: ModelRef): Model<Api> | undefined {
-  return ctx.modelRegistry.find(ref.provider, ref.id);
+  return getSelectableModels(ctx).find(
+    (model) => model.provider === ref.provider && model.id === ref.id,
+  );
+}
+
+/** A scope-pinned thinking level takes precedence over extension defaults. */
+export function getScopedThinkingLevel(
+  ctx: ExtensionContext,
+  model: Model<Api>,
+): ExtensionContext["thinkingLevel"] {
+  return ctx.scopedModels.find(
+    ({ model: scoped }) => scoped.provider === model.provider && scoped.id === model.id,
+  )?.thinkingLevel;
 }
 
 export type ExactModelReferenceResolution =

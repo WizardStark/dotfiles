@@ -82,7 +82,7 @@ export default function turnTimer(pi: ExtensionAPI) {
     startLiveStatus(ctx, startedAt);
   });
 
-  pi.on("agent_end", async (_event, ctx) => {
+  pi.on("agent_settled", async (_event, ctx) => {
     const runStartedAt = startedAt;
 
     clearLiveStatus();

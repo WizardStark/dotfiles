@@ -755,7 +755,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     }
   });
 
-  pi.on("agent_end", async (_event, ctx) => {
+  pi.on("agent_settled", async (_event, ctx) => {
     currentCtx = ctx;
     currentSessionKey = getStatuslineSessionKey(ctx);
     if (!activeRequest) {

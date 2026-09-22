@@ -124,7 +124,9 @@ export default function (pi: ExtensionAPI) {
     loadState(ctx);
   });
 
-  pi.on("agent_start", async () => {
+  // A retry or recovery starts another low-level agent run. Reset only at the
+  // user-request boundary so preimages from earlier attempts remain undoable.
+  pi.on("before_agent_start", async () => {
     pendingTouchedFiles = new Map();
   });
 
@@ -143,7 +145,7 @@ export default function (pi: ExtensionAPI) {
     });
   });
 
-  pi.on("agent_end", async (_event, ctx) => {
+  pi.on("agent_settled", async (_event, ctx) => {
     const touchedFiles = pendingTouchedFiles;
     pendingTouchedFiles = new Map();
 

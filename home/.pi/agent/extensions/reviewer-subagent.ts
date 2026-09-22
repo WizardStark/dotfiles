@@ -1,6 +1,6 @@
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { StringEnum, type Message } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
@@ -71,18 +71,15 @@ type ReviewProgress = {
   turns?: number;
 };
 
-import {
-  getSessionMessages,
-  textFromMessage,
-  truncate,
-} from "./lib/session-messages.ts";
+import { getScopedThinkingLevel, getSelectableModels } from "./lib/model-ref.ts";
+import { textFromMessage, truncate } from "./lib/session-messages.ts";
 
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
-function buildConversationContext(branch: SessionEntry[]): string {
-  const messages = getSessionMessages(branch)
+function buildConversationContext(messages: AgentMessage[]): string {
+  const visibleMessages = messages
     .filter((message) => {
       if (message.role === "system") return false;
       const text = textFromMessage(message);
@@ -90,9 +87,9 @@ function buildConversationContext(branch: SessionEntry[]): string {
     })
     .slice(-MAX_MESSAGES);
 
-  if (messages.length === 0) return "(none)";
+  if (visibleMessages.length === 0) return "(none)";
 
-  const llmMessages = convertToLlm(messages);
+  const llmMessages = convertToLlm(visibleMessages);
   return truncate(serializeConversation(llmMessages), MAX_CONTEXT_CHARS);
 }
 
@@ -359,7 +356,7 @@ async function generateReview(
     };
   }
 
-  const conversationContext = buildConversationContext(ctx.sessionManager.getBranch());
+  const conversationContext = buildConversationContext(ctx.sessionManager.buildSessionProjection().messages);
   const prompt = buildReviewPrompt({
     context: input.context,
     focus: input.focus,
@@ -368,23 +365,30 @@ async function generateReview(
   });
 
   const stage = input.stage ?? "interim";
+  const selectableModels = getSelectableModels(ctx);
+  const activeModel = ctx.model && selectableModels.find(
+    (model) => model.provider === ctx.model!.provider && model.id === ctx.model!.id,
+  );
   let modelToUse = undefined as typeof ctx.model | undefined;
   let thinkingLevelToUse = defaultThinkingLevel;
 
   if (stage === "interim") {
     thinkingLevelToUse = "minimal";
-    modelToUse = ctx.modelRegistry.find("github-copilot", "gpt-5.6-luna") ?? ctx.model;
+    modelToUse = getSelectableModels(ctx).find(
+      (model) => model.provider === "github-copilot" && model.id === "gpt-5.6-luna",
+    ) ?? activeModel;
   } else {
     if (!ctx.model) {
       throw new Error("No active model selected for final reviewer subagent.");
     }
-    modelToUse = ctx.model;
+    modelToUse = activeModel;
   }
 
   if (!modelToUse) {
     throw new Error("No reviewer model could be resolved.");
   }
 
+  thinkingLevelToUse = getScopedThinkingLevel(ctx, modelToUse) ?? thinkingLevelToUse;
   const modelArg =
     thinkingLevelToUse === "off" ? `${modelToUse.provider}/${modelToUse.id}` : `${modelToUse.provider}/${modelToUse.id}:${thinkingLevelToUse}`;
   const resolvedAuth = await ctx.modelRegistry.getApiKeyAndHeaders(modelToUse);

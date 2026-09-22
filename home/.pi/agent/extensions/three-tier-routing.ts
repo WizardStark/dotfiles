@@ -5,6 +5,7 @@ import {
   extractFinalAssistantText,
   runSubagentProcess,
 } from "./lib/subagent-runtime.ts";
+import { getScopedThinkingLevel, getSelectableModels } from "./lib/model-ref.ts";
 
 const ADVISOR_MESSAGE_TYPE = "advisor-task-packet";
 const ASTRA_PROVIDER = "github-copilot";
@@ -41,8 +42,10 @@ function isAdvisorPacket(prompt: string): boolean {
   return prompt.includes(PACKET_MARKER) || /^\s*(?:advisor task packet|## objective)\b/i.test(prompt);
 }
 
-function modelArg(model: { provider: string; id: string }): string {
-  return `${model.provider}/${model.id}:high`;
+function modelArg(model: { provider: string; id: string }, thinkingLevel = "high"): string {
+  return thinkingLevel === "off"
+    ? `${model.provider}/${model.id}`
+    : `${model.provider}/${model.id}:${thinkingLevel}`;
 }
 
 async function runAdvisor(
@@ -50,8 +53,14 @@ async function runAdvisor(
   task: string,
   signal?: AbortSignal,
 ): Promise<{ packet: string; model: string; metrics?: ReturnType<typeof buildSubagentMetrics> }> {
-  const active = ctx.model;
-  const candidates = [ctx.modelRegistry.find(ASTRA_PROVIDER, ASTRA_MODEL), active].filter(
+  const selectableModels = getSelectableModels(ctx);
+  const active = ctx.model && selectableModels.find(
+    (model) => model.provider === ctx.model!.provider && model.id === ctx.model!.id,
+  );
+  const astra = selectableModels.find(
+    (model) => model.provider === ASTRA_PROVIDER && model.id === ASTRA_MODEL,
+  );
+  const candidates = [astra, active].filter(
     (model, index, all): model is NonNullable<typeof model> => Boolean(model) && all.indexOf(model) === index,
   );
   let advisor: NonNullable<typeof active> | undefined;
@@ -75,7 +84,7 @@ async function runAdvisor(
   const run = await runSubagentProcess({
     cwd: ctx.cwd,
     prompt: `Prepare the task packet for this request:\n\n${task.trim()}`,
-    modelArg: modelArg(advisor),
+    modelArg: modelArg(advisor, getScopedThinkingLevel(ctx, advisor) ?? "high"),
     providerName: advisor.provider,
     apiKey: auth.apiKey,
     authHeaders: auth.headers,

@@ -9,7 +9,13 @@
   "compaction": {
     "enabled": true,
     "reserveTokens": 27200,
-    "keepRecentTokens": 20000
+    "keepRecentTokens": 20000,
+    "modelOverrides": {
+      "github-copilot/gpt-6-astra": { "reserveTokens": 805200 },
+      "github-copilot/gpt-5.6-sol": { "reserveTokens": 805200 },
+      "github-copilot/gpt-5.6-terra": { "reserveTokens": 805200 },
+      "github-copilot/gpt-5.6-luna": { "reserveTokens": 805200 }
+    }
   },
   "enabledModels": [
     "github-copilot/gpt-6-astra",

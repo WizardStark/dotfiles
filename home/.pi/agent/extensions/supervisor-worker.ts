@@ -6,7 +6,6 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
-  SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import {
@@ -26,13 +25,13 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import {
-  entryToMessage,
-  getSessionMessages,
   textFromMessage,
   truncate,
 } from "./lib/session-messages.ts";
 import {
   findModel,
+  getScopedThinkingLevel,
+  getSelectableModels,
   resolveExactModelReference,
   sameModel,
   toRef,
@@ -407,10 +406,7 @@ function parseModelRef(
   ctx: ExtensionContext,
   raw: string,
 ): ModelRef | undefined {
-  const resolved = resolveExactModelReference(
-    raw,
-    ctx.modelRegistry.getAvailable(),
-  );
+  const resolved = resolveExactModelReference(raw, getSelectableModels(ctx));
   return resolved.status === "matched" ? toRef(resolved.model) : undefined;
 }
 
@@ -419,10 +415,7 @@ function resolveRequestedModel(
   raw: string,
   role: "worker" | "scout",
 ): { ref: ModelRef; model: Model<Api> } | { error: string } {
-  const resolved = resolveExactModelReference(
-    raw,
-    ctx.modelRegistry.getAvailable(),
-  );
+  const resolved = resolveExactModelReference(raw, getSelectableModels(ctx));
 
   if (resolved.status === "matched") {
     const ref = toRef(resolved.model);
@@ -507,12 +500,15 @@ function readSavedReviewKeys(ctx: ExtensionContext): string[] {
 function getPreferredFallbackRef(ctx: ExtensionContext): ModelRef | undefined {
   const preferred = resolveExactModelReference(
     "github-copilot/gpt-5.6-luna",
-    ctx.modelRegistry.getAvailable(),
+    getSelectableModels(ctx),
   );
   if (preferred.status === "matched") {
     return toRef(preferred.model);
   }
-  return toRef(ctx.model);
+  const active = ctx.model && getSelectableModels(ctx).find(
+    (model) => model.provider === ctx.model!.provider && model.id === ctx.model!.id,
+  );
+  return toRef(active);
 }
 
 function getDefaultWorkerRef(ctx: ExtensionContext): ModelRef | undefined {
@@ -1092,7 +1088,7 @@ async function getGitIndexEntries(
 
 async function getUserEditReminder(ctx: ExtensionContext): Promise<string> {
   try {
-    const messages = getSessionMessages(ctx.sessionManager.getBranch());
+    const messages = ctx.sessionManager.buildSessionProjection().messages;
     const timestamp = messages
       .filter((message) => message.role === "assistant")
       .map((message) => message.timestamp)
@@ -1698,8 +1694,8 @@ function buildSupervisorAppendix(
   return `\n\n## Supervisor Checks\n\n${sections.join("\n\n")}`;
 }
 
-function buildConversationContext(branch: SessionEntry[]): string {
-  const messages = getSessionMessages(branch)
+function buildConversationContext(messages: AgentMessage[]): string {
+  const visibleMessages = messages
     .filter((message) => {
       if (message.role === "system") return false;
       const text = textFromMessage(message);
@@ -1707,9 +1703,9 @@ function buildConversationContext(branch: SessionEntry[]): string {
     })
     .slice(-MAX_MESSAGES);
 
-  if (messages.length === 0) return "(none)";
+  if (visibleMessages.length === 0) return "(none)";
   return truncate(
-    serializeConversation(convertToLlm(messages)),
+    serializeConversation(convertToLlm(visibleMessages)),
     MAX_CONTEXT_CHARS,
   );
 }
@@ -2996,7 +2992,10 @@ async function resolveWorkerSelection(
     if ("error" in requested) {
       throw new Error(requested.error);
     }
-    return { ...requested, thinkingLevel };
+    return {
+      ...requested,
+      thinkingLevel: getScopedThinkingLevel(ctx, requested.model) ?? thinkingLevel,
+    };
   }
 
   const ref = getEffectiveWorkerRef(ctx, state);
@@ -3013,7 +3012,11 @@ async function resolveWorkerSelection(
     );
   }
 
-  return { ref, model, thinkingLevel };
+  return {
+    ref,
+    model,
+    thinkingLevel: getScopedThinkingLevel(ctx, model) ?? thinkingLevel,
+  };
 }
 
 async function resolveScoutSelection(
@@ -3028,7 +3031,10 @@ async function resolveScoutSelection(
     if ("error" in requested) {
       throw new Error(requested.error);
     }
-    return { ...requested, thinkingLevel };
+    return {
+      ...requested,
+      thinkingLevel: getScopedThinkingLevel(ctx, requested.model) ?? thinkingLevel,
+    };
   }
 
   const ref = getEffectiveScoutRef(ctx, state);
@@ -3045,7 +3051,11 @@ async function resolveScoutSelection(
     );
   }
 
-  return { ref, model, thinkingLevel };
+  return {
+    ref,
+    model,
+    thinkingLevel: getScopedThinkingLevel(ctx, model) ?? thinkingLevel,
+  };
 }
 
 function buildCompactReport(
@@ -3271,7 +3281,7 @@ async function generateDelegation(
     }
     workerModelArg = formatModel(worker.ref, worker.thinkingLevel);
     const conversationContext = buildConversationContext(
-      ctx.sessionManager.getBranch(),
+      ctx.sessionManager.buildSessionProjection().messages,
     );
     prompt = buildWorkerPrompt(params, conversationContext);
   } catch (error) {
@@ -3531,7 +3541,7 @@ async function generateScouting(
 
     scoutModelArg = formatModel(scout.ref, scout.thinkingLevel);
     const conversationContext = buildConversationContext(
-      ctx.sessionManager.getBranch(),
+      ctx.sessionManager.buildSessionProjection().messages,
     );
     prompt = buildScoutPrompt(params, conversationContext);
   } catch (error) {
@@ -4845,7 +4855,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       }
     });
 
-    pi.on("agent_end", async () => {
+    pi.on("agent_settled", async () => {
       turnDelegationState = undefined;
     });
 
