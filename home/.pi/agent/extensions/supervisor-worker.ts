@@ -51,6 +51,12 @@ import {
   type DelegationTaskRole,
   type DelegationTaskStatus,
 } from "./lib/delegation-task-widget.ts";
+import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry.ts";
+import {
+  readWorkflowMode,
+  writeWorkflowMode,
+  type WorkflowMode,
+} from "./lib/workflow-mode.ts";
 
 interface SupervisorWorkerState {
   override?: ModelRef;
@@ -58,6 +64,7 @@ interface SupervisorWorkerState {
   scoutOverride?: ModelRef;
   scoutThinkingLevel?: ThinkingLevel;
   autoMode?: "conservative" | "off";
+  workflowMode?: WorkflowMode;
 }
 
 interface DelegationToolEvent {
@@ -220,15 +227,27 @@ const DEFAULT_WORKER_THINKING_LEVEL: ThinkingLevel = "minimal";
 const DEFAULT_SCOUT_THINKING_LEVEL: ThinkingLevel = "minimal";
 
 const DEFAULT_AUTO_MODE = "conservative" as const;
+const workflowModeItem = createStatuslineItem({
+  id: "statusline:workflow-mode",
+  side: "right",
+  order: 0,
+  importance: 95,
+  background: "toolSuccessBg",
+});
 const MAX_CONTEXT_CHARS = 6_000;
 const MAX_MESSAGES = 6;
 const DEFAULT_PARALLEL_SUBAGENT_CONCURRENCY = 2;
 const MAX_PARALLEL_SUBAGENT_CONCURRENCY = 4;
 
+type SupervisorWorkerRegistration = {
+  owner: ExtensionAPI;
+  token: string;
+};
+
 declare global {
   // eslint-disable-next-line no-var
   var __PI_SUPERVISOR_WORKER_REGISTERED__:
-    "registering" | "registered" | undefined;
+    SupervisorWorkerRegistration | "registering" | "registered" | undefined;
 }
 const MAX_PARALLEL_SUBAGENT_TASKS = 4;
 const MAX_PARALLEL_REPORT_CHARS = 4_000;
@@ -305,6 +324,12 @@ const LAZY_DELEGATION_TOOL_NAMES = [
   "delegate_workers",
   "review_changes",
 ] as const;
+
+function isDelegationToolName(name: string): boolean {
+  return name === "load_delegation_tools" ||
+    (LAZY_DELEGATION_TOOL_NAMES as readonly string[]).includes(name);
+}
+
 const DelegationLoaderParams = Type.Object({
   capability: StringEnum(
     ["scout", "worker", "parallel-scouts", "parallel-workers", "review"],
@@ -459,6 +484,7 @@ function readSavedState(
   const scoutOverride = entry?.data?.scoutOverride;
   const scoutThinkingLevel = entry?.data?.scoutThinkingLevel;
   const autoMode = entry?.data?.autoMode;
+  const workflowMode = entry?.data?.workflowMode;
   const nextState: SupervisorWorkerState = {};
 
   if (override?.provider && override?.id) {
@@ -476,12 +502,16 @@ function readSavedState(
   if (autoMode === "conservative" || autoMode === "off") {
     nextState.autoMode = autoMode;
   }
+  if (workflowMode === "guided" || workflowMode === "three-tier") {
+    nextState.workflowMode = workflowMode;
+  }
 
   return nextState.override ||
     nextState.thinkingLevel ||
     nextState.scoutOverride ||
     nextState.scoutThinkingLevel ||
-    nextState.autoMode
+    nextState.autoMode ||
+    nextState.workflowMode
     ? nextState
     : undefined;
 }
@@ -550,6 +580,14 @@ function getAutoMode(state: SupervisorWorkerState): "conservative" | "off" {
   return state.autoMode ?? DEFAULT_AUTO_MODE;
 }
 
+function getWorkflowMode(state: SupervisorWorkerState): WorkflowMode {
+  return state.workflowMode ?? "guided";
+}
+
+function workflowStatus(mode: WorkflowMode) {
+  return mode === "three-tier" ? "3-tier" : "guided";
+}
+
 function resultWorkerLabelFallback(
   ctx: ExtensionContext,
   state: SupervisorWorkerState,
@@ -577,6 +615,22 @@ function resultScoutLabelFallback(
 }
 
 function updateStatus(ctx: ExtensionContext, state: SupervisorWorkerState) {
+  const workflowMode = getWorkflowMode(state);
+  workflowModeItem.set(
+    {
+      content: ctx.ui.theme.fg(
+        workflowMode === "three-tier" ? "warning" : "success",
+        `WF ${workflowStatus(workflowMode)}`,
+      ),
+      compactContent: ctx.ui.theme.fg(
+        workflowMode === "three-tier" ? "warning" : "success",
+        workflowMode === "three-tier" ? "3T" : "G",
+      ),
+      background: workflowMode === "three-tier" ? "toolPendingBg" : "toolSuccessBg",
+    },
+    getStatuslineSessionKey(ctx),
+  );
+
   const worker = getEffectiveWorkerRef(ctx, state);
   if (!worker) {
     ctx.ui.setStatus("worker", undefined);
@@ -3926,14 +3980,22 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     return;
   }
 
-  const registrationState = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;
+  const existingRegistration = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;
+  // A duplicate evaluation in the same runtime must not register handlers twice.
+  // A replacement runtime owns a different ExtensionAPI object and must replace
+  // any stale token, even if the outgoing runtime has not yet finished shutdown.
   if (
-    registrationState === "registering" ||
-    registrationState === "registered"
+    existingRegistration &&
+    typeof existingRegistration === "object" &&
+    existingRegistration.owner === pi
   ) {
     return;
   }
-  globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = "registering";
+  const registrationToken = `supervisor-worker-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = {
+    owner: pi,
+    token: registrationToken,
+  };
 
   try {
     if (role === "scout") {
@@ -3987,9 +4049,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     }
 
     function resetLazyDelegationTools() {
-      const lazyTools = new Set(LAZY_DELEGATION_TOOL_NAMES);
-      const active = pi.getActiveTools().filter((name) => !lazyTools.has(name));
-      pi.setActiveTools([...new Set([...active, "load_delegation_tools"])]);
+      const active = pi.getActiveTools().filter((name) => !isDelegationToolName(name));
+      if (getWorkflowMode(state) === "three-tier") {
+        active.push("load_delegation_tools");
+      }
+      pi.setActiveTools([...new Set(active)]);
     }
 
     function delegationActiveForm(
@@ -4400,12 +4464,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   done(undefined);
                   return;
                 }
-                if (matchesKey(data, "arrowup") || matchesKey(data, "k")) {
+                if (matchesKey(data, "up") || matchesKey(data, "k")) {
                   selectedIndex -= 1;
                   tui.requestRender();
                   return;
                 }
-                if (matchesKey(data, "arrowdown") || matchesKey(data, "j")) {
+                if (matchesKey(data, "down") || matchesKey(data, "j")) {
                   selectedIndex += 1;
                   tui.requestRender();
                   return;
@@ -4589,6 +4653,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           "parallel-workers": ["delegate_workers"],
           review: ["review_changes"],
         };
+        if (getWorkflowMode(state) !== "three-tier") {
+          return {
+            content: [{
+              type: "text",
+              text: "Delegation is disabled in guided implementation mode. Implement the change directly.",
+            }],
+            details: { capability: params.capability, added: [] },
+          };
+        }
         const added = addDelegationTools(
           toolsByCapability[params.capability] ?? [],
         );
@@ -4609,7 +4682,6 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       sessionEpoch += 1;
       activityCtx = ctx;
       activitySessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-      resetLazyDelegationTools();
       turnDelegationState = undefined;
       recentReviewKeys = readSavedReviewKeys(ctx);
       recentDelegationTasks = [];
@@ -4618,11 +4690,27 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       subagentPanelRefreshers.clear();
       subagentPanelOpen = false;
       delegationTaskWidget.setUICtx(ctx.ui);
-      state = readSavedState(ctx) ?? {};
+      state = {
+        ...(readSavedState(ctx) ?? {}),
+        workflowMode: await readWorkflowMode(),
+      };
+      resetLazyDelegationTools();
       refreshStatus(ctx);
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {
+      // Pi creates a fresh extension runtime on /new, /resume, and /reload.
+      // Release this process-wide duplicate guard so the fresh runtime can
+      // register its commands, tools, and handlers.
+      const registration = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;
+      if (
+        registration &&
+        typeof registration === "object" &&
+        registration.owner === pi &&
+        registration.token === registrationToken
+      ) {
+        globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = undefined;
+      }
       sessionEpoch += 1;
       activityCtx = undefined;
       activitySessionKey = undefined;
@@ -4635,6 +4723,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       delegationTaskWidget.clear();
       ctx.ui.setStatus("worker", undefined);
       ctx.ui.setStatus("worker-auto", undefined);
+      workflowModeItem.clear(getStatuslineSessionKey(ctx));
     });
 
     pi.on("model_select", async (_event, ctx) => {
@@ -4657,6 +4746,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.on("input", async (event) => {
       if (
+        getWorkflowMode(state) === "three-tier" &&
         getAutoMode(state) === "conservative" &&
         isLikelyImplementationPrompt(event.text)
       ) {
@@ -4666,15 +4756,36 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       return { action: "continue" };
     });
 
+    pi.on("tool_call", async (event) => {
+      if (
+        getWorkflowMode(state) === "guided" &&
+        isDelegationToolName(event.toolName)
+      ) {
+        return {
+          block: true,
+          reason: "Delegation is disabled in guided implementation mode. Implement and validate the change directly, using the Astra advisor only as advice.",
+        };
+      }
+    });
+
     pi.on("before_agent_start", async (event, ctx) => {
-      const workerRef = getEffectiveWorkerRef(ctx, state);
-      if (!ctx.model || sameModel(toRef(ctx.model), workerRef)) {
+      if (!ctx.model) {
         turnDelegationState = undefined;
         return;
       }
 
       const autoMode = getAutoMode(state);
+      const workflowMode = getWorkflowMode(state);
+      const workerRef = getEffectiveWorkerRef(ctx, state);
+      if (
+        workflowMode === "three-tier" &&
+        sameModel(toRef(ctx.model), workerRef)
+      ) {
+        turnDelegationState = undefined;
+        return;
+      }
       const shouldEnforcePlanSplit =
+        workflowMode === "three-tier" &&
         autoMode === "conservative" &&
         isLikelyImplementationPrompt(event.prompt);
       turnDelegationState = {
@@ -4698,8 +4809,17 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         : "";
 
       const policy =
-        autoMode === "conservative"
+        workflowMode === "guided"
           ? `
+
+## Workflow Policy: Guided Implementation
+
+- You own implementation end to end. Make the source and test changes yourself; validate and commit a complete vertical slice.
+- The Astra advisor may supply one task packet for risky work. Treat it as advice, not a handoff or a reason for another discovery pass.
+- Delegation tools are disabled in guided mode. Do not attempt to load or use them.
+- Do not finish with only analysis, a plan, a handoff, or schema-only scaffolding. If the request is broad, implement the first complete vertical slice rather than deferring it.`
+          : autoMode === "conservative"
+            ? `
 
 ## Delegation Policy
 
@@ -4707,7 +4827,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 - If the needed delegation tool is inactive, call \`load_delegation_tools\`; use scouts for focused read-only evidence, workers for local checkable changes, and parallel workers only for disjoint file scopes.
 - Keep architecture, ambiguous debugging, security-sensitive decisions, migrations, and cross-cutting integration on the supervisor.
 - Give workers narrow scope, file boundaries, acceptance criteria, validation, and escalation triggers; trust clean bounded handoffs and prefer one final review.${strictSection}`
-          : `
+            : `
 
 ## Delegation Policy
 
@@ -5908,9 +6028,56 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
+    pi.registerCommand("workflow", {
+      description:
+        "Show or set workflow mode. Usage: /workflow [guided|three-tier]",
+      handler: async (args, ctx) => {
+        const requested = args.trim();
+        if (!requested) {
+          ctx.ui.notify(`Workflow: ${workflowStatus(getWorkflowMode(state))}`, "info");
+          return;
+        }
+        if (requested !== "guided" && requested !== "three-tier") {
+          ctx.ui.notify("Usage: /workflow [guided|three-tier]", "error");
+          return;
+        }
+        if (requested === "guided") {
+          const active = [...activeDelegations.values()]
+            .filter((delegation) => delegation.role !== "advisor")
+            .filter((delegation) => !isTerminalDelegationPhase(delegation.phase));
+          if (active.length > 0) {
+            ctx.ui.notify(
+              `Cannot enable guided mode while ${active.length} delegation${active.length === 1 ? " is" : "s are"} running. Wait for it to finish or cancel it first.`,
+              "warning",
+            );
+            return;
+          }
+        }
+
+        state = { ...state, workflowMode: requested };
+        try {
+          await writeWorkflowMode(requested);
+        } catch (error) {
+          ctx.ui.notify(
+            `Workflow mode applies to this session but could not be saved: ${error instanceof Error ? error.message : String(error)}`,
+            "warning",
+          );
+        }
+        persistState();
+        resetLazyDelegationTools();
+        refreshStatus(ctx);
+        ctx.ui.notify(
+          requested === "guided"
+            ? "Guided implementation enabled: advisor guidance only; the main agent makes changes."
+            : "Three-tier workflow enabled: delegation tools are available for bounded work.",
+          "info",
+        );
+      },
+    });
+
     pi.registerCommand("worker-auto", {
       description:
-        "Show or set automatic delegation mode. Usage: /worker-auto [conservative|off]",
+        "Show or set automatic delegation mode (three-tier workflow only). Usage: /worker-auto [conservative|off]",
       handler: async (args, ctx) => {
         const trimmed = args.trim();
         if (!trimmed) {
@@ -5982,9 +6149,16 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
-    globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = "registered";
   } catch (error) {
-    globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = undefined;
+    const registration = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;
+    if (
+      registration &&
+      typeof registration === "object" &&
+      registration.owner === pi &&
+      registration.token === registrationToken
+    ) {
+      globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__ = undefined;
+    }
     throw error;
   }
 }

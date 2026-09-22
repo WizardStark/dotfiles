@@ -12,7 +12,15 @@ const ASTRA_PROVIDER = "github-copilot";
 const ASTRA_MODEL = "gpt-6-astra";
 const PACKET_MARKER = "<!-- pi-advisor-task-packet -->";
 const ADVISOR_CHILD_MARKER = "PI_THREE_TIER_ADVISOR_CHILD";
+const ADVISOR_PROGRESS_WIDGET = "three-tier-advisor-progress";
 const advisedPrompts = new Set<string>();
+
+declare global {
+  // Reloaded extensions share a process, while their UI widget IDs do not.
+  // Track ownership so an outgoing runtime cannot erase the new runtime's UI.
+  // eslint-disable-next-line no-var
+  var __PI_ADVISOR_PROGRESS_OWNER__: string | undefined;
+}
 
 type AdvisorActivityEvent = {
   id: string;
@@ -167,6 +175,19 @@ function packetContent(packet: string): string {
   return `${PACKET_MARKER}\n\n## Astra advisor task packet\n\n${packet}`;
 }
 
+function setAdvisorProgress(
+  ctx: ExtensionContext,
+  message: string | undefined,
+  owner: string,
+): void {
+  if (globalThis.__PI_ADVISOR_PROGRESS_OWNER__ !== owner || !ctx.hasUI) return;
+  ctx.ui.setWidget(
+    ADVISOR_PROGRESS_WIDGET,
+    message ? [ctx.ui.theme.fg("accent", `● ${message}`)] : undefined,
+    { placement: "aboveEditor" },
+  );
+}
+
 function packetDetails(result: Awaited<ReturnType<typeof runAdvisor>>, source: "tool" | "command" | "auto") {
   return {
     source,
@@ -176,7 +197,21 @@ function packetDetails(result: Awaited<ReturnType<typeof runAdvisor>>, source: "
   };
 }
 
+function emitAdvisorMetrics(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  details: ReturnType<typeof packetDetails>,
+): void {
+  pi.events.emit("subagent:metrics", {
+    generatedAt: details.generatedAt,
+    sessionKey: ctx.sessionManager.getSessionFile() ?? "ephemeral",
+    subagentMetrics: details.subagentMetrics,
+  });
+}
+
 export default function threeTierRouting(pi: ExtensionAPI) {
+  const progressOwner = `advisor-progress-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  globalThis.__PI_ADVISOR_PROGRESS_OWNER__ = progressOwner;
   let sessionGeneration = 0;
   let activeSessionGeneration: number | undefined;
   let activeSessionKey: string | undefined;
@@ -184,11 +219,13 @@ export default function threeTierRouting(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     activeSessionGeneration = ++sessionGeneration;
     activeSessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+    advisedPrompts.clear();
   });
 
-  pi.on("session_shutdown", async () => {
+  pi.on("session_shutdown", async (_event, ctx) => {
     activeSessionGeneration = undefined;
     activeSessionKey = undefined;
+    setAdvisorProgress(ctx, undefined, progressOwner);
   });
 
   const runAdvisorWithActivity = (
@@ -220,9 +257,11 @@ export default function threeTierRouting(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const result = await runAdvisorWithActivity(ctx, params.task, signal);
+      const details = packetDetails(result, "tool");
+      emitAdvisorMetrics(pi, ctx, details);
       return {
         content: [{ type: "text", text: packetContent(result.packet) }],
-        details: packetDetails(result, "tool"),
+        details,
       };
     },
   });
@@ -237,11 +276,13 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       }
       try {
         const result = await runAdvisorWithActivity(ctx, task, ctx.signal);
+        const details = packetDetails(result, "command");
+        emitAdvisorMetrics(pi, ctx, details);
         pi.sendMessage({
           customType: ADVISOR_MESSAGE_TYPE,
           content: packetContent(result.packet),
           display: true,
-          details: packetDetails(result, "command"),
+          details,
         });
       } catch (error) {
         ctx.ui.notify(`Astra advisor failed: ${error instanceof Error ? error.message : String(error)}`, "error");
@@ -256,19 +297,36 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       return;
     }
     advisedPrompts.add(normalized);
+    const generation = activeSessionGeneration;
+    const sessionKey = activeSessionKey;
+    // before_agent_start is awaited before Pi starts the main model stream. Make
+    // that otherwise silent wait visible immediately, especially for large
+    // prompts whose advisor preflight can take a while.
+    setAdvisorProgress(ctx, "Astra advisor is preparing a task packet…", progressOwner);
     try {
       const result = await runAdvisorWithActivity(ctx, event.prompt, ctx.signal);
+      const details = packetDetails(result, "auto");
+      emitAdvisorMetrics(pi, ctx, details);
       return {
         message: {
           customType: ADVISOR_MESSAGE_TYPE,
           content: packetContent(result.packet),
           display: true,
-          details: packetDetails(result, "auto"),
+          details,
         },
       };
     } catch {
       // Advisory failure must never prevent the conversational model from running.
       return undefined;
+    } finally {
+      // A late advisor completion belongs to the old extension context after a
+      // session replacement; it must not clear the new session's progress UI.
+      if (
+        generation === activeSessionGeneration &&
+        sessionKey === activeSessionKey
+      ) {
+        setAdvisorProgress(ctx, undefined, progressOwner);
+      }
     }
   });
 }

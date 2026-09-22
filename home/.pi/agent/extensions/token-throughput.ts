@@ -303,11 +303,18 @@ function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetr
 
   for (let i = branch.length - 1; i >= 0; i--) {
     const entry = branch[i];
-    if (entry.type !== "message" || !isSubagentMessage(entry.message)) {
+    // Auto advisor packets persist as CustomMessageEntry values, whereas tool
+    // and reviewer results persist as regular message entries.
+    const subagentRecord = entry.type === "message"
+      ? entry.message
+      : entry.type === "custom_message"
+        ? entry
+        : undefined;
+    if (!subagentRecord || !isSubagentMessage(subagentRecord)) {
       continue;
     }
 
-    const details = getSubagentDetails(entry.message);
+    const details = getSubagentDetails(subagentRecord);
     if (typeof details?.generatedAt === "number" && latestPersistedGeneratedAt === undefined) {
       latestPersistedGeneratedAt = details.generatedAt;
     }

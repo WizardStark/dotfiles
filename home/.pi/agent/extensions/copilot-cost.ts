@@ -59,17 +59,21 @@ function buildCostSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetricsE
   };
 
   for (const entry of ctx.sessionManager.getBranch()) {
-    if (entry.type !== "message") {
-      continue;
-    }
-
-    const details = getSubagentDetails(entry.message);
+    // Advisor packets are CustomMessageEntry values, not regular message
+    // entries. Inspect both shapes so persisted advisor spend survives reloads
+    // and session resumes.
+    const subagentRecord = entry.type === "message"
+      ? entry.message
+      : entry.type === "custom_message"
+        ? entry
+        : undefined;
+    const details = getSubagentDetails(subagentRecord);
     if (typeof details?.generatedAt === "number") {
       latestPersistedGeneratedAt = Math.max(latestPersistedGeneratedAt ?? details.generatedAt, details.generatedAt);
     }
     applySubagentMetrics(details?.subagentMetrics);
 
-    if (entry.message.role !== "assistant") {
+    if (entry.type !== "message" || entry.message.role !== "assistant") {
       continue;
     }
 
