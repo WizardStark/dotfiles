@@ -14,6 +14,16 @@ const PACKET_MARKER = "<!-- pi-advisor-task-packet -->";
 const ADVISOR_CHILD_MARKER = "PI_THREE_TIER_ADVISOR_CHILD";
 const advisedPrompts = new Set<string>();
 
+type AdvisorActivityEvent = {
+  id: string;
+  sessionKey: string;
+  phase: "start" | "update" | "end";
+  model: string;
+  message?: unknown;
+  turn?: number;
+  error?: string;
+};
+
 const ADVISOR_SYSTEM_PROMPT = `You are Astra, a high-risk implementation advisor inside Pi.
 Return only a concise structured task packet in Markdown with exactly these sections:
 ## Objective
@@ -52,6 +62,8 @@ async function runAdvisor(
   ctx: ExtensionContext,
   task: string,
   signal?: AbortSignal,
+  activitySessionKey?: string,
+  onActivity?: (event: AdvisorActivityEvent) => void,
 ): Promise<{ packet: string; model: string; metrics?: ReturnType<typeof buildSubagentMetrics> }> {
   const selectableModels = getSelectableModels(ctx);
   const active = ctx.model && selectableModels.find(
@@ -81,7 +93,16 @@ async function runAdvisor(
   }
   if (!advisor) throw new Error(authError);
 
-  const run = await runSubagentProcess({
+  const model = `${advisor.provider}/${advisor.id}`;
+  const activity = {
+    id: `advisor-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    sessionKey: activitySessionKey ?? "ephemeral",
+    model,
+  };
+  onActivity?.({ ...activity, phase: "start" });
+
+  try {
+    const run = await runSubagentProcess({
     cwd: ctx.cwd,
     prompt: `Prepare the task packet for this request:\n\n${task.trim()}`,
     modelArg: modelArg(advisor, getScopedThinkingLevel(ctx, advisor) ?? "high"),
@@ -91,6 +112,32 @@ async function runAdvisor(
     systemPrompt: `${ADVISOR_SYSTEM_PROMPT}\n\nParent system prompt (reference context only; credentials redacted):\n${redactCredentials(ctx.getSystemPrompt())}`,
     env: { [ADVISOR_CHILD_MARKER]: "1" },
     signal,
+    onEvent: (() => {
+      let assistantTurn = 0;
+      return (event: unknown) => {
+      if (!event || typeof event !== "object") return;
+      const record = event as {
+        type?: unknown;
+        turnIndex?: unknown;
+        message?: unknown;
+        assistantMessageEvent?: { partial?: unknown };
+      };
+      if (record.type === "turn_start") {
+        assistantTurn = typeof record.turnIndex === "number" ? record.turnIndex + 1 : assistantTurn + 1;
+        return;
+      }
+      const message = record.type === "message_update"
+        ? record.assistantMessageEvent?.partial
+        : record.type === "message_end"
+          ? record.message
+          : undefined;
+      if (message && typeof message === "object" && (message as { role?: unknown }).role === "assistant") {
+        // A child turn has one assistant response; subsequent stream snapshots replace it.
+        if (assistantTurn === 0) assistantTurn = 1;
+        onActivity?.({ ...activity, phase: "update", message, turn: assistantTurn });
+      }
+    };
+    })(),
   });
   const final = extractFinalAssistantText(
     [
@@ -101,10 +148,19 @@ async function runAdvisor(
     ],
     run.streamedText,
   );
-  if (!final.text) {
-    throw new Error(`Advisor returned no task packet (exitCode: ${run.exitCode}; ${run.stderr.trim() || "no error details"}).`);
+    if (!final.text) {
+      throw new Error(`Advisor returned no task packet (exitCode: ${run.exitCode}; ${run.stderr.trim() || "no error details"}).`);
+    }
+    onActivity?.({ ...activity, phase: "end" });
+    return { packet: final.text.trim(), model, metrics: buildSubagentMetrics(run) };
+  } catch (error) {
+    onActivity?.({
+      ...activity,
+      phase: "end",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
   }
-  return { packet: final.text.trim(), model: `${advisor.provider}/${advisor.id}`, metrics: buildSubagentMetrics(run) };
 }
 
 function packetContent(packet: string): string {
@@ -121,6 +177,40 @@ function packetDetails(result: Awaited<ReturnType<typeof runAdvisor>>, source: "
 }
 
 export default function threeTierRouting(pi: ExtensionAPI) {
+  let sessionGeneration = 0;
+  let activeSessionGeneration: number | undefined;
+  let activeSessionKey: string | undefined;
+
+  pi.on("session_start", async (_event, ctx) => {
+    activeSessionGeneration = ++sessionGeneration;
+    activeSessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+  });
+
+  pi.on("session_shutdown", async () => {
+    activeSessionGeneration = undefined;
+    activeSessionKey = undefined;
+  });
+
+  const runAdvisorWithActivity = (
+    ctx: ExtensionContext,
+    task: string,
+    signal?: AbortSignal,
+  ) => {
+    const generation = activeSessionGeneration;
+    const sessionKey = activeSessionKey;
+    return runAdvisor(ctx, task, signal, sessionKey, (activity) => {
+      // A child may finish after its parent session is replaced. Do not let its
+      // late events appear in the new session's activity panel.
+      if (
+        generation !== undefined &&
+        generation === activeSessionGeneration &&
+        sessionKey === activeSessionKey
+      ) {
+        pi.events.emit("subagent:activity", activity);
+      }
+    });
+  };
+
   pi.registerTool({
     name: "advisor_design",
     label: "Astra advisor design",
@@ -129,7 +219,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       task: Type.String({ description: "The implementation request to analyze." }),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-      const result = await runAdvisor(ctx, params.task, signal);
+      const result = await runAdvisorWithActivity(ctx, params.task, signal);
       return {
         content: [{ type: "text", text: packetContent(result.packet) }],
         details: packetDetails(result, "tool"),
@@ -146,7 +236,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
         return;
       }
       try {
-        const result = await runAdvisor(ctx, task, ctx.signal);
+        const result = await runAdvisorWithActivity(ctx, task, ctx.signal);
         pi.sendMessage({
           customType: ADVISOR_MESSAGE_TYPE,
           content: packetContent(result.packet),
@@ -167,7 +257,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
     }
     advisedPrompts.add(normalized);
     try {
-      const result = await runAdvisor(ctx, event.prompt, ctx.signal);
+      const result = await runAdvisorWithActivity(ctx, event.prompt, ctx.signal);
       return {
         message: {
           customType: ADVISOR_MESSAGE_TYPE,

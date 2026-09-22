@@ -2,14 +2,16 @@ import type {
   AgentMessage,
   ThinkingLevel,
 } from "@earendil-works/pi-agent-core";
-import type { Api, Model } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import {
+  AssistantMessageComponent,
   convertToLlm,
+  getMarkdownTheme,
   serializeConversation,
 } from "@earendil-works/pi-coding-agent";
 import {
@@ -72,8 +74,10 @@ interface ActiveDelegation {
   title: string;
   workerModel: string;
   phase: string;
-  role: "worker" | "scout";
+  role: "worker" | "scout" | "advisor";
+  startedAt?: number;
   turns?: number;
+  assistantTurns?: Map<number, AssistantMessage>;
   currentTool?: string;
   detailText?: string;
   recentActivity?: string[];
@@ -267,6 +271,7 @@ const SUBAGENT_ACTIVITY_SHORTCUT = "ctrl+alt+o";
 const MAX_SUBAGENT_DETAIL_LINES = 6;
 const MAX_SUBAGENT_DETAIL_CHARS = 1_200;
 const MAX_SUBAGENT_ACTIVITY_LINES = 8;
+const MAX_RECENT_ADVISOR_ACTIVITIES = 4;
 const MAX_RECENT_DELEGATION_TASKS = 8;
 const IMPLEMENTATION_PROMPT_PATTERNS: RegExp[] = [
   /\b(implement|refactor|fix|change|update|edit|modify|rewrite|extract|rename|migrate|wire|hook up)\b/i,
@@ -3962,6 +3967,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     const pendingReviewKeys = new Map<string, string>();
     const activeDelegations = new Map<string, ActiveDelegation>();
     const delegationTaskWidget = new DelegationTaskWidget();
+    let activitySessionKey: string | undefined;
+    let activityCtx: ExtensionContext | undefined;
 
     function persistState() {
       pi.appendEntry(STATE_ENTRY, state);
@@ -3995,6 +4002,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     function buildDelegationTaskItems(): DelegationTaskItem[] {
       const activeItems = [...activeDelegations.values()]
+        .filter((item) => item.role !== "advisor")
         .sort((left, right) => left.title.localeCompare(right.title))
         .map((item) => {
           const status: DelegationTaskStatus =
@@ -4006,7 +4014,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           return {
             id: item.id,
             title: item.title,
-            role: item.role,
+            role: item.role === "advisor" ? "worker" : item.role,
             status,
             activeForm:
               status === "in_progress" || status === "finalizing"
@@ -4228,6 +4236,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       items: ActiveDelegation[],
       selectedIndex: number,
       expanded: boolean,
+      hideThinkingBlocks: boolean,
     ): string[] {
       const innerWidth = Math.max(24, width - 2);
       const row = (content = "") => {
@@ -4238,7 +4247,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
         row(` ${theme.fg("accent", theme.bold("Subagent Activity"))}`),
         row(
-          ` ${theme.fg("dim", `${items.length} active • ↑/↓ select • Enter expand • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
+          ` ${theme.fg("dim", `${items.length} runs • ↑/↓ select • Enter expand • thinking toggle • ${SUBAGENT_ACTIVITY_SHORTCUT} or Esc closes`)}`,
         ),
         row(),
       ];
@@ -4308,6 +4317,21 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               for (const detailLine of detailLines)
                 lines.push(row(`   ${theme.fg("dim", detailLine)}`));
             }
+            if ((item.assistantTurns?.size ?? 0) > 0) {
+              lines.push(row(`   ${theme.fg("dim", "Transcript:")}`));
+              const transcriptTurns = [...(item.assistantTurns ?? new Map<number, AssistantMessage>())]
+                .sort(([left], [right]) => left - right);
+              for (const [, message] of transcriptTurns) {
+                const transcript = new AssistantMessageComponent(
+                  message,
+                  hideThinkingBlocks,
+                  getMarkdownTheme(),
+                );
+                for (const transcriptLine of transcript.render(Math.max(12, innerWidth - 4))) {
+                  lines.push(row(`   ${truncateToWidth(transcriptLine, Math.max(12, innerWidth - 4), "")}`));
+                }
+              }
+            }
             if (!isTerminalDelegationPhase(item.phase)) {
               lines.push(row(`   ${theme.fg("accent", "Working…")}`));
             }
@@ -4342,11 +4366,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       subagentPanelOpen = true;
       try {
         await ctx.ui.custom<void>(
-          (tui, theme, _keybindings, done) => {
+          (tui, theme, keybindings, done) => {
             const refresh = () => tui.requestRender();
             subagentPanelRefreshers.add(refresh);
             let selectedIndex = 0;
             let expanded = true;
+            let hideThinkingBlocks = true;
             const clampSelection = () => {
               const count = activeDelegations.size;
               selectedIndex =
@@ -4364,6 +4389,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   items,
                   selectedIndex,
                   expanded,
+                  hideThinkingBlocks,
                 );
               },
               handleInput: (data: string) => {
@@ -4381,6 +4407,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 }
                 if (matchesKey(data, "arrowdown") || matchesKey(data, "j")) {
                   selectedIndex += 1;
+                  tui.requestRender();
+                  return;
+                }
+                if (keybindings.matches(data, "app.thinking.toggle")) {
+                  hideThinkingBlocks = !hideThinkingBlocks;
                   tui.requestRender();
                   return;
                 }
@@ -4479,6 +4510,69 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       updateDelegationWidget(ctx);
     }
 
+    function pruneFinishedAdvisorActivities() {
+      const finished = [...activeDelegations.entries()]
+        .filter(([, item]) => item.role === "advisor" && isTerminalDelegationPhase(item.phase))
+        .sort(([, left], [, right]) => (right.startedAt ?? 0) - (left.startedAt ?? 0));
+      for (const [key] of finished.slice(MAX_RECENT_ADVISOR_ACTIVITIES)) {
+        activeDelegations.delete(key);
+      }
+    }
+
+    pi.events.on("subagent:activity", (data) => {
+      const event = data as {
+        id?: unknown;
+        sessionKey?: unknown;
+        phase?: unknown;
+        model?: unknown;
+        message?: unknown;
+        turn?: unknown;
+        error?: unknown;
+      };
+      if (
+        !activityCtx ||
+        typeof event.id !== "string" ||
+        event.sessionKey !== activitySessionKey ||
+        (event.phase !== "start" && event.phase !== "update" && event.phase !== "end")
+      ) {
+        return;
+      }
+
+      const key = `advisor:${event.id}`;
+      let advisor = activeDelegations.get(key);
+      if (!advisor && event.phase === "start") {
+        advisor = {
+          id: key,
+          title: "Astra advisor",
+          workerModel: typeof event.model === "string" ? event.model : "advisor",
+          phase: "advising",
+          role: "advisor",
+          startedAt: Date.now(),
+        };
+        activeDelegations.set(key, advisor);
+      }
+      if (!advisor) return;
+
+      if (
+        event.message &&
+        typeof event.message === "object" &&
+        (event.message as { role?: unknown }).role === "assistant"
+      ) {
+        const message = event.message as AssistantMessage;
+        const turn = typeof event.turn === "number" ? event.turn : 1;
+        // `turn` is assigned by the child stream producer, so each partial
+        // snapshot replaces its own turn even when a provider omits response IDs.
+        advisor.assistantTurns ??= new Map();
+        advisor.assistantTurns.set(turn, message);
+      }
+      if (event.phase === "end") {
+        advisor.phase = typeof event.error === "string" ? "blocked" : "completed";
+        if (typeof event.error === "string") advisor.detailText = event.error;
+        pruneFinishedAdvisorActivities();
+      }
+      updateDelegationWidget(activityCtx);
+    });
+
     pi.registerTool({
       name: "load_delegation_tools",
       label: "Load Delegation Tools",
@@ -4513,6 +4607,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.on("session_start", async (_event, ctx) => {
       sessionEpoch += 1;
+      activityCtx = ctx;
+      activitySessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
       resetLazyDelegationTools();
       turnDelegationState = undefined;
       recentReviewKeys = readSavedReviewKeys(ctx);
@@ -4528,6 +4624,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.on("session_shutdown", async (_event, ctx) => {
       sessionEpoch += 1;
+      activityCtx = undefined;
+      activitySessionKey = undefined;
       turnDelegationState = undefined;
       recentDelegationTasks = [];
       pendingReviewKeys.clear();
