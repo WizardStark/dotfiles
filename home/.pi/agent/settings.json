@@ -12,13 +12,13 @@
     "keepRecentTokens": 20000,
     "modelOverrides": {
       "github-copilot/gpt-6-astra": {
-        "reserveTokens": 805200
+        "reserveTokens": 728000
       },
       "github-copilot/gpt-6-sol": {
         "reserveTokens": 728000
       },
       "github-copilot/gpt-6-luna": {
-        "reserveTokens": 805200
+        "reserveTokens": 728000
       }
     }
   },
