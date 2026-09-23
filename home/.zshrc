@@ -1,6 +1,6 @@
 if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-      source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+        source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
     fi
 
     ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
@@ -9,16 +9,18 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     autoload -Uz add-zsh-hook colors is-at-least compinit vcs_info
 
     if [ ! -d "$ZINIT_HOME" ]; then
-       mkdir -p "$(dirname $ZINIT_HOME)"
-       git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+        mkdir -p "$(dirname $ZINIT_HOME)"
+        git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
     fi
 
     source "${ZINIT_HOME}/zinit.zsh"
 
-    zinit ice depth=1; zinit light romkatv/powerlevel10k
+    zinit ice depth=1
+    zinit light romkatv/powerlevel10k
 
     if ! [[ -n "$NVIM" ]]; then
-        zinit ice depth=1; zinit light jeffreytse/zsh-vi-mode
+        zinit ice depth=1
+        zinit light jeffreytse/zsh-vi-mode
         zvm_after_init_commands+=('[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh')
     fi
 
@@ -33,7 +35,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 
     autoload -Uz compinit
     for dump in ~/.zcompdump(N.mh+24); do
-      compinit
+        compinit
     done
     compinit -C
 
@@ -81,14 +83,14 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
     export FZF_ALT_C_OPTS="--preview 'eza --color=always {} | head -200'"
 
     _fzf_comprun() {
-      local command=$1
-      shift
+        local command=$1
+        shift
 
-      case "$command" in
-        export|unset) fzf --preview "eval 'echo ${}'"          "$@" ;;
-        ssh)          fzf --preview 'dig {}'                   "$@" ;;
-        *)            fzf --preview "$fzf_file_or_dir_preview" "$@" ;;
-      esac
+        case "$command" in
+        export | unset) fzf --preview "eval 'echo ${}'" "$@" ;;
+        ssh) fzf --preview 'dig {}' "$@" ;;
+        *) fzf --preview "$fzf_file_or_dir_preview" "$@" ;;
+        esac
     }
 
     #Allow matching of . files to allow for smoother fzf-tabbing
@@ -106,7 +108,7 @@ if [[ ! -v OVERRIDE_ZSH_CUSTOMIZATION ]]; then
 fi
 
 show_blame() {
-  git ls-files | while read f; do git blame -w --line-porcelain -- "$f" | grep -I '^author '; done | sort -f | uniq -ic | sort -n
+    git ls-files | while read f; do git blame -w --line-porcelain -- "$f" | grep -I '^author '; done | sort -f | uniq -ic | sort -n
 }
 
 lsd() { (
@@ -120,15 +122,15 @@ git_grep_all() {
         echo "Usage: git_grep_all <pattern>"
         return 1
     fi
-    
+
     local pattern="$1"
     local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    
+
     if [ $? -ne 0 ]; then
         echo "Not in a git repository"
         return 1
     fi
-    
+
     for branch in $(git branch --format="%(refname:short)" 2>/dev/null); do
         local matches=$(git grep -F "$pattern" "$branch" -- 2>/dev/null)
         if [ -n "$matches" ]; then
@@ -137,7 +139,7 @@ git_grep_all() {
             echo
         fi
     done
-    
+
     return 0
 }
 
@@ -165,9 +167,9 @@ wt() {
     }
 
     WORKTRUNK_SHELL=zsh \
-    WORKTRUNK_DIRECTIVE_CD_FILE="$directive_cd_file" \
-    WORKTRUNK_DIRECTIVE_EXEC_FILE="$directive_exec_file" \
-    "$wt_bin" "$@"
+        WORKTRUNK_DIRECTIVE_CD_FILE="$directive_cd_file" \
+        WORKTRUNK_DIRECTIVE_EXEC_FILE="$directive_exec_file" \
+        "$wt_bin" "$@"
     local exit_code=$?
 
     if [[ -s "$directive_exec_file" ]]; then
@@ -281,20 +283,20 @@ _git_worktree_prune() {
         fi
 
         found_candidates=1
-        if (( apply_changes )); then
+        if ((apply_changes)); then
             echo "Pruning $branch_name"
             wt remove "$branch_name" || continue
         else
             echo "Would prune $branch_name"
         fi
-    done <<< "$worktree_branches"
+    done <<<"$worktree_branches"
 
-    if (( ! found_candidates )); then
+    if ((! found_candidates)); then
         echo "No merged worktrees eligible for pruning against $base_ref"
         return 0
     fi
 
-    if (( ! apply_changes )); then
+    if ((! apply_changes)); then
         echo
         echo "Run 'gwtprune_apply $base_ref' to delete the worktrees listed above"
     fi
@@ -313,9 +315,9 @@ _git_worktree_branch_names() {
 
     local -a branch_names
     local expl
-    branch_names=("${(@f)$(wt list --format=json | jq -r '.[] | select(.branch != null) | .branch')}" )
+    branch_names=("${(@f)$(wt list --format=json | jq -r '.[] | select(.branch != null) | .branch')}")
 
-    (( ${#branch_names[@]} )) || return 0
+    ((${#branch_names[@]})) || return 0
     _wanted worktrees expl 'git worktree' compadd -- "${branch_names[@]}"
 }
 
@@ -324,7 +326,6 @@ compdef _git gwtcs=git-checkout
 compdef _git_worktree_branch_names gwtd
 compdef _git_worktree_branch_names gwtcd
 
-export EDITOR='nvim'
 alias vim="nvim"
 alias cl="printf '\33c\e[3J'"
 alias src='source ~/.zshrc'
@@ -349,9 +350,9 @@ fi
 [ -f ~/.lcl.zshrc ] && source ~/.lcl.zshrc
 
 if [ -d ~/dotfile-shards/ ]; then
-  for f in ~/dotfile-shards/*; do
-    source $f
-  done
+    for f in ~/dotfile-shards/*; do
+        source $f
+    done
 fi
 
 export PATH="$(echo "$PATH" | /usr/bin/env awk 'BEGIN { RS=":"; } { sub(sprintf("%c$", 10), ""); if (A[$0]) {} else { A[$1]=1; printf(((NR==1) ?"" : ":") $0) }}')"
