@@ -9,3 +9,6 @@ env = "if [ ! -e .env ] && [ -e {{ primary_worktree_path }}/.env ]; then ln -s {
 [aliases]
 ws = "wt switch {{ args }}"
 wsc = "wt switch --create {{ args }}"
+
+[list]
+json-schema = 2

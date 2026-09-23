@@ -266,7 +266,7 @@ _git_worktree_prune() {
 
     local merged_branches worktree_branches
     merged_branches="$(git branch --format='%(refname:short)' --merged "$base_ref")"
-    worktree_branches="$(wt list --format=json | jq -r '.[] | select(.kind == "worktree" and .branch != null and (.is_current | not)) | .branch')"
+    worktree_branches="$(wt list --format=json | jq -r '.items[] | select(.worktree != null and .branch != null and (.worktree.current | not)) | .branch')"
 
     if [[ -z "$merged_branches" || -z "$worktree_branches" ]]; then
         echo "No merged worktrees eligible for pruning against $base_ref"
@@ -315,7 +315,7 @@ _git_worktree_branch_names() {
 
     local -a branch_names
     local expl
-    branch_names=("${(@f)$(wt list --format=json | jq -r '.[] | select(.branch != null) | .branch')}")
+    branch_names=("${(@f)$(wt list --format=json | jq -r '.items[] | select(.worktree != null and .branch != null) | .branch')}")
 
     ((${#branch_names[@]})) || return 0
     _wanted worktrees expl 'git worktree' compadd -- "${branch_names[@]}"
