@@ -375,7 +375,7 @@ async function generateReview(
   if (stage === "interim") {
     thinkingLevelToUse = "minimal";
     modelToUse = getSelectableModels(ctx).find(
-      (model) => model.provider === "github-copilot" && model.id === "gpt-5.6-luna",
+      (model) => model.provider === "github-copilot" && model.id === "gpt-6-luna",
     ) ?? activeModel;
   } else {
     if (!ctx.model) {

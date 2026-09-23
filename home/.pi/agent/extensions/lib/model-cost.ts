@@ -7,7 +7,11 @@ export type ModelRates = {
 	cachedInput: number;
 	output: number;
 	cacheWrite?: number;
+	longContext?: Omit<ModelRates, "longContext">;
 };
+
+/** GPT-6 long-context pricing applies when the request context exceeds this size. */
+export const LONG_CONTEXT_THRESHOLD = 272_000;
 
 export const MODEL_RATES: Record<string, ModelRates> = {
 	"gpt-4.1": { input: 2.0, cachedInput: 0.5, output: 8.0 },
@@ -19,8 +23,27 @@ export const MODEL_RATES: Record<string, ModelRates> = {
 	"gpt-5.4-mini": { input: 0.75, cachedInput: 0.075, output: 4.5 },
 	"gpt-5.4-nano": { input: 0.2, cachedInput: 0.02, output: 1.25 },
 	"gpt-5.5": { input: 5.0, cachedInput: 0.5, output: 30.0 },
-	"gpt-5.6-luna": { input: 1.0, cachedInput: 0.1, output: 6.0 },
-	"gpt-5.6-terra": { input: 2.5, cachedInput: 0.25, output: 15.0 },
+	"gpt-6-astra": {
+		input: 10.0,
+		cachedInput: 1.0,
+		cacheWrite: 12.5,
+		output: 50.0,
+		longContext: { input: 20.0, cachedInput: 2.0, cacheWrite: 25.0, output: 75.0 },
+	},
+	"gpt-6-luna": {
+		input: 0.1,
+		cachedInput: 0.01,
+		cacheWrite: 0.125,
+		output: 0.5,
+		longContext: { input: 0.2, cachedInput: 0.02, cacheWrite: 0.25, output: 0.75 },
+	},
+	"gpt-6-sol": {
+		input: 2.0,
+		cachedInput: 0.2,
+		cacheWrite: 2.5,
+		output: 10.0,
+		longContext: { input: 4.0, cachedInput: 0.4, cacheWrite: 5.0, output: 15.0 },
+	},
 	"claude-haiku-4.5": { input: 1.0, cachedInput: 0.1, cacheWrite: 1.25, output: 5.0 },
 	"claude-sonnet-4": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
 	"claude-sonnet-4.5": { input: 3.0, cachedInput: 0.3, cacheWrite: 3.75, output: 15.0 },
@@ -66,8 +89,8 @@ export function estimateUsageCost(message: AssistantMessage): {
 	}
 
 	const normalizedModel = normalizeModelId(message.model);
-	const rates = MODEL_RATES[normalizedModel];
-	if (!rates) {
+	const modelRates = MODEL_RATES[normalizedModel];
+	if (!modelRates) {
 		return {
 			amount: 0,
 			estimated: true,
@@ -80,6 +103,10 @@ export function estimateUsageCost(message: AssistantMessage): {
 	const cacheRead = usage.cacheRead ?? 0;
 	const cacheWrite = usage.cacheWrite ?? 0;
 	const output = usage.output ?? 0;
+	const rates =
+		input + cacheRead + cacheWrite > LONG_CONTEXT_THRESHOLD && modelRates.longContext
+			? modelRates.longContext
+			: modelRates;
 	const amount =
 		(input * rates.input +
 			cacheRead * rates.cachedInput +

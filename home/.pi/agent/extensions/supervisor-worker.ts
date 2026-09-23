@@ -534,7 +534,7 @@ function readSavedReviewKeys(ctx: ExtensionContext): string[] {
 
 function getPreferredFallbackRef(ctx: ExtensionContext): ModelRef | undefined {
   const preferred = resolveExactModelReference(
-    "github-copilot/gpt-5.6-luna",
+    "github-copilot/gpt-6-luna",
     getSelectableModels(ctx),
   );
   if (preferred.status === "matched") {
@@ -3771,7 +3771,7 @@ const DelegateWorkerParams = Type.Object({
   workerModel: Type.Optional(
     Type.String({
       description:
-        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gpt-5.6-luna.",
+        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gpt-6-luna.",
     }),
   ),
   workerThinkingLevel: Type.Optional(
@@ -3815,7 +3815,7 @@ const DelegateScoutParams = Type.Object({
   scoutModel: Type.Optional(
     Type.String({
       description:
-        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gpt-5.6-luna.",
+        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gpt-6-luna.",
     }),
   ),
   scoutThinkingLevel: Type.Optional(
@@ -3879,7 +3879,7 @@ const ParallelDelegateWorkerTaskParams = Type.Object({
   workerModel: Type.Optional(
     Type.String({
       description:
-        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gpt-5.6-luna.",
+        "Worker model id or provider/id. Defaults to the configured worker model, or github-copilot/gpt-6-luna.",
     }),
   ),
   workerThinkingLevel: Type.Optional(
@@ -3942,7 +3942,7 @@ const ParallelDelegateScoutTaskParams = Type.Object({
   scoutModel: Type.Optional(
     Type.String({
       description:
-        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gpt-5.6-luna.",
+        "Scout model id or provider/id. Defaults to the configured fast worker model, or github-copilot/gpt-6-luna.",
     }),
   ),
   scoutThinkingLevel: Type.Optional(
