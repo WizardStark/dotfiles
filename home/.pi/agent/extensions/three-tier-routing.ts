@@ -6,6 +6,7 @@ import {
   runSubagentProcess,
 } from "./lib/subagent-runtime.ts";
 import { getScopedThinkingLevel, getSelectableModels } from "./lib/model-ref.ts";
+import { readWorkflowMode } from "./lib/workflow-mode.ts";
 
 const ADVISOR_MESSAGE_TYPE = "advisor-task-packet";
 const ASTRA_PROVIDER = "github-copilot";
@@ -256,6 +257,9 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       task: Type.String({ description: "The implementation request to analyze." }),
     }),
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      if (await readWorkflowMode() === "plain") {
+        throw new Error("Consulting the advisor is disabled in plain mode.");
+      }
       const result = await runAdvisorWithActivity(ctx, params.task, signal);
       const details = packetDetails(result, "tool");
       emitAdvisorMetrics(pi, ctx, details);
@@ -272,6 +276,10 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       const task = args.trim();
       if (!task) {
         ctx.ui.notify("Usage: /advisor [task]", "error");
+        return;
+      }
+      if (await readWorkflowMode() === "plain") {
+        ctx.ui.notify("Consulting the advisor is disabled in plain mode.", "warning");
         return;
       }
       try {
@@ -291,7 +299,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
   });
 
   pi.on("before_agent_start", async (event, ctx) => {
-    if (process.env[ADVISOR_CHILD_MARKER] === "1") return;
+    if (process.env[ADVISOR_CHILD_MARKER] === "1" || await readWorkflowMode() === "plain") return;
     const normalized = event.prompt.trim().replace(/\s+/g, " ");
     if (!normalized || isAdvisorPacket(event.prompt) || !isHighRiskMutation(event.prompt) || advisedPrompts.has(normalized)) {
       return;

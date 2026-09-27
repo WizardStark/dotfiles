@@ -53,6 +53,7 @@ import {
 } from "./lib/delegation-task-widget.ts";
 import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry.ts";
 import {
+  isWorkflowMode,
   readWorkflowMode,
   writeWorkflowMode,
   type WorkflowMode,
@@ -502,7 +503,7 @@ function readSavedState(
   if (autoMode === "conservative" || autoMode === "off") {
     nextState.autoMode = autoMode;
   }
-  if (workflowMode === "guided" || workflowMode === "three-tier") {
+  if (isWorkflowMode(workflowMode)) {
     nextState.workflowMode = workflowMode;
   }
 
@@ -585,7 +586,7 @@ function getWorkflowMode(state: SupervisorWorkerState): WorkflowMode {
 }
 
 function workflowStatus(mode: WorkflowMode) {
-  return mode === "three-tier" ? "3-tier" : "guided";
+  return mode === "three-tier" ? "3-tier" : mode;
 }
 
 function resultWorkerLabelFallback(
@@ -624,7 +625,7 @@ function updateStatus(ctx: ExtensionContext, state: SupervisorWorkerState) {
       ),
       compactContent: ctx.ui.theme.fg(
         workflowMode === "three-tier" ? "warning" : "success",
-        workflowMode === "three-tier" ? "3T" : "G",
+        workflowMode === "three-tier" ? "3T" : workflowMode === "guided" ? "G" : "P",
       ),
       background: workflowMode === "three-tier" ? "toolPendingBg" : "toolSuccessBg",
     },
@@ -4049,9 +4050,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     }
 
     function resetLazyDelegationTools() {
-      const active = pi.getActiveTools().filter((name) => !isDelegationToolName(name));
-      if (getWorkflowMode(state) === "three-tier") {
+      const mode = getWorkflowMode(state);
+      const active = pi.getActiveTools().filter(
+        (name) => !isDelegationToolName(name) && (mode !== "plain" || name !== "advisor_design"),
+      );
+      if (mode === "three-tier") {
         active.push("load_delegation_tools");
+      }
+      if (mode !== "plain" && pi.getAllTools().some((tool) => tool.name === "advisor_design")) {
+        active.push("advisor_design");
       }
       pi.setActiveTools([...new Set(active)]);
     }
@@ -4657,7 +4664,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           return {
             content: [{
               type: "text",
-              text: "Delegation is disabled in guided implementation mode. Implement the change directly.",
+              text: `Delegation is disabled in ${getWorkflowMode(state)} mode. Implement the change directly.`,
             }],
             details: { capability: params.capability, added: [] },
           };
@@ -4758,13 +4765,16 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.on("tool_call", async (event) => {
       if (
-        getWorkflowMode(state) === "guided" &&
+        getWorkflowMode(state) !== "three-tier" &&
         isDelegationToolName(event.toolName)
       ) {
         return {
           block: true,
-          reason: "Delegation is disabled in guided implementation mode. Implement and validate the change directly, using the Astra advisor only as advice.",
+          reason: `Delegation is disabled in ${getWorkflowMode(state)} mode. Implement and validate the change directly.`,
         };
+      }
+      if (getWorkflowMode(state) === "plain" && event.toolName === "advisor_design") {
+        return { block: true, reason: "Consulting the advisor is disabled in plain mode." };
       }
     });
 
@@ -4809,7 +4819,14 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         : "";
 
       const policy =
-        workflowMode === "guided"
+        workflowMode === "plain"
+          ? `
+
+## Workflow Policy: Plain Implementation
+
+- Work directly on the user's request. Do not consult the Astra advisor or delegate to other agents.
+- Advisor and delegation tools are disabled in plain mode. Make and validate changes yourself.`
+          : workflowMode === "guided"
           ? `
 
 ## Workflow Policy: Guided Implementation
@@ -6030,24 +6047,24 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.registerCommand("workflow", {
       description:
-        "Show or set workflow mode. Usage: /workflow [guided|three-tier]",
+        "Show or set workflow mode. Usage: /workflow [plain|guided|three-tier]",
       handler: async (args, ctx) => {
         const requested = args.trim();
         if (!requested) {
           ctx.ui.notify(`Workflow: ${workflowStatus(getWorkflowMode(state))}`, "info");
           return;
         }
-        if (requested !== "guided" && requested !== "three-tier") {
-          ctx.ui.notify("Usage: /workflow [guided|three-tier]", "error");
+        if (!isWorkflowMode(requested)) {
+          ctx.ui.notify("Usage: /workflow [plain|guided|three-tier]", "error");
           return;
         }
-        if (requested === "guided") {
+        if (requested !== "three-tier") {
           const active = [...activeDelegations.values()]
-            .filter((delegation) => delegation.role !== "advisor")
+            .filter((delegation) => requested !== "guided" || delegation.role !== "advisor")
             .filter((delegation) => !isTerminalDelegationPhase(delegation.phase));
           if (active.length > 0) {
             ctx.ui.notify(
-              `Cannot enable guided mode while ${active.length} delegation${active.length === 1 ? " is" : "s are"} running. Wait for it to finish or cancel it first.`,
+              `Cannot enable ${requested} mode while ${active.length} delegation${active.length === 1 ? " is" : "s are"} running. Wait for it to finish or cancel it first.`,
               "warning",
             );
             return;
@@ -6067,9 +6084,11 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         resetLazyDelegationTools();
         refreshStatus(ctx);
         ctx.ui.notify(
-          requested === "guided"
-            ? "Guided implementation enabled: advisor guidance only; the main agent makes changes."
-            : "Three-tier workflow enabled: delegation tools are available for bounded work.",
+          requested === "plain"
+            ? "Plain workflow enabled: no advisor or delegation; the main agent works directly."
+            : requested === "guided"
+              ? "Guided implementation enabled: advisor guidance only; the main agent makes changes."
+              : "Three-tier workflow enabled: delegation tools are available for bounded work.",
           "info",
         );
       },

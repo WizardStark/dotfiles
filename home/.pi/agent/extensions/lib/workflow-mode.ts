@@ -2,14 +2,14 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type WorkflowMode = "guided" | "three-tier";
+export type WorkflowMode = "plain" | "guided" | "three-tier";
 
 const CONFIG_DIR = join(homedir(), ".pi", "agent");
 const CONFIG_FILE = join(CONFIG_DIR, "workflow-mode.json");
 const DEFAULT_WORKFLOW_MODE: WorkflowMode = "guided";
 
-function isWorkflowMode(value: unknown): value is WorkflowMode {
-  return value === "guided" || value === "three-tier";
+export function isWorkflowMode(value: unknown): value is WorkflowMode {
+  return value === "plain" || value === "guided" || value === "three-tier";
 }
 
 export async function readWorkflowMode(): Promise<WorkflowMode> {
