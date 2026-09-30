@@ -1,6 +1,6 @@
 import { createCodemodeExtension, type CodemodeToolDetails, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
-import { codemodeCallLabel } from "./lib/codemode-badge-label.ts";
+import { codemodeTreeEntries } from "./lib/codemode-badge-label.ts";
 
 // Pi has no renderer-only API. Wrap its public codemode extension factory rather
 // than copying the sandbox, tool declaration, session store, or usage handling.
@@ -23,10 +23,9 @@ export default function codemodeBadge(pi: ExtensionAPI) {
           renderResult(result, options, theme, context) {
             if (options.expanded && originalResult) return originalResult(result, options, theme, context);
             const calls = (result.details as CodemodeToolDetails | undefined)?.calls ?? [];
-            const lines = calls.map((call) => theme.fg(call.status === "error" ? "error" : "toolOutput", codemodeCallLabel(call)));
-            if (context.isError && !calls.some((call) => call.status === "error")) {
-              lines.push(theme.fg("error", "⚠ codemode failed (expand for details)"));
-            }
+            const lines = codemodeTreeEntries(calls, context.isError).map(
+              ({ branch, label, tone }) => `${theme.fg("dim", branch)} ${theme.fg(tone, label)}`,
+            );
             return new Text(lines.length ? `\n${lines.join("\n")}` : "", 0, 0);
           },
         });
