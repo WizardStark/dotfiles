@@ -88,6 +88,7 @@ async function selectMany(ctx: ExtensionContext, question: Question, signal?: Ab
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "ask_user_question",
+    exposure: "model-only",
     label: "Ask User Question",
     description: "Ask the user for a concrete decision with 1–4 short multiple-choice questions.",
     promptSnippet: "Ask the user for a necessary decision.",

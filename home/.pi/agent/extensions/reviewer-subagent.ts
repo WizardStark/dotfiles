@@ -461,6 +461,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "review_changes",
+    exposure: "model-only",
     label: "Review changes",
     description:
       "Inspect current git changes in a fresh reviewer subagent; interim uses a cheaper model and final uses the active model.",

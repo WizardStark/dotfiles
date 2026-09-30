@@ -4646,6 +4646,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.registerTool({
       name: "load_delegation_tools",
+      exposure: "model-only",
       label: "Load Delegation Tools",
       description:
         "Load the delegation tool needed for scouting, bounded implementation, parallel work, or review.",
@@ -5096,6 +5097,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.registerTool({
       name: "delegate_scout",
+      exposure: "model-only",
       label: "Delegate Scout",
       description:
         "Spawn a read-only scout subagent on a cheaper model to explore the codebase and report evidence to the supervisor.",
@@ -5237,6 +5239,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.registerTool({
       name: "delegate_scouts",
+      exposure: "model-only",
       label: "Delegate Scouts",
       description:
         "Spawn parallel read-only scout subagents for independent reconnaissance tasks.",
@@ -5475,6 +5478,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.registerTool({
       name: "delegate_workers",
+      exposure: "model-only",
       label: "Delegate Workers",
       description:
         "Spawn parallel bounded workers for independent implementation tasks with disjoint file scopes.",
@@ -5805,6 +5809,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     pi.registerTool({
       name: "delegate_worker",
+      exposure: "model-only",
       label: "Delegate Worker",
       description:
         "Spawn a bounded worker subagent for a local implementation task while the supervisor keeps planning and escalation.",

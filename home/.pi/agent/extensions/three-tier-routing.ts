@@ -251,6 +251,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "advisor_design",
+    exposure: "model-only",
     label: "Astra advisor design",
     description: "Generate a concise, structured Astra task packet for a risky implementation request.",
     parameters: Type.Object({
