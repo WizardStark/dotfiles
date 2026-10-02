@@ -616,6 +616,7 @@ function resultScoutLabelFallback(
 }
 
 function updateStatus(ctx: ExtensionContext, state: SupervisorWorkerState) {
+  if (!ctx.hasUI) return;
   const workflowMode = getWorkflowMode(state);
   workflowModeItem.set(
     {
@@ -4856,9 +4857,15 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const recentHandoffs = await buildRecentHandoffPrompt(ctx, event.prompt);
       const userEditReminder = await getUserEditReminder(ctx);
 
-      return {
-        systemPrompt: `${event.systemPrompt}${policy}${recentHandoffs ? `\n\n${recentHandoffs}` : ""}${userEditReminder}`,
-      };
+      // Structured sections let Pi record only the changed workflow policy and
+      // ephemeral handoff context instead of replacing the entire system prompt.
+      event.systemPromptOptions.sections.workflow_policy = policy;
+      const handoffContext = `${recentHandoffs}${userEditReminder}`.trim();
+      if (handoffContext) {
+        event.systemPromptOptions.sections.workflow_handoffs = handoffContext;
+      } else {
+        delete event.systemPromptOptions.sections.workflow_handoffs;
+      }
     });
 
     pi.on("tool_result", async (event, ctx) => {

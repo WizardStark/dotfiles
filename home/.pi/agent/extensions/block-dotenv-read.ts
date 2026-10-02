@@ -45,19 +45,16 @@ function blockResult(reason: string) {
 }
 
 export default function blockDotenvRead(pi: ExtensionAPI) {
-  pi.on("before_agent_start", async (event) => {
-    const extra = `
-
+  pi.on("before_agent_start", (event) => {
+    // Keep this policy as a structured section so other extensions can update
+    // their sections independently without forcing a full prompt checkpoint.
+    event.systemPromptOptions.sections.secret_file_guard = `
 ## Secret file guard
 
 - Never read \`.env\` or secret-bearing \`.env.*\` files. \`.env.example\` is allowed as a template.
 - If a task appears to require a secret from a dotenv file, ask the user for the specific value or a redacted substitute.
 - Do not use shell or read tools to inspect blocked dotenv files.
 `;
-
-    return {
-      systemPrompt: `${event.systemPrompt}${extra}`,
-    };
   });
 
   pi.on("tool_call", async (event, ctx) => {

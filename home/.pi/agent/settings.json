@@ -1,13 +1,17 @@
 {
-  "lastChangelogVersion": "0.87.1",
+  "lastChangelogVersion": "1.0.0",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
   "defaultModel": "gpt-6-sol",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
-  "defaultTools": ["+codemode"],
-  "extensions": ["-builtin:codemode"],
+  "defaultTools": [
+    "+codemode"
+  ],
+  "extensions": [
+    "-builtin:codemode"
+  ],
   "compaction": {
     "enabled": true,
     "reserveTokens": 27200,

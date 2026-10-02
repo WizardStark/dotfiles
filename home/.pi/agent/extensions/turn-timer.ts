@@ -34,6 +34,7 @@ export default function turnTimer(pi: ExtensionAPI) {
   }
 
   function renderIdleStatus(ctx: ExtensionContext) {
+    if (!ctx.hasUI) return;
     if (lastDurationMs === undefined) {
       setStatus(ctx, ctx.ui.theme.fg("dim", "Idle"));
       return;
@@ -48,6 +49,7 @@ export default function turnTimer(pi: ExtensionAPI) {
   }
 
   function renderRunningStatus(ctx: ExtensionContext, runStartedAt: number) {
+    if (!ctx.hasUI) return;
     const elapsed = formatDuration(Math.max(0, Date.now() - runStartedAt));
     setStatus(
       ctx,

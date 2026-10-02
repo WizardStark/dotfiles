@@ -134,6 +134,7 @@ function getGitBranch(cwd: string): string | null {
 }
 
 function renderBuiltinSegments(ctx: ExtensionContext) {
+  if (!ctx.hasUI) return;
   const sessionKey = getStatuslineSessionKey(ctx);
   const model = formatModel(ctx);
 
