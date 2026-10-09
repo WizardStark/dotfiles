@@ -1,8 +1,8 @@
 {
-  "lastChangelogVersion": "1.0.0",
+  "lastChangelogVersion": "1.1.0",
   "theme": "catppuccin-custom",
   "defaultProvider": "github-copilot",
-  "defaultModel": "gpt-6-sol",
+  "defaultModel": "gpt-6.1-sol",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "showCacheMissNotices": true,
@@ -30,7 +30,7 @@
   },
   "enabledModels": [
     "github-copilot/gpt-6-astra",
-    "github-copilot/gpt-6-sol",
+    "github-copilot/gpt-6.1-sol",
     "github-copilot/gpt-6-luna"
   ]
 }
