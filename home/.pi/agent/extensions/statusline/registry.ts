@@ -118,8 +118,8 @@ export function subscribeStatusline(subscriber: Subscriber) {
   return getRegistry().subscribe(subscriber);
 }
 
-export function getStatuslineSessionKey(ctx: { sessionManager: { getSessionFile(): string | undefined } }) {
-  return ctx.sessionManager.getSessionFile() ?? "ephemeral";
+export function getStatuslineSessionKey(ctx: { sessionManager: { getSessionFile(): string | undefined; getSessionId?(): string } }) {
+  return ctx.sessionManager.getSessionFile() ?? (ctx.sessionManager.getSessionId ? `ephemeral:${ctx.sessionManager.getSessionId()}` : "ephemeral");
 }
 
 export function createStatuslineItem(defaults: Omit<StatuslineItem, "content">) {

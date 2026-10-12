@@ -7,6 +7,7 @@ export function truncate(text: string, maxChars: number): string {
 
 export function textFromMessage(message: AgentMessage): string {
   if (message.role === "assistant" || message.role === "user" || message.role === "system") {
+    if (typeof message.content === "string") return message.content.trim();
     return (message.content ?? [])
       .map((part) => {
         if (part.type === "text") return part.text ?? "";

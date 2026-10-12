@@ -1,10 +1,11 @@
+import { PendingMetrics, subagentRecord } from "./lib/pending-metrics.ts";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
   Theme,
 } from "@earendil-works/pi-coding-agent";
-import { matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, visibleWidth, truncateToWidth } from "@earendil-works/pi-tui";
 import { formatDuration } from "./lib/format.ts";
 import {
   getSubagentDetails,
@@ -128,37 +129,32 @@ function buildUsageSummary(
 }
 
 class MetricsOverlay {
-  private readonly width: number;
-
   constructor(
-    private readonly theme: Theme,
+    private readonly getTheme: () => Theme,
     private readonly lines: string[],
     private readonly done: () => void,
-  ) {
-    const contentWidth = Math.max(...lines.map((line) => visibleWidth(line)), 40);
-    this.width = Math.min(110, Math.max(56, contentWidth + 4));
-  }
+  ) {}
 
   handleInput(data: string) {
-    if (matchesKey(data, "escape") || matchesKey(data, "return") || matchesKey(data, "q")) {
-      this.done();
-    }
+    if (matchesKey(data, "escape") || matchesKey(data, "return") || matchesKey(data, "q")) this.done();
   }
 
-  render(_width: number): string[] {
-    const innerWidth = this.width - 2;
-    const pad = (text = "") => text + " ".repeat(Math.max(0, innerWidth - visibleWidth(text)));
-    const row = (content = "") =>
-      this.theme.fg("border", "│") + pad(content) + this.theme.fg("border", "│");
+  render(width: number): string[] {
+    const theme = this.getTheme();
+    const innerWidth = Math.max(0, width - 2);
+    const row = (text = "") => {
+      const content = truncateToWidth(text, innerWidth);
+      return theme.fg("border", "│") + content + " ".repeat(Math.max(0, innerWidth - visibleWidth(content))) + theme.fg("border", "│");
+    };
     return [
-      this.theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
-      row(` ${this.theme.bold(this.theme.fg("accent", "Session metrics"))}`),
+      theme.fg("border", `╭${"─".repeat(innerWidth)}╮`),
+      row(` ${theme.bold(theme.fg("accent", "Session metrics"))}`),
       row(),
       ...this.lines.map((line) => row(` ${line}`)),
       row(),
-      row(` ${this.theme.fg("dim", "Enter / Esc / q to close")}`),
-      this.theme.fg("border", `╰${"─".repeat(innerWidth)}╯`),
-    ];
+      row(` ${theme.fg("dim", "Enter / Esc / q to close")}`),
+      theme.fg("border", `╰${"─".repeat(innerWidth)}╯`),
+    ].map((line) => truncateToWidth(line, width));
   }
 
   invalidate() {}
@@ -236,14 +232,14 @@ export function getCacheReadInputTokens(
   usage: AssistantMessage["usage"] | undefined,
 ): number | undefined {
   const tokens = usage?.cacheRead;
-  return Number.isFinite(tokens) && tokens >= 0 ? tokens : undefined;
+  return typeof tokens === "number" && Number.isFinite(tokens) && tokens >= 0 ? tokens : undefined;
 }
 
 export function getCacheWriteInputTokens(
   usage: AssistantMessage["usage"] | undefined,
 ): number | undefined {
   const tokens = usage?.cacheWrite;
-  return Number.isFinite(tokens) && tokens >= 0 ? tokens : undefined;
+  return typeof tokens === "number" && Number.isFinite(tokens) && tokens >= 0 ? tokens : undefined;
 }
 
 export function getUncachedInputTokens(
@@ -251,8 +247,8 @@ export function getUncachedInputTokens(
   fallback: number | undefined,
 ): number | undefined {
   const input = usage?.input;
-  if (Number.isFinite(input) && input >= 0) return input;
-  return Number.isFinite(fallback) && fallback >= 0 ? fallback : undefined;
+  if (typeof input === "number" && Number.isFinite(input) && input >= 0) return input;
+  return typeof fallback === "number" && Number.isFinite(fallback) && fallback >= 0 ? fallback : undefined;
 }
 
 export function getInputTokens(
@@ -270,28 +266,6 @@ export function getInputTokens(
   return uncached + (cacheRead ?? 0) + (cacheWrite ?? 0);
 }
 
-function withEstimatedInputUsage(
-  message: AssistantMessage,
-  estimatedInputTokens: number | undefined,
-): AssistantMessage {
-  const input = message.usage?.input;
-  if (
-    (Number.isFinite(input) && input >= 0) ||
-    !Number.isFinite(estimatedInputTokens) ||
-    estimatedInputTokens < 0
-  ) {
-    return message;
-  }
-
-  return {
-    ...message,
-    usage: {
-      ...(message.usage ?? {}),
-      input: estimatedInputTokens,
-    },
-  };
-}
-
 function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetricsEvent): string {
   const branch = ctx.sessionManager.getBranch();
   let latestPersistedGeneratedAt: number | undefined;
@@ -301,16 +275,12 @@ function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetr
     const entry = branch[i];
     // Auto advisor packets persist as CustomMessageEntry values, whereas tool
     // and reviewer results persist as regular message entries.
-    const subagentRecord = entry.type === "message"
-      ? entry.message
-      : entry.type === "custom_message"
-        ? entry
-        : undefined;
-    if (!subagentRecord || !isSubagentMessage(subagentRecord)) {
+    const record = subagentRecord(entry);
+    if (!record || !isSubagentMessage(record)) {
       continue;
     }
 
-    const details = getSubagentDetails(subagentRecord);
+    const details = getSubagentDetails(record);
     if (typeof details?.generatedAt === "number" && latestPersistedGeneratedAt === undefined) {
       latestPersistedGeneratedAt = details.generatedAt;
     }
@@ -327,7 +297,7 @@ function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetr
   const throughput =
     pendingEvent?.subagentMetrics?.throughput &&
     (latestPersistedGeneratedAt === undefined ||
-      (pendingEvent.generatedAt ?? Number.POSITIVE_INFINITY) > latestPersistedGeneratedAt)
+      (pendingEvent.generatedAt ?? Number.POSITIVE_INFINITY) >= latestPersistedGeneratedAt)
       ? pendingEvent.subagentMetrics.throughput
       : latestPersistedThroughput;
 
@@ -342,7 +312,7 @@ function buildSubagentSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetr
 export default function tokenThroughput(pi: ExtensionAPI) {
   let currentCtx: ExtensionContext | undefined;
   let currentSessionKey = "ephemeral";
-  let pendingReviewerMetrics: SubagentMetricsEvent | undefined;
+  const pendingMetrics = new PendingMetrics();
   let activeRequest: ActiveRequest | undefined;
   let currentTurnIndex: number | undefined;
   let lastCompleted: CompletedSnapshot | undefined;
@@ -432,7 +402,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     currentTurnIndex = undefined;
     lastCompleted = undefined;
     lastFailure = undefined;
-    pendingReviewerMetrics = undefined;
+    pendingMetrics.clear();
     latestContextTokens = undefined;
     rebuildUsageSamples(ctx);
   }
@@ -446,7 +416,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       return;
     }
 
-    const subagentSummary = buildSubagentSummary(ctx, pendingReviewerMetrics);
+    const subagentSummary = buildSubagentSummary(ctx, pendingMetrics.unpersisted(ctx.sessionManager.getBranch()).at(-1));
 
     const failure = lastFailure;
     if (failure) {
@@ -494,7 +464,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       return;
     }
 
-    const subagentSummary = buildSubagentSummary(ctx, pendingReviewerMetrics);
+    const subagentSummary = buildSubagentSummary(ctx, pendingMetrics.unpersisted(ctx.sessionManager.getBranch()).at(-1));
 
     if (activeRequest.firstTokenAt === undefined) {
       const elapsed = formatDuration(Math.max(0, Date.now() - activeRequest.startedAt));
@@ -634,7 +604,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       }
       const width = Math.min(110, Math.max(56, Math.max(...lines.map((line) => visibleWidth(line)), 40) + 4));
       await ctx.ui.custom<void>(
-        (_tui, theme, _keybindings, done) => new MetricsOverlay(theme, lines, () => done()),
+        (_tui, _theme, _keybindings, done) => new MetricsOverlay(() => ctx.ui.theme, lines, () => done()),
         {
           overlay: true,
           overlayOptions: {
@@ -657,7 +627,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
   pi.on("session_tree", async (_event, ctx) => {
     currentCtx = ctx;
     currentSessionKey = getStatuslineSessionKey(ctx);
-    refreshUsageSamples(ctx);
+    resetBranchScopedState(ctx);
     renderIdleStatus(ctx);
   });
 
@@ -674,7 +644,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       return;
     }
 
-    pendingReviewerMetrics = event;
+    pendingMetrics.add(event);
     if (currentCtx) {
       renderIdleStatus(currentCtx);
     }
@@ -690,7 +660,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
   pi.on("before_provider_request", async (_event, ctx) => {
     const contextTokens = ctx.getContextUsage()?.tokens;
-    if (Number.isFinite(contextTokens) && contextTokens !== undefined && contextTokens >= 0) {
+    if (typeof contextTokens === "number" && Number.isFinite(contextTokens) && contextTokens >= 0) {
       latestContextTokens = contextTokens;
     }
     activeRequest = {
@@ -744,13 +714,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       return;
     }
 
-    const originalMessage = event.message as AssistantMessage;
-    const message = withEstimatedInputUsage(originalMessage, activeRequest?.estimatedInputTokens);
-    finishRequest(ctx, message);
-
-    if (message !== originalMessage) {
-      return { message };
-    }
+    finishRequest(ctx, event.message as AssistantMessage);
   });
 
   pi.on("turn_end", async (event) => {
@@ -781,7 +745,7 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async (_event, ctx) => {
     currentCtx = undefined;
-    pendingReviewerMetrics = undefined;
+    pendingMetrics.clear();
     clearLiveStatus();
     activeRequest = undefined;
     lastCompleted = undefined;

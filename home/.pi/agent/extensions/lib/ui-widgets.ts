@@ -1,54 +1,18 @@
-import type { ExtensionContext, ExtensionWidgetOptions } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext, ExtensionWidgetOptions, Theme } from "@earendil-works/pi-coding-agent";
+import type { Component, TUI } from "@earendil-works/pi-tui";
 
-/**
- * Manages the lifecycle of a named UI widget, ensuring it is cleared on shutdown
- * and provides a simple set/clear interface.
- */
+type WidgetFactory = (tui: TUI, theme: Theme) => Component & { dispose?(): void };
+
 export class ManagedWidget {
-	constructor(
-		private readonly key: string,
-		private readonly options?: ExtensionWidgetOptions,
-	) {}
+  constructor(private readonly key: string, private readonly options?: ExtensionWidgetOptions) {}
 
-	set(ctx: ExtensionContext, content: string[] | ((...args: any[]) => any) | undefined) {
-		if (!ctx.hasUI) return;
-		ctx.ui.setWidget(this.key, content, this.options);
-	}
+  set(ctx: ExtensionContext, content: string[] | WidgetFactory | undefined) {
+    if (!ctx.hasUI) return;
+    if (typeof content === "function") ctx.ui.setWidget(this.key, content, this.options);
+    else ctx.ui.setWidget(this.key, content, this.options);
+  }
 
-	clear(ctx: ExtensionContext) {
-		if (!ctx.hasUI) return;
-		ctx.ui.setWidget(this.key, undefined);
-	}
-}
-
-/**
- * A helper for widgets that should automatically clear after a timeout.
- */
-export class TransientWidget extends ManagedWidget {
-	private timer: ReturnType<typeof setTimeout> | undefined;
-
-	set(ctx: ExtensionContext, content: string[] | undefined, timeoutMs = 15000) {
-		this.clearTimer();
-		super.set(ctx, content);
-
-		if (content !== undefined && timeoutMs > 0) {
-			this.timer = setTimeout(() => {
-				this.clear(ctx);
-				this.timer = undefined;
-			}, timeoutMs);
-			this.timer.unref?.();
-		}
-	}
-
-	clear(ctx: ExtensionContext) {
-		this.clearTimer();
-		super.clear(ctx);
-	}
-
-	private clearTimer() {
-		if (this.timer) {
-			clearTimeout(this.timer);
-			this.timer = undefined;
-		}
-	}
+  clear(ctx: ExtensionContext) {
+    if (ctx.hasUI) ctx.ui.setWidget(this.key, undefined);
+  }
 }

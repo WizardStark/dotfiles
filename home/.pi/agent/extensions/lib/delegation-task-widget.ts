@@ -116,15 +116,8 @@ export class DelegationTaskWidget {
       (tui, theme) => {
         this.tui = tui;
         return {
-          render: (width: number) => this.renderWidget(theme, width),
-          invalidate: () => {
-            this.widgetRegistered = false;
-            this.tui = undefined;
-            if (this.uiCtx && this.tasks.length > 0) {
-              this.registerWidget();
-              this.tui?.requestRender();
-            }
-          },
+          render: (width: number) => this.renderWidget(this.uiCtx?.theme ?? theme, width),
+          invalidate() {},
         };
       },
       { placement: "aboveEditor" },

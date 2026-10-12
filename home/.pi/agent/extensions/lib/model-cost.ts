@@ -37,6 +37,11 @@ export const MODEL_RATES: Record<string, ModelRates> = {
 		output: 0.5,
 		longContext: { input: 0.2, cachedInput: 0.02, cacheWrite: 0.25, output: 0.75 },
 	},
+	// Pi 1.1.0 catalog pricing; Copilot reports zero native dollar cost.
+	"gpt-6.1-sol": {
+		input: 2.0, cachedInput: 0.1, cacheWrite: 2.5, output: 10.0,
+		longContext: { input: 4.0, cachedInput: 0.2, cacheWrite: 5.0, output: 15.0 },
+	},
 	"gpt-6-sol": {
 		input: 2.0,
 		cachedInput: 0.2,
@@ -60,7 +65,7 @@ export const MODEL_RATES: Record<string, ModelRates> = {
 export function normalizeModelId(model: string | undefined): string {
 	const raw = (model ?? "").trim().toLowerCase();
 	const withoutBuildSuffix = raw.split("@")[0] || raw;
-	const withoutThinkingSuffix = withoutBuildSuffix.replace(/:(off|minimal|low|medium|high|xhigh)$/, "");
+	const withoutThinkingSuffix = withoutBuildSuffix.replace(/:(off|minimal|low|medium|high|xhigh|max)$/, "");
 	const withoutPathPrefix = withoutThinkingSuffix.split("/").pop() || withoutThinkingSuffix;
 	const withoutProviderPrefix = withoutPathPrefix.includes(":")
 		? withoutPathPrefix.split(":").slice(1).join(":") || withoutPathPrefix

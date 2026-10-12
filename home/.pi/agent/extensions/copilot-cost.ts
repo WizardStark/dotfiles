@@ -1,3 +1,4 @@
+import { PendingMetrics, subagentRecord } from "./lib/pending-metrics.ts";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
@@ -33,12 +34,11 @@ const statuslineItem = createStatuslineItem({
 });
 
 
-function buildCostSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetricsEvent): CostSummary {
+function buildCostSummary(ctx: ExtensionContext, pendingEvents: SubagentMetricsEvent[] = []): CostSummary {
   let mainTotal = 0;
   let subTotal = 0;
   let sawSubagentMessage = false;
   let hasUnknownSubCost = false;
-  let latestPersistedGeneratedAt: number | undefined;
   const unknownModels = new Set<string>();
 
   const applySubagentMetrics = (metrics: SubagentMetrics | undefined) => {
@@ -62,15 +62,7 @@ function buildCostSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetricsE
     // Advisor packets are CustomMessageEntry values, not regular message
     // entries. Inspect both shapes so persisted advisor spend survives reloads
     // and session resumes.
-    const subagentRecord = entry.type === "message"
-      ? entry.message
-      : entry.type === "custom_message"
-        ? entry
-        : undefined;
-    const details = getSubagentDetails(subagentRecord);
-    if (typeof details?.generatedAt === "number") {
-      latestPersistedGeneratedAt = Math.max(latestPersistedGeneratedAt ?? details.generatedAt, details.generatedAt);
-    }
+    const details = getSubagentDetails(subagentRecord(entry));
     applySubagentMetrics(details?.subagentMetrics);
 
     if (entry.type !== "message" || entry.message.role !== "assistant") {
@@ -89,13 +81,7 @@ function buildCostSummary(ctx: ExtensionContext, pendingEvent?: SubagentMetricsE
     }
   }
 
-  if (
-    pendingEvent?.subagentMetrics &&
-    (latestPersistedGeneratedAt === undefined ||
-      (pendingEvent.generatedAt ?? Number.POSITIVE_INFINITY) > latestPersistedGeneratedAt)
-  ) {
-    applySubagentMetrics(pendingEvent.subagentMetrics);
-  }
+  for (const event of pendingEvents) applySubagentMetrics(event.subagentMetrics);
 
   return {
     mainTotal,
@@ -127,14 +113,14 @@ function buildCompactStatus(summary: CostSummary) {
 export default function copilotCost(pi: ExtensionAPI) {
   let currentCtx: ExtensionContext | undefined;
   let currentSessionKey = "ephemeral";
-  let pendingReviewerMetrics: SubagentMetricsEvent | undefined;
+  const pendingMetrics = new PendingMetrics();
 
   function renderStatus(ctx: ExtensionContext) {
     if (!ctx.hasUI) {
       return;
     }
 
-    const summary = buildCostSummary(ctx, pendingReviewerMetrics);
+    const summary = buildCostSummary(ctx, pendingMetrics.unpersisted(ctx.sessionManager.getBranch()));
     statuslineItem.set(
       {
         content: (theme) => theme.fg("dim", buildStatus(summary)),
@@ -147,7 +133,7 @@ export default function copilotCost(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     currentCtx = ctx;
     currentSessionKey = getStatuslineSessionKey(ctx);
-    pendingReviewerMetrics = undefined;
+    pendingMetrics.clear();
     renderStatus(ctx);
   });
 
@@ -157,7 +143,7 @@ export default function copilotCost(pi: ExtensionAPI) {
       return;
     }
 
-    pendingReviewerMetrics = event;
+    pendingMetrics.add(event);
     if (currentCtx) {
       renderStatus(currentCtx);
     }
@@ -178,7 +164,9 @@ export default function copilotCost(pi: ExtensionAPI) {
   });
 
   pi.on("session_tree", async (_event, ctx) => {
-    pendingReviewerMetrics = undefined;
+    currentCtx = ctx;
+    currentSessionKey = getStatuslineSessionKey(ctx);
+    pendingMetrics.clear();
     renderStatus(ctx);
   });
 
@@ -190,7 +178,7 @@ export default function copilotCost(pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async (_event, ctx) => {
     currentCtx = undefined;
-    pendingReviewerMetrics = undefined;
+    pendingMetrics.clear();
     statuslineItem.clear(getStatuslineSessionKey(ctx));
   });
 }

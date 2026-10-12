@@ -105,11 +105,3 @@ export function resolveExactModelReference(
   }
   return { status: "not_found" };
 }
-
-export function findExactModelReferenceMatch(
-  modelReference: string,
-  availableModels: Model<Api>[],
-): Model<Api> | undefined {
-  const resolved = resolveExactModelReference(modelReference, availableModels);
-  return resolved.status === "matched" ? resolved.model : undefined;
-}

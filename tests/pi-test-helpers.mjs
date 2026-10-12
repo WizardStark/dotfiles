@@ -36,11 +36,11 @@ export const piSdk = () => import(pathToFileURL(join(packageDir, "dist/index.js"
 export const tuiSdk = () => import(pathToFileURL(join(nodeModules, "@earendil-works/pi-tui/dist/index.js")));
 
 export function mockApi() {
-  const handlers = new Map(), tools = new Map(), commands = new Map(), renderers = [], messages = [], entries = [];
+  const handlers = new Map(), tools = new Map(), commands = new Map(), renderers = [], messages = [], entries = [], eventHandlers = new Map();
   let active = ["read", "bash", "edit", "write"];
   return {
     handlers, tools, commands, renderers, messages, entries,
-    on(name, handler) { const list = handlers.get(name) ?? []; list.push(handler); handlers.set(name, list); },
+    on(name, handler) { const list = handlers.get(name) ?? []; list.push(handler); handlers.set(name, list); return () => { const index = list.indexOf(handler); if (index >= 0) list.splice(index, 1); }; },
     async emit(name, event = {}, ctx = {}) { let result; for (const handler of handlers.get(name) ?? []) { const value = await handler({ type: name, ...event }, ctx); if (value !== undefined) result = value; if (value?.block) break; } return result; },
     registerTool(tool) { tools.set(tool.name, tool); active.push(tool.name); },
     registerToolRenderer(renderer) { renderers.push(renderer); },
@@ -51,7 +51,10 @@ export function mockApi() {
     setActiveTools: (names) => { active = names; },
     appendEntry: (type, data) => entries.push({ type, data }),
     sendMessage: (message) => messages.push(message), getSessionName: () => "Test session",
-    events: { on() {}, emit() {} },
+    events: {
+      on(name, handler) { const list = eventHandlers.get(name) ?? []; list.push(handler); eventHandlers.set(name, list); return () => { const index = list.indexOf(handler); if (index >= 0) list.splice(index, 1); }; },
+      emit(name, data) { for (const handler of eventHandlers.get(name) ?? []) handler(data); },
+    },
   };
 }
 

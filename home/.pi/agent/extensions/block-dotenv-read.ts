@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
-import { basename, resolve } from "node:path";
+import { isSecretPath } from "./lib/secret-paths.ts";
 
 const DOTENV_NAME = /^\.env(?:\..+)?$/;
 const ALLOWED_DOTENV_NAMES = new Set([".env.example"]);
@@ -17,14 +17,13 @@ function isBlockedDotenvName(name: string): boolean {
   return DOTENV_NAME.test(name) && !ALLOWED_DOTENV_NAMES.has(name);
 }
 
-function isBlockedDotenvPath(pathValue: unknown, cwd: string): boolean {
+async function isBlockedDotenvPath(pathValue: unknown, cwd: string): Promise<boolean> {
   if (typeof pathValue !== "string") return false;
 
   const candidate = stripPathPrefix(pathValue);
   if (!candidate) return false;
 
-  const resolved = resolve(cwd, candidate);
-  return isBlockedDotenvName(basename(resolved));
+  return isSecretPath(candidate, cwd);
 }
 
 function mentionsBlockedDotenv(command: unknown): boolean {
@@ -59,8 +58,8 @@ export default function blockDotenvRead(pi: ExtensionAPI) {
 
   pi.on("tool_call", async (event, ctx) => {
     if (
-      isToolCallEventType("read", event) &&
-      isBlockedDotenvPath(event.input.path, ctx.cwd)
+      (isToolCallEventType("read", event) || isToolCallEventType("edit", event)) &&
+      await isBlockedDotenvPath(event.input.path, ctx.cwd)
     ) {
       return blockResult(BLOCK_REASON);
     }

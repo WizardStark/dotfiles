@@ -16,6 +16,7 @@ export type SubagentMetrics = {
 };
 
 export type SubagentMetricsEvent = {
+  id?: string;
   generatedAt?: number;
   sessionKey?: string;
   subagentMetrics?: SubagentMetrics;
@@ -32,6 +33,7 @@ export function getSubagentDetails(message: unknown): SubagentMetricsEvent | und
     return undefined;
   }
 
+  const id = (details as { id?: unknown }).id;
   const generatedAt = (details as { generatedAt?: unknown }).generatedAt;
   const directMetrics = (details as { subagentMetrics?: unknown }).subagentMetrics;
   // Advisor packets written before cost tracking stored metrics beneath `usage`.
@@ -43,6 +45,7 @@ export function getSubagentDetails(message: unknown): SubagentMetricsEvent | und
   }
 
   return {
+    id: typeof id === "string" ? id : undefined,
     generatedAt: typeof generatedAt === "number" ? generatedAt : undefined,
     subagentMetrics: metrics && typeof metrics === "object" ? (metrics as SubagentMetrics) : undefined,
   };

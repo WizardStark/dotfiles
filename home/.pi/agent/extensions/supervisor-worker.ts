@@ -1,3 +1,6 @@
+import { isSecretPath } from "./lib/secret-paths.ts";
+import { resolveSubagentAuth, type SubagentAuth } from "./lib/subagent-auth.ts";
+import { createSessionWork, StaleSessionWorkError } from "./lib/session-work.ts";
 import { domainRenderers } from "./lib/domain-tool-renderers.ts";
 import { sumUsages } from "./lib/usage.ts";
 import type {
@@ -8,6 +11,7 @@ import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
+  ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import {
@@ -22,7 +26,7 @@ import {
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
-import { Type } from "typebox";
+import { Type, type TSchema } from "typebox";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -73,7 +77,7 @@ interface SupervisorWorkerState {
 interface DelegationToolEvent {
   kind: "start" | "end";
   toolName: string;
-  summary: string;
+  summary?: string;
   result?: string;
   isError?: boolean;
   toolCallId?: string;
@@ -98,6 +102,7 @@ type SubagentProgress = {
   turns?: number;
   currentTool?: string;
   lastActivityLine?: string;
+  toolEvent?: DelegationToolEvent;
 };
 
 interface TurnDelegationState {
@@ -218,10 +223,7 @@ type ParallelScoutTask = ScoutParams & {
   label?: string;
 };
 
-type ParallelScoutTaskResult = ScoutResult & {
-  label: string;
-  status: "completed" | "blocked";
-};
+type ParallelScoutTaskResult = ScoutResult & { label: string };
 
 const STATE_ENTRY = "supervisor-worker-state";
 const SUBAGENT_EVENT_ENTRY = "subagent-event";
@@ -250,7 +252,7 @@ type SupervisorWorkerRegistration = {
 declare global {
   // eslint-disable-next-line no-var
   var __PI_SUPERVISOR_WORKER_REGISTERED__:
-    SupervisorWorkerRegistration | "registering" | "registered" | undefined;
+    SupervisorWorkerRegistration | undefined;
 }
 const MAX_PARALLEL_SUBAGENT_TASKS = 4;
 const MAX_PARALLEL_REPORT_CHARS = 4_000;
@@ -261,6 +263,7 @@ const THINKING_LEVELS = [
   "medium",
   "high",
   "xhigh",
+  "max",
 ] as const;
 const WORKER_ENV_FLAG = "PI_SUPERVISOR_WORKER_ROLE";
 const HANDOFF_ENTRY = "subagent-handoff";
@@ -802,10 +805,6 @@ function formatEditLocationsInline(
     : preview.join("; ");
 }
 
-function summarizeStructuredHandoff(handoff: HandoffPointer): string {
-  return handoff.summary;
-}
-
 function buildInspectionTargets(
   editLocations: HandoffEditLocation[],
   filesChanged: string[],
@@ -910,64 +909,33 @@ async function execCapture(
   timeout = 30_000,
   signal?: AbortSignal,
 ): Promise<ExecResult> {
+  signal?.throwIfAborted();
   return await new Promise<ExecResult>((resolvePromise) => {
-    const proc = spawn(command, args, {
-      cwd,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    let timedOut = false;
+    const proc = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "", stderr = "";
+    let settled = false, timedOut = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+    const terminate = () => {
+      if (settled) return;
+      proc.kill("SIGTERM");
+      killTimer ??= setTimeout(() => proc.kill("SIGKILL"), 5000);
+    };
     const finish = (code: number | null) => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      signal?.removeEventListener("abort", terminate);
       resolvePromise({ stdout, stderr, code, timedOut });
     };
-
-    if (timeout > 0) {
-      timer = setTimeout(() => {
-        timedOut = true;
-        proc.kill("SIGTERM");
-        setTimeout(() => {
-          try {
-            proc.kill("SIGKILL");
-          } catch {
-            // ignore
-          }
-        }, 5000);
-      }, timeout);
-    }
-
-    proc.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    proc.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    proc.on("close", (code) => finish(code));
-    proc.on("error", (error) => {
-      stderr += `${error instanceof Error ? error.message : String(error)}\n`;
-      finish(1);
-    });
-
-    if (signal) {
-      const onAbort = () => {
-        proc.kill("SIGTERM");
-        setTimeout(() => {
-          try {
-            proc.kill("SIGKILL");
-          } catch {
-            // ignore
-          }
-        }, 5000);
-      };
-      if (signal.aborted) onAbort();
-      else signal.addEventListener("abort", onAbort, { once: true });
-    }
+    if (timeout > 0) timer = setTimeout(() => { timedOut = true; terminate(); }, timeout);
+    proc.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
+    proc.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    proc.on("close", finish);
+    proc.on("error", (error) => { stderr += `${error.message}\\n`; finish(1); });
+    if (signal?.aborted) terminate();
+    else signal?.addEventListener("abort", terminate, { once: true });
   });
 }
 
@@ -985,13 +953,6 @@ function normalizeComparablePath(value: string): string {
 
 function resolvedPathsOverlap(a: string, b: string): boolean {
   return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
-}
-
-function isBlockedDotenvPath(filePath: string): boolean {
-  const name = basename(filePath);
-  return (
-    name === ".env" || (name.startsWith(".env.") && name !== ".env.example")
-  );
 }
 
 async function getGitRepoRoot(
@@ -1050,6 +1011,7 @@ async function listFilesRecursive(
 }
 
 async function hashFile(filePath: string): Promise<string> {
+  if (await isSecretPath(filePath)) return getSecretFileState(filePath);
   const content = await readFile(filePath);
   return createHash("sha1").update(content).digest("hex");
 }
@@ -1204,7 +1166,7 @@ async function snapshotWorkingTree(
     for (const entry of dirtyEntries) {
       if (!entry.path) continue;
       const relativePath = entry.path;
-      if (isBlockedDotenvPath(relativePath)) {
+      if (await isSecretPath(relativePath, root)) {
         const indexState = indexEntries
           ? getSecretIndexState(indexEntries.get(relativePath))
           : "index:unknown";
@@ -1242,7 +1204,7 @@ async function snapshotWorkingTree(
   for (const relativePath of relativeFiles) {
     const absolutePath = resolve(root, relativePath);
     try {
-      if (isBlockedDotenvPath(relativePath)) {
+      if (await isSecretPath(relativePath, root)) {
         files.set(
           relativePath,
           `secret:clean:${await getSecretFileState(absolutePath)}`,
@@ -1514,7 +1476,7 @@ function stripSupervisorAppendix(report: string): string {
   return report.replace(/\n\n## Supervisor Checks[\s\S]*$/, "");
 }
 
-function aggregateSubagentMetrics(
+export function aggregateSubagentMetrics(
   metricsList: Array<SubagentMetrics | undefined>,
 ): SubagentMetrics | undefined {
   const metrics = metricsList.filter((item): item is SubagentMetrics =>
@@ -1661,6 +1623,7 @@ function buildWorkerFailureResult(
     boundaryViolations: [],
     validation: [],
     errorMessage: message,
+    subagentMetrics: error instanceof SubagentFailure ? error.metrics : undefined,
   };
 }
 
@@ -1683,6 +1646,7 @@ function buildScoutFailureResult(
     fullReport: report,
     scoutModel,
     errorMessage: message,
+    subagentMetrics: error instanceof SubagentFailure ? error.metrics : undefined,
   };
 }
 
@@ -1869,14 +1833,14 @@ function captureSubagentRawEvent(
     role,
     model,
     cwd,
-    eventType: typeof event?.type === "string" ? event.type : undefined,
+    eventType: event && typeof event === "object" && "type" in event && typeof event.type === "string" ? event.type : undefined,
     eventIndex,
     event,
     generatedAt: Date.now(),
   };
 }
 
-function classifySubagentOutcome(
+export function classifySubagentOutcome(
   run: { exitCode: number; stopReason?: string; errorMessage?: string },
   signal?: AbortSignal,
 ): "completed" | "failed" | "aborted" {
@@ -1888,7 +1852,7 @@ function classifySubagentOutcome(
   ) {
     return "aborted";
   }
-  if (run.exitCode === 0 && !run.errorMessage && stopReason !== "error") {
+  if (run.exitCode === 0 && !run.errorMessage && stopReason === "stop") {
     return "completed";
   }
   return "failed";
@@ -1896,7 +1860,6 @@ function classifySubagentOutcome(
 
 function collectSubagentMessages(run: DelegatedSubagentRun) {
   return [
-    ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
     ...run.messages,
     ...(run.turnEndMessage ? [run.turnEndMessage] : []),
     ...(run.agentEndMessage ? [run.agentEndMessage] : []),
@@ -1919,7 +1882,14 @@ function formatNoTextFailure(
   return `${roleLabel} subagent returned no text (exitCode: ${run?.exitCode ?? 1}; stopReason: ${run?.stopReason ?? final?.stopReason ?? "none"}${errorSuffix}${attemptsSuffix}).`;
 }
 
-async function runSubagentWithNoTextRetry(
+export class SubagentFailure extends Error {
+  constructor(message: string, readonly metrics?: SubagentMetrics) {
+    super(message);
+    this.name = "SubagentFailure";
+  }
+}
+
+export async function runSubagentWithNoTextRetry(
   roleLabel: "Worker" | "Scout",
   execute: () => Promise<DelegatedSubagentRun>,
   signal?: AbortSignal,
@@ -1927,40 +1897,28 @@ async function runSubagentWithNoTextRetry(
   run: DelegatedSubagentRun;
   final: ReturnType<typeof extractBestAssistantText>;
   attempts: number;
+  metrics?: SubagentMetrics;
 }> {
-  const maxAttempts = 2;
-  let lastRun: DelegatedSubagentRun | undefined;
+  const runs: DelegatedSubagentRun[] = [];
   let lastFinal: ReturnType<typeof extractBestAssistantText> | undefined;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const run = await execute();
-    const final = extractBestAssistantText(
-      collectSubagentMessages(run),
-      run.streamedText,
-    );
-    if (final.text) {
-      return { run, final, attempts: attempt };
-    }
-
-    lastRun = run;
-    lastFinal = final;
-
-    const stopReason = run.stopReason?.toLowerCase() ?? "";
-    const shouldRetry =
-      attempt < maxAttempts &&
-      !signal?.aborted &&
-      !stopReason.includes("abort") &&
-      !stopReason.includes("cancel") &&
-      !stopReason.includes("interrupt");
-    if (!shouldRetry) {
-      break;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      signal?.throwIfAborted();
+      const run = await execute();
+      runs.push(run);
+      lastFinal = extractBestAssistantText(collectSubagentMessages(run), run.streamedText);
+      const metrics = aggregateSubagentMetrics(runs.map(buildSubagentMetrics));
+      if (lastFinal.text) return { run: { ...run, toolExecutions: runs.flatMap((item) => item.toolExecutions) }, final: lastFinal, attempts: attempt, metrics };
+      if (signal?.aborted || /abort|cancel|interrupt/i.test(run.stopReason ?? "")) break;
+    } catch (error) {
+      throw new SubagentFailure(error instanceof Error ? error.message : String(error),
+        aggregateSubagentMetrics(runs.map(buildSubagentMetrics)));
     }
   }
-
-  throw new Error(
-    formatNoTextFailure(roleLabel, lastRun, lastFinal, maxAttempts),
-  );
+  throw new SubagentFailure(formatNoTextFailure(roleLabel, runs.at(-1), lastFinal, runs.length),
+    aggregateSubagentMetrics(runs.map(buildSubagentMetrics)));
 }
+
 
 function getLatestActiveToolName(
   activeToolCalls: Map<string, WorkerToolExecution>,
@@ -2056,7 +2014,7 @@ async function runWorkerSubagent(
   cwd: string,
   prompt: string,
   modelArg: string,
-  auth: { apiKey?: string; headers?: Record<string, string> },
+  auth: SubagentAuth,
   tools: string[] | undefined,
   delegationId: string,
   startDetails: Record<string, unknown>,
@@ -2103,11 +2061,11 @@ async function runWorkerSubagent(
       apiKey: auth.apiKey,
       providerName: modelArg.split("/", 1)[0],
       authHeaders: auth.headers,
+      authBaseUrl: auth.baseUrl,
+      authEnv: auth.env,
       systemPrompt: WORKER_SYSTEM_PROMPT,
       extraArgs: [
-        ...(workerTools && workerTools.length > 0
-          ? ["--tools", workerTools.join(",")]
-          : []),
+        ...(workerTools ? (workerTools.length > 0 ? ["--tools", workerTools.join(",")] : ["--no-tools"]) : []),
       ],
       env: {
         [WORKER_ENV_FLAG]: "worker",
@@ -2115,6 +2073,7 @@ async function runWorkerSubagent(
       signal,
       onUpdate,
       onEvent: (event) => {
+        if (shouldLog && !shouldLog()) return;
         eventIndex += 1;
         const rawEvent = captureSubagentRawEvent(
           delegationId,
@@ -2162,13 +2121,14 @@ async function runWorkerSubagent(
             toolName,
             args,
           });
-          recordDelegationToolEvent(delegationKey, {
+          const activity: DelegationToolEvent = {
             kind: "start",
             toolCallId,
             toolName,
             summary: summarizeSubagentArgs(toolName, args),
-          });
+          };
           onProgress?.({
+            toolEvent: activity,
             turns: completedTurns,
             currentTool: toolName,
             lastActivityLine: buildSubagentActivityLine(
@@ -2192,15 +2152,16 @@ async function runWorkerSubagent(
           if (toolCallId) {
             activeToolCalls.delete(toolCallId);
           }
-          recordDelegationToolEvent(delegationKey, {
+          const activity: DelegationToolEvent = {
             kind: "end",
             toolCallId,
             toolName,
             summary: summarizeSubagentArgs(toolName, prior?.args),
             result: extractSubagentResultText(toolEvent.result),
             isError: toolEvent.isError === true,
-          });
+          };
           onProgress?.({
+            toolEvent: activity,
             turns: completedTurns,
             currentTool: getLatestActiveToolName(activeToolCalls),
             lastActivityLine: buildSubagentActivityLine(
@@ -2217,7 +2178,7 @@ async function runWorkerSubagent(
 
     const outcome = classifySubagentOutcome(run, signal);
     if (lastRawEvent) {
-      appendSubagentEvent(pi, lastRawEvent);
+      appendSubagentEvent(pi, lastRawEvent, shouldLog);
     }
     appendSubagentEvent(
       pi,
@@ -2248,7 +2209,7 @@ async function runWorkerSubagent(
         ? (error as Record<string, unknown>)
         : undefined;
     if (lastRawEvent) {
-      appendSubagentEvent(pi, lastRawEvent);
+      appendSubagentEvent(pi, lastRawEvent, shouldLog);
     }
     appendSubagentEvent(
       pi,
@@ -2333,6 +2294,7 @@ async function readFileLineCount(
   filePath: string,
 ): Promise<number | undefined> {
   try {
+    if (await isSecretPath(filePath, root)) return undefined;
     const content = await readFile(resolve(root, filePath), "utf8");
     return countLines(content);
   } catch {
@@ -2427,7 +2389,7 @@ async function runScoutSubagent(
   cwd: string,
   prompt: string,
   modelArg: string,
-  auth: { apiKey?: string; headers?: Record<string, string> },
+  auth: SubagentAuth,
   tools: string[] | undefined,
   delegationId: string,
   startDetails: Record<string, unknown>,
@@ -2474,6 +2436,8 @@ async function runScoutSubagent(
       apiKey: auth.apiKey,
       providerName: modelArg.split("/", 1)[0],
       authHeaders: auth.headers,
+      authBaseUrl: auth.baseUrl,
+      authEnv: auth.env,
       systemPrompt: SCOUT_SYSTEM_PROMPT,
       extraArgs: ["--tools", scoutTools.join(",")],
       env: {
@@ -2482,6 +2446,7 @@ async function runScoutSubagent(
       signal,
       onUpdate,
       onEvent: (event) => {
+        if (shouldLog && !shouldLog()) return;
         eventIndex += 1;
         const rawEvent = captureSubagentRawEvent(
           delegationId,
@@ -2528,7 +2493,7 @@ async function runScoutSubagent(
                 ? (toolEvent.args as Record<string, unknown>)
                 : undefined,
           });
-          recordDelegationToolEvent(delegationKey, {
+          const activity: DelegationToolEvent = {
             kind: "start",
             toolCallId,
             toolName,
@@ -2536,8 +2501,9 @@ async function runScoutSubagent(
               toolName,
               activeToolCalls.get(toolCallId)?.args,
             ),
-          });
+          };
           onProgress?.({
+            toolEvent: activity,
             turns: completedTurns,
             currentTool: toolName,
             lastActivityLine: buildSubagentActivityLine(
@@ -2561,15 +2527,16 @@ async function runScoutSubagent(
           if (toolCallId) {
             activeToolCalls.delete(toolCallId);
           }
-          recordDelegationToolEvent(delegationKey, {
+          const activity: DelegationToolEvent = {
             kind: "end",
             toolCallId,
             toolName,
             summary: summarizeSubagentArgs(toolName, prior?.args),
             result: extractSubagentResultText(toolEvent.result),
             isError: toolEvent.isError === true,
-          });
+          };
           onProgress?.({
+            toolEvent: activity,
             turns: completedTurns,
             currentTool: getLatestActiveToolName(activeToolCalls),
             lastActivityLine: buildSubagentActivityLine(
@@ -2586,7 +2553,7 @@ async function runScoutSubagent(
 
     const outcome = classifySubagentOutcome(run, signal);
     if (lastRawEvent) {
-      appendSubagentEvent(pi, lastRawEvent);
+      appendSubagentEvent(pi, lastRawEvent, shouldLog);
     }
     appendSubagentEvent(
       pi,
@@ -2617,7 +2584,7 @@ async function runScoutSubagent(
         ? (error as Record<string, unknown>)
         : undefined;
     if (lastRawEvent) {
-      appendSubagentEvent(pi, lastRawEvent);
+      appendSubagentEvent(pi, lastRawEvent, shouldLog);
     }
     appendSubagentEvent(
       pi,
@@ -3318,26 +3285,13 @@ async function generateDelegation(
     shouldLog,
   );
 
-  let auth: { apiKey?: string; headers?: Record<string, string> };
+  let auth: SubagentAuth;
   let beforeSnapshot: WorkingTreeSnapshot | undefined;
   let workerModelArg: string;
   let prompt: string;
   try {
     const worker = await resolveWorkerSelection(ctx, state, params);
-    const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(
-      worker.model,
-    );
-    if (!authResult.ok) {
-      throw new Error(
-        `Unable to resolve auth for worker model: ${authResult.error}`,
-      );
-    }
-    // OAuth credentials (notably GitHub Copilot) must be resolved by the child
-    // Pi process. Passing the derived token through --api-key replaces Pi's
-    // provider-native OAuth flow and produces a 421 Misdirected Request.
-    auth = ctx.modelRegistry.isUsingOAuth(worker.model)
-      ? {}
-      : { apiKey: authResult.apiKey, headers: authResult.headers };
+    auth = await resolveSubagentAuth(ctx, worker.model);
 
     if (captureWorkingTree) {
       beforeSnapshot = await snapshotWorkingTree(cwd, signal);
@@ -3373,6 +3327,7 @@ async function generateDelegation(
     throw error;
   }
   let run: Awaited<ReturnType<typeof runWorkerSubagent>> | undefined;
+  let metrics: SubagentMetrics | undefined;
   try {
     const execution = await runSubagentWithNoTextRetry(
       "Worker",
@@ -3404,6 +3359,7 @@ async function generateDelegation(
       signal,
     );
     run = execution.run;
+    metrics = execution.metrics;
     const final = execution.final;
 
     const afterSnapshot = captureWorkingTree
@@ -3431,12 +3387,12 @@ async function generateDelegation(
     const hasValidationFailures = validation.some(
       (item) => item.outcome === "fail",
     );
-    let status = parseStatus(final.text);
+    const baseOutcome = classifySubagentOutcome(run, signal);
+    let status = baseOutcome === "completed" && final.text ? parseStatus(final.text) : "blocked";
     if (boundaryViolations.length > 0 || hasValidationFailures) {
       status = "blocked";
     }
 
-    const baseOutcome = classifySubagentOutcome(run, signal);
     const blockedReasons = [
       ...(boundaryViolations.length > 0 ? ["boundary"] : []),
       ...(hasValidationFailures ? ["validation"] : []),
@@ -3456,7 +3412,7 @@ async function generateDelegation(
         stopReason: run.stopReason,
         errorMessage: final.errorMessage,
         stderr: run.stderr.trim() || undefined,
-        metrics: buildSubagentMetrics(run),
+        metrics,
         generatedAt: Date.now(),
       },
       shouldLog,
@@ -3481,7 +3437,7 @@ async function generateDelegation(
       editLocations,
       boundaryViolations,
       validation,
-      subagentMetrics: buildSubagentMetrics(run),
+      subagentMetrics: metrics,
       stopReason: run.stopReason,
       errorMessage: final.errorMessage,
     };
@@ -3508,12 +3464,13 @@ async function generateDelegation(
         stopReason: run?.stopReason,
         errorMessage: error instanceof Error ? error.message : String(error),
         stderr: run?.stderr.trim() || undefined,
-        metrics: run ? buildSubagentMetrics(run) : undefined,
+        metrics: metrics ?? (error instanceof SubagentFailure ? error.metrics : undefined),
         generatedAt: Date.now(),
       },
       shouldLog,
     );
-    throw error;
+    throw new SubagentFailure(error instanceof Error ? error.message : String(error),
+      metrics ?? (error instanceof SubagentFailure ? error.metrics : undefined));
   }
 }
 
@@ -3585,22 +3542,12 @@ async function generateScouting(
     shouldLog,
   );
 
-  let auth: { apiKey?: string; headers?: Record<string, string> };
+  let auth: SubagentAuth;
   let scoutModelArg: string;
   let prompt: string;
   try {
     const scout = await resolveScoutSelection(ctx, state, params);
-    const authResult = await ctx.modelRegistry.getApiKeyAndHeaders(scout.model);
-    if (!authResult.ok) {
-      throw new Error(
-        `Unable to resolve auth for scout model: ${authResult.error}`,
-      );
-    }
-    // OAuth credentials must be resolved by the child Pi process; see the
-    // corresponding worker preflight path for why they cannot use --api-key.
-    auth = ctx.modelRegistry.isUsingOAuth(scout.model)
-      ? {}
-      : { apiKey: authResult.apiKey, headers: authResult.headers };
+    auth = await resolveSubagentAuth(ctx, scout.model);
 
     scoutModelArg = formatModel(scout.ref, scout.thinkingLevel);
     const conversationContext = buildConversationContext(
@@ -3634,6 +3581,7 @@ async function generateScouting(
     throw error;
   }
   let run: Awaited<ReturnType<typeof runScoutSubagent>> | undefined;
+  let metrics: SubagentMetrics | undefined;
   try {
     const execution = await runSubagentWithNoTextRetry(
       "Scout",
@@ -3662,22 +3610,12 @@ async function generateScouting(
       signal,
     );
     run = execution.run;
+    metrics = execution.metrics;
     const final = execution.final;
 
 
-    const stopReason = run.stopReason?.toLowerCase() ?? "";
-    const scoutStatus: DelegateStatus =
-      !signal?.aborted &&
-      run.exitCode === 0 &&
-      !final.errorMessage &&
-      !stopReason.includes("limit") &&
-      !stopReason.includes("max") &&
-      !stopReason.includes("abort") &&
-      !stopReason.includes("cancel") &&
-      !stopReason.includes("interrupt")
-        ? "completed"
-        : "blocked";
     const scoutOutcome = classifySubagentOutcome(run, signal);
+    const scoutStatus: DelegateStatus = scoutOutcome === "completed" && final.text ? "completed" : "blocked";
     appendSubagentEvent(
       pi,
       {
@@ -3692,7 +3630,7 @@ async function generateScouting(
         stopReason: run.stopReason,
         errorMessage: final.errorMessage,
         stderr: run.stderr.trim() || undefined,
-        metrics: buildSubagentMetrics(run),
+        metrics,
         generatedAt: Date.now(),
       },
       shouldLog,
@@ -3706,7 +3644,7 @@ async function generateScouting(
       fullReport: `## Status\n- ${scoutStatus}\n\n${final.text}`,
       status: scoutStatus,
       scoutModel: scoutModelArg,
-      subagentMetrics: buildSubagentMetrics(run),
+      subagentMetrics: metrics,
       stopReason: run.stopReason,
       errorMessage: final.errorMessage,
     };
@@ -3726,12 +3664,13 @@ async function generateScouting(
         stopReason: run?.stopReason,
         errorMessage: error instanceof Error ? error.message : String(error),
         stderr: run?.stderr.trim() || undefined,
-        metrics: run ? buildSubagentMetrics(run) : undefined,
+        metrics: metrics ?? (error instanceof SubagentFailure ? error.metrics : undefined),
         generatedAt: Date.now(),
       },
       shouldLog,
     );
-    throw error;
+    throw new SubagentFailure(error instanceof Error ? error.message : String(error),
+      metrics ?? (error instanceof SubagentFailure ? error.metrics : undefined));
   }
 }
 
@@ -4025,7 +3964,39 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       return;
     }
 
+    const sessionWork = createSessionWork(pi);
     let state: SupervisorWorkerState = {};
+
+    function registerDelegationTool<TParams extends TSchema>(tool: ToolDefinition<TParams>) {
+      pi.registerTool({
+        ...tool,
+        // Serialize orchestration batches; each batch may still run its own bounded parallel children.
+        executionMode: "sequential",
+        async execute(id, params, signal, onUpdate, ctx) {
+          if (getWorkflowMode(state) !== "three-tier") throw new Error("Delegation is disabled in the current workflow mode.");
+          const work = sessionWork.start(signal);
+          try {
+            const result = await tool.execute(id, params, work.signal,
+              onUpdate ? (update) => { if (work.isCurrent()) onUpdate(update); } : undefined, ctx);
+            work.assertCurrent();
+            return { ...result, details: { ...(result.details && typeof result.details === "object" ? result.details : {}), id } };
+          } catch (error) {
+            work.assertCurrent();
+            if (!(error instanceof SubagentFailure) || !error.metrics) throw error;
+            const generatedAt = Date.now();
+            const sessionKey = getStatuslineSessionKey(ctx);
+            pi.events.emit("subagent:metrics", { id, generatedAt, sessionKey, subagentMetrics: error.metrics, source: "tool" });
+            return {
+              isError: true, usage: error.metrics.usage,
+              content: [{ type: "text", text: error.message }],
+              details: { id, generatedAt, sessionKey, status: "blocked", subagentMetrics: error.metrics },
+            };
+          } finally {
+            work.dispose();
+          }
+        },
+      });
+    }
     let sessionEpoch = 0;
     let turnDelegationState: TurnDelegationState | undefined;
     let recentReviewKeys: string[] = [];
@@ -4092,7 +4063,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             status,
             activeForm:
               status === "in_progress" || status === "finalizing"
-                ? delegationActiveForm(item.role, item.phase)
+                ? delegationActiveForm(item.role === "advisor" ? "worker" : item.role, item.phase)
                 : undefined,
           };
         });
@@ -4198,11 +4169,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
 
     function recordDelegationActivity(
       delegationKey: string,
-      activityLine: string | undefined,
+      progress: SubagentProgress,
     ): ActiveDelegation | undefined {
+      if (progress.toolEvent) recordDelegationToolEvent(delegationKey, progress.toolEvent);
       const active = activeDelegations.get(delegationKey);
       if (!active) return undefined;
-      const next = activityLine?.trim();
+      const next = progress.lastActivityLine?.trim();
       if (!next) return active;
       const recent = [...(active.recentActivity ?? [])];
       recent.push(next);
@@ -4543,7 +4515,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         if (active[key as keyof typeof active] === value) {
           continue;
         }
-        (active as Record<string, unknown>)[key] = value;
+        Object.assign(active, { [key]: value });
         changed = true;
       }
 
@@ -4647,7 +4619,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       updateDelegationWidget(activityCtx);
     });
 
-    pi.registerTool({
+    registerDelegationTool({
       name: "load_delegation_tools",
       exposure: "model-only",
       label: "Load Delegation Tools",
@@ -4692,7 +4664,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
     async function restoreBranch(ctx: ExtensionContext) {
       const restoreEpoch = ++sessionEpoch;
       activityCtx = ctx;
-      activitySessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+      activitySessionKey = getStatuslineSessionKey(ctx);
       turnDelegationState = undefined;
       recentReviewKeys = readSavedReviewKeys(ctx);
       recentDelegationTasks = [];
@@ -4950,7 +4922,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       const sessionKey =
         typeof details.sessionKey === "string"
           ? details.sessionKey
-          : (ctx.sessionManager.getSessionFile() ?? "ephemeral");
+          : (getStatuslineSessionKey(ctx));
       const title = inferHandoffTitle(event.toolName, input, details);
       const actualReport =
         typeof details.fullReport === "string" ? details.fullReport : report;
@@ -5107,7 +5079,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       turnDelegationState = undefined;
     });
 
-    pi.registerTool({
+    registerDelegationTool({
       name: "delegate_scout",
       exposure: "model-only",
       label: "Delegate Scout",
@@ -5180,7 +5152,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               });
               recordDelegationActivity(
                 delegationKey,
-                progress.lastActivityLine,
+                progress,
               );
               emitSingleDelegationUpdate(onUpdate, active);
             },
@@ -5207,15 +5179,18 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             });
           }
           finalTaskStatus = mapDelegationTaskStatus(result.status);
+          if (!isCurrentSession()) throw new StaleSessionWorkError();
           const generatedAt = Date.now();
-          const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+          const sessionKey = getStatuslineSessionKey(ctx);
           pi.events.emit("subagent:metrics", {
+            id: toolCallId,
             generatedAt,
             sessionKey,
             subagentMetrics: result.subagentMetrics,
             source: "tool",
           });
           return {
+            isError: result.status !== "completed",
             usage: result.subagentMetrics?.usage,
             content: [{ type: "text", text: result.report }],
             details: {
@@ -5251,7 +5226,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
-    pi.registerTool({
+    registerDelegationTool({
       name: "delegate_scouts",
       exposure: "model-only",
       label: "Delegate Scouts",
@@ -5303,6 +5278,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         );
 
         const emitProgress = () => {
+          if (!isCurrentSession()) return;
           const done = partialResults.filter(Boolean).length;
           const running = params.tasks.length - done;
           const activeItems = [...activeDelegations.values()]
@@ -5350,6 +5326,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           ParallelScoutTask,
           ParallelScoutTaskResult
         >(params.tasks, concurrency, async (task, index) => {
+          if (!isCurrentSession()) throw new StaleSessionWorkError();
           const label = formatParallelLabel(task.label, task.objective, index);
           const delegationKey = `${sessionEpoch}:${toolCallId}:${index}`;
           let finalTaskStatus: DelegationTaskStatus | undefined;
@@ -5394,7 +5371,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                 });
                 recordDelegationActivity(
                   delegationKey,
-                  progress.lastActivityLine,
+                  progress,
                 );
                 emitProgress();
               },
@@ -5459,23 +5436,18 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         const aggregateMetrics = aggregateSubagentMetrics(
           results.map((result) => result.subagentMetrics),
         );
+        if (!isCurrentSession()) throw new StaleSessionWorkError();
         const generatedAt = Date.now();
-        const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-        for (const result of results) {
-          pi.events.emit("subagent:metrics", {
-            generatedAt,
-            sessionKey,
-            subagentMetrics: result.subagentMetrics,
-            source: "tool",
-          });
-        }
+        const sessionKey = getStatuslineSessionKey(ctx);
         pi.events.emit("subagent:metrics", {
+          id: toolCallId,
           generatedAt,
           sessionKey,
           subagentMetrics: aggregateMetrics,
           source: "tool",
         });
         return {
+          isError: results.some((result) => result.status !== "completed"),
           usage: aggregateMetrics?.usage,
           content: [{ type: "text", text: buildParallelScoutSummary(results) }],
           details: {
@@ -5492,7 +5464,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
-    pi.registerTool({
+    registerDelegationTool({
       name: "delegate_workers",
       exposure: "model-only",
       label: "Delegate Workers",
@@ -5564,14 +5536,16 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             params.tasks.length,
           ),
         );
-        const batchBeforeSnapshot = await snapshotWorkingTree(ctx.cwd, signal);
         const activeSessionEpoch = sessionEpoch;
         const isCurrentSession = () => activeSessionEpoch === sessionEpoch;
+        const batchBeforeSnapshot = await snapshotWorkingTree(ctx.cwd, signal);
+        if (!isCurrentSession()) throw new StaleSessionWorkError();
         const partialResults = new Array<
           ParallelDelegateTaskResult | undefined
         >(params.tasks.length);
 
         const emitProgress = () => {
+          if (!isCurrentSession()) return;
           const done = partialResults.filter(Boolean).length;
           const running = params.tasks.length - done;
           const finishedResults = partialResults.filter(
@@ -5627,6 +5601,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             ParallelDelegateTask,
             ParallelDelegateTaskResult
           >(params.tasks, concurrency, async (task, index) => {
+            if (!isCurrentSession()) throw new StaleSessionWorkError();
             const label = formatParallelLabel(
               task.label,
               task.objective,
@@ -5674,7 +5649,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
                   });
                   recordDelegationActivity(
                     delegationKey,
-                    progress.lastActivityLine,
+                    progress,
                   );
                   emitProgress();
                 },
@@ -5753,23 +5728,18 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           const aggregateMetrics = aggregateSubagentMetrics(
             finalized.results.map((result) => result.subagentMetrics),
           );
+          if (!isCurrentSession()) throw new StaleSessionWorkError();
           const generatedAt = Date.now();
-          const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
-          for (const result of finalized.results) {
-            pi.events.emit("subagent:metrics", {
-              generatedAt,
-              sessionKey,
-              subagentMetrics: result.subagentMetrics,
-              source: "tool",
-            });
-          }
+          const sessionKey = getStatuslineSessionKey(ctx);
           pi.events.emit("subagent:metrics", {
+            id: toolCallId,
             generatedAt,
             sessionKey,
             subagentMetrics: aggregateMetrics,
             source: "tool",
           });
           return {
+            isError: finalized.results.some((result) => result.status !== "completed"),
             usage: aggregateMetrics?.usage,
             content: [
               {
@@ -5811,7 +5781,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             });
             updateDelegationWidget(ctx);
           }
-          throw error;
+          throw new SubagentFailure(error instanceof Error ? error.message : String(error),
+            aggregateSubagentMetrics(partialResults.map((result) => result?.subagentMetrics)));
         } finally {
           if (isCurrentSession()) {
             params.tasks.forEach((_task, index) => {
@@ -5825,7 +5796,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
-    pi.registerTool({
+    registerDelegationTool({
       name: "delegate_worker",
       exposure: "model-only",
       label: "Delegate Worker",
@@ -5886,7 +5857,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
               });
               recordDelegationActivity(
                 delegationKey,
-                progress.lastActivityLine,
+                progress,
               );
               emitSingleDelegationUpdate(onUpdate, active);
             },
@@ -5907,15 +5878,18 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             });
           }
           finalTaskStatus = mapDelegationTaskStatus(result.status);
+          if (!isCurrentSession()) throw new StaleSessionWorkError();
           const generatedAt = Date.now();
-          const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+          const sessionKey = getStatuslineSessionKey(ctx);
           pi.events.emit("subagent:metrics", {
+            id: toolCallId,
             generatedAt,
             sessionKey,
             subagentMetrics: result.subagentMetrics,
             source: "tool",
           });
           return {
+            isError: result.status !== "completed",
             usage: result.subagentMetrics?.usage,
             content: [{ type: "text", text: result.report }],
             details: {
@@ -6144,54 +6118,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
-    pi.registerCommand("noop-subagent", {
-      description:
-        "Run a harmless no-op worker subagent to inspect subagent logging volume",
-      handler: async (_args, ctx) => {
-        const delegationId = `noop-${Date.now().toString(36)}`;
-        ctx.ui.notify("Starting no-op subagent…", "info");
-        try {
-          await runSubagentWithNoTextRetry(
-            "Worker",
-            () =>
-              runWorkerSubagent(
-                process.cwd(),
-                "Do no repository work. Do not inspect files, edit files, or call tools. Reply only with a brief confirmation that you did nothing.",
-                formatModel(
-                  getEffectiveWorkerRef(ctx, state),
-                  getEffectiveThinkingLevel(state),
-                ),
-                { apiKey: ctx.auth?.apiKey, headers: ctx.auth?.headers },
-                [],
-                delegationId,
-                {
-                  objective:
-                    "Run a harmless no-op subagent for logging inspection",
-                  scope: "No-op only",
-                  allowedFiles: [],
-                  blockedFiles: [],
-                  acceptanceCriteria: ["No repository work is performed"],
-                  validationCommands: [],
-                  escalationTriggers: [
-                    "Any tool use",
-                    "Any file access",
-                    "Any edit",
-                  ],
-                  tools: [],
-                },
-                ctx,
-              ),
-            undefined,
-          );
-          ctx.ui.notify("No-op subagent completed successfully.", "info");
-        } catch (error) {
-          ctx.ui.notify(
-            `No-op subagent failed: ${error instanceof Error ? error.message : String(error)}`,
-            "error",
-          );
-        }
-      },
-    });
+
 
   } catch (error) {
     const registration = globalThis.__PI_SUPERVISOR_WORKER_REGISTERED__;

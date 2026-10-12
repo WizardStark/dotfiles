@@ -31,13 +31,23 @@ test("nested calls form a bounded tree below the codemode badge", () => {
 });
 
 test("codemode badge resolves builtin rendering without owning execution", async () => {
-  const source = await readFile(new URL("extensions/codemode-badge.ts", root), "utf8");
-  assert.match(source, /registerToolRenderer/);
-  assert.match(source, /const native = next\(\)/);
-  assert.match(source, /context\.expanded && native\?\.renderCall/);
-  assert.match(source, /options\.expanded && native\?\.renderResult/);
-  assert.match(source, /codemodeTreeEntries\(calls, context\.isError\)/);
-  assert.doesNotMatch(source, /createCodemodeExtension|new Proxy|registerTool\(|execute\s*\(|structuredContent\s*:/);
+  const { importExtension, mockApi, renderContext, theme, tuiSdk } = await import("./pi-test-helpers.mjs");
+  const { Text } = await tuiSdk();
+  const api = mockApi();
+  (await importExtension("codemode-badge.ts")).default(api);
+  assert.equal(api.tools.size, 0);
+  let calls = 0;
+  const native = {
+    renderCall: () => { calls++; return new Text("native call", 0, 0); },
+    renderResult: () => { calls++; return new Text("native result", 0, 0); },
+  };
+  const resolve = api.renderers[0];
+  assert.equal(resolve("other", () => native), native);
+  const renderer = resolve("codemode", () => native);
+  const ctx = renderContext({ expanded: true });
+  assert.match(renderer.renderCall({}, theme(), ctx).render(80).join("\\n"), /native call/);
+  assert.match(renderer.renderResult({ content: [], details: {} }, { expanded: true, isPartial: false }, theme(), ctx).render(80).join("\\n"), /native result/);
+  assert.equal(calls, 2);
   const settings = JSON.parse(await readFile(new URL("settings.json", root), "utf8"));
   assert.ok(settings.defaultTools.includes("+codemode"));
   assert.ok(!settings.extensions.includes("-builtin:codemode"));

@@ -18,10 +18,11 @@
  * - WSL: powershell.exe / clip.exe fallback to the Windows clipboard
  * - Windows: powershell.exe, clip
  */
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
 import { spawn, spawnSync } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { release } from "node:os";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { matchesKey, truncateToWidth, visibleWidth, type TUI } from "@earendil-works/pi-tui";
 
 type AssistantTextSource = {
@@ -65,7 +66,7 @@ function extractAssistantText(messageContent: unknown): string {
 
   return messageContent
     .filter((part): part is { type: "text"; text: string } => {
-      return !!part && typeof part === "object" && (part as { type?: unknown }).type === "text" && typeof (part as any).text === "string";
+      return !!part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part && typeof part.text === "string";
     })
     .map((part) => part.text)
     .join("");
@@ -90,7 +91,7 @@ function stripUpToIndent(line: string, indent: string): string {
   return line.slice(index);
 }
 
-function getLastAssistantText(sessionManager: any): AssistantTextSource | undefined {
+function getLastAssistantText(sessionManager: ExtensionContext["sessionManager"]): AssistantTextSource | undefined {
   const branch = sessionManager.getBranch();
 
   for (let i = branch.length - 1; i >= 0; i -= 1) {
@@ -449,7 +450,8 @@ async function runCommandClipboardBackend(text: string, backend: ClipboardBacken
   return { ok: false, error: `${backend.name}: ${result.error instanceof Error ? result.error.message : stderr || `exit ${result.status ?? "unknown"}`}` };
 }
 
-async function copyToClipboard(text: string): Promise<CopyResult> {
+async function copyToClipboard(text: string, signal?: AbortSignal): Promise<CopyResult> {
+  signal?.throwIfAborted();
   const attempts: string[] = [];
 
   if (process.env.TMUX) {
@@ -475,7 +477,9 @@ async function copyToClipboard(text: string): Promise<CopyResult> {
   }
 
   for (const backend of getClipboardBackends()) {
+    signal?.throwIfAborted();
     const result = await runCommandClipboardBackend(text, backend);
+    signal?.throwIfAborted();
     if (result.ok) {
       return result;
     }
@@ -697,6 +701,8 @@ function getVisibleWindow(selectedIndex: number, total: number, limit: number): 
   return { start, end };
 }
 
+type CopyWork = { signal: AbortSignal; assertCurrent(): void };
+
 class BlockPickerOverlay {
   private selectedIndex = 0;
   private query = "";
@@ -704,13 +710,22 @@ class BlockPickerOverlay {
 
   constructor(
     private readonly tui: TUI,
-    private readonly theme: Theme,
+    private readonly getTheme: () => Theme,
     private readonly blocks: CodeBlock[],
     private readonly title: string,
     private readonly done: (result: CodeBlock | undefined) => void,
+    private readonly signal?: AbortSignal,
   ) {
     this.filteredBlocks = [...blocks];
+    signal?.addEventListener("abort", this.cancel, { once: true });
+    if (signal?.aborted) this.cancel();
   }
+
+  private get theme(): Theme { return this.getTheme(); }
+  private readonly cancel = () => {
+    this.signal?.removeEventListener("abort", this.cancel);
+    this.done(undefined);
+  };
 
   handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
@@ -813,12 +828,12 @@ class BlockPickerOverlay {
 
     lines.push(border(`╰${"─".repeat(innerWidth)}╯`));
 
-    return lines;
+    return lines.map((line) => truncateToWidth(line, width));
   }
 
   invalidate(): void {}
 
-  dispose(): void {}
+  dispose(): void { this.signal?.removeEventListener("abort", this.cancel); }
 
   private moveSelection(delta: number): void {
     if (this.filteredBlocks.length === 0) {
@@ -1051,10 +1066,10 @@ class BlockPickerOverlay {
   }
 }
 
-async function pickBlockWithPreview(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
+async function pickBlockWithPreview(ctx: ExtensionContext, blocks: CodeBlock[], title: string, signal?: AbortSignal): Promise<CodeBlock | undefined> {
   return ctx.ui.custom<CodeBlock | undefined>(
-    (tui: TUI, theme: Theme, _keybindings: unknown, done: (result: CodeBlock | undefined) => void) =>
-      new BlockPickerOverlay(tui, theme, blocks, title, done),
+    (tui: TUI, _theme: Theme, _keybindings: unknown, done: (result: CodeBlock | undefined) => void) =>
+      new BlockPickerOverlay(tui, () => ctx.ui.theme, blocks, title, done, signal),
     {
       overlay: true,
       overlayOptions: {
@@ -1068,9 +1083,9 @@ async function pickBlockWithPreview(ctx: any, blocks: CodeBlock[], title: string
   );
 }
 
-async function pickBlockWithSelect(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
+async function pickBlockWithSelect(ctx: ExtensionContext, blocks: CodeBlock[], title: string, signal?: AbortSignal): Promise<CodeBlock | undefined> {
   const labels = blocks.map((block, index) => `${index + 1}. ${formatBlockLabel(block)}`);
-  const selected = await ctx.ui.select(title, labels);
+  const selected = await ctx.ui.select(title, labels, { signal });
   if (!selected) {
     return undefined;
   }
@@ -1078,7 +1093,7 @@ async function pickBlockWithSelect(ctx: any, blocks: CodeBlock[], title: string)
   return blocks[labels.indexOf(selected)];
 }
 
-async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<CodeBlock | undefined> {
+async function pickBlock(ctx: ExtensionContext, blocks: CodeBlock[], title: string, signal?: AbortSignal): Promise<CodeBlock | undefined> {
   if (blocks.length === 0) {
     return undefined;
   }
@@ -1088,23 +1103,24 @@ async function pickBlock(ctx: any, blocks: CodeBlock[], title: string): Promise<
   }
 
   if (ctx.mode !== "tui") {
-    return pickBlockWithSelect(ctx, blocks, title);
+    return pickBlockWithSelect(ctx, blocks, title, signal);
   }
 
   try {
-    const selected = await pickBlockWithPreview(ctx, blocks, title);
+    const selected = await pickBlockWithPreview(ctx, blocks, title, signal);
     return selected;
   } catch (error) {
+    signal?.throwIfAborted();
     console.warn("[copy-smart] preview picker failed, falling back to standard select", error);
     ctx.ui.notify?.("Preview picker unavailable, falling back to the standard block picker.", "warning");
-    return pickBlockWithSelect(ctx, blocks, title);
+    return pickBlockWithSelect(ctx, blocks, title, signal);
   }
 }
 
-async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: string): Promise<CodeBlock | undefined> {
+async function resolveBlockSelection(ctx: ExtensionContext, blocks: CodeBlock[], selector: string, signal?: AbortSignal): Promise<CodeBlock | undefined> {
   const normalized = normalizeSearchText(selector);
   if (!normalized) {
-    return pickBlock(ctx, blocks, "Copy which block?");
+    return pickBlock(ctx, blocks, "Copy which block?", signal);
   }
 
   if (/^\d+$/.test(normalized)) {
@@ -1120,7 +1136,7 @@ async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: st
     return exactLanguageMatches[0];
   }
   if (exactLanguageMatches.length > 1) {
-    return pickBlock(ctx, exactLanguageMatches, `Multiple ${normalized} blocks found`);
+    return pickBlock(ctx, exactLanguageMatches, `Multiple ${normalized} blocks found`, signal);
   }
 
   const fuzzyMatches = blocks.filter((block) => block.codeSearchText.includes(normalized));
@@ -1129,7 +1145,7 @@ async function resolveBlockSelection(ctx: any, blocks: CodeBlock[], selector: st
     return fuzzyMatches[0];
   }
   if (fuzzyMatches.length > 1) {
-    return pickBlock(ctx, fuzzyMatches, `Multiple matches for ${selector}`);
+    return pickBlock(ctx, fuzzyMatches, `Multiple matches for ${selector}`, signal);
   }
 
   return undefined;
@@ -1240,15 +1256,15 @@ function buildCopyDebugReport(): string {
   return lines.join("\n");
 }
 
-function notifyCopied(ctx: any, label: string, backend: string) {
+function notifyCopied(ctx: ExtensionContext, label: string, backend: string) {
   ctx.ui.notify(`Copied ${label} via ${backend}`, "info");
 }
 
-function notifyCopyError(ctx: any, message: string) {
+function notifyCopyError(ctx: ExtensionContext, message: string) {
   ctx.ui.notify(message, "error");
 }
 
-async function copySelectedBlock(ctx: any, selector?: string): Promise<boolean> {
+async function copySelectedBlock(ctx: ExtensionContext, work: CopyWork, selector?: string): Promise<boolean> {
   const lastAssistant = getLastAssistantText(ctx.sessionManager);
   if (!lastAssistant) {
     notifyCopyError(ctx, "No assistant message with text found.");
@@ -1261,7 +1277,9 @@ async function copySelectedBlock(ctx: any, selector?: string): Promise<boolean> 
     return false;
   }
 
-  const block = await resolveBlockSelection(ctx, blocks, selector ?? "");
+  const block = await resolveBlockSelection(ctx, blocks, selector ?? "", work.signal);
+  work.assertCurrent();
+  work.signal.throwIfAborted();
   if (!block) {
     if (selector?.trim()) {
       notifyCopyError(ctx, `No code block matched '${selector.trim()}'.`);
@@ -1269,7 +1287,13 @@ async function copySelectedBlock(ctx: any, selector?: string): Promise<boolean> 
     return false;
   }
 
-  const result = await copyToClipboard(block.code);
+  work.assertCurrent();
+
+  work.signal.throwIfAborted();
+
+  const result = await copyToClipboard(block.code, work.signal);
+
+  work.assertCurrent();
   if (!result.ok) {
     notifyCopyError(ctx, `Copy failed: ${result.error}`);
     return false;
@@ -1279,7 +1303,7 @@ async function copySelectedBlock(ctx: any, selector?: string): Promise<boolean> 
   return true;
 }
 
-async function copySmart(ctx: any, selector?: string): Promise<boolean> {
+async function copySmart(ctx: ExtensionContext, work: CopyWork, selector?: string): Promise<boolean> {
   const lastAssistant = getLastAssistantText(ctx.sessionManager);
   if (!lastAssistant) {
     notifyCopyError(ctx, "No assistant message with text found.");
@@ -1288,11 +1312,14 @@ async function copySmart(ctx: any, selector?: string): Promise<boolean> {
 
   const blocks = extractCodeBlocks(lastAssistant.text);
   if (selector?.trim()) {
-    return copySelectedBlock(ctx, selector);
+    return copySelectedBlock(ctx, work, selector);
   }
 
   if (blocks.length === 1) {
-    const result = await copyToClipboard(blocks[0].code);
+    work.assertCurrent();
+    work.signal.throwIfAborted();
+    const result = await copyToClipboard(blocks[0].code, work.signal);
+    work.assertCurrent();
     if (!result.ok) {
       notifyCopyError(ctx, `Copy failed: ${result.error}`);
       return false;
@@ -1303,10 +1330,16 @@ async function copySmart(ctx: any, selector?: string): Promise<boolean> {
   }
 
   if (blocks.length > 1) {
-    return copySelectedBlock(ctx);
+    return copySelectedBlock(ctx, work);
   }
 
-  const result = await copyToClipboard(lastAssistant.text);
+  work.assertCurrent();
+
+  work.signal.throwIfAborted();
+
+  const result = await copyToClipboard(lastAssistant.text, work.signal);
+
+  work.assertCurrent();
   if (!result.ok) {
     notifyCopyError(ctx, `Copy failed: ${result.error}`);
     return false;
@@ -1317,17 +1350,30 @@ async function copySmart(ctx: any, selector?: string): Promise<boolean> {
 }
 
 export default function (pi: ExtensionAPI) {
+  const sessionWork = createSessionWork(pi);
+  const runCopy = async (ctx: ExtensionContext, selector?: string, blockOnly = false) => {
+    const work = sessionWork.start(ctx.signal);
+    try {
+      work.signal.throwIfAborted();
+      if (blockOnly) await copySelectedBlock(ctx, work, selector);
+      else await copySmart(ctx, work, selector);
+    } catch (error) {
+      if (work.isCurrent() && !isCancelledWork(error)) throw error;
+    } finally {
+      work.dispose();
+    }
+  };
   pi.registerCommand("copy-smart", {
     description: "Copy the last assistant code block when obvious, otherwise prompt or fall back to the full message",
     handler: async (args, ctx) => {
-      await copySmart(ctx, args);
+      await runCopy(ctx, args);
     },
   });
 
   pi.registerCommand("copy-block", {
     description: "Copy a fenced code block from the last assistant message by number, language, or picker",
     handler: async (args, ctx) => {
-      await copySelectedBlock(ctx, args);
+      await runCopy(ctx, args, true);
     },
   });
 
@@ -1347,7 +1393,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerShortcut("ctrl+alt+y", {
     description: "Copy the latest assistant code block or message",
     handler: async (ctx) => {
-      await copySmart(ctx);
+      await runCopy(ctx);
     },
   });
 }

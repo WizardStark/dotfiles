@@ -38,13 +38,22 @@ class NativeSlot extends Box {
   child?: Component;
 }
 
+const nativeSlots = new WeakMap<object, Partial<Record<"call" | "result", NativeSlot>>>();
+export function hasNativeResult(context: ToolRenderContext): boolean {
+  return nativeSlots.get(context.state)?.result !== undefined;
+}
+
 export function nativeSlot(
   render: (context: ToolRenderContext) => Component,
   native: ToolRenderers,
   theme: Theme,
   context: ToolRenderContext,
+  slot: "call" | "result" = "call",
 ): Component {
-  const box = context.lastComponent instanceof NativeSlot ? context.lastComponent : new NativeSlot(0, 0);
+  const slots = nativeSlots.get(context.state) ?? {};
+  nativeSlots.set(context.state, slots);
+  const box = slots[slot] ?? new NativeSlot(0, 0);
+  slots[slot] = box;
   const child = render({ ...context, lastComponent: box.child });
   box.child = child;
   box.clear();
@@ -65,8 +74,11 @@ export function compactRenderers(name: string, native?: ToolRenderers): ToolRend
       return compactCall(name, theme, context);
     },
     renderResult(result, options, theme, context) {
-      if (options.expanded && native?.renderResult) {
-        return nativeSlot((ctx) => native.renderResult!(result, options, theme, ctx), native, theme, context);
+      // A renderer activated while expanded must still receive final updates
+      // while hidden: native bash owns a streaming interval cleared on final.
+      if (native?.renderResult && (options.expanded || hasNativeResult(context))) {
+        const component = nativeSlot((ctx) => native.renderResult!(result, options, theme, ctx), native, theme, context, "result");
+        if (options.expanded) return component;
       }
       return compactResult(result, options, theme, context);
     },

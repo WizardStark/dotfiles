@@ -1,3 +1,4 @@
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
 import type { AssistantMessage, Message, UserMessage } from "@earendil-works/pi-ai";
 import { type ExtensionAPI, type ExtensionCommandContext, type Theme } from "@earendil-works/pi-coding-agent";
 import { textFromMessage } from "./lib/session-messages.ts";
@@ -16,7 +17,7 @@ class BtwOverlay implements Component {
   constructor(
     private readonly question: string,
     private readonly tui: TUI,
-    private readonly theme: Theme,
+    private readonly getTheme: () => Theme,
     private readonly controller: AbortController,
     private readonly done: () => void,
   ) {}
@@ -39,12 +40,16 @@ class BtwOverlay implements Component {
     this.closed = true;
   }
 
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.controller.abort();
+    this.done();
+  }
+
   handleInput(data: string): void {
     if (matchesKey(data, Key.escape)) {
-      if (this.closed) return;
-      this.closed = true;
-      this.controller.abort();
-      this.done();
+      this.close();
       return;
     }
     if (matchesKey(data, Key.up)) {
@@ -59,22 +64,24 @@ class BtwOverlay implements Component {
   }
 
   render(width: number): string[] {
+    const theme = this.getTheme();
     const contentWidth = Math.max(1, width - 4);
-    const color = this.state === "error" ? (text: string) => this.theme.fg("error", text) : undefined;
+    const color = this.state === "error" ? (text: string) => theme.fg("error", text) : undefined;
     const body = this.body.split("\n").flatMap((line) => wrapTextWithAnsi(color ? color(line || " ") : line || " ", contentWidth));
-    const footer = this.theme.fg("dim", "↑/↓ scroll · Esc dismiss");
+    const footer = theme.fg("dim", "↑/↓ scroll · Esc dismiss");
     const lines = [
-      this.theme.bg("customMessageBg", truncateToWidth(`  /btw ${this.question}`, width, "…", false)),
+      theme.bg("customMessageBg", truncateToWidth(`  /btw ${this.question}`, width, "…", false)),
       "",
       ...body.map((line) => `    ${line}`),
       "",
       `  ${truncateToWidth(footer, Math.max(1, width - 2), "…", false)}`,
     ];
     const maxRows = Math.max(4, Math.floor(((this.tui.terminal as { rows?: number }).rows ?? 24) * 0.85));
-    if (lines.length <= maxRows) return lines;
+    const clipped = lines.map((line) => truncateToWidth(line, width));
+    if (lines.length <= maxRows) return clipped;
     const excess = lines.length - maxRows;
     this.scrollOffset = Math.min(this.scrollOffset, excess);
-    return lines.slice(this.scrollOffset, this.scrollOffset + maxRows);
+    return clipped.slice(this.scrollOffset, this.scrollOffset + maxRows);
   }
 
   invalidate(): void {}
@@ -113,6 +120,7 @@ function projectedMessages(ctx: ExtensionCommandContext): Message[] {
 }
 
 export default function (pi: ExtensionAPI) {
+  const sessionWork = createSessionWork(pi);
   pi.registerCommand("btw", {
     description: "Ask a side question without adding it to the transcript",
     handler: async (args, ctx) => {
@@ -130,55 +138,69 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      await ctx.waitForIdle();
-      const model = ctx.model;
-      const controller = new AbortController();
-      let overlay!: BtwOverlay;
-      const visible = ctx.ui.custom<void>(
-        (tui, theme, _keybindings, done) => {
-          overlay = new BtwOverlay(question, tui, theme, controller, done);
-          return overlay;
-        },
-        {
-          overlay: true,
-          overlayOptions: { anchor: "bottom-center", width: "100%", maxHeight: "85%", margin: { left: 0, right: 0, bottom: 0 } },
-        },
-      );
-
-      void visible.finally(() => overlay.markClosed());
-
-      const userMessage: UserMessage = {
-        role: "user",
-        content: [{ type: "text", text: question }],
-        timestamp: Date.now(),
-      };
+      const work = sessionWork.start(ctx.signal);
+      let close: (() => void) | undefined;
       try {
-        const stream = ctx.modelRegistry.streamSimple(
-          model,
-          { systemPrompt: SYSTEM_PROMPT, messages: [...projectedMessages(ctx), userMessage], tools: [] },
-          { reasoning: ctx.thinkingLevel, signal: controller.signal },
+        await ctx.waitForIdle();
+        work.assertCurrent();
+        work.signal.throwIfAborted();
+        const model = ctx.model;
+        const controller = new AbortController();
+        let overlay!: BtwOverlay;
+        const visible = ctx.ui.custom<void>(
+          (tui, _theme, _keybindings, done) => {
+            overlay = new BtwOverlay(question, tui, () => ctx.ui.theme, controller, done);
+            close = () => overlay.close();
+            work.signal.addEventListener("abort", close, { once: true });
+            if (work.signal.aborted) close();
+            return overlay;
+          },
+          {
+            overlay: true,
+            overlayOptions: { anchor: "bottom-center", width: "100%", maxHeight: "85%", margin: { left: 0, right: 0, bottom: 0 } },
+          },
         );
-        for await (const event of stream) {
-          if (event.type === "text_delta" || event.type === "text_end") {
-            const answer = textOf(event.partial);
-            if (answer) overlay.setAnswer(answer);
-          }
-        }
-        const response = await stream.result();
-        if (response.stopReason === "aborted") {
-          await visible;
-          return;
-        }
-        if (response.stopReason === "error") {
-          overlay.setError(response.errorMessage ?? "The side question failed.");
-        } else {
-          overlay.setAnswer(textOf(response) || "The side question returned no text.");
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) overlay.setError(error instanceof Error ? error.message : String(error));
-      }
 
-      await visible;
+        void visible.then(() => overlay?.markClosed(), () => { controller.abort(); overlay?.markClosed(); });
+
+        const userMessage: UserMessage = {
+          role: "user",
+          content: [{ type: "text", text: question }],
+          timestamp: Date.now(),
+        };
+        try {
+          const stream = ctx.modelRegistry.streamSimple(
+            model,
+            { systemPrompt: SYSTEM_PROMPT, messages: [...projectedMessages(ctx), userMessage], tools: [] },
+            { reasoning: ctx.thinkingLevel === "off" ? undefined : ctx.thinkingLevel, signal: AbortSignal.any([work.signal, controller.signal]) },
+          );
+          for await (const event of stream) {
+            if (event.type === "text_delta" || event.type === "text_end") {
+              const answer = textOf(event.partial);
+              if (answer) overlay.setAnswer(answer);
+            }
+          }
+          const response = await stream.result();
+          if (response.stopReason === "aborted") {
+            await visible;
+            return;
+          }
+          if (response.stopReason === "error") {
+            overlay.setError(response.errorMessage ?? "The side question failed.");
+          } else {
+            overlay.setAnswer(textOf(response) || "The side question returned no text.");
+          }
+        } catch (error) {
+          if (!controller.signal.aborted) overlay.setError(error instanceof Error ? error.message : String(error));
+        }
+
+        await visible;
+      } catch (error) {
+        if (work.isCurrent() && !isCancelledWork(error)) throw error;
+      } finally {
+        if (close) work.signal.removeEventListener("abort", close);
+        work.dispose();
+      }
     },
   });
 }

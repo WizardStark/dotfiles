@@ -1,4 +1,6 @@
-import { keyHint, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { keyHint, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 import { ManagedWidget } from "./lib/ui-widgets.ts";
 
 const FORM_FIELDS = [
@@ -104,13 +106,13 @@ function buildPrompt(values: FormValues): string {
 	return sections.join("\n\n");
 }
 
-function setBriefKeymapWidget(ctx: any) {
+function setBriefKeymapWidget(ctx: ExtensionContext) {
 	if (ctx.mode === "tui") {
-		KEYMAP_WIDGET.set(ctx, (_tui: unknown, theme: any) => ({
+		KEYMAP_WIDGET.set(ctx, (_tui, _theme) => ({
 			invalidate() {},
-			render(): string[] {
+			render(width: number): string[] {
 				return [
-					theme.fg(
+					truncateToWidth(ctx.ui.theme.fg(
 						"dim",
 						[
 							keyHint("tui.input.submit", "submit"),
@@ -118,7 +120,7 @@ function setBriefKeymapWidget(ctx: any) {
 							keyHint("tui.input.newLine", "newline"),
 							keyHint("app.interrupt", "cancel"),
 						].join(" · "),
-					),
+					), width),
 				];
 			},
 		}));
@@ -129,51 +131,57 @@ function setBriefKeymapWidget(ctx: any) {
 }
 
 export default function formExtension(pi: ExtensionAPI) {
+	const sessionWork = createSessionWork(pi);
+	let activeBrief: AbortController | undefined;
+	const clear = (_event: unknown, ctx: ExtensionContext) => {
+		activeBrief?.abort();
+		activeBrief = undefined;
+		KEYMAP_WIDGET.clear(ctx);
+	};
+	pi.on("session_tree", clear);
+	pi.on("session_shutdown", clear);
 	const openBrief = async (
 		args: string,
-		ctx: Parameters<ExtensionAPI["registerCommand"]>[1]["handler"] extends (
-			args: any,
-			ctx: infer TCtx,
-		) => any
-			? TCtx
-			: never,
+		ctx: ExtensionContext,
 	) => {
 		if (!ctx.hasUI) {
 			return;
 		}
 
-		const prefilledObjective = args.trim();
+		activeBrief?.abort();
+		const controller = new AbortController();
+		activeBrief = controller;
+		const signal = ctx.signal ? AbortSignal.any([ctx.signal, controller.signal]) : controller.signal;
+		const work = sessionWork.start(signal);
 		setBriefKeymapWidget(ctx);
-		let edited: string | undefined;
 		try {
-			edited = await ctx.ui.editor(
-				"Structured prompt form",
-				buildTemplate(prefilledObjective),
-			);
-		} finally {
-			KEYMAP_WIDGET.clear(ctx);
-		}
-
-		if (edited === undefined) {
-			ctx.ui.notify("Form cancelled", "info");
-			return;
-		}
-
-		const values = parseForm(edited);
-		const prompt = buildPrompt(values);
-
-		if (!prompt) {
-			ctx.ui.notify("Form was empty, nothing was added", "warning");
-			return;
-		}
-
-		ctx.ui.setEditorText(prompt);
-		ctx.ui.notify(
-			ctx.isIdle()
+			// editor() has no public signal option (unlike select/input/confirm).
+			// Stop awaiting on invalidation; a late dialog response cannot update the composer.
+			const edited = await work.wait(ctx.ui.editor("Structured prompt form", buildTemplate(args.trim())));
+			work.assertCurrent();
+			work.signal.throwIfAborted();
+			if (edited === undefined) {
+				ctx.ui.notify("Form cancelled", "info");
+				return;
+			}
+			const prompt = buildPrompt(parseForm(edited));
+			if (!prompt) {
+				ctx.ui.notify("Form was empty, nothing was added", "warning");
+				return;
+			}
+			ctx.ui.setEditorText(prompt);
+			ctx.ui.notify(ctx.isIdle()
 				? "Structured prompt ready in the composer — press Enter to send and keep it in ↑ history"
-				: "Structured prompt ready in the composer — send or queue it from there for normal ↑ history",
-			"info",
-		);
+				: "Structured prompt ready in the composer — send or queue it from there for normal ↑ history", "info");
+		} catch (error) {
+			if (work.isCurrent() && !isCancelledWork(error)) throw error;
+		} finally {
+			if (activeBrief === controller) {
+				activeBrief = undefined;
+				if (work.isCurrent()) KEYMAP_WIDGET.clear(ctx);
+			}
+			work.dispose();
+		}
 	};
 
 	pi.registerCommand("brief", {

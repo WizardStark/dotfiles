@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { basename } from "node:path";
-import type { ThinkingLevel } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext, KeybindingsManager } from "@earendil-works/pi-coding-agent";
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { CustomEditor } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth, type Component, type EditorComponent, type EditorTheme, type TUI } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth, type Component, type EditorComponent, type TUI } from "@earendil-works/pi-tui";
 import { ManagedWidget } from "../lib/ui-widgets.ts";
 import {
   createStatuslineItem,
@@ -93,7 +93,7 @@ function renderInlineSeparator(
   return theme.bg(background, theme.fg("text", glyph));
 }
 
-function thinkingTone(level: ThinkingLevel) {
+function thinkingTone(level: ThinkingLevel | undefined) {
   switch (level) {
     case "minimal":
       return "thinkingMinimal" as const;
@@ -105,6 +105,8 @@ function thinkingTone(level: ThinkingLevel) {
       return "thinkingHigh" as const;
     case "xhigh":
       return "thinkingXhigh" as const;
+    case "max":
+      return "thinkingMax" as const;
     default:
       return "thinkingOff" as const;
   }
@@ -149,7 +151,7 @@ function renderBuiltinSegments(ctx: ExtensionContext) {
 
   const level = ctx.thinkingLevel;
   const tone = thinkingTone(level);
-  const label = level === "off" ? "off" : level;
+  const label = level ?? "off";
 
   reasoningItem.set(
     {
@@ -535,7 +537,7 @@ export default function statusline(pi: ExtensionAPI) {
         installedEditor = true;
       }
 
-      ctx.ui.setFooter((tui, theme, footerData) => {
+      ctx.ui.setFooter((tui, _theme, footerData) => {
         const unsubscribeStatusline = subscribeStatusline(() => tui.requestRender());
         const unsubscribeBranch = footerData.onBranchChange(() => tui.requestRender());
 
@@ -557,14 +559,10 @@ export default function statusline(pi: ExtensionAPI) {
     }
 
     if (ctx.hasUI) {
-      unsubscribeRpcStatusline?.();
       unsubscribeRpcStatusline = subscribeStatusline(() => renderRpcStatusline(ctx, currentSessionKey));
       renderRpcStatusline(ctx, currentSessionKey);
-      if (ctx.mode !== "tui") {
-        rpcStatuslineRefreshTimer && clearInterval(rpcStatuslineRefreshTimer);
-        rpcStatuslineRefreshTimer = setInterval(() => renderRpcStatusline(ctx, currentSessionKey), 10_000);
-        rpcStatuslineRefreshTimer.unref?.();
-      }
+      rpcStatuslineRefreshTimer = setInterval(() => renderRpcStatusline(ctx, currentSessionKey), 10_000);
+      rpcStatuslineRefreshTimer.unref?.();
     }
   });
 

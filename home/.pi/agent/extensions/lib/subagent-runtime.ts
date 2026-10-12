@@ -1,18 +1,17 @@
 import { sumUsages } from "./usage.ts";
-import type { AssistantMessage, Message, Usage } from "@earendil-works/pi-ai";
+import type { AssistantMessage, Message, Usage, ProviderHeaders } from "@earendil-works/pi-ai";
 import {
 	estimateUsageCost,
 } from "./model-cost.ts";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 export type SubagentRunState = {
 	messages: Message[];
 	streamedText: string;
-	lastAssistantPartial?: Message;
 	turnEndMessage?: Message;
 	agentEndMessage?: Message;
 	agentEndMessages?: Message[];
@@ -55,7 +54,9 @@ export type RunSubagentOptions = {
 	modelArg: string;
 	apiKey?: string;
 	providerName?: string;
-	authHeaders?: Record<string, string>;
+	authHeaders?: ProviderHeaders;
+	authBaseUrl?: string;
+	authEnv?: Record<string, string>;
 	systemPrompt: string;
 	extraArgs?: string[];
 	tempFiles?: TempFileSpec[];
@@ -65,10 +66,28 @@ export type RunSubagentOptions = {
 	onEvent?: (event: any, state: SubagentRunState) => void;
 };
 
+function isPiCli(script: string): boolean {
+	if (!/(?:^|[\\/])(?:cli|rpc-entry)\.js$/.test(script) || !existsSync(script)) return false;
+	let directory = dirname(script);
+	for (let depth = 0; depth < 6; depth++) {
+		const metadata = join(directory, "package.json");
+		if (existsSync(metadata)) {
+			try { return JSON.parse(readFileSync(metadata, "utf8")).name === "@earendil-works/pi-coding-agent"; }
+			catch { return false; }
+		}
+		const parent = dirname(directory);
+		if (parent === directory) break;
+		directory = parent;
+	}
+	return false;
+}
+
 export function getPiInvocation(args: string[]): { command: string; args: string[] } {
+	// Explicit launcher for SDK hosts and offline fixture processes.
+	if (process.env.PI_SUBAGENT_CLI) return { command: process.execPath, args: [process.env.PI_SUBAGENT_CLI, ...args] };
 	const currentScript = process.argv[1];
 	const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
-	if (currentScript && !isBunVirtualScript && existsSync(currentScript)) {
+	if (currentScript && !isBunVirtualScript && isPiCli(currentScript)) {
 		return { command: process.execPath, args: [currentScript, ...args] };
 	}
 
@@ -261,31 +280,32 @@ export function extractFinalAssistantText(
 }
 
 export async function runSubagentProcess(options: RunSubagentOptions): Promise<SubagentRunState> {
+	options.signal?.throwIfAborted();
 	const tempDir = await mkdtemp(join(tmpdir(), "pi-subagent-"));
 	const systemPromptPath = join(tempDir, "system-prompt.md");
 
 	try {
-		await writeFile(systemPromptPath, options.systemPrompt, "utf8");
+		await writeFile(systemPromptPath, options.systemPrompt, { encoding: "utf8", mode: 0o600 });
 		const tempFiles = [...(options.tempFiles ?? [])];
 		const authHeaders = options.authHeaders
 			? Object.fromEntries(
 					Object.entries(options.authHeaders).filter(
-						([key, value]) => key.trim().length > 0 && typeof value === "string",
+						([key, value]) => key.trim().length > 0 && (typeof value === "string" || value === null),
 					),
 			  )
 			: undefined;
-		if (options.providerName && authHeaders && Object.keys(authHeaders).length > 0) {
+		if (options.providerName && (options.authBaseUrl || (authHeaders && Object.keys(authHeaders).length > 0))) {
 			tempFiles.push({
 				name: "auth-provider.ts",
-				content: `export default function (pi) {\n\tpi.registerProvider(${JSON.stringify(options.providerName)}, {\n\t\theaders: ${JSON.stringify(authHeaders)},\n\t});\n}\n`,
+				content: `export default function (pi) {\n\tpi.registerProvider(${JSON.stringify(options.providerName)}, {\n\t\theaders: ${JSON.stringify(authHeaders)},\n\t\tbaseUrl: ${JSON.stringify(options.authBaseUrl)},\n\t});\n}\n`,
 			});
 		}
 		for (const tempFile of tempFiles) {
 			const filePath = join(tempDir, tempFile.name);
-			await writeFile(filePath, tempFile.content, "utf8");
+			await writeFile(filePath, tempFile.content, { encoding: "utf8", mode: 0o600 });
 		}
 		const extraArgs = [
-			...(options.providerName && authHeaders && Object.keys(authHeaders).length > 0
+			...(options.providerName && (options.authBaseUrl || (authHeaders && Object.keys(authHeaders).length > 0))
 				? ["-e", "@temp/auth-provider.ts"]
 				: []),
 			...(options.extraArgs ?? []),
@@ -303,6 +323,7 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 			systemPromptPath,
 			options.prompt,
 		];
+		options.signal?.throwIfAborted();
 		const invocation = getPiInvocation(args);
 
 		return await new Promise<SubagentRunState>((resolve) => {
@@ -311,6 +332,7 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 				stdio: ["ignore", "pipe", "pipe"],
 				env: {
 					...process.env,
+					...(options.authEnv ?? {}),
 					...(options.env ?? {}),
 				},
 			});
@@ -323,25 +345,33 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 			};
 			let buffer = "";
 			let settled = false;
+			let killTimer: ReturnType<typeof setTimeout> | undefined;
+			let callbackError: string | undefined;
 			const streamedTextParts: string[] = [];
+			const terminate = () => {
+				if (settled) return;
+				proc.kill("SIGTERM");
+				killTimer ??= setTimeout(() => { try { proc.kill("SIGKILL"); } catch { /* already exited */ } }, 5000);
+			};
 
 			const finish = (exitCode: number) => {
 				if (settled) return;
 				settled = true;
-				state.exitCode = exitCode;
+				if (killTimer) clearTimeout(killTimer);
+				options.signal?.removeEventListener("abort", terminate);
+				state.exitCode = callbackError ? 1 : exitCode;
 				state.finishedAt = Date.now();
 				state.streamedText = streamedTextParts.map((part) => part ?? "").join("").trim();
 				const final = extractFinalAssistantText(
 					[
-						...(state.lastAssistantPartial ? [state.lastAssistantPartial] : []),
 						...state.messages,
 						...(state.turnEndMessage ? [state.turnEndMessage] : []),
 						...(state.agentEndMessage ? [state.agentEndMessage] : []),
 					],
 					state.streamedText,
 				);
-				state.stopReason = final.stopReason;
-				state.errorMessage = final.errorMessage;
+				state.stopReason = callbackError ? "error" : options.signal?.aborted ? "aborted" : final.stopReason;
+				state.errorMessage = callbackError ?? final.errorMessage;
 				resolve(state);
 			};
 
@@ -354,14 +384,16 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 			};
 
 			const processLine = (line: string) => {
-				if (!line.trim()) return;
+				if (settled || !line.trim()) return;
+				let event;
+				try { event = JSON.parse(line); } catch { return; }
 				try {
-					const event = JSON.parse(line);
+					if (event.type === "message_start" && event.message?.role === "assistant") {
+						streamedTextParts.length = 0;
+						state.providerRequestStartedAt ??= Date.now();
+					}
 					if (event.type === "message_update") {
 						const assistantEvent = event.assistantMessageEvent;
-						if (assistantEvent?.partial) {
-							state.lastAssistantPartial = assistantEvent.partial as Message;
-						}
 						if (assistantEvent?.type === "text_start") {
 							streamedTextParts[assistantEvent.contentIndex] ??= "";
 						}
@@ -400,8 +432,9 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 						state.stderr += `${event.error}\n`;
 					}
 					options.onEvent?.(event, state);
-				} catch {
-					// ignore malformed lines
+				} catch (error) {
+					callbackError = `Subagent event handler failed: ${error instanceof Error ? error.message : String(error)}`;
+					terminate();
 				}
 			};
 
@@ -422,20 +455,8 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 				finish(1);
 			});
 
-			if (options.signal) {
-				const onAbort = () => {
-					proc.kill("SIGTERM");
-					setTimeout(() => {
-						try {
-							proc.kill("SIGKILL");
-						} catch {
-							// ignore
-						}
-					}, 5000);
-				};
-				if (options.signal.aborted) onAbort();
-				else options.signal.addEventListener("abort", onAbort, { once: true });
-			}
+			if (options.signal?.aborted) terminate();
+			else options.signal?.addEventListener("abort", terminate, { once: true });
 		});
 	} finally {
 		await rm(tempDir, { recursive: true, force: true });

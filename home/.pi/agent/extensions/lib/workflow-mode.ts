@@ -1,3 +1,4 @@
+import { isSecretPath } from "./secret-paths.ts";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +15,7 @@ export function isWorkflowMode(value: unknown): value is WorkflowMode {
 
 export async function readWorkflowMode(): Promise<WorkflowMode> {
   try {
+    if (await isSecretPath(CONFIG_FILE)) return DEFAULT_WORKFLOW_MODE;
     const raw = await readFile(CONFIG_FILE, "utf8");
     const parsed: unknown = JSON.parse(raw);
     if (

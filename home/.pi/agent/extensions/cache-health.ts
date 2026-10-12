@@ -1,5 +1,6 @@
+import { isSecretPath } from "./lib/secret-paths.ts";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { promises as fs } from "node:fs";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -17,7 +18,7 @@ const LOW_HIT_RATIO = 0.1;
 const TOKEN_MISMATCH_TOLERANCE = 1;
 const MATERIAL_COST_TOLERANCE_USD = 0.01;
 const MATERIAL_COST_TOLERANCE_RATIO = 0.05;
-const LEDGER_PATH = join(homedir(), ".pi", "agent", "cache-health-ledger.jsonl");
+const LEDGER_PATH = process.env.PI_CACHE_HEALTH_LEDGER ?? join(homedir(), ".pi", "agent", "cache-health-ledger.jsonl");
 const STATUS_KEY = "cache-health";
 
 type NumericUsage = {
@@ -148,18 +149,8 @@ function normalizedModel(value: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function messageKey(message: AssistantMessage): string {
-  const usage = usageFrom(message);
-  return [
-    message.responseId ?? "",
-    message.timestamp,
-    message.provider,
-    message.model,
-    usage?.input,
-    usage?.output,
-    usage?.cacheRead,
-    usage?.cacheWrite,
-  ].join("|");
+function messageKey(message: AssistantMessage): string | undefined {
+  return message.responseId ? `${message.provider}/${message.model}/${message.responseId}` : undefined;
 }
 
 function emptyState(): CacheHealthState {
@@ -249,7 +240,7 @@ function sessionIdentity(ctx: ExtensionContext) {
 }
 
 async function appendLedger(record: LedgerRecord): Promise<void> {
-  const directory = join(homedir(), ".pi", "agent");
+  const directory = dirname(LEDGER_PATH);
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const handle = await fs.open(LEDGER_PATH, "a", 0o600);
   try {
@@ -422,19 +413,19 @@ function aggregate(map: Map<string, ReconcileAggregate>, date: string, model: st
   item.invalidFields += "invalidFields" in row ? row.invalidFields : 0;
   const usage = "usage" in row ? row.usage : row;
   if (numeric(usage.input) !== undefined) {
-    item.input += usage.input;
+    item.input += usage.input ?? 0;
     item.inputRows++;
   }
   if (numeric(usage.output) !== undefined) {
-    item.output += usage.output;
+    item.output += usage.output ?? 0;
     item.outputRows++;
   }
   if (numeric(usage.cacheRead) !== undefined) {
-    item.cacheRead += usage.cacheRead;
+    item.cacheRead += usage.cacheRead ?? 0;
     item.cacheReadRows++;
   }
   if (numeric(usage.cacheWrite) !== undefined) {
-    item.cacheWrite += usage.cacheWrite;
+    item.cacheWrite += usage.cacheWrite ?? 0;
     item.cacheWriteRows++;
   }
   const cost = "responseCost" in row ? row.responseCost : row.grossCost;
@@ -449,6 +440,7 @@ function aggregate(map: Map<string, ReconcileAggregate>, date: string, model: st
 async function readLedger(): Promise<{ records: LedgerRecord[]; invalidLines: number }> {
   let text: string;
   try {
+    if (await isSecretPath(LEDGER_PATH)) return { records: [], invalidLines: 0 };
     text = await fs.readFile(LEDGER_PATH, "utf8");
   } catch {
     return { records: [], invalidLines: 0 };
@@ -485,10 +477,6 @@ async function readLedger(): Promise<{ records: LedgerRecord[]; invalidLines: nu
     }
   }
   return { records, invalidLines };
-}
-
-function dotenvLike(path: string): boolean {
-  return /(^|[\\/])\.env(?:\.[^\\/]*)?(?:$|[\\/])/i.test(path);
 }
 
 function compareValues(label: string, left: number, right: number, warnings: string[]): string {
@@ -550,18 +538,22 @@ function buildReconcileReport(
 
 export default function cacheHealth(pi: ExtensionAPI) {
   let state = emptyState();
-  let seen = new Set<string>();
+  let seen = new WeakSet<object>();
+  let seenResponseIds = new Set<string>();
 
   function resetFromBranch(ctx: ExtensionContext) {
     state = emptyState();
-    seen = new Set<string>();
+    seen = new WeakSet<object>();
+    seenResponseIds = new Set<string>();
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type !== "message" || entry.message.role !== "assistant") continue;
       const message = entry.message as AssistantMessage;
       if (message.provider !== "github-copilot") continue;
       const usage = usageFrom(message);
       if (!usage) continue;
-      seen.add(messageKey(message));
+      seen.add(message);
+      const id = messageKey(message);
+      if (id) seenResponseIds.add(id);
       updateState(state, usage, message);
     }
   }
@@ -599,13 +591,13 @@ export default function cacheHealth(pi: ExtensionAPI) {
         notify(ctx, "Usage: /cache-reconcile /explicit/path/to/usage.csv", "error");
         return;
       }
-      if (dotenvLike(path)) {
+      if (await isSecretPath(path, ctx.cwd)) {
         notify(ctx, "Refusing dotenv-like CSV paths.", "error");
         return;
       }
       let csvText: string;
       try {
-        csvText = await fs.readFile(path, "utf8");
+        csvText = await fs.readFile(resolve(ctx.cwd, path), "utf8");
       } catch {
         notify(ctx, `Could not read CSV: ${path}`, "error");
         return;
@@ -628,8 +620,9 @@ export default function cacheHealth(pi: ExtensionAPI) {
     const usage = usageFrom(message);
     if (!usage) return;
     const key = messageKey(message);
-    if (seen.has(key)) return;
-    seen.add(key);
+    if (seen.has(message) || (key && seenResponseIds.has(key))) return;
+    seen.add(message);
+    if (key) seenResponseIds.add(key);
     const { newlyWarned, lowHit } = updateState(state, usage, message);
     renderStatus(ctx, state);
     if (newlyWarned && lowHit) {
@@ -670,6 +663,7 @@ export default function cacheHealth(pi: ExtensionAPI) {
   pi.on("session_shutdown", async (_event, ctx) => {
     statuslineItem.clear(getStatuslineSessionKey(ctx));
     state = emptyState();
-    seen = new Set<string>();
+    seen = new WeakSet<object>();
+    seenResponseIds = new Set<string>();
   });
 }

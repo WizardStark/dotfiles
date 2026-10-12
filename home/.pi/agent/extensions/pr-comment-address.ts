@@ -1,3 +1,4 @@
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
 import { CONFIG_DIR_NAME, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -694,26 +695,28 @@ function buildAgentPrompt(bundle: Bundle, jsonPath: string, mdPath: string): str
 }
 
 export default function prCommentAddressExtension(pi: ExtensionAPI) {
+	const sessionWork = createSessionWork(pi);
 	pi.registerCommand(COMMAND, {
 		description: "Fetch PR comments into a temp bundle and trigger worker-first addressing. Usage: /pr-comment-address [PR selector]",
 		handler: async (args, ctx) => {
 			const selector = args.trim() || undefined;
+			const work = sessionWork.start(ctx.signal);
 			try {
 				ctx.ui.notify("PR comment address: fetching PR metadata and discussion...", "info");
 				const parsedSelector = parsePullSelector(selector, ctx.cwd);
-				const currentRepo = parsedSelector ? undefined : await resolveCurrentRepo(pi, ctx.signal);
+				const currentRepo = parsedSelector ? undefined : await resolveCurrentRepo(pi, work.signal);
 				const pr = await resolvePull(
 					pi,
 					parsedSelector?.prSelector ?? selector,
 					parsedSelector?.repoOverride,
-					ctx.signal,
+					work.signal,
 				);
 				const repo = parsedSelector?.repo ?? repoFromPrUrl(pr.url, currentRepo!);
 				const [issueComments, reviewComments, reviews, reviewThreadResult] = await Promise.all([
-					fetchPaginatedArray<IssueComment>(pi, repo, `/repos/${repo.nameWithOwner}/issues/${pr.number}/comments`, ctx.signal),
-					fetchPaginatedArray<ReviewComment>(pi, repo, `/repos/${repo.nameWithOwner}/pulls/${pr.number}/comments`, ctx.signal),
-					fetchPaginatedArray<Review>(pi, repo, `/repos/${repo.nameWithOwner}/pulls/${pr.number}/reviews`, ctx.signal),
-					fetchReviewThreads(pi, repo, pr.number, ctx.signal),
+					fetchPaginatedArray<IssueComment>(pi, repo, `/repos/${repo.nameWithOwner}/issues/${pr.number}/comments`, work.signal),
+					fetchPaginatedArray<ReviewComment>(pi, repo, `/repos/${repo.nameWithOwner}/pulls/${pr.number}/comments`, work.signal),
+					fetchPaginatedArray<Review>(pi, repo, `/repos/${repo.nameWithOwner}/pulls/${pr.number}/reviews`, work.signal),
+					fetchReviewThreads(pi, repo, pr.number, work.signal),
 				]);
 
 				if (
@@ -745,13 +748,20 @@ export default function prCommentAddressExtension(pi: ExtensionAPI) {
 					reviewThreadsWarnings: reviewThreadResult.warnings,
 				};
 
+				work.assertCurrent();
+				work.signal.throwIfAborted();
 				const bundleDir = join(ctx.cwd, CONFIG_DIR_NAME, "agent", "pr-comment-address", `${pr.number}-${Date.now()}-${randomUUID()}`);
 				await mkdir(bundleDir, { recursive: true });
+				work.assertCurrent();
+				work.signal.throwIfAborted();
 				const jsonPath = join(bundleDir, "bundle.json");
 				const mdPath = join(bundleDir, "bundle.md");
 				await writeFile(jsonPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+				work.assertCurrent();
+				work.signal.throwIfAborted();
 				await writeFile(mdPath, `${buildMarkdownBundle(bundle)}\n`, "utf8");
 
+				work.assertCurrent();
 				const prompt = buildAgentPrompt(bundle, jsonPath, mdPath);
 				if (ctx.isIdle()) {
 					pi.sendUserMessage(prompt);
@@ -761,8 +771,11 @@ export default function prCommentAddressExtension(pi: ExtensionAPI) {
 					ctx.ui.notify(`Queued PR #${pr.number} comment-addressing workflow as a follow-up`, "info");
 				}
 			} catch (error) {
+				if (!work.isCurrent() || work.signal.aborted || isCancelledWork(error)) return;
 				const message = error instanceof Error ? error.message : String(error);
 				ctx.ui.notify(`PR comment address failed: ${message}`, "error");
+			} finally {
+				work.dispose();
 			}
 		},
 	});

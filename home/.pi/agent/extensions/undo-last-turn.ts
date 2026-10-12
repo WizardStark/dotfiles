@@ -1,4 +1,7 @@
+import { isSecretPath } from "./lib/secret-paths.ts";
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
 import { mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
@@ -56,11 +59,12 @@ async function normalizePath(cwd: string, targetPath: string): Promise<string> {
 }
 
 async function snapshotFile(path: string): Promise<FileSnapshot> {
+  if (await isSecretPath(path)) throw new Error("Undo refuses dotenv snapshots.");
   try {
     const content = await readFile(path, "utf8");
     return { existed: true, content };
-  } catch (error: any) {
-    if (error?.code === "ENOENT") {
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       return { existed: false };
     }
     throw error;
@@ -79,6 +83,7 @@ function isUndoState(value: unknown): value is PersistedUndoState {
 }
 
 export default function (pi: ExtensionAPI) {
+  const sessionWork = createSessionWork(pi);
   let lastBatch: UndoBatch | undefined;
   let pendingTouchedFiles = new Map<string, { displayPath: string; before: FileSnapshot }>();
 
@@ -136,13 +141,17 @@ export default function (pi: ExtensionAPI) {
     const targetPath = getToolPath(event.input);
     if (targetPath == null) return;
 
-    const absolutePath = await normalizePath(ctx.cwd, targetPath);
-    if (pendingTouchedFiles.has(absolutePath)) return;
-
-    pendingTouchedFiles.set(absolutePath, {
-      displayPath: formatDisplayPath(ctx.cwd, absolutePath),
-      before: await snapshotFile(absolutePath),
-    });
+    const work = sessionWork.start(ctx.signal);
+    try {
+      if (await isSecretPath(targetPath, ctx.cwd)) return;
+      const absolutePath = await normalizePath(ctx.cwd, targetPath);
+      if (pendingTouchedFiles.has(absolutePath)) return;
+      const before = await snapshotFile(absolutePath);
+      work.assertCurrent();
+      pendingTouchedFiles.set(absolutePath, { displayPath: formatDisplayPath(ctx.cwd, absolutePath), before });
+    } finally {
+      work.dispose();
+    }
   });
 
   pi.on("agent_settled", async (_event, ctx) => {
@@ -155,84 +164,112 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    const files: UndoFileChange[] = [];
-    for (const [path, pending] of touchedFiles) {
-      const after = await snapshotFile(path);
-      if (sameSnapshot(pending.before, after)) continue;
-      files.push({
-        path,
-        displayPath: pending.displayPath,
-        before: pending.before,
-        after,
-      });
-    }
+    const work = sessionWork.start();
+    try {
+      const files: UndoFileChange[] = [];
+      for (const [path, pending] of touchedFiles) {
+        if (await isSecretPath(path)) continue;
+        const after = await snapshotFile(path);
+        work.assertCurrent();
+        if (sameSnapshot(pending.before, after)) continue;
+        files.push({
+          path,
+          displayPath: pending.displayPath,
+          before: pending.before,
+          after,
+        });
+      }
 
-    lastBatch = files.length > 0 ? { createdAt: Date.now(), files } : undefined;
-    persistState();
+      lastBatch = files.length > 0 ? { createdAt: Date.now(), files } : undefined;
+      persistState();
 
-    if (lastBatch && ctx.hasUI) {
-      ctx.ui.notify(`Undo ready for ${lastBatch.files.length} file(s)`, "info");
+      if (lastBatch && ctx.hasUI) {
+        ctx.ui.notify(`Undo ready for ${lastBatch.files.length} file(s)`, "info");
+      }
+    } catch (error) {
+      if (!isCancelledWork(error)) throw error;
+    } finally {
+      work.dispose();
     }
   });
 
   pi.registerCommand("undo", {
     description: "Revert all file edits from the last agent turn and record that they were reverted.",
     handler: async (_args, ctx) => {
-      await ctx.waitForIdle();
-
-      const batch = lastBatch;
-      if (!batch || batch.files.length === 0) {
-        ctx.ui.notify("Nothing to undo from the last agent turn", "info");
-        return;
-      }
-
-      const conflicts: string[] = [];
-      for (const file of batch.files) {
-        const current = await snapshotFile(file.path);
-        if (!sameSnapshot(current, file.after)) {
-          conflicts.push(file.displayPath);
-        }
-      }
-
-      if (conflicts.length > 0) {
-        const ok = await ctx.ui.confirm(
-          "Undo changed files?",
-          `These files changed since the last agent turn:\n${conflicts.join("\n")}\n\nForce undo anyway?`,
-        );
-        if (!ok) {
-          ctx.ui.notify("Undo cancelled", "info");
+      const work = sessionWork.start(ctx.signal);
+      try {
+        await ctx.waitForIdle();
+        work.assertCurrent();
+        const batch = lastBatch;
+        if (!batch || batch.files.length === 0) {
+          ctx.ui.notify("Nothing to undo from the last agent turn", "info");
           return;
         }
-      }
 
-      const revertedFiles = [...batch.files].reverse();
-      for (const file of revertedFiles) {
-        if (!file.before.existed) {
-          await rm(file.path, { force: true });
-          continue;
+        const conflicts: string[] = [];
+        for (const file of batch.files) {
+          if (await isSecretPath(file.path)) throw new Error("Undo refuses historical dotenv snapshots.");
+          const current = await snapshotFile(file.path);
+          work.assertCurrent();
+          if (!sameSnapshot(current, file.after)) {
+            conflicts.push(file.displayPath);
+          }
         }
 
-        await mkdir(dirname(file.path), { recursive: true });
-        await writeFile(file.path, file.before.content ?? "", "utf8");
+        let force = false;
+        if (conflicts.length > 0) {
+          const ok = await ctx.ui.confirm(
+            "Undo changed files?",
+            `These files changed since the last agent turn:\n${conflicts.join("\n")}\n\nForce undo anyway?`,
+            { signal: work.signal },
+          );
+          work.assertCurrent();
+          if (!ok) {
+            ctx.ui.notify("Undo cancelled", "info");
+            return;
+          }
+          force = true;
+        }
+
+        const revertedFiles = [...batch.files].reverse();
+        for (const file of revertedFiles) {
+          await withFileMutationQueue(file.path, async () => {
+            const current = await snapshotFile(file.path);
+            work.assertCurrent();
+            if (!force && !sameSnapshot(current, file.after)) throw new Error(`File changed during undo: ${file.displayPath}`);
+            if (!file.before.existed) {
+              await rm(file.path, { force: true });
+              return;
+            }
+            await mkdir(dirname(file.path), { recursive: true });
+            work.assertCurrent();
+            await writeFile(file.path, file.before.content ?? "", "utf8");
+          });
+        }
+
+        work.assertCurrent();
+        lastBatch = undefined;
+        persistState();
+
+        const fileList = batch.files.map((file) => file.displayPath);
+        const summary = `Reverted the previous agent turn in ${batch.files.length} file(s): ${summarizePaths(fileList)}`;
+
+        pi.sendMessage({
+          customType: MESSAGE_TYPE,
+          content: summary,
+          display: true,
+          details: {
+            files: fileList,
+            revertedAt: Date.now(),
+          },
+        });
+
+        ctx.ui.notify(summary, "info");
+      } catch (error) {
+        if (!isCancelledWork(error)) throw error;
+      } finally {
+        work.dispose();
       }
-
-      lastBatch = undefined;
-      persistState();
-
-      const fileList = batch.files.map((file) => file.displayPath);
-      const summary = `Reverted the previous agent turn in ${batch.files.length} file(s): ${summarizePaths(fileList)}`;
-
-      pi.sendMessage({
-        customType: MESSAGE_TYPE,
-        content: summary,
-        display: true,
-        details: {
-          files: fileList,
-          revertedAt: Date.now(),
-        },
-      });
-
-      ctx.ui.notify(summary, "info");
     },
   });
 }

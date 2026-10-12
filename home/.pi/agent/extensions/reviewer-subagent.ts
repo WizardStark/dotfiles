@@ -1,3 +1,5 @@
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
+import { safePaths } from "./lib/secret-paths.ts";
 import { domainRenderers } from "./lib/domain-tool-renderers.ts";
 import { runReviewerRequest } from "./lib/reviewer-request.ts";
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
@@ -9,11 +11,12 @@ import { Type } from "typebox";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { relative } from "node:path";
+import { randomUUID } from "node:crypto";
+import { getStatuslineSessionKey } from "./statusline/registry.ts";
 import {
   buildSubagentMetrics,
   extractFinalAssistantText,
   type SubagentMetrics,
-  type SubagentRunState,
 } from "./lib/subagent-runtime.ts";
 
 const REVIEW_REPORT_TYPE = "reviewer-report";
@@ -66,8 +69,6 @@ type ReviewParams = {
   stage?: "interim" | "final";
 };
 
-type ReviewRunState = SubagentRunState;
-
 type ReviewProgress = {
   phase: string;
   turns?: number;
@@ -95,10 +96,6 @@ function buildConversationContext(messages: AgentMessage[]): string {
   return truncate(serializeConversation(llmMessages), MAX_CONTEXT_CHARS);
 }
 
-function buildReviewSubagentMetrics(run: ReviewRunState): SubagentMetrics | undefined {
-  return buildSubagentMetrics(run);
-}
-
 function buildReviewerProgressText(progress: ReviewProgress): string {
   return [
     progress.phase,
@@ -107,6 +104,7 @@ function buildReviewerProgressText(progress: ReviewProgress): string {
 }
 
 async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
+  signal?.throwIfAborted();
   return await new Promise<string>((resolve) => {
     const proc = spawn("git", args, {
       cwd,
@@ -138,7 +136,7 @@ async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout
     });
 
     proc.on("close", (code) => {
-      finish(code === 0 ? stdout.trim() : "");
+      finish(code === 0 ? stdout.trimEnd() : "");
     });
     proc.on("error", () => finish(""));
 
@@ -156,23 +154,22 @@ async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout
 async function maybeRunGit(cwd: string, args: string[], signal?: AbortSignal, timeout = 15000): Promise<string> {
   try {
     return await runGit(cwd, args, signal, timeout);
-  } catch {
-    return "";
+  } catch (error) {
+    signal?.throwIfAborted();
+    throw error;
   }
 }
 
-async function collectUntrackedSnippets(cwd: string, repoRoot: string, files: string[]): Promise<string> {
+async function collectUntrackedSnippets(repoRoot: string, files: string[], signal?: AbortSignal): Promise<string> {
   if (files.length === 0) return "";
 
   // Extension-owned reads do not pass through tool_call secret guards.
-  const safeFiles = files.filter((file) => {
-    const name = file.split("/").at(-1) ?? "";
-    return !/^\.env(?:\..+)?$/.test(name) || name === ".env.example";
-  });
+  const safeFiles = await safePaths(files, repoRoot);
   const selected = safeFiles.slice(0, MAX_UNTRACKED_FILES);
   const parts: string[] = [];
 
   for (const file of selected) {
+    signal?.throwIfAborted();
     try {
       const content = await readFile(`${repoRoot}/${file}`, "utf8");
       parts.push(`### ${file}\n\n\`\`\`\n${truncate(content, MAX_UNTRACKED_FILE_CHARS)}\n\`\`\``);
@@ -202,18 +199,12 @@ async function collectGitContext(cwd: string, signal?: AbortSignal) {
   }
 
   const status = await maybeRunGit(cwd, ["status", "--short"], signal);
-  const stagedFiles = (await maybeRunGit(cwd, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"], signal))
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const unstagedFiles = (await maybeRunGit(cwd, ["diff", "--name-only", "--diff-filter=ACMRD"], signal))
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const untrackedFiles = (await maybeRunGit(cwd, ["ls-files", "--others", "--exclude-standard"], signal))
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const stagedFiles = (await maybeRunGit(repoRoot, ["diff", "--cached", "--name-only", "-z", "--no-renames", "--no-ext-diff", "--no-textconv", "--diff-filter=ACMRD"], signal))
+    .split("\0").filter(Boolean);
+  const unstagedFiles = (await maybeRunGit(repoRoot, ["diff", "--name-only", "-z", "--no-renames", "--no-ext-diff", "--no-textconv", "--diff-filter=ACMRD"], signal))
+    .split("\0").filter(Boolean);
+  const untrackedFiles = (await maybeRunGit(repoRoot, ["ls-files", "-z", "--others", "--exclude-standard"], signal))
+    .split("\0").filter(Boolean);
 
   const changedFiles = unique([...stagedFiles, ...unstagedFiles, ...untrackedFiles]);
   if (changedFiles.length === 0) {
@@ -226,11 +217,17 @@ async function collectGitContext(cwd: string, signal?: AbortSignal) {
     };
   }
 
-  const stagedStat = await maybeRunGit(cwd, ["diff", "--cached", "--stat", "--summary", "--find-renames"], signal);
-  const unstagedStat = await maybeRunGit(cwd, ["diff", "--stat", "--summary", "--find-renames"], signal);
-  const stagedPatch = await maybeRunGit(cwd, ["diff", "--cached", "--minimal", "--find-renames", "--unified=12"], signal, 20000);
-  const unstagedPatch = await maybeRunGit(cwd, ["diff", "--minimal", "--find-renames", "--unified=12"], signal, 20000);
-  const untrackedSnippets = await collectUntrackedSnippets(cwd, repoRoot, untrackedFiles);
+  const staged = await safePaths(stagedFiles, repoRoot);
+  const unstaged = await safePaths(unstagedFiles, repoRoot);
+  const diff = (files: string[], cached: boolean, patch: boolean) => files.length === 0 ? Promise.resolve("")
+    : maybeRunGit(repoRoot, ["diff", ...(cached ? ["--cached"] : []), "--no-ext-diff", "--no-textconv", "--no-renames",
+        ...(patch ? ["--minimal", "--unified=12"] : ["--stat", "--summary"]), "--",
+        ...files.map((file) => `:(literal)${file}`)], signal, 20000);
+  const stagedStat = await diff(staged, true, false);
+  const unstagedStat = await diff(unstaged, false, false);
+  const stagedPatch = await diff(staged, true, true);
+  const unstagedPatch = await diff(unstaged, false, true);
+  const untrackedSnippets = await collectUntrackedSnippets(repoRoot, untrackedFiles, signal);
 
   const repoLabel = relative(repoRoot, cwd) || ".";
   const gitContext = truncate(
@@ -347,47 +344,37 @@ async function generateReview(
   );
   const final = extractFinalAssistantText(
     [
-      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
       ...run.messages,
       ...(run.turnEndMessage ? [run.turnEndMessage] : []),
       ...(run.agentEndMessage ? [run.agentEndMessage] : []),
     ],
     run.streamedText,
   );
-  const failed = run.stopReason === "error" || run.stopReason === "aborted" || !final.text;
+  const failed = run.stopReason !== "stop" || !final.text;
   const report = failed
     ? run.stopReason === "aborted" ? "Reviewer cancelled."
-      : `Reviewer failed: ${run.errorMessage ?? "The model returned no text."}`
+      : `Reviewer failed: ${run.errorMessage ?? `The model did not complete (${run.stopReason ?? "unknown"}), or returned no text.`}`
     : final.text;
   return {
     report, isError: failed, repoRoot: git.repoRoot, changedFiles: git.changedFiles,
-    reviewerModel: modelArg, subagentMetrics: buildReviewSubagentMetrics(run),
+    reviewerModel: modelArg, subagentMetrics: buildSubagentMetrics(run),
   };
 }
 
 export default function (pi: ExtensionAPI) {
-  const controllers = new Set<AbortController>();
-  let generation = 0;
-  pi.on("session_shutdown", () => {
-    generation += 1;
-    for (const controller of controllers) controller.abort();
-    controllers.clear();
-  });
+  const sessionWork = createSessionWork(pi);
   async function runReview(ctx: ExtensionContext, input: ReviewParams, signal?: AbortSignal, progress?: (value: ReviewProgress) => void) {
-    const owner = generation;
-    const controller = new AbortController();
-    const abort = () => controller.abort();
-    if (signal?.aborted) abort();
-    else signal?.addEventListener("abort", abort, { once: true });
-    controllers.add(controller);
+    const work = sessionWork.start(signal);
     try {
-      const result = await generateReview(ctx, pi.getThinkingLevel(), input, controller.signal,
-        (value) => { if (owner === generation) progress?.(value); });
-      if (owner !== generation) throw new Error("Reviewer session was replaced.");
+      const result = await generateReview(ctx, pi.getThinkingLevel(), input, work.signal,
+        (value) => { if (work.isCurrent()) progress?.(value); });
+      work.assertCurrent();
       return result;
+    } catch (error) {
+      work.assertCurrent();
+      throw error;
     } finally {
-      signal?.removeEventListener("abort", abort);
-      controllers.delete(controller);
+      work.dispose();
     }
   }
   pi.registerMessageRenderer(REVIEW_REPORT_TYPE, (message, { expanded }, theme) => {
@@ -433,7 +420,7 @@ export default function (pi: ExtensionAPI) {
         }),
       ),
     }),
-    async execute(_toolCallId, params, signal, onUpdate, ctx) {
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
       onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }], details: { phase: "collecting context" } });
       const result = await runReview(ctx, params, signal, (progress) => {
         onUpdate?.({
@@ -442,8 +429,9 @@ export default function (pi: ExtensionAPI) {
         });
       });
       const generatedAt = Date.now();
-      const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+      const sessionKey = getStatuslineSessionKey(ctx);
       pi.events.emit("subagent:metrics", {
+        id: toolCallId,
         generatedAt,
         sessionKey,
         subagentMetrics: result.subagentMetrics,
@@ -455,6 +443,7 @@ export default function (pi: ExtensionAPI) {
         isError: result.isError,
         content: [{ type: "text", text: result.report }],
         details: {
+          id: toolCallId,
           generatedAt,
           sessionKey,
           repoRoot: result.repoRoot,
@@ -477,13 +466,15 @@ export default function (pi: ExtensionAPI) {
         const rest = stage ? trimmed.slice(stageMatch?.[0].length ?? 0).trim() : trimmed;
         ctx.ui.notify("Reviewer subagent: collecting context and reviewing changes...", "info");
         const result = await runReview(ctx, { stage, context: rest || undefined }, ctx.signal);
+        const id = randomUUID();
         const generatedAt = Date.now();
-        const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+        const sessionKey = getStatuslineSessionKey(ctx);
         pi.sendMessage({
           customType: REVIEW_REPORT_TYPE,
           content: `## Reviewer report\n\n${result.report}`,
           display: true,
           details: {
+            id,
             generatedAt,
             sessionKey,
             repoRoot: result.repoRoot,
@@ -493,12 +484,14 @@ export default function (pi: ExtensionAPI) {
           },
         });
         pi.events.emit("subagent:metrics", {
+          id,
           generatedAt,
           sessionKey,
           subagentMetrics: result.subagentMetrics,
           source: "command",
         });
       } catch (error) {
+        if (isCancelledWork(error)) return;
         const message = error instanceof Error ? error.message : String(error);
         ctx.ui.notify(`Reviewer subagent failed: ${message}`, "error");
       }

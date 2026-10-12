@@ -1,6 +1,10 @@
+import { resolveSubagentAuth, type SubagentAuth } from "./lib/subagent-auth.ts";
+import { createSessionWork, isCancelledWork } from "./lib/session-work.ts";
 import { domainRenderers } from "./lib/domain-tool-renderers.ts";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { randomUUID } from "node:crypto";
+import { getStatuslineSessionKey } from "./statusline/registry.ts";
 import {
   buildSubagentMetrics,
   extractFinalAssistantText,
@@ -86,20 +90,16 @@ async function runAdvisor(
     (model, index, all): model is NonNullable<typeof model> => Boolean(model) && all.indexOf(model) === index,
   );
   let advisor: NonNullable<typeof active> | undefined;
-  let auth: { apiKey?: string; headers?: Record<string, string> } = {};
+  let auth: SubagentAuth = {};
   let authError = "No Astra or active model is available for advisor_design.";
   for (const candidate of candidates) {
-    const resolvedAuth = await ctx.modelRegistry.getApiKeyAndHeaders(candidate);
-    if (!resolvedAuth.ok) {
-      authError = `Unable to resolve advisor auth: ${resolvedAuth.error}`;
-      continue;
+    try {
+      auth = await resolveSubagentAuth(ctx, candidate);
+      advisor = candidate;
+      break;
+    } catch (error) {
+      authError = error instanceof Error ? error.message : String(error);
     }
-    advisor = candidate;
-    // OAuth providers must resolve credentials in the child Pi process; never pass a derived token.
-    auth = ctx.modelRegistry.isUsingOAuth(candidate)
-      ? {}
-      : { apiKey: resolvedAuth.apiKey, headers: resolvedAuth.headers };
-    break;
   }
   if (!advisor) throw new Error(authError);
 
@@ -119,6 +119,8 @@ async function runAdvisor(
     providerName: advisor.provider,
     apiKey: auth.apiKey,
     authHeaders: auth.headers,
+    authBaseUrl: auth.baseUrl,
+    authEnv: auth.env,
     systemPrompt: `${ADVISOR_SYSTEM_PROMPT}\n\nParent system prompt (reference context only; credentials redacted):\n${redactCredentials(ctx.getSystemPrompt())}`,
     env: { [ADVISOR_CHILD_MARKER]: "1" },
     signal,
@@ -151,14 +153,13 @@ async function runAdvisor(
   });
   const final = extractFinalAssistantText(
     [
-      ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
       ...run.messages,
       ...(run.turnEndMessage ? [run.turnEndMessage] : []),
       ...(run.agentEndMessage ? [run.agentEndMessage] : []),
     ],
     run.streamedText,
   );
-    const isError = !final.text || run.stopReason === "error" || run.stopReason === "aborted" || run.exitCode !== 0;
+    const isError = !final.text || run.stopReason !== "stop" || run.exitCode !== 0;
     const packet = isError ? `Advisor failed: ${run.errorMessage ?? "No completed task packet was returned."}` : final.text.trim();
     onActivity?.({ ...activity, phase: "end", error: isError ? packet : undefined });
     return { packet, model, isError, metrics: buildSubagentMetrics(run) };
@@ -189,8 +190,9 @@ function setAdvisorProgress(
   );
 }
 
-function packetDetails(result: Awaited<ReturnType<typeof runAdvisor>>, source: "tool" | "command" | "auto") {
+function packetDetails(result: Awaited<ReturnType<typeof runAdvisor>>, source: "tool" | "command" | "auto", id: string = randomUUID()) {
   return {
+    id,
     source,
     advisor: result.model,
     generatedAt: Date.now(),
@@ -204,13 +206,15 @@ function emitAdvisorMetrics(
   details: ReturnType<typeof packetDetails>,
 ): void {
   pi.events.emit("subagent:metrics", {
+    id: details.id,
     generatedAt: details.generatedAt,
-    sessionKey: ctx.sessionManager.getSessionFile() ?? "ephemeral",
+    sessionKey: getStatuslineSessionKey(ctx),
     subagentMetrics: details.subagentMetrics,
   });
 }
 
 export default function threeTierRouting(pi: ExtensionAPI) {
+  const sessionWork = createSessionWork(pi);
   const progressOwner = `advisor-progress-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   globalThis.__PI_ADVISOR_PROGRESS_OWNER__ = progressOwner;
   let sessionGeneration = 0;
@@ -219,7 +223,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     activeSessionGeneration = ++sessionGeneration;
-    activeSessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+    activeSessionKey = getStatuslineSessionKey(ctx);
     advisedPrompts.clear();
   });
 
@@ -231,8 +235,9 @@ export default function threeTierRouting(pi: ExtensionAPI) {
 
   pi.on("session_tree", (_event, ctx) => {
     activeSessionGeneration = ++sessionGeneration;
-    activeSessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
+    activeSessionKey = getStatuslineSessionKey(ctx);
     advisedPrompts.clear();
+    setAdvisorProgress(ctx, undefined, progressOwner);
   });
 
   const runAdvisorWithActivity = (
@@ -242,7 +247,8 @@ export default function threeTierRouting(pi: ExtensionAPI) {
   ) => {
     const generation = activeSessionGeneration;
     const sessionKey = activeSessionKey;
-    return runAdvisor(ctx, task, signal, sessionKey, (activity) => {
+    const work = sessionWork.start(signal);
+    return runAdvisor(ctx, task, work.signal, sessionKey, (activity) => {
       // A child may finish after its parent session is replaced. Do not let its
       // late events appear in the new session's activity panel.
       if (
@@ -253,11 +259,12 @@ export default function threeTierRouting(pi: ExtensionAPI) {
         pi.events.emit("subagent:activity", activity);
       }
     }).then((result) => {
-      if (generation !== activeSessionGeneration || sessionKey !== activeSessionKey) {
-        throw new Error("Advisor session or branch was replaced.");
-      }
+      work.assertCurrent();
       return result;
-    });
+    }).catch((error) => {
+      work.assertCurrent();
+      throw error;
+    }).finally(() => work.dispose());
   };
 
   pi.registerTool({
@@ -275,7 +282,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       }
       onUpdate?.({ content: [{ type: "text", text: "Preparing Astra task packet…" }], details: { phase: "advising" } });
       const result = await runAdvisorWithActivity(ctx, params.task, signal);
-      const details = packetDetails(result, "tool");
+      const details = packetDetails(result, "tool", _toolCallId);
       emitAdvisorMetrics(pi, ctx, details);
       return {
         usage: result.metrics?.usage,
@@ -303,6 +310,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
         const details = packetDetails(result, "command");
         emitAdvisorMetrics(pi, ctx, details);
         if (result.isError) {
+          pi.appendEntry("subagent-usage", details);
           ctx.ui.notify(result.packet, "error");
           return;
         }
@@ -313,6 +321,7 @@ export default function threeTierRouting(pi: ExtensionAPI) {
           details,
         });
       } catch (error) {
+        if (isCancelledWork(error)) return;
         ctx.ui.notify(`Astra advisor failed: ${error instanceof Error ? error.message : String(error)}`, "error");
       }
     },
@@ -335,7 +344,10 @@ export default function threeTierRouting(pi: ExtensionAPI) {
       const result = await runAdvisorWithActivity(ctx, event.prompt, ctx.signal);
       const details = packetDetails(result, "auto");
       emitAdvisorMetrics(pi, ctx, details);
-      if (result.isError) return undefined;
+      if (result.isError) {
+        pi.appendEntry("subagent-usage", details);
+        return undefined;
+      }
       return {
         message: {
           customType: ADVISOR_MESSAGE_TYPE,
