@@ -137,8 +137,8 @@ export default function copilotCost(pi: ExtensionAPI) {
     const summary = buildCostSummary(ctx, pendingReviewerMetrics);
     statuslineItem.set(
       {
-        content: ctx.ui.theme.fg("dim", buildStatus(summary)),
-        compactContent: ctx.ui.theme.fg("dim", buildCompactStatus(summary)),
+        content: (theme) => theme.fg("dim", buildStatus(summary)),
+        compactContent: (theme) => theme.fg("dim", buildCompactStatus(summary)),
       },
       getStatuslineSessionKey(ctx),
     );
@@ -174,6 +174,11 @@ export default function copilotCost(pi: ExtensionAPI) {
   pi.on("agent_settled", async (_event, ctx) => {
     currentCtx = ctx;
     currentSessionKey = getStatuslineSessionKey(ctx);
+    renderStatus(ctx);
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    pendingReviewerMetrics = undefined;
     renderStatus(ctx);
   });
 

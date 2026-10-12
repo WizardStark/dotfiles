@@ -1,7 +1,8 @@
-import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
+import { sumUsages } from "./usage.ts";
+import type { AssistantMessage, Message, Usage } from "@earendil-works/pi-ai";
 import {
 	estimateUsageCost,
-} from "./model-cost";
+} from "./model-cost.ts";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -14,6 +15,7 @@ export type SubagentRunState = {
 	lastAssistantPartial?: Message;
 	turnEndMessage?: Message;
 	agentEndMessage?: Message;
+	agentEndMessages?: Message[];
 	stderr: string;
 	exitCode: number;
 	stopReason?: string;
@@ -30,6 +32,7 @@ export type TempFileSpec = {
 };
 
 export type SubagentMetrics = {
+	usage?: Usage;
 	provider?: string;
 	model?: string;
 	cost?: {
@@ -38,7 +41,7 @@ export type SubagentMetrics = {
 		knownRate: boolean;
 		unknownModel?: string;
 	};
-	throughput: {
+	throughput?: {
 		ttftMs?: number;
 		generationDurationMs?: number;
 		outputTokens: number;
@@ -159,52 +162,81 @@ export function extractBestAssistantText(
 	};
 }
 
-export function buildSubagentMetrics(run: SubagentRunState): SubagentMetrics | undefined {
-	const partialAssistant =
-		run.lastAssistantPartial?.role === "assistant" ? (run.lastAssistantPartial as AssistantMessage) : undefined;
-	const finalizedAssistant = extractFinalAssistantMessage([
-		...run.messages,
-		...(run.turnEndMessage ? [run.turnEndMessage] : []),
-		...(run.agentEndMessage ? [run.agentEndMessage] : []),
-	]);
-	const finalAssistant = finalizedAssistant ?? partialAssistant;
-	if (!finalAssistant) {
-		return undefined;
+// message_end is authoritative. turn_end/agent_end repeat the last response;
+// never collapse distinct requests just because their timestamp/content match.
+export function subagentUsageMessages(run: SubagentRunState): Message[] {
+	const records: Message[] = [];
+	const seenResponses = new Set<string>();
+	const seenTools = new Set<string>();
+	for (const message of run.messages) {
+		if (message.role === "assistant") {
+			if (message.stopReason === "pending") continue;
+			const id = message.responseId ? `${message.provider}/${message.model}/${message.responseId}` : undefined;
+			if (id && seenResponses.has(id)) continue;
+			if (id) seenResponses.add(id);
+			records.push(message);
+		} else if (message.role === "toolResult" && message.usage) {
+			if (seenTools.has(message.toolCallId)) continue;
+			seenTools.add(message.toolCallId);
+			records.push(message);
+		}
 	}
+	// Reconcile full fallback envelopes by multiplicity. Two identical real
+	// requests remain two requests; repeating their agent_end snapshot adds none.
+	const identity = (message: Message) => message.role === "assistant"
+		? message.responseId ? `response:${message.provider}/${message.model}/${message.responseId}` : JSON.stringify(message)
+		: message.role === "toolResult" ? `tool:${message.toolCallId}` : undefined;
+	for (const envelope of [
+		run.agentEndMessages ?? [],
+		run.turnEndMessage ? [run.turnEndMessage] : [],
+		run.agentEndMessage ? [run.agentEndMessage] : [],
+	]) {
+		const existing = new Map<string, number>();
+		for (const record of records) {
+			const key = identity(record);
+			if (key) existing.set(key, (existing.get(key) ?? 0) + 1);
+		}
+		const occurrences = new Map<string, number>();
+		for (const message of envelope) {
+			if (message.role !== "assistant" && message.role !== "toolResult") continue;
+			if (message.role === "assistant" && message.stopReason === "pending") continue;
+			if (message.role === "toolResult" && !message.usage) continue;
+			const key = identity(message)!;
+			const count = (occurrences.get(key) ?? 0) + 1;
+			occurrences.set(key, count);
+			// Response/tool IDs identify a single result, even within one envelope.
+			if ((message.role === "toolResult" || message.responseId) && count > 1) continue;
+			if (count > (existing.get(key) ?? 0)) records.push(message);
+		}
+	}
+	return records;
+}
 
-	const assistantForUsage = {
-		...finalAssistant,
-		provider: finalAssistant.provider ?? partialAssistant?.provider,
-		model: finalAssistant.model ?? partialAssistant?.model,
-		usage: finalAssistant.usage ?? partialAssistant?.usage,
-	} as AssistantMessage;
-
-	const ttftMs =
-		run.providerRequestStartedAt !== undefined && run.firstTextAt !== undefined
-			? Math.max(0, run.firstTextAt - run.providerRequestStartedAt)
-			: undefined;
-	const generationDurationMs =
-		run.firstTextAt !== undefined && run.assistantCompletedAt !== undefined
-			? Math.max(1, run.assistantCompletedAt - run.firstTextAt)
-			: undefined;
-	const outputTokens = Math.max(0, assistantForUsage.usage?.output ?? 0);
-	const generationTokensPerSecond =
-		outputTokens > 0 && generationDurationMs !== undefined
-			? outputTokens / (generationDurationMs / 1_000)
-			: undefined;
-
-	const cost = estimateUsageCost(assistantForUsage);
-	const hasUsage = assistantForUsage.usage !== undefined;
-
+export function buildSubagentMetrics(run: SubagentRunState): SubagentMetrics | undefined {
+	const records = subagentUsageMessages(run);
+	if (!records.length) return undefined;
+	const assistants = records.filter((message): message is AssistantMessage => message.role === "assistant");
+	const final = assistants.at(-1);
+	const usage = sumUsages(records.map((message) => "usage" in message ? message.usage : undefined));
+	const estimates = assistants.filter((message) => message.usage).map(estimateUsageCost);
+	const nestedCosts = records.filter((message) => message.role === "toolResult").map((message) => message.usage?.cost.total ?? 0);
+	const ttftMs = run.providerRequestStartedAt !== undefined && run.firstTextAt !== undefined
+		? Math.max(0, run.firstTextAt - run.providerRequestStartedAt) : undefined;
+	const generationDurationMs = run.firstTextAt !== undefined && run.assistantCompletedAt !== undefined
+		? Math.max(1, run.assistantCompletedAt - run.firstTextAt) : undefined;
+	const outputTokens = usage?.output ?? 0;
 	return {
-		provider: assistantForUsage.provider,
-		model: assistantForUsage.model,
-		cost: hasUsage ? cost : undefined,
+		provider: final?.provider, model: final?.model, usage,
+		cost: usage ? {
+			amount: estimates.reduce((total, cost) => total + cost.amount, 0) + nestedCosts.reduce((a, b) => a + b, 0),
+			estimated: estimates.some((cost) => cost.estimated),
+			knownRate: estimates.every((cost) => cost.knownRate),
+			unknownModel: estimates.find((cost) => !cost.knownRate)?.unknownModel,
+		} : undefined,
 		throughput: {
-			ttftMs,
-			generationDurationMs,
-			outputTokens,
-			generationTokensPerSecond,
+			ttftMs, generationDurationMs, outputTokens,
+			generationTokensPerSecond: outputTokens > 0 && generationDurationMs !== undefined
+				? outputTokens / (generationDurationMs / 1000) : undefined,
 		},
 	};
 }
@@ -356,6 +388,7 @@ export async function runSubagentProcess(options: RunSubagentOptions): Promise<S
 						state.turnEndMessage = event.message as Message;
 					}
 					if (event.type === "agent_end" && Array.isArray(event.messages)) {
+						state.agentEndMessages = event.messages as Message[];
 						for (let i = event.messages.length - 1; i >= 0; i--) {
 							if (event.messages[i]?.role === "assistant") {
 								state.agentEndMessage = event.messages[i] as Message;

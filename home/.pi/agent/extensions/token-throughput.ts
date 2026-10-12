@@ -12,7 +12,7 @@ import {
   type SubagentMetrics,
   type SubagentMetricsEvent,
 } from "./lib/subagent-metrics.ts";
-import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
+import { createStatuslineItem, getStatuslineSessionKey, renderStatuslineContent, type StatuslineContent } from "./statusline/registry";
 
 const STATUS_KEY = "token-throughput";
 const STATUS_INTERVAL_MS = 100;
@@ -173,29 +173,26 @@ function buildContextSummary(ctx: ExtensionContext, retainedTokens?: number) {
   const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow;
   if (!Number.isFinite(tokens) || tokens === undefined || tokens < 0) {
     return {
-      full: ctx.ui.theme.fg("dim", "Ctx —"),
-      compact: ctx.ui.theme.fg("dim", "Ctx —"),
+      full: "Ctx —",
+      compact: "Ctx —",
     };
   }
 
   if (!Number.isFinite(contextWindow) || contextWindow === undefined || contextWindow <= 0) {
     return {
-      full: ctx.ui.theme.fg("dim", `Ctx ${formatTokenCount(tokens)}`),
-      compact: ctx.ui.theme.fg("dim", `Ctx ${formatTokenCount(tokens)}`),
+      full: `Ctx ${formatTokenCount(tokens)}`,
+      compact: `Ctx ${formatTokenCount(tokens)}`,
     };
   }
 
   const percent = Math.round((tokens / contextWindow) * 100);
   return {
-    full: ctx.ui.theme.fg(
-      "dim",
-      `Ctx ${formatTokenCount(tokens)}/${formatTokenCount(contextWindow)} (${percent}%)`,
-    ),
-    compact: ctx.ui.theme.fg("dim", `Ctx ${percent}%`),
+    full: `Ctx ${formatTokenCount(tokens)}/${formatTokenCount(contextWindow)} (${percent}%)`,
+    compact: `Ctx ${percent}%`,
   };
 }
 
-function setStatus(ctx: ExtensionContext, content: string | undefined, compactContent = content, retainedTokens = latestContextTokens) {
+function setStatus(ctx: ExtensionContext, content: StatuslineContent | undefined, compactContent = content, retainedTokens = latestContextTokens) {
   if (!ctx.hasUI) {
     return;
   }
@@ -206,11 +203,10 @@ function setStatus(ctx: ExtensionContext, content: string | undefined, compactCo
   }
 
   const context = buildContextSummary(ctx, retainedTokens);
-  const separator = ctx.ui.theme.fg("dim", " · ");
   statuslineItem.set(
     {
-      content: `${content}${separator}${context.full}`,
-      compactContent: `${compactContent ?? content}${separator}${context.compact}`,
+      content: (theme) => `${renderStatuslineContent(content, theme)}${theme.fg("dim", ` · ${context.full}`)}`,
+      compactContent: (theme) => `${renderStatuslineContent(compactContent ?? content, theme)}${theme.fg("dim", ` · ${context.compact}`)}`,
     },
     getStatuslineSessionKey(ctx),
   );
@@ -381,9 +377,9 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     }
   }
 
-  function buildStatusWithUsage(ctx: ExtensionContext, status: string): string {
-    return `${status}${ctx.ui.theme.fg("dim", " · ")}${buildUsageSummary(
-      ctx.ui.theme,
+  function buildStatusWithUsage(theme: Theme, status: string): string {
+    return `${status}${theme.fg("dim", " · ")}${buildUsageSummary(
+      theme,
       inputTokenSamples,
       outputTokenSamples,
     )}`;
@@ -452,15 +448,16 @@ export default function tokenThroughput(pi: ExtensionAPI) {
 
     const subagentSummary = buildSubagentSummary(ctx, pendingReviewerMetrics);
 
-    if (lastFailure) {
-      const code = lastFailure.statusCode ? ` HTTP ${lastFailure.statusCode}` : "";
+    const failure = lastFailure;
+    if (failure) {
+      const code = failure.statusCode ? ` HTTP ${failure.statusCode}` : "";
       setStatus(
         ctx,
-        buildStatusWithUsage(
-          ctx,
-          `${ctx.ui.theme.fg("warning", "⚠")}${ctx.ui.theme.fg("dim", ` Resp failed${code} after ${formatDuration(lastFailure.durationMs)} · ${subagentSummary}`)}`,
+        (theme) => buildStatusWithUsage(
+          theme,
+          `${theme.fg("warning", "⚠")}${theme.fg("dim", ` Resp failed${code} after ${formatDuration(failure.durationMs)} · ${subagentSummary}`)}`,
         ),
-        `${ctx.ui.theme.fg("warning", "⚠")}${ctx.ui.theme.fg("dim", ` Fail${code || ""} · ${formatDuration(lastFailure.durationMs)}`)}`,
+        (theme) => `${theme.fg("warning", "⚠")}${theme.fg("dim", ` Fail${code || ""} · ${formatDuration(failure.durationMs)}`)}`,
       );
       return;
     }
@@ -468,8 +465,8 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     if (!lastCompleted) {
       setStatus(
         ctx,
-        buildStatusWithUsage(ctx, ctx.ui.theme.fg("dim", `Resp — · ${subagentSummary}`)),
-        ctx.ui.theme.fg("dim", "Resp —"),
+        (theme) => buildStatusWithUsage(theme, theme.fg("dim", `Resp — · ${subagentSummary}`)),
+        (theme) => theme.fg("dim", "Resp —"),
       );
       return;
     }
@@ -479,11 +476,11 @@ export default function tokenThroughput(pi: ExtensionAPI) {
     const rate = formatTokensPerSecond(lastCompleted.generationTokensPerSecond);
     setStatus(
       ctx,
-      buildStatusWithUsage(
-        ctx,
-        `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` ${ttft} · ${rate} · ${subagentSummary}`)}`,
+      (theme) => buildStatusWithUsage(
+        theme,
+        `${theme.fg("accent", "⚡")}${theme.fg("dim", ` ${ttft} · ${rate} · ${subagentSummary}`)}`,
       ),
-      `${ctx.ui.theme.fg("accent", "⚡")}${ctx.ui.theme.fg("dim", ` ${ttft} · ${rate}`)}`,
+      (theme) => `${theme.fg("accent", "⚡")}${theme.fg("dim", ` ${ttft} · ${rate}`)}`,
     );
   }
 
@@ -507,11 +504,11 @@ export default function tokenThroughput(pi: ExtensionAPI) {
           : `P ~${formatTokenCount(activeRequest.estimatedInputTokens)}`;
       setStatus(
         ctx,
-        buildStatusWithUsage(
-          ctx,
-          `${ctx.ui.theme.fg("warning", "…")}${ctx.ui.theme.fg("dim", ` Main waiting ${elapsed} · ${promptEstimate} · ${subagentSummary}`)}`,
+        (theme) => buildStatusWithUsage(
+          theme,
+          `${theme.fg("warning", "…")}${theme.fg("dim", ` Main waiting ${elapsed} · ${promptEstimate} · ${subagentSummary}`)}`,
         ),
-        `${ctx.ui.theme.fg("warning", "…")}${ctx.ui.theme.fg("dim", ` Wait ${elapsed}`)}`,
+        (theme) => `${theme.fg("warning", "…")}${theme.fg("dim", ` Wait ${elapsed}`)}`,
       );
       return;
     }
@@ -522,11 +519,11 @@ export default function tokenThroughput(pi: ExtensionAPI) {
       activeRequest.estimatedInputTokens === undefined ? "P ~—" : `P ~${formatTokenCount(activeRequest.estimatedInputTokens)}`;
     setStatus(
       ctx,
-      buildStatusWithUsage(
-        ctx,
-        `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` Main TTFT ${formatDuration(ttft)} · ${promptEstimate} · streaming ${streamingFor} · ${subagentSummary}`)}`,
+      (theme) => buildStatusWithUsage(
+        theme,
+        `${theme.fg("accent", "●")}${theme.fg("dim", ` Main TTFT ${formatDuration(ttft)} · ${promptEstimate} · streaming ${streamingFor} · ${subagentSummary}`)}`,
       ),
-      `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` TTFT ${formatDuration(ttft)} · ${streamingFor}`)}`,
+      (theme) => `${theme.fg("accent", "●")}${theme.fg("dim", ` TTFT ${formatDuration(ttft)} · ${streamingFor}`)}`,
     );
   }
 

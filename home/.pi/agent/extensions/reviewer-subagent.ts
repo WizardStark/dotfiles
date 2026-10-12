@@ -1,5 +1,7 @@
+import { domainRenderers } from "./lib/domain-tool-renderers.ts";
+import { runReviewerRequest } from "./lib/reviewer-request.ts";
 import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { StringEnum, type Message } from "@earendil-works/pi-ai";
+import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { convertToLlm, serializeConversation } from "@earendil-works/pi-coding-agent";
 import { Box, Text } from "@earendil-works/pi-tui";
@@ -10,7 +12,6 @@ import { relative } from "node:path";
 import {
   buildSubagentMetrics,
   extractFinalAssistantText,
-  runSubagentProcess,
   type SubagentMetrics,
   type SubagentRunState,
 } from "./lib/subagent-runtime.ts";
@@ -56,6 +57,7 @@ type ReviewResult = {
   changedFiles: string[];
   reviewerModel: string;
   subagentMetrics?: SubagentMetrics;
+  isError?: boolean;
 };
 
 type ReviewParams = {
@@ -114,11 +116,13 @@ async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout
     let stdout = "";
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
 
     const finish = (value: string) => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
+      if (onAbort) signal?.removeEventListener("abort", onAbort);
       resolve(value);
     };
 
@@ -139,7 +143,7 @@ async function runGit(cwd: string, args: string[], signal?: AbortSignal, timeout
     proc.on("error", () => finish(""));
 
     if (signal) {
-      const onAbort = () => {
+      onAbort = () => {
         proc.kill("SIGTERM");
         finish("");
       };
@@ -160,7 +164,12 @@ async function maybeRunGit(cwd: string, args: string[], signal?: AbortSignal, ti
 async function collectUntrackedSnippets(cwd: string, repoRoot: string, files: string[]): Promise<string> {
   if (files.length === 0) return "";
 
-  const selected = files.slice(0, MAX_UNTRACKED_FILES);
+  // Extension-owned reads do not pass through tool_call secret guards.
+  const safeFiles = files.filter((file) => {
+    const name = file.split("/").at(-1) ?? "";
+    return !/^\.env(?:\..+)?$/.test(name) || name === ".env.example";
+  });
+  const selected = safeFiles.slice(0, MAX_UNTRACKED_FILES);
   const parts: string[] = [];
 
   for (const file of selected) {
@@ -274,68 +283,6 @@ function buildReviewPrompt(input: {
   ].join("\n\n");
 }
 
-async function runReviewerSubagent(
-  cwd: string,
-  prompt: string,
-  modelArg: string,
-  auth: { apiKey?: string; headers?: Record<string, string> },
-  signal?: AbortSignal,
-  onProgress?: (progress: ReviewProgress) => void,
-): Promise<ReviewRunState> {
-  let completedTurns = 0;
-  return await runSubagentProcess({
-    cwd,
-    prompt,
-    modelArg,
-    apiKey: auth.apiKey,
-    providerName: modelArg.split("/", 1)[0],
-    authHeaders: auth.headers,
-    systemPrompt: REVIEW_SYSTEM_PROMPT,
-    extraArgs: [
-      "--no-tools",
-      "--no-extensions",
-      "-e",
-      "@temp/timing-extension.ts",
-      "--no-skills",
-      "--no-prompt-templates",
-      "--no-context-files",
-    ],
-    tempFiles: [
-      {
-        name: "timing-extension.ts",
-        content: `export default function (pi) {
-  const emit = (payload) => {
-    process.stdout.write(JSON.stringify({ type: "reviewer_metric", ...payload }) + "\\n");
-  };
-
-  pi.on("before_provider_request", async () => {
-    emit({ event: "before_provider_request", timestamp: Date.now() });
-  });
-
-  pi.on("after_provider_response", async (event) => {
-    emit({ event: "after_provider_response", timestamp: Date.now(), status: event.status });
-  });
-}
-`,
-      },
-    ],
-    signal,
-    onEvent: (event, state) => {
-      if (event.type === "reviewer_metric" && event.event === "before_provider_request") {
-        state.providerRequestStartedAt ??= typeof event.timestamp === "number" ? event.timestamp : Date.now();
-        onProgress?.({ phase: "thinking", turns: completedTurns });
-      }
-      if (event.type === "message_update") {
-        onProgress?.({ phase: "responding", turns: completedTurns });
-      }
-      if (event.type === "turn_end") {
-        completedTurns += 1;
-        onProgress?.({ phase: "responding", turns: completedTurns });
-      }
-    },
-  });
-}
-
 async function generateReview(
   ctx: ExtensionContext,
   defaultThinkingLevel: ThinkingLevel,
@@ -343,7 +290,9 @@ async function generateReview(
   signal?: AbortSignal,
   onProgress?: (progress: ReviewProgress) => void,
 ): Promise<ReviewResult> {
+  signal?.throwIfAborted();
   const git = await collectGitContext(ctx.cwd, signal);
+  signal?.throwIfAborted();
   if (!git.ok) {
     throw new Error(git.reason);
   }
@@ -391,21 +340,11 @@ async function generateReview(
   thinkingLevelToUse = getScopedThinkingLevel(ctx, modelToUse) ?? thinkingLevelToUse;
   const modelArg =
     thinkingLevelToUse === "off" ? `${modelToUse.provider}/${modelToUse.id}` : `${modelToUse.provider}/${modelToUse.id}:${thinkingLevelToUse}`;
-  const resolvedAuth = await ctx.modelRegistry.getApiKeyAndHeaders(modelToUse);
-  if (!resolvedAuth.ok) {
-    throw new Error(
-      `Unable to resolve auth for reviewer subagent: ${resolvedAuth.error}`,
-    );
-  }
-
-  // OAuth credentials (notably GitHub Copilot) must be resolved by the child
-  // Pi process. Passing the derived token through --api-key bypasses the
-  // provider-native OAuth flow and produces a 421 Misdirected Request.
-  const auth = ctx.modelRegistry.isUsingOAuth(modelToUse)
-    ? {}
-    : { apiKey: resolvedAuth.apiKey, headers: resolvedAuth.headers };
   onProgress?.({ phase: "starting" });
-  const run = await runReviewerSubagent(ctx.cwd, prompt, modelArg, auth, signal, onProgress);
+  const run = await runReviewerRequest(
+    ctx.modelRegistry, modelToUse, thinkingLevelToUse, REVIEW_SYSTEM_PROMPT, prompt, signal,
+    (phase) => onProgress?.({ phase }),
+  );
   const final = extractFinalAssistantText(
     [
       ...(run.lastAssistantPartial ? [run.lastAssistantPartial] : []),
@@ -415,31 +354,42 @@ async function generateReview(
     ],
     run.streamedText,
   );
-  if (final.text) {
-    return {
-      report: final.text,
-      repoRoot: git.repoRoot,
-      changedFiles: git.changedFiles,
-      reviewerModel: modelArg,
-      subagentMetrics: buildReviewSubagentMetrics(run),
-    };
-  }
-
-  const stderr = run.stderr.trim();
-  const errorSuffix = final.errorMessage ? `; error: ${final.errorMessage}` : stderr ? `; stderr: ${stderr}` : "";
-  const streamedPreview = run.streamedText.trim();
-  const streamedSuffix = streamedPreview ? `; streamedText: ${JSON.stringify(truncate(streamedPreview, 400))}` : "";
-  const contentTypes = [run.lastAssistantPartial, run.turnEndMessage, run.agentEndMessage]
-    .filter((message): message is Message => Boolean(message))
-    .map((message) => `${message.role}:${message.content.map((part) => part.type).join(",") || "(none)"}`)
-    .join(" | ");
-  const contentSuffix = contentTypes ? `; fallbackMessages: ${contentTypes}` : "";
-  throw new Error(
-    `Reviewer subagent returned no text content (exitCode: ${run.exitCode}; stopReason: ${run.stopReason ?? "none"}${errorSuffix}${streamedSuffix}${contentSuffix}).`,
-  );
+  const failed = run.stopReason === "error" || run.stopReason === "aborted" || !final.text;
+  const report = failed
+    ? run.stopReason === "aborted" ? "Reviewer cancelled."
+      : `Reviewer failed: ${run.errorMessage ?? "The model returned no text."}`
+    : final.text;
+  return {
+    report, isError: failed, repoRoot: git.repoRoot, changedFiles: git.changedFiles,
+    reviewerModel: modelArg, subagentMetrics: buildReviewSubagentMetrics(run),
+  };
 }
 
 export default function (pi: ExtensionAPI) {
+  const controllers = new Set<AbortController>();
+  let generation = 0;
+  pi.on("session_shutdown", () => {
+    generation += 1;
+    for (const controller of controllers) controller.abort();
+    controllers.clear();
+  });
+  async function runReview(ctx: ExtensionContext, input: ReviewParams, signal?: AbortSignal, progress?: (value: ReviewProgress) => void) {
+    const owner = generation;
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (signal?.aborted) abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+    controllers.add(controller);
+    try {
+      const result = await generateReview(ctx, pi.getThinkingLevel(), input, controller.signal,
+        (value) => { if (owner === generation) progress?.(value); });
+      if (owner !== generation) throw new Error("Reviewer session was replaced.");
+      return result;
+    } finally {
+      signal?.removeEventListener("abort", abort);
+      controllers.delete(controller);
+    }
+  }
   pi.registerMessageRenderer(REVIEW_REPORT_TYPE, (message, { expanded }, theme) => {
     const details = (message.details ?? {}) as { changedFiles?: string[]; reviewer?: string };
     const body = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
@@ -463,6 +413,7 @@ export default function (pi: ExtensionAPI) {
     name: "review_changes",
     exposure: "model-only",
     label: "Review changes",
+    ...domainRenderers("review", "Review"),
     description:
       "Inspect current git changes in a fresh reviewer subagent; interim uses a cheaper model and final uses the active model.",
     parameters: Type.Object({
@@ -477,14 +428,14 @@ export default function (pi: ExtensionAPI) {
         }),
       ),
       stage: Type.Optional(
-        StringEnum(["interim", "final"], {
+        StringEnum(["interim", "final"] as const, {
           description: "Review stage. interim uses a cheaper model for early checks. final uses the current active model. Defaults to interim.",
         }),
       ),
     }),
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
-      onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }] });
-      const result = await generateReview(ctx, pi.getThinkingLevel(), params, signal, (progress) => {
+      onUpdate?.({ content: [{ type: "text", text: "Collecting changed files and recent context..." }], details: { phase: "collecting context" } });
+      const result = await runReview(ctx, params, signal, (progress) => {
         onUpdate?.({
           content: [{ type: "text", text: buildReviewerProgressText(progress) }],
           details: progress,
@@ -498,8 +449,10 @@ export default function (pi: ExtensionAPI) {
         subagentMetrics: result.subagentMetrics,
         source: "tool",
       });
-      onUpdate?.({ content: [{ type: "text", text: "Reviewer subagent finished." }] });
+      onUpdate?.({ content: [{ type: "text", text: "Reviewer finished." }], details: { phase: "finished" } });
       return {
+        usage: result.subagentMetrics?.usage,
+        isError: result.isError,
         content: [{ type: "text", text: result.report }],
         details: {
           generatedAt,
@@ -507,6 +460,7 @@ export default function (pi: ExtensionAPI) {
           repoRoot: result.repoRoot,
           changedFiles: result.changedFiles,
           reviewer: result.reviewerModel,
+          stage: params.stage ?? "interim",
           subagentMetrics: result.subagentMetrics,
         },
       };
@@ -522,7 +476,7 @@ export default function (pi: ExtensionAPI) {
         const stage = stageMatch?.[1]?.toLowerCase() as "interim" | "final" | undefined;
         const rest = stage ? trimmed.slice(stageMatch?.[0].length ?? 0).trim() : trimmed;
         ctx.ui.notify("Reviewer subagent: collecting context and reviewing changes...", "info");
-        const result = await generateReview(ctx, pi.getThinkingLevel(), { stage, context: rest || undefined }, ctx.signal);
+        const result = await runReview(ctx, { stage, context: rest || undefined }, ctx.signal);
         const generatedAt = Date.now();
         const sessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
         pi.sendMessage({

@@ -9,9 +9,7 @@
   "defaultTools": [
     "+codemode"
   ],
-  "extensions": [
-    "-builtin:codemode"
-  ],
+  "extensions": [],
   "compaction": {
     "enabled": true,
     "reserveTokens": 27200,

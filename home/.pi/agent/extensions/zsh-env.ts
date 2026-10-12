@@ -1,5 +1,4 @@
-import { createBashTool, createLocalBashOperations, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { compactCall, compactResult } from "./lib/compact-tool-renderers.ts";
+import { createBashToolDefinition, createLocalBashOperations, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
@@ -21,7 +20,7 @@ function runViaZsh(command: string): string {
 
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
-    const base = createBashTool(ctx.cwd, {
+    const base = createBashToolDefinition(ctx.cwd, {
       spawnHook: ({ command, cwd, env }) => ({
         command: runViaZsh(command),
         cwd,
@@ -32,15 +31,10 @@ export default function (pi: ExtensionAPI) {
     pi.registerTool({
       ...base,
       name: "bash",
-      renderShell: "self",
       // Preserve outputSchema, structuredContent, isError, and truncated output.
       async execute(toolCallId, params, signal, onUpdate, toolCtx) {
         return base.execute(toolCallId, params, signal, onUpdate, toolCtx);
       },
-      renderCall(_args, theme, context) {
-        return compactCall("bash", theme, context);
-      },
-      renderResult: compactResult,
     });
   });
 

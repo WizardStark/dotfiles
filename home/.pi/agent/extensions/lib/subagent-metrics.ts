@@ -1,4 +1,6 @@
+import type { Usage } from "@earendil-works/pi-ai";
 export type SubagentMetrics = {
+  usage?: Usage;
   cost?: {
     amount?: number;
     estimated?: boolean;

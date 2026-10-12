@@ -71,6 +71,9 @@ export default function piNotifications(pi: ExtensionAPI) {
   let taskSummary = "Pi task";
   let stuckTimer: ReturnType<typeof setTimeout> | undefined;
   let stuckReported = false;
+  let running = false;
+  let promptDepth = 0;
+  let generation = 0;
 
   function clearStuckTimer() {
     if (stuckTimer) clearTimeout(stuckTimer);
@@ -79,10 +82,14 @@ export default function piNotifications(pi: ExtensionAPI) {
 
   function armStuckTimer(ctx: ExtensionContext) {
     clearStuckTimer();
+    if (!running || promptDepth > 0) return;
+    const owner = generation;
     stuckTimer = setTimeout(() => {
-      if (stuckReported || ctx.isIdle()) return;
+      if (owner !== generation || !running || promptDepth > 0 || stuckReported || ctx.isIdle()) return;
       stuckReported = true;
-      void appendNotification(ctx, "stuck", taskSummary, pi.getSessionName());
+      void appendNotification(ctx, "stuck", taskSummary, pi.getSessionName()).catch((error) => {
+        if (owner === generation) ctx.ui.notify(`Pi notification failed: ${error instanceof Error ? error.message : String(error)}`, "warning");
+      });
     }, STUCK_AFTER_MS);
   }
 
@@ -95,7 +102,7 @@ export default function piNotifications(pi: ExtensionAPI) {
   // agent, model, or tool progress for five minutes rather than merely running
   // a long task.
   function noteActivity(ctx: ExtensionContext) {
-    if (ctx.mode === "tui" && !stuckReported) armStuckTimer(ctx);
+    if (ctx.mode === "tui" && running && !stuckReported) armStuckTimer(ctx);
   }
 
   pi.on("before_agent_start", (event, ctx) => {
@@ -103,7 +110,10 @@ export default function piNotifications(pi: ExtensionAPI) {
   });
 
   pi.on("agent_start", (_event, ctx) => {
-    if (ctx.mode === "tui") startStuckTimer(ctx);
+    if (ctx.mode === "tui") {
+      running = true;
+      startStuckTimer(ctx);
+    }
   });
 
   pi.on("turn_start", (_event, ctx) => noteActivity(ctx));
@@ -113,16 +123,36 @@ export default function piNotifications(pi: ExtensionAPI) {
   pi.on("tool_execution_update", (_event, ctx) => noteActivity(ctx));
   pi.on("tool_execution_end", (_event, ctx) => noteActivity(ctx));
 
-  pi.on("agent_settled", async (_event, ctx) => {
-    clearStuckTimer();
+  pi.on("ui_prompt_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
+    promptDepth += 1;
+    clearStuckTimer();
+  });
+  pi.on("ui_prompt_end", (_event, ctx) => {
+    if (ctx.mode !== "tui") return;
+    promptDepth = Math.max(0, promptDepth - 1);
+    if (promptDepth === 0) noteActivity(ctx);
+  });
+
+  pi.on("agent_settled", async (event, ctx) => {
+    const wasRunning = running;
+    running = false;
+    generation += 1;
+    clearStuckTimer();
+    if (ctx.mode !== "tui" || !wasRunning || event.aborted) return;
 
     // Read the persisted active branch after Pi has settled. This covers prompts
     // expanded by templates/skills and is more reliable than transient hooks.
     await appendNotification(ctx, "completed", latestUserTask(ctx) ?? taskSummary, pi.getSessionName());
   });
 
-  pi.on("session_shutdown", () => {
+  const reset = () => {
+    generation += 1;
+    running = false;
+    promptDepth = 0;
+    stuckReported = false;
     clearStuckTimer();
-  });
+  };
+  pi.on("session_start", reset);
+  pi.on("session_shutdown", reset);
 }

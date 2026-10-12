@@ -1,36 +1,31 @@
-import { createCodemodeExtension, type CodemodeToolDetails, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import type { CodemodeToolDetails, ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { compactCall, compactResult, nativeSlot, toolText } from "./lib/compact-tool-renderers.ts";
 import { codemodeTreeEntries } from "./lib/codemode-badge-label.ts";
 
-// Pi has no renderer-only API. Wrap its public codemode extension factory rather
-// than copying the sandbox, tool declaration, session store, or usage handling.
-// Disable builtin:codemode in settings so this is the sole registration.
+// Keep the builtin extension as the sole owner of codemode execution and state.
 export default function codemodeBadge(pi: ExtensionAPI) {
-  const rendererOnlyApi = new Proxy(pi, {
-    get(target, key, receiver) {
-      if (key !== "registerTool") return Reflect.get(target, key, receiver);
-      return (tool: Parameters<ExtensionAPI["registerTool"]>[0]) => {
-        if (tool.name !== "codemode") throw new Error("Unexpected tool registered by codemode extension");
-        const { renderCall: originalCall, renderResult: originalResult } = tool;
-        pi.registerTool({
-          ...tool,
-          renderShell: "self",
-          renderCall(args, theme, context) {
-            if (context.expanded && originalCall) return originalCall(args, theme, context);
-            const bg = context.isError ? "toolErrorBg" : context.isPartial ? "toolPendingBg" : "toolSuccessBg";
-            return new Text(theme.style(" codemode ", { fg: "toolTitle", bg }), 0, 0);
-          },
-          renderResult(result, options, theme, context) {
-            if (options.expanded && originalResult) return originalResult(result, options, theme, context);
-            const calls = (result.details as CodemodeToolDetails | undefined)?.calls ?? [];
-            const lines = codemodeTreeEntries(calls, context.isError).map(
-              ({ branch, label, tone }) => `${theme.fg("dim", branch)} ${theme.fg(tone, label)}`,
-            );
-            return new Text(lines.length ? `\n${lines.join("\n")}` : "", 0, 0);
-          },
-        });
-      };
-    },
+  pi.registerToolRenderer((name, next) => {
+    const native = next();
+    if (name !== "codemode") return native;
+    return {
+      renderShell: "self",
+      renderCall(args, theme, context) {
+        if (context.expanded && native?.renderCall) {
+          return nativeSlot((ctx) => native.renderCall!(args, theme, ctx), native, theme, context);
+        }
+        return compactCall("codemode", theme, context);
+      },
+      renderResult(result, options, theme, context) {
+        if (options.expanded && native?.renderResult) {
+          return nativeSlot((ctx) => native.renderResult!(result, options, theme, ctx), native, theme, context);
+        }
+        if (options.expanded) return compactResult(result, options, theme, context);
+        const calls = (result.details as CodemodeToolDetails | undefined)?.calls ?? [];
+        const lines = codemodeTreeEntries(calls, context.isError).map(
+          ({ branch, label, tone }) => `${theme.fg("dim", branch)} ${theme.fg(tone, label)}`,
+        );
+        return toolText(lines.length ? `\n${lines.join("\n")}` : "", context);
+      },
+    };
   });
-  return createCodemodeExtension()(rendererOnlyApi);
 }

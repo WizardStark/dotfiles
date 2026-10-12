@@ -261,7 +261,7 @@ async function appendLedger(record: LedgerRecord): Promise<void> {
 
 function renderStatus(ctx: ExtensionContext, state: CacheHealthState) {
   if (!ctx.hasUI) return;
-  const theme = ctx.ui.theme;
+  const cacheWrite = state.cacheWrite;
   const key = getStatuslineSessionKey(ctx);
   if (state.lastClassification === "anomaly") {
     const lowHitDetail = state.lastLowHit ? `hit ${(state.lastHitRatio * 100).toFixed(1)}%` : undefined;
@@ -269,24 +269,24 @@ function renderStatus(ctx: ExtensionContext, state: CacheHealthState) {
     const detail = [lowHitDetail, noWriteDetail].filter(Boolean).join(" · ");
     statuslineItem.set(
       {
-        content: theme.fg("warning", `⚠ Cache anomaly · ${detail}`),
-        compactContent: theme.fg("warning", `⚠ Cache anomaly ${detail}`),
+        content: (theme) => theme.fg("warning", `⚠ Cache anomaly · ${detail}`),
+        compactContent: (theme) => theme.fg("warning", `⚠ Cache anomaly ${detail}`),
       },
       key,
     );
   } else if (state.lastClassification === "priming") {
     statuslineItem.set(
       {
-        content: theme.fg("accent", `↗ Cache priming · write ${formatTokens(state.cacheWrite)}`),
-        compactContent: theme.fg("accent", "↗ Cache priming"),
+        content: (theme) => theme.fg("accent", `↗ Cache priming · write ${formatTokens(cacheWrite)}`),
+        compactContent: (theme) => theme.fg("accent", "↗ Cache priming"),
       },
       key,
     );
   } else {
     statuslineItem.set(
       {
-        content: theme.fg("dim", "✓ Cache normal"),
-        compactContent: theme.fg("dim", "✓ Cache normal"),
+        content: (theme) => theme.fg("dim", "✓ Cache normal"),
+        compactContent: (theme) => theme.fg("dim", "✓ Cache normal"),
       },
       key,
     );

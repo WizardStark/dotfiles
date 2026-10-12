@@ -1,10 +1,14 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { createEditTool, createFindTool, createGrepTool, createLsTool, createReadTool, createWriteTool } from "@earendil-works/pi-coding-agent";
-import { visibleWidth } from "@earendil-works/pi-tui";
-import { compactCall, compactResult } from "./lib/compact-tool-renderers.ts";
+import { formatDuration } from "./lib/format.ts";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { compactRenderers } from "./lib/compact-tool-renderers.ts";
 
 type BadgeState = "pending" | "success" | "error";
-type Badge = { id: string; name: string; state: BadgeState };
+type Badge = { id: string; name: string; state: BadgeState; durationMs?: number };
+
+function badgeLabel(badge: Badge) {
+  return `${badge.name}${badge.durationMs === undefined ? "" : ` ${formatDuration(Math.round(badge.durationMs))}`}`;
+}
 
 function compactBadge(theme: ExtensionContext["ui"]["theme"], label: string, state: BadgeState) {
   const background = state === "error" ? "toolErrorBg" : state === "success" ? "toolSuccessBg" : "toolPendingBg";
@@ -17,8 +21,9 @@ function renderBadgeLines(theme: ExtensionContext["ui"]["theme"], badges: Badge[
   let currentWidth = 0;
 
   for (const badge of badges) {
-    const rendered = compactBadge(theme, badge.name, badge.state);
-    const renderedWidth = visibleWidth(rendered);
+    const rendered = compactBadge(theme, badgeLabel(badge), badge.state);
+    const clipped = truncateToWidth(rendered, width);
+    const renderedWidth = visibleWidth(clipped);
     if (current && currentWidth + 1 + renderedWidth > width) {
       lines.push(current);
       current = "";
@@ -28,46 +33,17 @@ function renderBadgeLines(theme: ExtensionContext["ui"]["theme"], badges: Badge[
       current += " ";
       currentWidth += 1;
     }
-    current += rendered;
+    current += clipped;
     currentWidth += renderedWidth;
   }
   if (current) lines.push(current);
   return lines;
 }
 
-// Pi has no renderer-only registration API: an override must delegate execution
-// and return the original result unchanged. zsh-env owns the bash override.
+// Rendering is independent of tool registration and execution (including zsh bash).
 export default function toolBadges(pi: ExtensionAPI) {
-  let renderersRegistered = false;
-  function registerRenderers() {
-    if (renderersRegistered) return;
-    const cwd = process.cwd();
-    const tools = {
-      edit: createEditTool(cwd),
-      find: createFindTool(cwd),
-      grep: createGrepTool(cwd),
-      ls: createLsTool(cwd),
-      read: createReadTool(cwd),
-      write: createWriteTool(cwd),
-    };
-    for (const name of Object.keys(tools) as Array<keyof typeof tools>) {
-      const base = tools[name];
-      pi.registerTool({
-        ...base,
-        name,
-        renderShell: "self",
-        // Forward ctx too: reads need its cwd and model image limits.
-        execute(toolCallId, params, signal, onUpdate, ctx) {
-          return base.execute(toolCallId, params, signal, onUpdate, ctx);
-        },
-        renderCall(_args, theme, context) {
-          return compactCall(name, theme, context);
-        },
-        renderResult: compactResult,
-      });
-    }
-    renderersRegistered = true;
-  }
+  const names = new Set(["bash", "edit", "find", "grep", "ls", "read", "write"]);
+  pi.registerToolRenderer((name, next) => names.has(name) ? compactRenderers(name, next()) : next());
 
   let recentBadges: Badge[] = [];
   let pendingBadges = new Map<string, Badge>();
@@ -80,13 +56,13 @@ export default function toolBadges(pi: ExtensionAPI) {
       return;
     }
     if (ctx.mode !== "tui") {
-      ctx.ui.setWidget("tool-badges", [badges.map((badge) => compactBadge(ctx.ui.theme, badge.name, badge.state)).join(" ")]);
+      ctx.ui.setWidget("tool-badges", [badges.map((badge) => compactBadge(ctx.ui.theme, badgeLabel(badge), badge.state)).join(" ")]);
       return;
     }
-    ctx.ui.setWidget("tool-badges", (_tui, theme) => ({
+    ctx.ui.setWidget("tool-badges", (_tui, _theme) => ({
       invalidate() {},
       render(width: number) {
-        return renderBadgeLines(theme, badges, width);
+        return renderBadgeLines(ctx.ui.theme, badges, width);
       },
     }));
   }
@@ -96,12 +72,10 @@ export default function toolBadges(pi: ExtensionAPI) {
     pendingBadges = new Map();
     if (ctx.hasUI) ctx.ui.setToolsExpanded(false);
     updateWidget(ctx);
-    registerRenderers();
   });
 
   pi.on("before_agent_start", async (_event, ctx) => {
     if (ctx.hasUI) ctx.ui.setToolsExpanded(false);
-    registerRenderers();
   });
 
   pi.on("turn_start", async (_event, ctx) => {
@@ -122,6 +96,7 @@ export default function toolBadges(pi: ExtensionAPI) {
       id: event.toolCallId,
       name: pending?.name ?? (event.parentToolCallId ? `↳ ${event.toolName}` : event.toolName),
       state: event.isError ? "error" : "success",
+      durationMs: event.durationMs,
     });
     recentBadges = recentBadges.slice(-16);
     updateWidget(ctx);

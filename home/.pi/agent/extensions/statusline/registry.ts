@@ -1,3 +1,10 @@
+import type { Theme } from "@earendil-works/pi-coding-agent";
+
+export type StatuslineContent = string | ((theme: Theme) => string);
+export function renderStatuslineContent(content: StatuslineContent, theme: Theme): string {
+  return typeof content === "function" ? content(theme) : content;
+}
+
 export type StatuslineSide = "left" | "right";
 export type StatuslineBackground =
   | "selectedBg"
@@ -14,8 +21,8 @@ export type StatuslineItem = {
   order?: number;
   importance?: number;
   background?: StatuslineBackground;
-  content: string;
-  compactContent?: string;
+  content: StatuslineContent;
+  compactContent?: StatuslineContent;
 };
 
 type StoredStatuslineItem = StatuslineItem & {

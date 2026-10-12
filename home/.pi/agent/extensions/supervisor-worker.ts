@@ -1,3 +1,5 @@
+import { domainRenderers } from "./lib/domain-tool-renderers.ts";
+import { sumUsages } from "./lib/usage.ts";
 import type {
   AgentMessage,
   ThinkingLevel,
@@ -474,7 +476,7 @@ function resolveRequestedModel(
 function readSavedState(
   ctx: ExtensionContext,
 ): SupervisorWorkerState | undefined {
-  const entry = [...ctx.sessionManager.getEntries()]
+  const entry = [...ctx.sessionManager.getBranch()]
     .reverse()
     .find(
       (item) => item.type === "custom" && item.customType === STATE_ENTRY,
@@ -518,7 +520,7 @@ function readSavedState(
 }
 
 function readSavedReviewKeys(ctx: ExtensionContext): string[] {
-  const entry = [...ctx.sessionManager.getEntries()]
+  const entry = [...ctx.sessionManager.getBranch()]
     .reverse()
     .find(
       (item) =>
@@ -620,11 +622,11 @@ function updateStatus(ctx: ExtensionContext, state: SupervisorWorkerState) {
   const workflowMode = getWorkflowMode(state);
   workflowModeItem.set(
     {
-      content: ctx.ui.theme.fg(
+      content: (theme) => theme.fg(
         workflowMode === "three-tier" ? "warning" : "success",
         `WF ${workflowStatus(workflowMode)}`,
       ),
-      compactContent: ctx.ui.theme.fg(
+      compactContent: (theme) => theme.fg(
         workflowMode === "three-tier" ? "warning" : "success",
         workflowMode === "three-tier" ? "3T" : workflowMode === "guided" ? "G" : "P",
       ),
@@ -1559,7 +1561,7 @@ function aggregateSubagentMetrics(
     }
   }
 
-  const aggregated: SubagentMetrics = {};
+  const aggregated: SubagentMetrics = { usage: sumUsages(metrics.map((item) => item.usage)) };
   if (sawCost) {
     aggregated.cost = {
       amount: costAmount,
@@ -2893,7 +2895,7 @@ function buildHandoffSource(
 
 function readRecentHandoffPointers(ctx: ExtensionContext): HandoffPointer[] {
   const pointers: HandoffPointer[] = [];
-  for (const entry of ctx.sessionManager.getEntries()) {
+  for (const entry of ctx.sessionManager.getBranch()) {
     if (entry.type !== "custom" || entry.customType !== HANDOFF_ENTRY) continue;
     const data = (entry as { data?: Partial<HandoffPointer> }).data;
     if (!data?.source) continue;
@@ -4687,8 +4689,8 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       },
     });
 
-    pi.on("session_start", async (_event, ctx) => {
-      sessionEpoch += 1;
+    async function restoreBranch(ctx: ExtensionContext) {
+      const restoreEpoch = ++sessionEpoch;
       activityCtx = ctx;
       activitySessionKey = ctx.sessionManager.getSessionFile() ?? "ephemeral";
       turnDelegationState = undefined;
@@ -4696,16 +4698,19 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       recentDelegationTasks = [];
       pendingReviewKeys.clear();
       activeDelegations.clear();
-      subagentPanelRefreshers.clear();
-      subagentPanelOpen = false;
+      refreshSubagentPanels();
+      delegationTaskWidget.clear();
       delegationTaskWidget.setUICtx(ctx.ui);
-      state = {
-        ...(readSavedState(ctx) ?? {}),
-        workflowMode: await readWorkflowMode(),
-      };
+      const saved = readSavedState(ctx) ?? {};
+      const workflowMode = await readWorkflowMode();
+      if (restoreEpoch !== sessionEpoch) return;
+      state = { ...saved, workflowMode };
       resetLazyDelegationTools();
       refreshStatus(ctx);
-    });
+    }
+
+    pi.on("session_start", async (_event, ctx) => restoreBranch(ctx));
+    pi.on("session_tree", async (_event, ctx) => restoreBranch(ctx));
 
     pi.on("session_shutdown", async (_event, ctx) => {
       // Pi creates a fresh extension runtime on /new, /resume, and /reload.
@@ -5108,6 +5113,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       label: "Delegate Scout",
       description:
         "Spawn a read-only scout subagent on a cheaper model to explore the codebase and report evidence to the supervisor.",
+      ...domainRenderers("delegation", "Delegate Scout"),
       parameters: DelegateScoutParams,
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         const delegationKey = `${sessionEpoch}:${toolCallId}`;
@@ -5210,6 +5216,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             source: "tool",
           });
           return {
+            usage: result.subagentMetrics?.usage,
             content: [{ type: "text", text: result.report }],
             details: {
               generatedAt,
@@ -5250,6 +5257,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       label: "Delegate Scouts",
       description:
         "Spawn parallel read-only scout subagents for independent reconnaissance tasks.",
+      ...domainRenderers("delegation", "Delegate Scouts"),
       parameters: ParallelDelegateScoutsParams,
       async execute(
         toolCallId: string,
@@ -5468,6 +5476,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           source: "tool",
         });
         return {
+          usage: aggregateMetrics?.usage,
           content: [{ type: "text", text: buildParallelScoutSummary(results) }],
           details: {
             generatedAt,
@@ -5489,6 +5498,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       label: "Delegate Workers",
       description:
         "Spawn parallel bounded workers for independent implementation tasks with disjoint file scopes.",
+      ...domainRenderers("delegation", "Delegate Workers"),
       parameters: ParallelDelegateWorkersParams,
       async execute(
         toolCallId: string,
@@ -5760,6 +5770,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             source: "tool",
           });
           return {
+            usage: aggregateMetrics?.usage,
             content: [
               {
                 type: "text",
@@ -5820,6 +5831,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       label: "Delegate Worker",
       description:
         "Spawn a bounded worker subagent for a local implementation task while the supervisor keeps planning and escalation.",
+      ...domainRenderers("delegation", "Delegate Worker"),
       parameters: DelegateWorkerParams,
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         const delegationKey = `${sessionEpoch}:${toolCallId}`;
@@ -5904,6 +5916,7 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
             source: "tool",
           });
           return {
+            usage: result.subagentMetrics?.usage,
             content: [{ type: "text", text: result.report }],
             details: {
               generatedAt,

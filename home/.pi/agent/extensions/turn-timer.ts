@@ -1,3 +1,4 @@
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { formatDuration } from "./lib/format.ts";
 import { createStatuslineItem, getStatuslineSessionKey } from "./statusline/registry";
 
@@ -13,18 +14,12 @@ const statuslineItem = createStatuslineItem({
 });
 
 
-function setStatus(ctx: ExtensionContext, content: string, compactContent = content) {
-  if (!ctx.hasUI) {
-    return;
-  }
-
-  statuslineItem.set({ content, compactContent }, getStatuslineSessionKey(ctx));
-}
-
 export default function turnTimer(pi: ExtensionAPI) {
   let startedAt: number | undefined;
   let statusTimer: ReturnType<typeof setInterval> | undefined;
   let lastDurationMs: number | undefined;
+  let lastAborted = false;
+  let promptDepth = 0;
 
   function clearLiveStatus() {
     if (statusTimer) {
@@ -36,26 +31,32 @@ export default function turnTimer(pi: ExtensionAPI) {
   function renderIdleStatus(ctx: ExtensionContext) {
     if (!ctx.hasUI) return;
     if (lastDurationMs === undefined) {
-      setStatus(ctx, ctx.ui.theme.fg("dim", "Idle"));
+      statuslineItem.set({
+        background: "toolSuccessBg",
+        content: (theme) => theme.fg("dim", "Idle"),
+        compactContent: (theme) => theme.fg("dim", "Idle"),
+      }, getStatuslineSessionKey(ctx));
       return;
     }
 
     const duration = formatDuration(lastDurationMs);
-    setStatus(
-      ctx,
-      `${ctx.ui.theme.fg("success", "✓")}${ctx.ui.theme.fg("dim", ` Last turn ${duration}`)}`,
-      `${ctx.ui.theme.fg("success", "✓")}${ctx.ui.theme.fg("dim", ` ${duration}`)}`,
-    );
+    const aborted = lastAborted;
+    statuslineItem.set({
+      background: aborted ? "toolPendingBg" : "toolSuccessBg",
+      content: (theme) => `${theme.fg(aborted ? "warning" : "success", aborted ? "⊘" : "✓")}${theme.fg("dim", ` ${aborted ? "Interrupted" : "Last turn"} ${duration}`)}`,
+      compactContent: (theme) => `${theme.fg(aborted ? "warning" : "success", aborted ? "⊘" : "✓")}${theme.fg("dim", ` ${duration}`)}`,
+    }, getStatuslineSessionKey(ctx));
   }
 
   function renderRunningStatus(ctx: ExtensionContext, runStartedAt: number) {
     if (!ctx.hasUI) return;
     const elapsed = formatDuration(Math.max(0, Date.now() - runStartedAt));
-    setStatus(
-      ctx,
-      `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` Running ${elapsed}`)}`,
-      `${ctx.ui.theme.fg("accent", "●")}${ctx.ui.theme.fg("dim", ` ${elapsed}`)}`,
-    );
+    const waiting = promptDepth > 0;
+    statuslineItem.set({
+      background: "toolPendingBg",
+      content: (theme) => `${theme.fg(waiting ? "warning" : "accent", waiting ? "◷" : "●")}${theme.fg("dim", ` ${waiting ? "Awaiting input" : "Running"} ${elapsed}`)}`,
+      compactContent: (theme) => `${theme.fg(waiting ? "warning" : "accent", waiting ? "◷" : "●")}${theme.fg("dim", ` ${elapsed}`)}`,
+    }, getStatuslineSessionKey(ctx));
   }
 
   function startLiveStatus(ctx: ExtensionContext, runStartedAt: number) {
@@ -65,6 +66,7 @@ export default function turnTimer(pi: ExtensionAPI) {
       renderRunningStatus(ctx, runStartedAt);
     };
 
+    if (!ctx.hasUI) return;
     refresh();
     statusTimer = setInterval(refresh, STATUS_INTERVAL_MS);
   }
@@ -72,6 +74,9 @@ export default function turnTimer(pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     clearLiveStatus();
     startedAt = undefined;
+    lastDurationMs = undefined;
+    lastAborted = false;
+    promptDepth = 0;
     renderIdleStatus(ctx);
   });
 
@@ -84,7 +89,16 @@ export default function turnTimer(pi: ExtensionAPI) {
     startLiveStatus(ctx, startedAt);
   });
 
-  pi.on("agent_settled", async (_event, ctx) => {
+  pi.on("ui_prompt_start", (_event, ctx) => {
+    promptDepth += 1;
+    if (startedAt !== undefined) renderRunningStatus(ctx, startedAt);
+  });
+  pi.on("ui_prompt_end", (_event, ctx) => {
+    promptDepth = Math.max(0, promptDepth - 1);
+    if (startedAt !== undefined) renderRunningStatus(ctx, startedAt);
+  });
+
+  pi.on("agent_settled", async (event, ctx) => {
     const runStartedAt = startedAt;
 
     clearLiveStatus();
@@ -95,6 +109,7 @@ export default function turnTimer(pi: ExtensionAPI) {
       return;
     }
 
+    lastAborted = event.aborted;
     lastDurationMs = Math.max(0, Date.now() - runStartedAt);
     renderIdleStatus(ctx);
   });
@@ -104,5 +119,6 @@ export default function turnTimer(pi: ExtensionAPI) {
     statuslineItem.clear(getStatuslineSessionKey(ctx));
     startedAt = undefined;
     lastDurationMs = undefined;
+    promptDepth = 0;
   });
 }

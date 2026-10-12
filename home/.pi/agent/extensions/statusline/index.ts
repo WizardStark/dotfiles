@@ -9,6 +9,7 @@ import {
   createStatuslineItem,
   getStatuslineSessionKey,
   listStatuslineItems,
+  renderStatuslineContent,
   subscribeStatusline,
   type StatuslineBackground,
   type StatuslineItem,
@@ -140,8 +141,8 @@ function renderBuiltinSegments(ctx: ExtensionContext) {
 
   modelItem.set(
     {
-      content: `${ctx.ui.theme.fg("accent", "M")}${ctx.ui.theme.fg("text", ` ${model.full}`)}`,
-      compactContent: `${ctx.ui.theme.fg("accent", "M")}${ctx.ui.theme.fg("text", ` ${model.compact}`)}`,
+      content: (theme) => `${theme.fg("accent", "M")}${theme.fg("text", ` ${model.full}`)}`,
+      compactContent: (theme) => `${theme.fg("accent", "M")}${theme.fg("text", ` ${model.compact}`)}`,
     },
     sessionKey,
   );
@@ -152,8 +153,8 @@ function renderBuiltinSegments(ctx: ExtensionContext) {
 
   reasoningItem.set(
     {
-      content: `${ctx.ui.theme.fg(tone, "R")}${ctx.ui.theme.fg("dim", ` ${label}`)}`,
-      compactContent: `${ctx.ui.theme.fg(tone, "R")}${ctx.ui.theme.fg("dim", ` ${label}`)}`,
+      content: (theme) => `${theme.fg(tone, "R")}${theme.fg("dim", ` ${label}`)}`,
+      compactContent: (theme) => `${theme.fg(tone, "R")}${theme.fg("dim", ` ${label}`)}`,
     },
     sessionKey,
   );
@@ -216,8 +217,8 @@ function assignBackgrounds(
     return {
       ...item,
       background,
-      rendered: renderSegment(theme, item.content, background),
-      compactRendered: item.compactContent ? renderSegment(theme, item.compactContent, background) : undefined,
+      rendered: renderSegment(theme, renderStatuslineContent(item.content, theme), background),
+      compactRendered: item.compactContent ? renderSegment(theme, renderStatuslineContent(item.compactContent, theme), background) : undefined,
     };
   });
 }
@@ -543,13 +544,12 @@ export default function statusline(pi: ExtensionAPI) {
             unsubscribeStatusline();
             unsubscribeBranch();
           },
-          invalidate() {
-            renderBuiltinSegments(ctx);
-          },
+          invalidate() {},
           render(width: number) {
-            const builtins = buildBuiltinItems(ctx, theme, footerData.getGitBranch());
-            const { left, right } = toStyledItems(theme, currentSessionKey, builtins);
-            return renderFooterLine(width, theme, left, right);
+            const activeTheme = ctx.ui.theme;
+            const builtins = buildBuiltinItems(ctx, activeTheme, footerData.getGitBranch());
+            const { left, right } = toStyledItems(activeTheme, currentSessionKey, builtins);
+            return renderFooterLine(width, activeTheme, left, right);
           },
         };
       });

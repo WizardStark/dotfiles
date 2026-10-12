@@ -30,14 +30,15 @@ test("nested calls form a bounded tree below the codemode badge", () => {
   assert.equal(many.at(-1).label, "bash: echo 19");
 });
 
-test("codemode badge uses Pi's factory, retains expanded renderers and keeps native results", async () => {
+test("codemode badge resolves builtin rendering without owning execution", async () => {
   const source = await readFile(new URL("extensions/codemode-badge.ts", root), "utf8");
-  assert.match(source, /createCodemodeExtension\(\)\(rendererOnlyApi\)/);
-  assert.match(source, /if \(context\.expanded && originalCall\)/);
-  assert.match(source, /if \(options\.expanded && originalResult\)/);
+  assert.match(source, /registerToolRenderer/);
+  assert.match(source, /const native = next\(\)/);
+  assert.match(source, /context\.expanded && native\?\.renderCall/);
+  assert.match(source, /options\.expanded && native\?\.renderResult/);
   assert.match(source, /codemodeTreeEntries\(calls, context\.isError\)/);
-  assert.doesNotMatch(source, /execute\s*\(|structuredContent\s*:/);
+  assert.doesNotMatch(source, /createCodemodeExtension|new Proxy|registerTool\(|execute\s*\(|structuredContent\s*:/);
   const settings = JSON.parse(await readFile(new URL("settings.json", root), "utf8"));
   assert.ok(settings.defaultTools.includes("+codemode"));
-  assert.ok(settings.extensions.includes("-builtin:codemode"));
+  assert.ok(!settings.extensions.includes("-builtin:codemode"));
 });

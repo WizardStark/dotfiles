@@ -1,3 +1,4 @@
+import { domainRenderers } from "./lib/domain-tool-renderers.ts";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
@@ -90,6 +91,7 @@ export default function (pi: ExtensionAPI) {
     name: "ask_user_question",
     exposure: "model-only",
     label: "Ask User Question",
+    ...domainRenderers("question", "Questions"),
     description: "Ask the user for a concrete decision with 1–4 short multiple-choice questions.",
     promptSnippet: "Ask the user for a necessary decision.",
     promptGuidelines: [

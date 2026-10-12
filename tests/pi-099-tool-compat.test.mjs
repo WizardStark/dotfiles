@@ -4,23 +4,16 @@ import { test } from "node:test";
 
 const extension = (name) => readFile(new URL(`../home/.pi/agent/extensions/${name}.ts`, import.meta.url), "utf8");
 
-test("compact tool renderers retain native results and zsh remains the only bash owner", async () => {
+test("rendering-only extensions do not replace execution and zsh remains the only bash owner", async () => {
   const badges = await extension("tool-badges");
-  assert.doesNotMatch(badges, /createBashTool|normalizeResult|wrapErrorResult/);
-  assert.match(badges, /renderShell: "self"/);
-  assert.match(badges, /renderResult: compactResult/);
-  assert.match(badges, /return base\.execute\(toolCallId, params, signal, onUpdate, ctx\)/);
+  assert.match(badges, /registerToolRenderer/);
+  assert.doesNotMatch(badges, /create(?:Read|Edit|Write|Bash)Tool|registerTool\(/);
   assert.match(badges, /parentToolCallId/);
-  assert.match(badges, /tool_execution_start/);
-  assert.match(badges, /tool_execution_end/);
+  assert.match(badges, /durationMs: event\.durationMs/);
   const zsh = await extension("zsh-env");
   assert.match(zsh, /\.\.\.base,/);
-  assert.match(zsh, /renderShell: "self"/);
-  assert.match(zsh, /renderResult: compactResult/);
+  assert.doesNotMatch(zsh, /renderShell|renderResult|renderCall/);
   assert.match(zsh, /return base\.execute\(toolCallId, params, signal, onUpdate, toolCtx\)/);
-  const renderer = await extension("lib/compact-tool-renderers");
-  assert.match(renderer, /if \(!options\.expanded\)/);
-  assert.doesNotMatch(renderer, /registerTool\s*\(|structuredContent\s*:/);
 });
 
 test("interactive and orchestration tools are model-only, while delegation retains its execution gate", async () => {
