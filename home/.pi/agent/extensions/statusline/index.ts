@@ -255,6 +255,9 @@ function renderLeftChain(theme: ExtensionContext["ui"]["theme"], items: StyledIt
       continue;
     }
 
+    // Context metrics and the turn timer form one activity readout.
+    if (current.id === "token-throughput" && next.id === "turn-timer") continue;
+
     if (current.background === next.background) {
       rendered += renderInlineSeparator(theme, current.background, "right");
       continue;

@@ -156,3 +156,45 @@ test("footer and builtin model/reasoning segments recolor on invalidation withou
   footer.dispose();
   await api.emit("session_shutdown", {}, context);
 });
+
+test("context and turn timer have no intervening divider in TUI or RPC across run states", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval", "Date"], now: 1000 });
+  for (const mode of ["tui", "rpc"]) {
+    const api = mockApi();
+    for (const file of ["token-throughput.ts", "turn-timer.ts", "statusline/index.ts"]) {
+      (await importExtension(file)).default(api);
+    }
+    const context = ctx(`context-timer-${mode}`);
+    context.mode = mode;
+    context.ui.theme = { ...theme(), getBgAnsi: () => "" };
+    context.ui.getEditorComponent = () => undefined;
+    context.ui.setEditorComponent = () => {};
+    let factory, rpcLine, footer;
+    context.ui.setFooter = value => { factory = value; };
+    context.ui.setWidget = (key, lines) => { if (key === "statusline") rpcLine = lines?.join(""); };
+    await api.emit("session_start", {}, context);
+    if (mode === "tui") footer = factory({ requestRender() {} }, context.ui.theme,
+      { onBranchChange: () => () => {}, getGitBranch: () => "main" });
+    const assertJoined = label => {
+      const line = mode === "tui" ? footer.render(500).join("") : rpcLine;
+      const contextEnd = line.indexOf(")", line.indexOf("Ctx ")) + 1;
+      const timerStart = line.indexOf(label, contextEnd);
+      assert.ok(contextEnd > 0 && timerStart >= contextEnd, line);
+      assert.equal(line.slice(contextEnd, timerStart).trim(), "", "no powerline glyph between context and timer");
+      assert.match(line.slice(0, line.indexOf("Ctx ")), /[]/, "other dividers remain");
+    };
+    assertJoined("Idle");
+    await api.emit("agent_start", {}, context);
+    assertJoined("● Running");
+    await api.emit("ui_prompt_start", {}, context);
+    assertJoined("◷ Awaiting input");
+    await api.emit("ui_prompt_end", {}, context);
+    await api.emit("agent_settled", { aborted: true }, context);
+    assertJoined("⊘ Interrupted");
+    await api.emit("agent_start", {}, context);
+    await api.emit("agent_settled", { aborted: false }, context);
+    assertJoined("✓ Last turn");
+    footer?.dispose();
+    await api.emit("session_shutdown", {}, context);
+  }
+});
