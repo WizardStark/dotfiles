@@ -31,6 +31,73 @@ for (const file of ["tool-badges.ts", "codemode-badge.ts"]) {
   });
 }
 
+test("TUI tools never create a duplicate activity badge beside the editor", async () => {
+  const api = mockApi();
+  (await importExtension("tool-badges.ts")).default(api);
+  const widgets = [], expansion = [];
+  let widget = ["legacy badge"];
+  const ctx = { mode: "tui", hasUI: true, ui: {
+    theme: theme(),
+    setWidget(key, value) { assert.equal(key, "tool-badges"); widget = value; widgets.push(value); },
+    setToolsExpanded(value) { expansion.push(value); },
+  } };
+  await api.emit("session_start", {}, ctx);
+  assert.equal(widget, undefined, "clear any legacy activity strip");
+  await api.emit("before_agent_start", {}, ctx);
+  for (const [toolName, parentToolCallId] of [["advisor_design"], ["read"], ["codemode"], ["bash", "codemode-1"]]) {
+    const event = { toolName, toolCallId: `${toolName}-1`, parentToolCallId };
+    await api.emit("tool_execution_start", event, ctx);
+    assert.equal(widget, undefined);
+    await api.emit("tool_execution_end", { ...event, isError: false, durationMs: 1000 }, ctx);
+    assert.equal(widget, undefined);
+  }
+  await api.emit("agent_settled", { aborted: false }, ctx);
+  await api.emit("turn_start", {}, ctx);
+  await api.emit("session_shutdown", {}, ctx);
+  assert.ok(widgets.every((value) => value === undefined));
+  assert.deepEqual(expansion, [false, false]);
+  assert.equal(api.renderers.length, 1, "keep transcript renderers registered");
+});
+
+test("RPC retains pending, nested and completed activity badges with duration and cleanup", async () => {
+  const api = mockApi();
+  (await importExtension("tool-badges.ts")).default(api);
+  let widget;
+  const ctx = { mode: "rpc", hasUI: true, ui: {
+    theme: theme(), setToolsExpanded() {}, setWidget(_key, value) { widget = value; },
+  } };
+  await api.emit("session_start", {}, ctx);
+  assert.equal(widget, undefined);
+  const parent = { toolName: "codemode", toolCallId: "parent" };
+  const child = { toolName: "read", toolCallId: "parent/1", parentToolCallId: "parent" };
+  await api.emit("tool_execution_start", parent, ctx);
+  assert.match(widget[0], /codemode/);
+  await api.emit("tool_execution_start", child, ctx);
+  assert.match(widget[0], /↳ read/);
+  await api.emit("tool_execution_end", { ...child, isError: false, durationMs: 0 }, ctx);
+  await api.emit("tool_execution_end", { ...parent, isError: false, durationMs: 1000 }, ctx);
+  assert.match(widget[0], /↳ read 0ms/);
+  assert.match(widget[0], /codemode 1\.0s/);
+  assert.equal(widget[0].match(/codemode/g).length, 1);
+  await api.emit("turn_start", {}, ctx);
+  assert.equal(widget, undefined);
+  await api.emit("tool_execution_start", parent, ctx);
+  await api.emit("session_shutdown", {}, ctx);
+  assert.equal(widget, undefined);
+});
+
+test("headless tool activity remains UI-independent", async () => {
+  const api = mockApi();
+  (await importExtension("tool-badges.ts")).default(api);
+  for (const mode of ["print", "json"]) {
+    const ctx = { mode, hasUI: false, ui: { setWidget() { assert.fail("headless widget"); } } };
+    await api.emit("session_start", {}, ctx);
+    await api.emit("tool_execution_start", { toolName: "read", toolCallId: "read-1" }, ctx);
+    await api.emit("tool_execution_end", { toolName: "read", toolCallId: "read-1", isError: false }, ctx);
+    await api.emit("session_shutdown", {}, ctx);
+  }
+});
+
 test("compact rendering uses recorded zero/unknown durations, padding, partial state, and component reuse", () => {
   const renderer = compactRenderers("read");
   const ctx = renderContext({ durationMs: 0, outputPad: 1 });
