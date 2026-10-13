@@ -1,6 +1,6 @@
 # Pi 1.1 extensions
 
-These extensions require **Pi 1.1 or newer**. Pi loads the 20 top-level `.ts` entries and `statusline/index.ts`; `lib/` contains shared modules, not independent extensions.
+These extensions require **Pi 1.1 or newer**. Pi loads the 21 top-level `.ts` entries and `statusline/index.ts`; `lib/` contains shared modules, not independent extensions.
 
 ## API improvements
 
@@ -20,6 +20,26 @@ These extensions require **Pi 1.1 or newer**. Pi loads the 20 top-level `.ts` en
 In TUI mode, tool badges appear only in the transcript, with nested codemode calls grouped by tool in its collapsed tree (for example, `read x6`, `bash x2`, `edit`). Arguments, paths and command previews stay in the expanded native view; failed groups remain marked. The legacy above-editor activity strip is cleared and not populated, avoiding duplicate badges beside the input field. RPC clients retain the activity-summary widget because terminal transcript renderers are unavailable there.
 
 Structured prompt policies (`secret_file_guard`, `workflow_policy`, `workflow_handoffs`), model-only orchestration exposure, workflow execution gates and native structured tool results are retained.
+
+## Transcript navigation
+
+Run `/transcript` or press **Alt+T** to open a read-only transcript overlay. It uses only supported extension UI/session APIs: it does not patch Pi, change the main transcript's folds, edit the composer draft, run tools or add model context.
+
+| Keys | Action |
+| --- | --- |
+| `j` / `k` (or arrows) | Select next/previous node, keeping it visible |
+| `Ctrl+U` / `Ctrl+D` | Scroll half a page, including within expanded output |
+| `gg` / `G` | Select first/last node |
+| `Enter` / `za` | Toggle the selected node's local fold |
+| `h` / `l` (or left/right) | Collapse/expand selected node |
+| `/`, then Enter | Search node titles and bodies; open the matching node |
+| `n` / `N` | Next/previous matching node, wrapping at the ends |
+| `r` | Refresh the snapshot, retaining surviving selection/folds |
+| `Esc` / `i` | Close and return to the composer |
+
+Search accepts normal text editing; Escape cancels search before closing the overlay. Each opening starts at the last recorded node with folds collapsed. The view snapshots the **active branch**, including history before compaction; streaming/unrecorded output appears only after it is saved and you refresh. Session/branch replacement and shutdown close the overlay.
+
+Tool calls and their results share one node. Expansion shows arguments, text output and recorded edit diffs; thinking has separate nodes. Images are represented by labels, not decoded or rendered. Hidden custom entries and system prompts are excluded. Previews are plain text, terminal-control sequences are stripped, and each body is bounded at 100,000 characters with an explicit truncation marker. This is a transcript inspector, not a byte-for-byte reproduction of native rich renderers.
 
 ## Audit fixes and removed legacy paths
 
@@ -46,11 +66,11 @@ PI_TEST_TYPESCRIPT_PATH=/path/to/typescript/lib/typescript.js node scripts/check
 git diff --check
 ```
 
-The SDK smoke test (`tests/pi-100-extensions.test.mjs`, historical filename) resolves managed or npm installations, loads **all 21 custom extensions plus builtin codemode** in an offline, in-memory print session, exercises startup, prompt construction and settlement through public APIs with a faux provider, and verifies native usage totals. Authentication/configuration paths are explicitly disposable. Set `PI_TEST_PACKAGE_DIR` to test a specific installed package. The target version is asserted rather than silently skipped.
+The SDK smoke test (`tests/pi-100-extensions.test.mjs`, historical filename) resolves managed or npm installations, loads **all 22 custom extensions plus builtin codemode** in an offline, in-memory print session, exercises startup, prompt construction and settlement through public APIs with a faux provider, and verifies native usage totals. Authentication/configuration paths are explicitly disposable. Set `PI_TEST_PACKAGE_DIR` to test a specific installed package. The target version is asserted rather than silently skipped.
 
 Regression tests cover native partial-to-final cleanup/expansion toggles, narrow Unicode layouts, prompt waiting/abort handling, branch/workflow isolation, themes, same-timestamp and repeated usage envelopes, outer retries, stale command replies, mock reviewer streams, and scripted JSON fixture subprocesses. The public-SDK contract test executes parallel nested tools and validates permission/schema hooks, structured output, streaming updates, model-only exposure and exactly-once native usage.
 
-Live provider calls, real worker/advisor delegation and terminal interaction still require manual integration checks. The strict no-emit check includes all 40 extension/helper TypeScript files, installed public declarations, and unused-local/parameter checks; it has zero diagnostics. Loading alone remains insufficient evidence of compatibility.
+Live provider calls, real worker/advisor delegation and terminal interaction still require manual integration checks. The strict no-emit check includes all extension/helper TypeScript files, installed public declarations, and unused-local/parameter checks. With Pi 1.2 declarations, existing notification/routing/workflow handlers need narrowing for the new `BeforeAgentStartEvent` union; the transcript navigator has no diagnostics. Loading alone remains insufficient evidence of compatibility.
 
 ## Accounting boundary
 
