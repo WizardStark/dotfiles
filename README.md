@@ -65,6 +65,24 @@ Setup script variants depending on machine state:
 ./setup.sh --post-brew --no-sudo
 ```
 
+## Pi compaction checkpoint
+
+The GPT-6 models in `home/.pi/agent/settings.json` compact when context exceeds
+272,000 tokens. Pi uses `contextTokens > contextWindow - reserveTokens`, so each
+exact model ID needs its own override calculated from its catalog context window:
+
+- GPT-6 Astra/Sol/Luna: `1,000,000 - 728,000 = 272,000`.
+- GPT-6.1 Sol: `1,050,000 - 778,000 = 272,000`.
+
+The global 27,200-token reserve and 20,000 recent-token retention remain unchanged.
+Reserve tokens also influence summarization output limits, capped by the model's
+maximum output. After editing settings, run `/reload` in Pi.
+
+Run `PI_OFFLINE=1 JITI_FS_CACHE=0 node --test tests/pi-compaction-settings.test.mjs`
+to verify native settings resolution and the checkpoint boundaries against the
+installed offline catalog. Run it after model/catalog upgrades or adding an enabled
+GPT-6 ID; a changed context window must not silently shift the checkpoint.
+
 ## Mise tasks
 
 The repo now uses a hybrid approach:

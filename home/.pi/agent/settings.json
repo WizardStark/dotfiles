@@ -21,6 +21,9 @@
       "github-copilot/gpt-6-sol": {
         "reserveTokens": 728000
       },
+      "github-copilot/gpt-6.1-sol": {
+        "reserveTokens": 778000
+      },
       "github-copilot/gpt-6-luna": {
         "reserveTokens": 728000
       }
