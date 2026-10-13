@@ -17,7 +17,7 @@ These extensions require **Pi 1.1 or newer**. Pi loads the 20 top-level `.ts` en
 
 `builtin:codemode` is enabled again and owns codemode execution, state, schemas and usage. `codemode-badge` is presentation-only. `zsh-env` intentionally still replaces bash execution using its native tool definition; `tool-badges` supplies presentation separately.
 
-In TUI mode, tool badges appear only in the transcript, with nested codemode calls in its tree. The legacy above-editor activity strip is cleared and not populated, avoiding duplicate badges beside the input field. RPC clients retain the activity-summary widget because terminal transcript renderers are unavailable there.
+In TUI mode, tool badges appear only in the transcript, with nested codemode calls grouped by tool in its collapsed tree (for example, `read x6`, `bash x2`, `edit`). Arguments, paths and command previews stay in the expanded native view; failed groups remain marked. The legacy above-editor activity strip is cleared and not populated, avoiding duplicate badges beside the input field. RPC clients retain the activity-summary widget because terminal transcript renderers are unavailable there.
 
 Structured prompt policies (`secret_file_guard`, `workflow_policy`, `workflow_handoffs`), model-only orchestration exposure, workflow execution gates and native structured tool results are retained.
 

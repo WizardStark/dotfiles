@@ -2,30 +2,26 @@ import type { CodemodeToolDetails } from "@earendil-works/pi-coding-agent";
 
 type NestedCall = CodemodeToolDetails["calls"][number];
 export type CodemodeTreeEntry = { branch: "├─" | "└─"; label: string; tone: "toolOutput" | "error" | "dim" };
-const MAX_COLLAPSED_CALLS = 11;
-
-export function codemodeCallLabel(call: NestedCall): string {
-  let args = call.args;
-  try {
-    const parsed: unknown = JSON.parse(args);
-    if (parsed && typeof parsed === "object" && "command" in parsed && typeof parsed.command === "string") {
-      args = parsed.command;
-    }
-  } catch {
-    // Pi bounds argument previews; long JSON strings may be truncated.
-  }
-  const label = args.replace(/\s+/g, " ").trim();
-  return `${call.name}${label ? `: ${label}` : ""}${call.status === "error" ? " ⚠ failed" : ""}`;
-}
+const MAX_COLLAPSED_TOOLS = 11;
 
 export function codemodeTreeEntries(calls: NestedCall[], isError: boolean): CodemodeTreeEntry[] {
-  const hidden = Math.max(0, calls.length - MAX_COLLAPSED_CALLS);
-  const entries: Array<Omit<CodemodeTreeEntry, "branch">> = [];
-  if (hidden) entries.push({ label: `… ${hidden} earlier calls (expand to see all)`, tone: "dim" });
-  for (const call of calls.slice(hidden)) {
-    entries.push({ label: codemodeCallLabel(call), tone: call.status === "error" ? "error" : "toolOutput" });
+  const groups = new Map<string, { count: number; failed: boolean }>();
+  for (const call of calls) {
+    const group = groups.get(call.name) ?? { count: 0, failed: false };
+    group.count++;
+    group.failed ||= call.status === "error";
+    groups.set(call.name, group);
   }
-  if (isError && !calls.some((call) => call.status === "error")) {
+  const hidden = Math.max(0, groups.size - MAX_COLLAPSED_TOOLS);
+  const entries: Array<Omit<CodemodeTreeEntry, "branch">> = [];
+  if (hidden) entries.push({ label: `… ${hidden} earlier tools (expand to see all)`, tone: "dim" });
+  for (const [name, { count, failed }] of [...groups].slice(hidden)) {
+    entries.push({
+      label: `${name}${count > 1 ? ` x${count}` : ""}${failed ? " ⚠ failed" : ""}`,
+      tone: failed ? "error" : "toolOutput",
+    });
+  }
+  if (isError && !entries.some((entry) => entry.tone === "error")) {
     entries.push({ label: "⚠ codemode failed (expand for details)", tone: "error" });
   }
   return entries.map((entry, index) => ({
