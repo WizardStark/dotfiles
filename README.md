@@ -65,6 +65,29 @@ Setup script variants depending on machine state:
 ./setup.sh --post-brew --no-sudo
 ```
 
+## Pi grill-me skill
+
+`home/.pi/agent/skills/grill-me/SKILL.md` provides an opt-in design interview:
+
+```text
+/skill:grill-me Build a notification preferences UI
+```
+
+The agent inspects relevant repository facts, asks focused rounds of questions,
+challenges assumptions, and follows consequential branches through scope, UX,
+interfaces, data, failure modes, security, operations, and validation. It keeps a
+working decision ledger and produces an implementation brief for your approval.
+No implementation changes happen before you explicitly approve the final brief.
+You can ask for interview-only output, shorten the interview, or stop at any time.
+
+The skill is explicit-only, so ordinary implementation requests are unaffected.
+The stow-managed skills directory makes it available in Pi; run `/reload` in an
+existing session after adding or editing it. This is an instruction-based workflow,
+not a tool-level enforcement mechanism.
+
+Run `PI_OFFLINE=1 JITI_FS_CACHE=0 node --test tests/pi-grill-me-skill.test.mjs`
+to check native Pi discovery, metadata, and exclusion from automatic invocation.
+
 ## Pi compaction checkpoint
 
 The GPT-6 models in `home/.pi/agent/settings.json` compact when context exceeds
