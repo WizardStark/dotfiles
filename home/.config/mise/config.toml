@@ -1,2 +1,5 @@
 [settings]
 trusted_config_paths = ["~/projects/worktrees"]
+
+[tools]
+gcloud = "565.0.0"
