@@ -4,9 +4,35 @@
 
 extern rgb_config_t rgb_matrix_config;
 
-void keyboard_post_init_user(void) { rgb_matrix_enable(); }
+#ifdef KEYBOARD_zsa_moonlander
+// Source LED index + 1 in Voyager order; zero denotes an unused Moonlander key.
+static const uint8_t PROGMEM voyager_led_indices[MATRIX_ROWS][MATRIX_COLS] =
+    LAYOUT_voyager(
+         1,  2,  3,  4,  5,  6, 27, 28, 29, 30, 31, 32,
+         7,  8,  9, 10, 11, 12, 33, 34, 35, 36, 37, 38,
+        13, 14, 15, 16, 17, 18, 39, 40, 41, 42, 43, 44,
+        19, 20, 21, 22, 23, 24, 45, 46, 47, 48, 49, 50,
+        25, 26, 51, 52
+    );
+static uint8_t voyager_led_for_target[RGB_MATRIX_LED_COUNT];
+#endif
 
-const uint8_t PROGMEM ledmap[][RGB_MATRIX_LED_COUNT][3] = {
+void keyboard_post_init_user(void) {
+#ifdef KEYBOARD_zsa_moonlander
+  for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+    for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+      uint8_t led = g_led_config.matrix_co[row][col];
+      if (led != NO_LED) {
+        voyager_led_for_target[led] =
+            pgm_read_byte(&voyager_led_indices[row][col]);
+      }
+    }
+  }
+#endif
+  rgb_matrix_enable();
+}
+
+const uint8_t PROGMEM ledmap[][52][3] = {
     [BASE] = {{141, 108, 235}, {141, 108, 235}, {141, 108, 235}, {141, 108, 235}, {141, 108, 235}, {141, 108, 235},
            {141, 108, 235}, {27, 255, 255},  {27, 255, 255},  {27, 255, 255},  {27, 255, 255},  {141, 108, 235},
            {141, 108, 235}, {27, 255, 255},  {0, 255, 255},   {0, 255, 255},   {27, 255, 255},  {141, 108, 235},
@@ -66,10 +92,18 @@ const uint8_t PROGMEM ledmap[][RGB_MATRIX_LED_COUNT][3] = {
 
 void set_layer_color(int layer) {
   for (int i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
+    uint8_t source = i;
+#ifdef KEYBOARD_zsa_moonlander
+    if (!voyager_led_for_target[i]) {
+      rgb_matrix_set_color(i, 0, 0, 0);
+      continue;
+    }
+    source = voyager_led_for_target[i] - 1;
+#endif
     HSV hsv = {
-        .h = pgm_read_byte(&ledmap[layer][i][0]),
-        .s = pgm_read_byte(&ledmap[layer][i][1]),
-        .v = pgm_read_byte(&ledmap[layer][i][2]),
+        .h = pgm_read_byte(&ledmap[layer][source][0]),
+        .s = pgm_read_byte(&ledmap[layer][source][1]),
+        .v = pgm_read_byte(&ledmap[layer][source][2]),
     };
     if (!hsv.h && !hsv.s && !hsv.v) {
       rgb_matrix_set_color(i, 0, 0, 0);

@@ -3,9 +3,11 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: link-voyager-keymap.sh [QMK_HOME] [--force]
+Usage: link-voyager-keymap.sh [QMK_HOME] [--moonlander] [--force]
 
-Symlinks this repo's Voyager keymap into a ZSA QMK checkout.
+Symlinks this repo's shared keymap into a ZSA QMK checkout.
+Defaults to Voyager; --moonlander selects the verified Moonlander revision A.
+--moonlander=reva is also accepted.
 
 Examples:
   link-voyager-keymap.sh ~/src/qmk_firmware
@@ -18,6 +20,8 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 keymap_src="$repo_root/keyboard/wizardstark"
 qmk_home=""
 force=0
+keyboard="voyager"
+compile_keyboard="zsa/voyager"
 
 resolve_path() {
   python3 - "$1" <<'PY'
@@ -71,6 +75,14 @@ for arg in "$@"; do
     --force)
       force=1
       ;;
+    --moonlander|--moonlander=reva)
+      keyboard="moonlander"
+      compile_keyboard="zsa/moonlander/reva"
+      ;;
+    --*)
+      echo "Unknown option: $arg" >&2
+      exit 1
+      ;;
     *)
       if [[ -z "$qmk_home" ]]; then
         qmk_home="$arg"
@@ -108,10 +120,10 @@ fi
 
 qmk_home=$(normalize_path "$qmk_home")
 qmk_home=$(cd "$qmk_home" && pwd)
-target_dir="$qmk_home/keyboards/zsa/voyager/keymaps"
+target_dir="$qmk_home/keyboards/zsa/$keyboard/keymaps"
 target_link="$target_dir/wizardstark"
 
-if [[ ! -d "$qmk_home/keyboards/zsa/voyager" ]]; then
+if [[ ! -d "$qmk_home/keyboards/zsa/$keyboard" ]]; then
   echo "Not a ZSA QMK checkout: $qmk_home" >&2
   exit 1
 fi
@@ -143,5 +155,5 @@ fi
 ln -s "$keymap_src" "$target_link"
 
 echo "Linked: $target_link -> $keymap_src"
-echo "Compile with: qmk compile -kb zsa/voyager -km wizardstark"
+echo "Compile with: qmk compile -kb $compile_keyboard -km wizardstark"
 echo "No flash step is performed by this script."

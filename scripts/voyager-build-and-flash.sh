@@ -3,17 +3,20 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: voyager-build-and-flash.sh [QMK_HOME] [--compile-only]
+Usage: voyager-build-and-flash.sh [QMK_HOME] [--moonlander] [--compile-only]
 
-Builds the wizardstark Voyager keymap and flashes it with zapp.
+Builds the wizardstark keymap and flashes it with zapp.
+Defaults to Voyager; --moonlander selects the verified Moonlander revision A.
+--moonlander=reva is also accepted.
 
 Examples:
   voyager-build-and-flash.sh ~/src/qmk_firmware
   voyager-build-and-flash.sh --compile-only
+  voyager-build-and-flash.sh ~/src/qmk_firmware --moonlander --compile-only
   QMK_HOME=~/src/qmk_firmware voyager-build-and-flash.sh
 
 Notes:
-  - The keymap is symlinked into keyboards/zsa/voyager/keymaps/wizardstark.
+  - The keymap is symlinked into keyboards/zsa/<keyboard>/keymaps/wizardstark.
   - If qmk is not installed, this script bootstraps it with uv into:
       ~/.cache/wizardstark-voyager/qmk-venv
   - zapp waits for the keyboard in bootloader mode before flashing.
@@ -21,9 +24,8 @@ EOF
 }
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-keyboard="zsa/voyager"
+board="voyager"
 keymap="wizardstark"
-target_name="zsa_voyager_wizardstark"
 compile_only=0
 qmk_home=""
 
@@ -35,6 +37,13 @@ for arg in "$@"; do
       ;;
     --compile-only)
       compile_only=1
+      ;;
+    --moonlander|--moonlander=reva)
+      board="moonlander"
+      ;;
+    --*)
+      echo "Unknown option: $arg" >&2
+      exit 1
       ;;
     *)
       if [[ -z "$qmk_home" ]]; then
@@ -173,7 +182,13 @@ find_qmk_home
 qmk_home=$(normalize_path "$qmk_home")
 qmk_home=$(cd "$qmk_home" && pwd)
 
-if [[ ! -d "$qmk_home/keyboards/zsa/voyager" ]]; then
+keyboard="zsa/$board"
+if [[ "$board" == "moonlander" ]]; then
+  keyboard+="/reva"
+fi
+target_name="${keyboard//\//_}_$keymap"
+
+if [[ ! -d "$qmk_home/keyboards/$keyboard" ]]; then
   echo "Not a ZSA QMK checkout: $qmk_home" >&2
   exit 1
 fi
@@ -192,7 +207,11 @@ need_cmd arm-none-eabi-gcc "Install a working ARM toolchain. If Homebrew's arm-n
 
 ensure_qmk_cli
 
-"$repo_root/scripts/link-voyager-keymap.sh" "$qmk_home"
+link_args=("$qmk_home")
+if [[ "$board" == "moonlander" ]]; then
+  link_args+=(--moonlander)
+fi
+"$repo_root/scripts/link-voyager-keymap.sh" "${link_args[@]}"
 
 firmware_bin="$qmk_home/$target_name.bin"
 
@@ -217,9 +236,9 @@ if [[ "$compile_only" -eq 1 ]]; then
 fi
 
 echo "Starting zapp..."
-echo "When zapp says it is waiting for the keyboard, put the Voyager into bootloader mode."
+echo "When zapp says it is waiting for the keyboard, put the $board into bootloader mode."
 
-auto_log_dir="$HOME/.cache/wizardstark-voyager/logs"
+auto_log_dir="$HOME/.cache/wizardstark-$board/logs"
 mkdir -p "$auto_log_dir"
 zapp_log="$auto_log_dir/zapp-$(date +%Y%m%d-%H%M%S).log"
 set +e

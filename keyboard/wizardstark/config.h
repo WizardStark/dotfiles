@@ -6,7 +6,11 @@
 #define ORYX_CONFIGURATOR
 #undef TAPPING_TERM
 #define TAPPING_TERM 175
+#ifdef KEYBOARD_zsa_moonlander
+#define MOONLANDER_USER_LEDS
+#else
 #define VOYAGER_USER_LEDS
+#endif
 
 #define USB_SUSPEND_WAKEUP_DELAY 0
 #define FIRMWARE_VERSION u8"7RX4b/DXlK7"

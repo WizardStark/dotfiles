@@ -1,5 +1,7 @@
 #pragma once
 
+#include "layout_adapter.h"
+
 #define BASE_M LGUI_T(KC_M)
 #define BASE_S LALT_T(KC_S)
 #define BASE_N LCTL_T(KC_N)
