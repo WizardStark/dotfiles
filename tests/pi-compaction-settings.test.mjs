@@ -26,7 +26,13 @@ test("every enabled or overridden GPT-6 model has a native 272k compaction check
       ...settings.enabledModels,
       ...Object.keys(overrides),
     ].filter(isGpt6));
-    assert.ok(keys.has("github-copilot/gpt-6.1-sol"));
+    assert.equal(settings.defaultModel, "gpt-6.2-sol");
+    assert.deepEqual(settings.enabledModels, [
+      "github-copilot/gpt-6.2-astra",
+      "github-copilot/gpt-6.2-sol",
+      "github-copilot/gpt-6-luna",
+    ]);
+    assert.deepEqual([...keys].sort(), [...settings.enabledModels].sort());
     for (const key of keys) {
       await t.test(key, () => {
         assert.ok(Object.hasOwn(overrides, key), `${key} must not fall back to the global reserve`);
@@ -58,6 +64,6 @@ test("unrelated models retain the ordinary compaction fallback and disabled comp
   const disabled = SettingsManager.inMemory({
     ...settings, compaction: { ...settings.compaction, enabled: false },
   });
-  const effective = disabled.getCompactionSettings({ provider: "github-copilot", id: "gpt-6.1-sol" });
+  const effective = disabled.getCompactionSettings({ provider: "github-copilot", id: "gpt-6.2-sol" });
   assert.equal(shouldCompact(272_001, 1_050_000, effective), false);
 });

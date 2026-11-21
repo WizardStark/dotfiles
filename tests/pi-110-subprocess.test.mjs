@@ -12,6 +12,7 @@ const previousHome = process.env.HOME;
 process.env.HOME = home;
 const workflow = await importExtension("lib/workflow-mode.ts");
 const supervisor = await importExtension("supervisor-worker.ts");
+const routing = await importExtension("three-tier-routing.ts");
 process.env.HOME = previousHome;
 const runtime = await importExtension("lib/subagent-runtime.ts");
 const launcher = join(home, "fixture.mjs");
@@ -78,6 +79,25 @@ test("JSON fixture preserves auth metadata, event errors are visible, and abort 
     onEvent() { throw new Error("fixture consumer failure"); } });
   assert.equal(failure.exitCode, 1); assert.equal(failure.stopReason, "error");
   assert.match(failure.errorMessage, /fixture consumer failure/);
+});
+
+test("advisor workflow prefers Astra 6.2 over the active Sol model and older Astra variants", async () => {
+  await workflow.writeWorkflowMode("guided");
+  const api = mockApi(); routing.default(api);
+  const context = ctx();
+  const sol = { provider: "github-copilot", id: "gpt-6.2-sol" };
+  const astra = { provider: "github-copilot", id: "gpt-6.2-astra" };
+  context.model = sol;
+  context.modelRegistry.getAvailable = () => [sol, { ...astra, id: "gpt-6-astra" }, astra];
+  await api.emit("session_start", {}, context);
+  try {
+    const result = await api.tools.get("advisor_design").execute("advisor-default", { task: "fixture" },
+      undefined, undefined, context);
+    assert.equal(result.isError, false);
+    assert.equal(result.details.advisor, "github-copilot/gpt-6.2-astra");
+  } finally {
+    await api.emit("session_shutdown", {}, context);
+  }
 });
 
 test("worker/scout fixture callbacks populate live activity and terminal failure is authoritative", async () => {

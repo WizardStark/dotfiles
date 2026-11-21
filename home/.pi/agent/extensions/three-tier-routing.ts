@@ -15,7 +15,7 @@ import { readWorkflowMode } from "./lib/workflow-mode.ts";
 
 const ADVISOR_MESSAGE_TYPE = "advisor-task-packet";
 const ASTRA_PROVIDER = "github-copilot";
-const ASTRA_MODEL = "gpt-6-astra";
+const ASTRA_MODEL = "gpt-6.2-astra";
 const PACKET_MARKER = "<!-- pi-advisor-task-packet -->";
 const ADVISOR_CHILD_MARKER = "PI_THREE_TIER_ADVISOR_CHILD";
 const ADVISOR_PROGRESS_WIDGET = "three-tier-advisor-progress";
