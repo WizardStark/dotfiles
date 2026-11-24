@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { getEventListeners } from "node:events";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -79,6 +79,72 @@ test("JSON fixture preserves auth metadata, event errors are visible, and abort 
     onEvent() { throw new Error("fixture consumer failure"); } });
   assert.equal(failure.exitCode, 1); assert.equal(failure.stopReason, "error");
   assert.match(failure.errorMessage, /fixture consumer failure/);
+});
+
+test("prompts no longer preflight Astra, including expanded grill-me instructions", async () => {
+  await workflow.writeWorkflowMode("guided");
+  const api = mockApi(); routing.default(api);
+  const context = ctx();
+  const phases = [];
+  api.events.on("subagent:activity", ({ phase }) => phases.push(phase));
+  await api.emit("session_start", {}, context);
+  try {
+    const skill = await readFile(new URL("../home/.pi/agent/skills/grill-me/SKILL.md", import.meta.url), "utf8");
+    for (const prompt of [
+      "Implement a database migration",
+      `<skill name="grill-me">\n${skill}\n</skill>\nNotification preferences`,
+    ]) {
+      assert.equal(await api.emit("before_agent_start", { prompt }, context), undefined);
+    }
+    assert.deepEqual(phases, []);
+    assert.deepEqual(api.entries, []);
+    assert.deepEqual(api.messages, []);
+  } finally {
+    await api.emit("session_shutdown", {}, context);
+  }
+});
+
+test("explicit /advisor remains available, but plain mode disables both entry points", async () => {
+  const api = mockApi(); routing.default(api);
+  const context = ctx();
+  const notices = [];
+  context.ui.notify = (message) => notices.push(message);
+  const metrics = [];
+  api.events.on("subagent:metrics", (event) => metrics.push(event));
+  const command = api.commands.get("advisor");
+  const tool = api.tools.get("advisor_design");
+  await workflow.writeWorkflowMode("guided");
+  await api.emit("session_start", {}, context);
+  try {
+    await command.handler("fixture", context);
+    assert.equal(api.messages.length, 1);
+    assert.equal(api.messages[0].customType, "advisor-task-packet");
+    assert.equal(api.messages[0].details.source, "command");
+    assert.equal(metrics.length, 1);
+    assert.equal(metrics[0].id, api.messages[0].details.id);
+
+    await workflow.writeWorkflowMode("plain");
+    await command.handler("fixture", context);
+    await assert.rejects(tool.execute("plain-advisor", { task: "fixture" }, undefined, undefined, context), /disabled in plain mode/);
+    assert.match(notices.at(-1), /disabled in plain mode/);
+    assert.equal(api.messages.length, 1);
+    assert.equal(metrics.length, 1);
+  } finally {
+    await api.emit("session_shutdown", {}, context);
+  }
+});
+
+test("an advisor subprocess cannot register either advisor entry point", () => {
+  const marker = "PI_THREE_TIER_ADVISOR_CHILD";
+  const previous = process.env[marker];
+  process.env[marker] = "1";
+  try {
+    const api = mockApi(); routing.default(api);
+    assert.equal(api.tools.has("advisor_design"), false);
+    assert.equal(api.commands.has("advisor"), false);
+  } finally {
+    if (previous === undefined) delete process.env[marker]; else process.env[marker] = previous;
+  }
 });
 
 test("advisor workflow prefers Astra 6.2 over the active Sol model and older Astra variants", async () => {

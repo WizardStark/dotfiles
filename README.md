@@ -65,6 +65,13 @@ Setup script variants depending on machine state:
 ./setup.sh --post-brew --no-sudo
 ```
 
+## Pi Astra advisor
+
+In guided and three-tier workflows, the agent can use `advisor_design` for a
+specific consequential decision that would benefit from independent advice. Pi
+does not scan prompt text or run Astra before the agent starts. Use
+`/advisor <task>` to request a packet directly. Plain mode disables both paths.
+
 ## Pi grill-me skill
 
 `home/.pi/agent/skills/grill-me/SKILL.md` provides an opt-in design interview:
@@ -78,6 +85,7 @@ challenges assumptions, and follows consequential branches through scope, UX,
 interfaces, data, failure modes, security, operations, and validation. It keeps a
 working decision ledger and produces an implementation brief for your approval.
 No implementation changes happen before you explicitly approve the final brief.
+Starting the interview does not itself trigger Astra.
 You can ask for interview-only output, shorten the interview, or stop at any time.
 
 The skill is explicit-only, so ordinary implementation requests are unaffected.

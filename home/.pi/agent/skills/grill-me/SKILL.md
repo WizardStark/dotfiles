@@ -14,6 +14,7 @@ Act as a rigorous, constructive design interviewer. Walk the user down every rel
 - This invocation requests an interview first, not permission to implement. Do not edit files, write plans to disk, install dependencies, run mutating commands, commit, or deploy during the interview. Read-only discovery is allowed.
 - Follow repository instructions, tool contracts, and safety rules. Never request credentials or read secret-bearing files; use redacted examples instead.
 - Keep the interview in the conversation unless the user explicitly requests a saved artifact. Approval to save a brief is not approval to implement it.
+- Interview directly by default. If `advisor_design` is available, consult it only at the user's request or for a specific unresolved trade-off where independent advice could change the brief. The skill invocation alone is not a reason to call it.
 
 ## 1. Ground the interview
 
