@@ -18,6 +18,8 @@ const { SessionManager } = await piSdk();
 test("supervisor restores only active-branch overrides, review keys and handoffs, without weakening workflow gates", async () => {
   const directory = await mkdtemp(join(tmpdir(), "pi-branch-repo-"));
   const api = mockApi();
+  const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = home;
   try {
     execFileSync("git", ["init", "-q", directory]);
     await writeFile(join(directory, "change.ts"), "change\n");
@@ -79,6 +81,8 @@ test("supervisor restores only active-branch overrides, review keys and handoffs
     }
   } finally {
     await api.emit("session_shutdown", {}, { ui: { setWidget() {}, setStatus() {} }, sessionManager: { getSessionFile() {} } });
+    if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
     await rm(directory, { recursive: true, force: true });
     await rm(home, { recursive: true, force: true });
   }

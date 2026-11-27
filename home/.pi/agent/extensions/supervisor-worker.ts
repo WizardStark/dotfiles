@@ -3,6 +3,12 @@ import { resolveSubagentAuth, type SubagentAuth } from "./lib/subagent-auth.ts";
 import { createSessionWork, StaleSessionWorkError } from "./lib/session-work.ts";
 import { domainRenderers } from "./lib/domain-tool-renderers.ts";
 import { sumUsages } from "./lib/usage.ts";
+import {
+  DELEGATION_THINKING_LEVELS as THINKING_LEVELS,
+  readDelegationModels,
+  writeDelegationModel,
+  type DelegationModelPreference,
+} from "./lib/delegation-model-config.ts";
 import type {
   AgentMessage,
   ThinkingLevel,
@@ -256,15 +262,6 @@ declare global {
 }
 const MAX_PARALLEL_SUBAGENT_TASKS = 4;
 const MAX_PARALLEL_REPORT_CHARS = 4_000;
-const THINKING_LEVELS = [
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-] as const;
 const WORKER_ENV_FLAG = "PI_SUPERVISOR_WORKER_ROLE";
 const HANDOFF_ENTRY = "subagent-handoff";
 const REVIEW_STATE_ENTRY = "review-dedupe-state";
@@ -4011,6 +4008,32 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       pi.appendEntry(STATE_ENTRY, state);
     }
 
+    function applyModelPreference(role: "worker" | "scout", preference: DelegationModelPreference) {
+      const model = preference.model ?? undefined;
+      if (role === "worker") {
+        state = { ...state, override: model, thinkingLevel: preference.thinkingLevel };
+      } else {
+        state = { ...state, scoutOverride: model, scoutThinkingLevel: preference.thinkingLevel };
+      }
+    }
+
+    async function saveModelPreference(
+      ctx: ExtensionContext,
+      role: "worker" | "scout",
+      preference: DelegationModelPreference,
+    ): Promise<boolean> {
+      try {
+        await writeDelegationModel(role, preference);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        ctx.ui.notify(`Could not save ${role} preference to delegation-models.json: ${detail}`, "error");
+        return false;
+      }
+      applyModelPreference(role, preference);
+      refreshStatus(ctx);
+      return true;
+    }
+
     function addDelegationTools(names: readonly string[]) {
       const available = new Set(pi.getAllTools().map((tool) => tool.name));
       const active = pi.getActiveTools();
@@ -4674,9 +4697,12 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
       delegationTaskWidget.clear();
       delegationTaskWidget.setUICtx(ctx.ui);
       const saved = readSavedState(ctx) ?? {};
-      const workflowMode = await readWorkflowMode();
+      const [workflowMode, models] = await Promise.all([readWorkflowMode(), readDelegationModels()]);
       if (restoreEpoch !== sessionEpoch) return;
       state = { ...saved, workflowMode };
+      // A configured role (including a reset) takes precedence over legacy branch state.
+      if (models.worker) applyModelPreference("worker", models.worker);
+      if (models.scout) applyModelPreference("scout", models.scout);
       resetLazyDelegationTools();
       refreshStatus(ctx);
     }
@@ -5952,13 +5978,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         }
 
         if (modelArg === "default") {
-          const { override, thinkingLevel, ...rest } = state;
-          state = {
-            ...rest,
+          if (!(await saveModelPreference(ctx, "worker", {
+            model: null,
             thinkingLevel: thinkingArg ?? DEFAULT_WORKER_THINKING_LEVEL,
-          };
-          persistState();
-          refreshStatus(ctx);
+          }))) return;
           ctx.ui.notify(
             `Worker reset to ${formatModel(getEffectiveWorkerRef(ctx, state), getEffectiveThinkingLevel(state))}`,
             "info",
@@ -5972,13 +5995,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           return;
         }
 
-        state = {
-          ...state,
-          override: requested.ref,
+        if (!(await saveModelPreference(ctx, "worker", {
+          model: requested.ref,
           thinkingLevel: thinkingArg ?? getEffectiveThinkingLevel(state),
-        };
-        persistState();
-        refreshStatus(ctx);
+        }))) return;
         ctx.ui.notify(
           `Worker set to ${formatModel(requested.ref, getEffectiveThinkingLevel(state))}`,
           "info",
@@ -6009,13 +6029,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
         }
 
         if (modelArg === "default") {
-          const { scoutOverride, scoutThinkingLevel, ...rest } = state;
-          state = {
-            ...rest,
-            scoutThinkingLevel: thinkingArg ?? DEFAULT_SCOUT_THINKING_LEVEL,
-          };
-          persistState();
-          refreshStatus(ctx);
+          if (!(await saveModelPreference(ctx, "scout", {
+            model: null,
+            thinkingLevel: thinkingArg ?? DEFAULT_SCOUT_THINKING_LEVEL,
+          }))) return;
           ctx.ui.notify(
             `Scout reset to ${formatModel(getEffectiveScoutRef(ctx, state), getEffectiveScoutThinkingLevel(state))}`,
             "info",
@@ -6029,14 +6046,10 @@ export default function supervisorWorkerExtension(pi: ExtensionAPI) {
           return;
         }
 
-        state = {
-          ...state,
-          scoutOverride: requested.ref,
-          scoutThinkingLevel:
-            thinkingArg ?? getEffectiveScoutThinkingLevel(state),
-        };
-        persistState();
-        refreshStatus(ctx);
+        if (!(await saveModelPreference(ctx, "scout", {
+          model: requested.ref,
+          thinkingLevel: thinkingArg ?? getEffectiveScoutThinkingLevel(state),
+        }))) return;
         ctx.ui.notify(
           `Scout set to ${formatModel(requested.ref, getEffectiveScoutThinkingLevel(state))}`,
           "info",

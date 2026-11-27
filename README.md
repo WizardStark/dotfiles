@@ -72,6 +72,14 @@ specific consequential decision that would benefit from independent advice. Pi
 does not scan prompt text or run Astra before the agent starts. Use
 `/advisor <task>` to request a packet directly. Plain mode disables both paths.
 
+## Pi delegation models
+
+`/worker-model <provider/model> [thinking-level]` and `/scout-model <provider/model> [thinking-level]`
+save your choices across sessions in `~/.pi/agent/delegation-models.json` (or under
+`PI_CODING_AGENT_DIR` if set). Run either command without arguments to show its
+current selection, or with `default` to reset that role. These preferences are
+separate from Pi's main model in `settings.json`.
+
 ## Pi grill-me skill
 
 `home/.pi/agent/skills/grill-me/SKILL.md` provides an opt-in design interview:

@@ -17,7 +17,13 @@ process.env.PI_CACHE_HEALTH_LEDGER = join(home, "ledger.jsonl");
 const cacheHealth = await importExtension("cache-health.ts");
 if (previousLedger === undefined) delete process.env.PI_CACHE_HEALTH_LEDGER;
 else process.env.PI_CACHE_HEALTH_LEDGER = previousLedger;
-after(() => rm(home, { recursive: true, force: true }));
+const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
+process.env.PI_CODING_AGENT_DIR = home;
+after(async () => {
+  if (previousAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+  else process.env.PI_CODING_AGENT_DIR = previousAgentDir;
+  await rm(home, { recursive: true, force: true });
+});
 
 const usage = (n) => ({ input: n, output: n, cacheRead: 0, cacheWrite: 0, totalTokens: n * 2,
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: n } });
